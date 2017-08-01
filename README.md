@@ -904,30 +904,18 @@ Options:
   --help           Show this message and exit.
 
 Commands:
-  create    Create a service in AWS
-  delete    Delete a service from AWS
-  info      Print current AWS info about service
-  restart   Restart all tasks in service
-  run_task  Run a one-shot task for our service
-  scale     Adjust # tasks in a service
-  update    Update task defintion for a service
-  version   Print image tag of live service
+  cluster     Manage the AWS ECS cluster
+  config      Manage AWS Parameter Store values
+  create      Create a service in AWS
+  delete      Delete a service from AWS
+  entrypoint  Use for a Docker entrypoint
+  exec        Connect to a running container
+  info        Print current AWS info about a service
+  restart     Restart all tasks in service
+  run_task    Run a one-shot task for our service
+  scale       Adjust # tasks in a service
+  ssh         Connect to an ECS cluster machine
+  tunnel      Tunnel through an ECS cluster machine to the remote host
+  update      Update task defintion for a service
+  version     Print image tag of live service
 ```
-
-### Design goals:
-
-* Report enough information about each buildstep that we don't have to look in
-  either Bitbucket or the AWS console for information about the deployment
-  process
-* We want to be able to wget this one file within a build step and use it
-  without having to install any dependencies.  This saves time and complexity
-  during the build.  TRY REALLY HARD NOT TO require anything outside python
-  core!!
-
-### Usage
-
-To use `slack.py` in your buildstep:
-
-    export SLACK_WEBHOOK=<your slack incoming webhook>
-    wget --no-check-certificate https://bitbucket.org/caltech-imss-ads/deployfish/raw/prod/slack.py -O slack.py
-    python slack.py <subcommand> <flags>
