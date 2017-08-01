@@ -1,0 +1,39 @@
+# parameter-store.yml
+#
+# This file has a standard service that uses AWS Parameter Store 
+# to store its secrets.
+#
+# * It has a load balancer
+# * It has 2 tasks in the cluster my-cluster
+# * It uses a task role
+# * It uses bridge networking
+# * Its task has a single container whose image comes from an AWS ECR
+#   repository and which has a single port open
+#
+# my-service uses an ELB for its load balancer
+#
+
+services:
+  - name: my-service
+    cluster: my-cluster
+    count: 2
+    load_balancer:
+      service_role_arn: arn:aws:iam::123445564666:role/ecsServiceRole
+      load_balancer_name: my-elb
+      container_name: my-service
+      container_port: 80
+    family: my-service
+    network_mode: bridge
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    config:
+        - 
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket
+

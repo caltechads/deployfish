@@ -1,0 +1,14 @@
+# tutorial_1.yml
+#
+# This file defines a minimal service.
+
+services:
+  - name: hello-world-test
+    cluster: deployfish
+    count: 1
+    family: hello-world
+    containers:
+      - name: hello-world
+        image: tutum/hello-world
+        cpu: 128
+        memory: 256

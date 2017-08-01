@@ -1,0 +1,48 @@
+terraform:
+  statefile: s3://asldfjksldfkjsldk
+  lookups:
+    proxy_cluster_name: 'proxy-{environment}-cluster-name'
+    proxy_autoscalinggroup_name: 'proxy-{environment}-autoscalinggroup-name'
+    proxy_elb_id: 'proxy-{environment}-elb-id'
+    core_cluster_name: 'core-{environment}-cluster-name'
+    secrets_bucket_name: 's3-config-store-bucket'
+    cit_auth_iam_task_role: 'iam-role-cit-auth-{environment}-task'
+
+services:
+  - name: cit-auth-prod
+    environment: prod
+    cluster: ${terraform.proxy_cluster_name}
+    service_role_arn: a_task_role_arn
+    count: 2
+    load_balancer:
+      load_balancer_name: ${terraform.proxy_elb_id}
+      container_name: cit_auth
+      container_port: 443
+    config:
+        - FOOBAR=${env.FOOBAR_ENV}
+    family: cit-auth-prod
+    network_mode: host
+    task_role_arn: ${terraform.cit_auth_iam_task_role}
+    containers:
+      - name: cit_auth
+        image: 467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3
+        cpu: 1024
+        memory: 4000
+        command: /usr/bin/supervisord
+        entrypoint: /entrypoint.sh
+        ports:
+          - "80:80"
+          - "443:443"
+          - "8021:8021:udp"
+        ulimits:
+          nproc: 65535
+          nofile:
+            soft: 65535
+            hard: 65535
+        environment:
+          - LDAPTLS_REQCERT=never
+          - ENVIRONMENT=prod
+          - SECRETS_BUCKET_NAME=${terraform.secrets_bucket_name}
+        labels:
+          edu.caltech.imss-ads: "foobar"
+

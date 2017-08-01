@@ -1,0 +1,4 @@
+include *.txt
+include *.md
+include Dockerfile
+include Makefile

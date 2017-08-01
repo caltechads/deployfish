@@ -1,0 +1,19 @@
+# tutorial_2.yml
+
+services:
+  - name: hello-world-test
+    cluster: hello-world-cluster
+    count: 1
+    family: hello-world
+    containers:
+      - name: hello-world
+        image: tutum/hello-world
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        command: /usr/bin/supervisord
+        environment:
+          - VAR1=test
+          - VAR2=anothervar
+          - DEBUG=True

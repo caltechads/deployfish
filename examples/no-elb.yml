@@ -1,0 +1,20 @@
+# no-elb.yml
+#
+# This file defines a basic service with no ELB.
+
+services:
+  - name: my-service-elb
+    cluster: my-cluster
+    count: 1
+    family: my-service
+    network_mode: bridge
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket

@@ -1,0 +1,10 @@
+*.pyc
+*.sw*
+.DS_Store
+dist
+*.egg-info
+.ropeproject
+.terraform
+.idea
+docs/build
+terraform.tfstate

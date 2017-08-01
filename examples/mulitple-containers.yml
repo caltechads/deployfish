@@ -1,0 +1,45 @@
+# multiple-containers.yml
+#
+# This file defines a service with a task definition with three containers: 
+# a application container, a redis container and a mysql container.
+#
+# This config uses links: to link the application container to the redis
+# and db containers, and the db container uses an alias.
+#
+# Note also that our application image comes from ECR, while the 
+# redis and mysql images come from Docker Hub.
+
+services:
+  - name: my-service
+    cluster: my-cluster
+    count: 2
+    load_balancer:
+      service_role_arn: arn:aws:iam::123445564666:role/ecsServiceRole
+      load_balancer_name: my-elb
+      container_name: my-service
+      container_port: 80
+    family: my-service
+    network_mode: bridge
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket
+        links:
+          - redis
+          - db:database
+      - name: redis
+        image: redis:latest
+        cpu: 128
+        memory: 256
+      - name: db
+        image: mysql:5.5.57
+        cpu: 128
+        memory: 512
+        environment:
+            MYSQL_ROOT_PASSWORD: __MYSQL_ROOT_PASSWD__

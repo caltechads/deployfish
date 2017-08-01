@@ -1,0 +1,43 @@
+# basic.yml
+#
+# This file describes a service with an ELB which has application scaling
+# configured.
+#
+
+services:
+  - name: my-service-scaling
+    cluster: my-cluster
+    count: 2
+    load_balancer:
+      service_role_arn: arn:aws:iam::123445564666:role/ecsServiceRole
+      load_balancer_name: my-elb
+      container_name: my-service
+      container_port: 80
+    application_scaling:
+        min_capacity: 2
+        max_capacity: 4
+        role_arn: arn:aws:iam::123445678901:role/ApplicationAutoscalingECSRole
+        scale-up:
+            cpu: ">=60"
+            check_every_seconds: 60
+            periods: 5
+            cooldown: 60
+            scale_by: 1
+        scale-down:
+            cpu: "<=30"
+            check_every_seconds: 60
+            periods: 60
+            cooldown: 60
+            scale_by: -1
+    family: my-service
+    network_mode: bridge
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket

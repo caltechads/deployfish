@@ -1,0 +1,79 @@
+terraform:
+  statefile: s3://asldfjksldfkjsldk
+  lookups:
+    proxy_cluster_name: 'proxy-{environment}-cluster-name'
+    proxy_autoscalinggroup_name: 'proxy-{environment}-autoscalinggroup-name'
+    proxy_elb_id: 'proxy-{environment}-elb-id'
+    core_cluster_name: 'core-{environment}-cluster-name'
+    secrets_bucket_name: 's3-config-store-bucket'
+    cit_auth_iam_task_role: 'iam-role-cit-auth-{environment}-task'
+
+services:
+  - name: foobar-prod
+    environment: prod
+    cluster: access-caltech-proxy-prod
+    service_role_arn: a_task_role_arn
+    count: 2
+    load_balancer:
+      load_balancer_name: access-caltech-proxy-prod
+      container_name: cit_auth
+      container_port: 443
+    family: cit-auth-prod
+    network_mode: host
+    task_role_arn: a_task_role_arn
+    containers:
+      - name: cit_auth
+        image: 467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3
+        cpu: 1024
+        memory: 4000
+        command: /usr/bin/supervisord
+        entrypoint: /entrypoint.sh
+        extra_hosts:
+          - "foobar:127.0.0.1"
+          - "foobaz:127.0.0.2"
+        ports:
+          - "22"
+          - "80:80"
+          - "443:443"
+          - "8021:8021/udp"
+        ulimits:
+          nproc: 65535
+          nofile: 
+            soft: 65535
+            hard: 65535
+        environment:
+          - LDAPTLS_REQCERT=never
+          - ENVIRONMENT=prod
+          - SECRETS_BUCKET_NAME=ac-config-store
+        labels:
+          edu.caltech.imss-ads: "foobar"
+
+  - name: cit-auth-prod2
+    cluster: access-caltech-proxy-prod
+    family: cit-auth-prod2
+    network_mode: host
+    count: 2
+    load_balancer:
+      target_group_arn: my_target_group_arn
+      container_name: cit_auth
+      container_port: 443
+    containers:
+      - name: cit_auth
+        image: 467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: ac-config-store
+        links:
+          - redis
+          - db:database
+        labels:
+          - "edu.caltech.imss-ads=foobar"
+        volumes:
+          - /host/path:/container/path
+          - /host/path-ro:/container/path-ro:ro
+      - name: redis
+        image: redis:latest
+      - name: db
+        image: mysql:5.5.47
+     

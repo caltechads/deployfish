@@ -1,0 +1,56 @@
+# basic.yml
+#
+# This file has two pretty standard services.
+#
+# * They both use a load balancer
+# * They both 2 tasks in the cluster my-cluster
+# * They both use a task role
+# * They both use bridge networking
+# * Their tasks both have a single container whose image comes from an AWS ECR
+#   repository and which has a single port open
+#
+# my-service-elb uses an ELB for its load balancer
+# my-service-alb uses an ALB for its load balancer
+#
+
+services:
+  - name: my-service-elb
+    cluster: my-cluster
+    count: 2
+    load_balancer:
+      service_role_arn: arn:aws:iam::123445564666:role/ecsServiceRole
+      load_balancer_name: my-elb
+      container_name: my-service
+      container_port: 80
+    family: my-service
+    network_mode: bridge
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket
+  - name: my-service-alb
+    cluster: my-cluster
+    count: 2
+    load_balancer:
+      service_role_arn: arn:aws:iam::123445564666:role/ecsServiceRole
+      target_group_arn: arn:aws:elasticloadbalancing:us-west-2:123445564666:targetgroup/my-service-alb/4bf28a0fa5978cea
+      container_name: my-service
+      container_port: 80
+    family: my-service
+    network_mode: bridge
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket

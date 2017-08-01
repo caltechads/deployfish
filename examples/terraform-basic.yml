@@ -1,0 +1,77 @@
+# terraform-basic.yml
+#
+# This file is just like basic.yml, except that we've set it upt to pull
+# values from a terraform state file.
+#
+# Terraform lookups are evaluated within the context of each service
+# separately. Terraform lookups can be used in any string value in the service
+# definition. In the terraform:lookups section, you can use these replacements in the
+# lookups definitions:
+#
+#   * {environment}: replace with the value of the 'environment' option for the
+#     current service
+#   * {service-name}: replace with the name of the current service
+#   * {cluster-name}: replace with the name of the cluster for the current service
+#
+# When the string replacements are done in the service definition, deployfish
+# will retrieve your terraform statefile and replace any ${terraform.<key>}
+# with the corresponding terraform output, where <key> matches one of the keys
+# in terraform:lookups.
+#
+# The 'statefile' keyword tells deployfish where in S3 the appropriate
+# terraform statefile lives.
+
+terraform:
+  statefile: 's3://terraform-remote-state/my-service-terraform-state'
+  lookups:
+    ecs_service_role: 'ecs-service-role'
+    cluster_name: '{service-name}-ecs-cluster-name'
+    elb_name: '{service-name}-elb-name'
+    target_group_arn: '{service-name}-target-group-arn'
+    storage_bucket: 's3-{environment}-bucket'
+    task_role_arn: '{service-name}-task-role-arn'
+    ecr_repo_url: 'ecr-repository-url'
+
+services:
+  - name: my-service-elb
+    cluster: ${terraform.cluster_name}
+    environment: prod
+    count: 2
+    load_balancer:
+      service_role_arn: ${terraform.ecs_service_role}
+      load_balancer_name: ${terraform.elb_name}
+      container_name: my-service
+      container_port: 80
+    family: my-service
+    network_mode: bridge
+    task_role_arn: ${terraform.task-role-arn}
+    containers:
+      - name: my-service
+        image: ${terraform.ecr_repo_url}:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=${terraform.storage_bucket}
+  - name: my-service-alb
+    cluster: ${terraform.cluster_name}
+    environment: test
+    count: 2
+    load_balancer:
+      service_role_arn: ${terraform.ecs_service_role}
+      target_group_arn: ${terraform.target_group_arn}
+      container_name: my-service
+      container_port: 80
+    family: my-service
+    network_mode: bridge
+    task_role_arn: ${terraform.task-role-arn}
+    containers:
+      - name: my-service
+        image: ${terraform.ecr_repo_url}:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=${terraform.storage_bucket}

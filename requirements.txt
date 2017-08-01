@@ -1,0 +1,12 @@
+awscli
+boto3
+bumpversion
+click
+mock
+nose
+PyYaml
+Sphinx
+sphinx-autobuild
+sphinx-click
+sphinx_rtd_theme
+testfixtures
