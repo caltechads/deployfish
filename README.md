@@ -671,15 +671,15 @@ used by other software.
         image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
         dockerLabels:
         labels:
-          edu.caltech.description: "Fun webapp"
-          edu.caltech.department: "Dept. of Redundancy Dept."
-          edu.caltech.label-with-empty-value: ""
+          description: "Fun webapp"
+          department: "Dept. of Redundancy Dept."
+          label-with-empty-value: ""
       - name: bar
         image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
         dockerLabels:
-          - "edu.caltech.description=Fun webapp"
-          - "edu.caltech.department=Dept. of Redundancy Dept."
-          - "edu.caltech.label-with-empty-value"
+          - "description=Fun webapp"
+          - "department=Dept. of Redundancy Dept."
+          - "label-with-empty-value"
 
 #### volumes
 
@@ -765,7 +765,7 @@ and defines two available commands on that task: `migrate` and `update_index`.
 When you do `deploy update foobar-prod`, deployfish will create a new
 revision of the `foobar-helper-prod` task defintion and add a docker label to
 the `foobar-prod` task definition of
-`edu.caltech.foobar-helper-prod=foobar-helper-prod:<revision>`", where
+`foobar-helper-prod=foobar-helper-prod:<revision>`", where
 `revision` is the revision of `foobar-helper-prod` that we just created.
 
 Then when you run `deploy run_task foobar-prod migrate`, deployfish will:
@@ -773,7 +773,7 @@ Then when you run `deploy run_task foobar-prod migrate`, deployfish will:
 1. Search for `migrate` among all the separate `commands` listings under `tasks` 
 1. Determine that `migrate` belongs to the `foobar-helper-prod` task
 1. Look on the active `foobar-prod` service task definition for the
-   `edu.caltech.foobar-helper-prod` docker label
+   `foobar-helper-prod` docker label
 1. Use the value of that label to figure out which revision of our
    `foobar-helper-prod` task to run
 1. Call the ECS `RunTasks` API call with that task revision and overriding
@@ -913,10 +913,6 @@ Commands:
   update    Update task defintion for a service
   version   Print image tag of live service
 ```
-
-## Slack incoming webhook
-
-`slack.py`: a CodePipeline reporter specific to Caltech ADS workflows
 
 ### Design goals:
 
