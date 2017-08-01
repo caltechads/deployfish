@@ -9,6 +9,8 @@
             |_|            |___/                 
 ```
 
+Full documentation at [http://deployfish.readthedocs.io](http://deployfish.readthedocs.io).
+
 `deployfish` has commands for managing the whole lifecycle of your application:
 
 * Create, update, destroy and restart ECS services
