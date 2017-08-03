@@ -22,7 +22,7 @@ Clone or download from `Github <https://github.com/caltechads/deployfish-mysql>`
 
 ::
 
-    cd deployfish-0.15.0
+    cd deployfish-0.15.1
     python setup.py install
 
 
