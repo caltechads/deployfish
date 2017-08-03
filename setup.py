@@ -2,14 +2,15 @@
 from deployfish import __version__
 from setuptools import setup, find_packages  # @UnresolvedImport
 
+intro = open('docs/source/intro.rst').read()
 
 setup(name="deployfish",
       version=__version__,
-      description="ECS related deployment tools",
+      description="AWS ECS related deployment tools",
       author="IMSS ADS",
       author_email="imss-ads-staff@caltech.edu",
       url="https://github.com/caltechads/deployfish",
-      download_url='https://github.com/caltechads/deployfish/archive/%s.tar.gz' % __version__,
+      long_description=intro,
       keywords=['aws', 'ecs', 'docker', 'devops'],
       classifiers = [
           "Programming Language :: Python :: 2.7",
