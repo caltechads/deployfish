@@ -12,8 +12,7 @@ version:
 
 dist: clean
 	@python setup.py sdist
-    @python setup.py bdist_wheel --universal
+	@python setup.py bdist_wheel --universal
 
 pypi: dist
-    #@python setup.py bdist_wheel
-    @twine upload dist/*
+	@twine upload dist/*
