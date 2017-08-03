@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import string
 import sys
 
@@ -19,5 +21,5 @@ def cli(ctx, filename, env_file, version):
     ctx.obj['ENV_FILE'] = env_file
 
     if version:
-        print deployfish.__version__
+        print(deployfish.__version__)
         sys.exit(0)

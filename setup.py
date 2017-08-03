@@ -11,6 +11,10 @@ setup(name="deployfish",
       url="https://github.com/caltechads/deployfish",
       download_url='https://github.com/caltechads/deployfish/archive/%s.tar.gz' % __version__,
       keywords=['aws', 'ecs', 'docker', 'devops'],
+      classifiers = [
+          "Programming Language :: Python :: 2.7",
+          "Programming Language :: Python :: 3"
+      ],
       packages=find_packages(),
       include_package_data=True,
       install_requires=[

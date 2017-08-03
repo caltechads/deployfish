@@ -10,3 +10,5 @@ sphinx-autobuild
 sphinx-click
 sphinx_rtd_theme
 testfixtures
+twine
+

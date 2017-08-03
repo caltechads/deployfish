@@ -1,10 +1,13 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 import importlib
 import pkg_resources
 import os
 import random
 import subprocess
 import sys
+
 
 import click
 
@@ -224,7 +227,7 @@ def info(ctx, service_name):
 def version(ctx, service_name):
     """Print the tag of the image in the first container on the service"""
     service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE']).get_service(service_name))
-    print service.version()
+    print(service.version())
 
 
 @cli.command('update', short_help='Update task defintion for a service')
@@ -327,23 +330,23 @@ def delete(ctx, service_name, dry_run):
     Delete the service SERVICE_NAME from AWS.
     """
     service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE']).get_service(service_name))
-    print
+    print()
     click.secho('Deleting service "{}":'.format(service.serviceName), fg="white")
     click.secho('  Service info:', fg="green")
     print_service_info(service)
     click.secho('  Task Definition info:', fg="green")
     print_task_definition(service.active_task_definition)
-    print
+    print()
     if not dry_run:
         click.echo("If you really want to do this, answer \"{}\" to the question below.\n".format(service.serviceName))
         value = click.prompt("What service do you want to delete? ")
         if value == service.serviceName:
             service.scale(0)
-            print "  Waiting for our existing containers to die ..."
+            print("  Waiting for our existing containers to die ...")
             service.wait_until_stable()
-            print "  All containers dead."
+            print("  All containers dead.")
             service.delete()
-            print "  Deleted service {} from cluster {}.".format(service.serviceName, service.clusterName)
+            print("  Deleted service {} from cluster {}.".format(service.serviceName, service.clusterName))
         else:
             click.echo("\nNot deleting service \"{}\"".format(service.serviceName))
 
@@ -359,7 +362,7 @@ def run_task(ctx, service_name, command):
     service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE']).get_service(service_name))
     response = service.run_task(command)
     if response:
-        print response
+        print(response)
 
 
 @cli.group(short_help="Manage the AWS ECS cluster")
@@ -380,11 +383,11 @@ def cluster_info(ctx, service_name):
     for index, reservation in enumerate(instances):
         click.echo(click.style("Instance {}".format(index + 1), bold=True))
         instance = reservation['Instances'][0]
-        print "\tIP: {}".format(instance['PrivateIpAddress'])
-        print "\tType: {}".format(instance['InstanceType'])
+        print("\tIP: {}".format(instance['PrivateIpAddress']))
+        print("\tType: {}".format(instance['InstanceType']))
         for tag in instance['Tags']:
-            print "\t{}: {}".format(tag['Key'], tag['Value'])
-        print ""
+            print("\t{}: {}".format(tag['Key'], tag['Value']))
+        print("")
 
 
 @cluster.command('run', short_help="Run a command on the individual systems in the cluster")
@@ -458,7 +461,7 @@ def show_config(ctx, service_name, diff, to_env_file):
                 if p.exists:
                     if p.should_exist:
                         if to_env_file:
-                            print "{}={}".format(p.key, p.aws_value)
+                            print("{}={}".format(p.key, p.aws_value))
                         else:
                             click.secho("  {}".format(p.display(p.key, p.aws_value)))
                 else:
@@ -500,21 +503,21 @@ def entrypoint(ctx, command, dry_run):
     Use this as the entrypoint for your containers.
 
     It will look in the shell environment for the environment variables
-    deployfish_SERVICE_NAME and deployfish_CLUSTER_NAME.  If found, it will
+    DEPLOYFISH_SERVICE_NAME and DEPLOYFISH__CLUSTER_NAME.  If found, it will
     use them to:
 
     \b
     * download the parameters listed in "config:" section for service
-      deployfish_SERVICE_NAME from the AWS System Manager Parameter Store (which
-      are prefixed by "${deployfish_CLUSTER_NAME}.${deployfish_SERVICE_NAME}.")
+      DEPLOYFISH__SERVICE_NAME from the AWS System Manager Parameter Store (which
+      are prefixed by "${DEPLOYFISH_CLUSTER_NAME}.${DEPLOYFISH_SERVICE_NAME}.")
     * set those parameters and their values as environment variables
     * run COMMAND
 
-    If either deployfish_SERVICE_NAME or deployfish_CLUSTER_NAME are not in
+    If either DEPLOYFISH__SERVICE_NAME or DEPLOYFISH__CLUSTER_NAME are not in
     the environment, just run COMMMAND.
     """
-    service_name = os.environ.get('deployfish_SERVICE_NAME', None)
-    cluster_name = os.environ.get('deployfish_CLUSTER_NAME', None)
+    service_name = os.environ.get('DEPLOYFISH_SERVICE_NAME', None)
+    cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
     if service_name and cluster_name:
         service_yml = Config(filename=ctx.obj['CONFIG_FILE'], interpolate=False).get_service(service_name)
         parameter_store = []
@@ -526,7 +529,7 @@ def entrypoint(ctx, command, dry_run):
                 if param.exists and param.should_exist:
                     os.environ[param.key] = param.aws_value
                 else:
-                    print "event='deploy.entrypoint.parameter.not_in_aws' service='{}' parameter='{}'".format(service_name, param.name)
+                    print("event='deploy.entrypoint.parameter.not_in_aws' service='{}' parameter='{}'".format(service_name, param.name))
         else:
             exists = []
             notexists = []
@@ -582,15 +585,15 @@ def docker_exec(ctx, service_name):
 def tunnel(ctx, service_name):
     """
     Tunnel through an EC2 instance in the ECS cluster for service SERVICE_NAME
-    to the host defined by the deployfish_TUNNEL_HOST environment variable.
+    to the host defined by the DEPLOYFISH__TUNNEL_HOST environment variable.
     """
     service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE']).get_service(service_name))
-    host_substring = os.environ.get('deployfish_TUNNEL_HOST', None)
+    host_substring = os.environ.get('DEPLOYFISH__TUNNEL_HOST', None)
     if not host_substring:
-        click.secho("\ndeployfish_TUNNEL_HOST is not defined in your environment:", fg="red")
+        click.secho("\nDEPLOYFISH__TUNNEL_HOST is not defined in your environment:", fg="red")
         return
-    host_port = os.environ.get('deployfish_TUNNEL_PORT', '3306')
-    local_port = os.environ.get('deployfish_TUNNEL_LOCAL_PORT', '8888')
+    host_port = os.environ.get('DEPLOYFISH__TUNNEL_PORT', '3306')
+    local_port = os.environ.get('DEPLOYFISH__TUNNEL_LOCAL_PORT', '8888')
     tunnel_host = None
     for param in service.get_config():
         if param.key.endswith(host_substring):

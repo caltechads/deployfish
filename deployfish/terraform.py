@@ -22,7 +22,7 @@ class Terraform(dict):
         tfstate = self._get_state_file_from_s3(state_file_url)
         for i in tfstate['modules']:
             if i['path'] == [u'root']:
-                for key, value in i['outputs'].iteritems():
+                for key, value in i['outputs'].items():
                     self[key] = value
 
     def load_yaml(self, yml):

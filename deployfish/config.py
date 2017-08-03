@@ -2,7 +2,6 @@ import yaml
 import re
 import os
 import os.path
-import string
 
 from deployfish.terraform import Terraform
 
@@ -53,7 +52,7 @@ class Config(object):
                 lines = [x.strip() for x in lines if x.strip() and not x.strip().startswith("#")]
             for line in lines:
                 # split on the first "="
-                parm = string.split(line, '=', 1)
+                parm = str.split(line, '=', 1)
                 if len(parm) == 2:
                     key = parm[0]
                     value = parm[1]
@@ -83,7 +82,7 @@ class Config(object):
             self.__do_dict(value, replacers)
         elif any(isinstance(value, t) for t in (list, tuple)):
             self.__do_list(value, replacers)
-        elif isinstance(value, basestring):
+        elif isinstance(value, str):
             self.__do_string(raw, key, value, replacers)
 
     def __env_replace(self, key, replacers):
@@ -113,7 +112,7 @@ class Config(object):
             self.__replace(raw, i, value, replacers)
 
     def __do_dict(self, raw, replacers):
-        for key, value in raw.iteritems():
+        for key, value in raw.items():
             self.__replace(raw, key, value, replacers)
 
     def get_service(self, service_name):

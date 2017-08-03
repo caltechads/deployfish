@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 from datetime import datetime
 import json
 import os
@@ -180,7 +182,7 @@ class ContainerDefinition(VolumeMixin):
         # something we injected in TaskDefinition.from_aws()
         if (not self._volumes and self.__aws_container_definition and 'mountPoints' in self.__aws_container_definition):
             for mp in self.__aws_container_definition['mountPoints']:
-                print mp
+                print(mp)
                 volume = "{}:{}".format(self.__aws_container_definition['sourceVolumes'][mp['sourceVolume']], mp['containerPath'])
                 if mp['readOnly']:
                     volume += ":ro"
@@ -1012,9 +1014,9 @@ class Service(object):
         self._desired_count = self._count
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
-            "deployfish_SERVICE_NAME": yml['name'],
-            "deployfish_ENVIRONMENT": yml.get('environment', 'undefined'),
-            "deployfish_CLUSTER_NAME": yml['cluster']
+            "DEPLOYFISH__SERVICE_NAME": yml['name'],
+            "DEPLOYFISH__ENVIRONMENT": yml.get('environment', 'undefined'),
+            "DEPLOYFISH__CLUSTER_NAME": yml['cluster']
         }
         self.desired_task_definition.inject_environment(deployfish_environment)
         self.tasks = {}
@@ -1168,26 +1170,26 @@ class Service(object):
         if len(deployments) > 1:
             success = False
 
-        print "Deployment Desired Pending Running"
+        print("Deployment Desired Pending Running")
         for deploy in deployments:
             if deploy['desiredCount'] != deploy['runningCount']:
                 success = False
-            print deploy['status'], deploy['desiredCount'], deploy['pendingCount'], deploy['runningCount']
+            print(deploy['status'], deploy['desiredCount'], deploy['pendingCount'], deploy['runningCount'])
 
-        print ""
+        print("")
 
-        print "Service:"
+        print("Service:")
         for index, event in enumerate(events):
             if index <= 5:
-                print event['message']
+                print(event['message'])
 
         if self.load_balancer and 'type' in self.load_balancer:
             lbtype = self.load_balancer['type']
         else:
             lbtype = None
         if lbtype == 'elb':
-            print ""
-            print "Load Balancer"
+            print("")
+            print("Load Balancer")
             elb = boto3.client('elb')
             response = elb.describe_instance_health(LoadBalancerName=self.load_balancer['load_balancer_name'])
             states = response['InstanceStates']
@@ -1196,10 +1198,10 @@ class Service(object):
             for state in states:
                 if state['State'] != "InService" or state['Description'] != "N/A":
                     success = False
-                print state['InstanceId'], state['State'], state['Description']
+                print(state['InstanceId'], state['State'], state['Description'])
         elif lbtype == 'alb':
-            print ""
-            print "Load Balancer"
+            print("")
+            print("Load Balancer")
             alb = boto3.client('elbv2')
             response = alb.describe_target_health(
                 TargetGroupArn=self.load_balancer['target_group_arn']
@@ -1209,7 +1211,7 @@ class Service(object):
             for desc in response['TargetHealthDescriptions']:
                 if desc['TargetHealth']['State'] != 'healthy':
                     success = False
-                print desc['Target']['Id'], desc['TargetHealth']['State'], desc['TargetHealth'].get('Description', '')
+                print(desc['Target']['Id'], desc['TargetHealth']['State'], desc['TargetHealth'].get('Description', ''))
         return success
 
     def wait_until_stable(self):
@@ -1223,12 +1225,12 @@ class Service(object):
             time.sleep(15)
             success = self._show_current_status()
             if success:
-                print "\nDeployment successful.\n"
+                print("\nDeployment successful.\n")
                 return
             else:
-                print "\nDeployment unready\n"
+                print("\nDeployment unready\n")
 
-        print 'Deployment failed...'
+        print('Deployment failed...')
 
         # waiter = self.ecs.get_waiter('services_stable')
         # waiter.wait(cluster=self.clusterName, services=[self.serviceName])
