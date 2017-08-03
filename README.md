@@ -70,13 +70,13 @@ without polluting your global python environment.
 
 ### Install via pip
 
-    pip install https://s3-us-west-2.amazonaws.com/imss-code-drop/deployfish/deployfish-0.14.5.zip
+    pip install https://s3-us-west-2.amazonaws.com/imss-code-drop/deployfish/deployfish-0.15.0.zip
 
 ### Install via `setup.py`
 
-    aws s3 cp https://s3-us-west-2.amazonaws.com/imss-code-drop/deployfish/deployfish-0.14.5.zip .
-    unzip deployfish-0.14.5.zip
-    cd deployfish-0.14.5
+    aws s3 cp https://s3-us-west-2.amazonaws.com/imss-code-drop/deployfish/deployfish-0.15.0.zip .
+    unzip deployfish-0.15.0.zip
+    cd deployfish-0.15.0
     python setup.py install
 
 ### Using pyenv to install into a virtual environment (Recommended)
