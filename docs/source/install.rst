@@ -18,7 +18,7 @@ Install via pip
 Install via `setup.py`
 ======================
 
-Clone or download from `Github <https://github.com/caltechads/deployfish-mysql>`_.
+Clone or download from `Github <https://github.com/caltechads/deployfish>`_.
 
 ::
 
