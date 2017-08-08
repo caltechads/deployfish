@@ -18,7 +18,13 @@ Full documentation at [http://deployfish.readthedocs.io](http://deployfish.readt
 * View the configuration and status of running ECS services
 * Scale the number of containers in your service, optionally scaling its
   associated autoscaling group at the same time
+* Update a running service safely
 * Run a one-off command related to your service
+* Configure load balancing
+* Configure application autoscaling
+* Configure placement strategies
+* Manage AWS Parameter Store and utilize in containers
+* Add additional functionality through modules
 
 Additionally, `deployfish` integrates with
 [terraform](https://www.terraform.io) state files so that you can use the
