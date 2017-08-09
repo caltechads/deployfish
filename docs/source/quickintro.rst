@@ -11,6 +11,8 @@
 * Configure application autoscaling
 * Configure placement strategies
 * Manage AWS Parameter Store and utilize in containers
+* Manage IAM roles
+* Connect to running containers for debugging
 * Add additional functionality through modules
 
 Additionally, ``deployfish`` integrates with
