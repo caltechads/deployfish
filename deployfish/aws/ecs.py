@@ -1014,9 +1014,9 @@ class Service(object):
         self._desired_count = self._count
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
-            "DEPLOYFISH__SERVICE_NAME": yml['name'],
-            "DEPLOYFISH__ENVIRONMENT": yml.get('environment', 'undefined'),
-            "DEPLOYFISH__CLUSTER_NAME": yml['cluster']
+            "DEPLOYFISH_SERVICE_NAME": yml['name'],
+            "DEPLOYFISH_ENVIRONMENT": yml.get('environment', 'undefined'),
+            "DEPLOYFISH_CLUSTER_NAME": yml['cluster']
         }
         self.desired_task_definition.inject_environment(deployfish_environment)
         self.tasks = {}

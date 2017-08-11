@@ -503,12 +503,12 @@ def entrypoint(ctx, command, dry_run):
     Use this as the entrypoint for your containers.
 
     It will look in the shell environment for the environment variables
-    DEPLOYFISH_SERVICE_NAME and DEPLOYFISH__CLUSTER_NAME.  If found, it will
+    DEPLOYFISH_SERVICE_NAME and DEPLOYFISH_CLUSTER_NAME.  If found, it will
     use them to:
 
     \b
     * download the parameters listed in "config:" section for service
-      DEPLOYFISH__SERVICE_NAME from the AWS System Manager Parameter Store (which
+      DEPLOYFISH_SERVICE_NAME from the AWS System Manager Parameter Store (which
       are prefixed by "${DEPLOYFISH_CLUSTER_NAME}.${DEPLOYFISH_SERVICE_NAME}.")
     * set those parameters and their values as environment variables
     * run COMMAND
@@ -588,12 +588,12 @@ def tunnel(ctx, service_name):
     to the host defined by the DEPLOYFISH__TUNNEL_HOST environment variable.
     """
     service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE']).get_service(service_name))
-    host_substring = os.environ.get('DEPLOYFISH__TUNNEL_HOST', None)
+    host_substring = os.environ.get('DEPLOYFISH_TUNNEL_HOST', None)
     if not host_substring:
-        click.secho("\nDEPLOYFISH__TUNNEL_HOST is not defined in your environment:", fg="red")
+        click.secho("\nDEPLOYFISH_TUNNEL_HOST is not defined in your environment:", fg="red")
         return
-    host_port = os.environ.get('DEPLOYFISH__TUNNEL_PORT', '3306')
-    local_port = os.environ.get('DEPLOYFISH__TUNNEL_LOCAL_PORT', '8888')
+    host_port = os.environ.get('DEPLOYFISH_TUNNEL_PORT', '3306')
+    local_port = os.environ.get('DEPLOYFISH_TUNNEL_LOCAL_PORT', '8888')
     tunnel_host = None
     for param in service.get_config():
         if param.key.endswith(host_substring):
