@@ -378,7 +378,7 @@ class ContainerDefinition(VolumeMixin):
                 self.environment = yml['environment']
             else:
                 for env in yml['environment']:
-                    key, value = env.split('=')
+                    key, value = env.split('=')[0], '='.join(env.split('=')[1:])
                     self.environment[key] = value
         if 'links' in yml:
             self.links = yml['links']
