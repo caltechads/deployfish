@@ -13,16 +13,16 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         state_file = os.path.join(current_dir, 'terraform.tfstate')
         config_yml = os.path.join(current_dir, 'interpolate.yml')
+        env_file = os.path.join(current_dir, 'env_file.env')
         with open(state_file) as f:
             tfstate = json.loads(f.read())
-        os.environ['FOOBAR_ENV'] = "hi_mom"
         with Replacer() as r:
             get_mock = r('deployfish.terraform.Terraform._get_state_file_from_s3', Mock())
             get_mock.return_value = tfstate
-            self.config = Config(filename=config_yml)
+            self.config = Config(filename=config_yml, env_file=env_file)
 
     def tearDown(self):
-        del os.environ['FOOBAR_ENV']
+        pass
 
     def test_terraform_simple_interpolation(self):
         self.assertEqual(self.config.get_service('cit-auth-prod')['cluster'], 'foobar-proxy-prod')
@@ -43,16 +43,13 @@ class TestContainerDefinition_load_yaml_no_interpolate(unittest.TestCase):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         state_file = os.path.join(current_dir, 'terraform.tfstate')
         config_yml = os.path.join(current_dir, 'interpolate.yml')
+        env_file = os.path.join(current_dir, 'env_file.env')
         with open(state_file) as f:
             tfstate = json.loads(f.read())
-        os.environ['FOOBAR_ENV'] = "hi_mom"
         with Replacer() as r:
             get_mock = r('deployfish.terraform.Terraform._get_state_file_from_s3', Mock())
             get_mock.return_value = tfstate
-            self.config = Config(filename=config_yml, interpolate=False)
-
-    def tearDown(self):
-        del os.environ['FOOBAR_ENV']
+            self.config = Config(filename=config_yml, env_file=env_file, interpolate=False)
 
     def test_simple_interpolation(self):
         self.assertEqual(self.config.get_service('cit-auth-prod')['cluster'], '${terraform.proxy_cluster_name}')

@@ -718,6 +718,7 @@ class Service(object):
         self.host_ips = None
         self._serviceName = None
         self._clusterName = None
+        self.__aws_service = None
         self._desired_count = 0
         self.__defaults()
         self.from_yaml(yml)

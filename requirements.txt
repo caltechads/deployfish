@@ -10,5 +10,7 @@ sphinx-autobuild
 sphinx-click
 sphinx_rtd_theme
 testfixtures
+tox
 twine
+tzlocal
 

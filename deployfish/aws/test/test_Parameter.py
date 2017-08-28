@@ -1,10 +1,15 @@
 import unittest
+import warnings
+
 from testfixtures import compare
 
 from deployfish.aws.systems_manager import Parameter
 
 
 class TestParameter__parse(unittest.TestCase):
+
+    # def setUp(self):
+    #     warnings.simplefilter("ignore", ResourceWarning)
 
     def test_no_value_raises_ValueError(self):
         self.assertRaises(ValueError, Parameter, 'foobar-service', 'foobar-cluster', yml='KEY')

@@ -43,10 +43,8 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
 
     def test_ulimits(self):
         self.assertEqual(len(self.cd.ulimits), 2)
-        compare(self.cd.ulimits, [
-            {'name': 'nofile', 'soft': 65535, 'hard': 65535},
-            {'name': 'nproc', 'soft': 65535, 'hard': 65535},
-        ])
+        self.assertTrue({'name': 'nproc', 'soft': 65535, 'hard': 65535} in self.cd.ulimits)
+        self.assertTrue({'name': 'nofile', 'soft': 65535, 'hard': 65535} in self.cd.ulimits)
 
     def test_volumes(self):
         self.assertEqual(self.cd.volumes, [])
@@ -95,17 +93,15 @@ class TestContainerDefinition_render(unittest.TestCase):
 
     def test_ulimits(self):
         self.assertEqual(len(self.cd.ulimits), 2)
-        compare(self.cd.render()['ulimits'], [
-            {'name': 'nofile', 'softLimit': 65535, 'hardLimit': 65535},
-            {'name': 'nproc', 'softLimit': 65535, 'hardLimit': 65535},
-        ])
+        render = self.cd.render()['ulimits']
+        self.assertTrue({'name': 'nproc', 'softLimit': 65535, 'hardLimit': 65535} in render)
+        self.assertTrue({'name': 'nofile', 'softLimit': 65535, 'hardLimit': 65535} in render)
 
     def test_environment(self):
-        compare(self.cd.render()['environment'], [
-            {'name': 'ENVIRONMENT', 'value': 'prod'},
-            {'name': 'SECRETS_BUCKET_NAME', 'value': 'ac-config-store'},
-            {'name': 'LDAPTLS_REQCERT', 'value': 'never'}
-        ])
+        render = self.cd.render()['environment']
+        self.assertTrue({'name': 'LDAPTLS_REQCERT', 'value': 'never'} in render)
+        self.assertTrue({'name': 'ENVIRONMENT', 'value': 'prod'} in render)
+        self.assertTrue({'name': 'SECRETS_BUCKET_NAME', 'value': 'ac-config-store'} in render)
 
     def test_dockerLabels(self):
         compare(self.cd.render()['dockerLabels'], {'edu.caltech.imss-ads': 'foobar'})

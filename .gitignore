@@ -7,4 +7,4 @@ dist
 .terraform
 .idea
 docs/build
-terraform.tfstate
+#terraform.tfstate

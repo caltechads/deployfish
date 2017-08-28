@@ -1,8 +1,14 @@
 #!/usr/bin/env python
+import os.path
+
 from deployfish import __version__
 from setuptools import setup, find_packages  # @UnresolvedImport
 
-intro = open('docs/source/intro.rst').read()
+intro_path = 'docs/source/intro.rst'
+if os.path.isfile(intro_path):
+    intro = open(intro_path).read()
+else:
+    intro = "[Testing]"
 
 setup(name="deployfish",
       version=__version__,

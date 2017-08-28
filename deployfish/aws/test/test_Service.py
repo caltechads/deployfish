@@ -1,5 +1,8 @@
 import unittest
+from mock import Mock
 from testfixtures import compare
+from testfixtures import Replacer
+
 import os
 
 import yaml
@@ -14,7 +17,15 @@ class TestService_load_yaml(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             yml = yaml.load(f)
-        self.service = Service(yml=yml['services'][0])
+
+        # service_client = Mock()
+        # service_client.describe_services = Mock(return_value={'services':[]})
+        # client = Mock(return_value=service_client)
+        with Replacer() as r:
+            # r.replace('boto3.client', client)
+            # r.replace('deployfish.aws.ecs.Service.__get_service', Mock(return_value={}), strict=False)
+            r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
+            self.service = Service(yml=yml['services'][0])
 
     def test_serviceName(self):
         self.assertEqual(self.service.serviceName, 'foobar-prod')
