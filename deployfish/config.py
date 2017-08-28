@@ -74,6 +74,8 @@ class Config(object):
                 self.load_env_file(service['env_file'])
             if self.env_file:
                 self.load_env_file(self.env_file)
+            else:
+                self.environ = os.environ
 
             self.__do_dict(service, replacers)
 
