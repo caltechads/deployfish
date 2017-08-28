@@ -163,7 +163,8 @@ class Parameter(KeyPrefixMixin):
         """
         i = 0
         while key is not None:
-            segments = string.split(key, ':', 1)
+            # segments = string.split(key, ':', 1)
+            segments = key.split(':', 1)
             segment = segments[0]
             if len(segments) > 1:
                 key = segments[1]
