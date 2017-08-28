@@ -526,10 +526,13 @@ def entrypoint(ctx, command, dry_run):
             parameter_store.populate()
         if not dry_run:
             for param in parameter_store:
-                if param.exists and param.should_exist:
-                    os.environ[param.key] = param.aws_value
+                if param.exists:
+                    if param.should_exist:
+                        os.environ[param.key] = param.aws_value
+                    else:
+                        print("event='deploy.entrypoint.parameter.ignored.not_in_deployfish_yml' service='{}' parameter='{}'".format(service_name, param.name))
                 else:
-                    print("event='deploy.entrypoint.parameter.not_in_aws' service='{}' parameter='{}'".format(service_name, param.name))
+                    print("event='deploy.entrypoint.parameter.ignored.not_in_aws' service='{}' parameter='{}'".format(service_name, param.name))
         else:
             exists = []
             notexists = []
