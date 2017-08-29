@@ -133,3 +133,17 @@ class Config(object):
             if 'environment' in service and service['environment'] == service_name:
                 return service
         raise KeyError
+
+    def get_category_item(self, category, item_name):
+        """
+        Get the raw values of an item in a custom category list.
+
+        :param category: The name of the top level category to search
+        :param item_name: The name of the instance of the category
+        :return:
+        """
+        if category in self.__raw:
+            for item in self.__raw[category]:
+                if item['name'] == item_name:
+                    return item
+        raise KeyError

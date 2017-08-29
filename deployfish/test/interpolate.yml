@@ -20,6 +20,7 @@ services:
       container_port: 443
     config:
         - FOOBAR=${env.FOOBAR_ENV}
+        - DB_HOST=my_host
     family: cit-auth-prod
     network_mode: host
     task_role_arn: ${terraform.cit_auth_iam_task_role}
@@ -46,3 +47,9 @@ services:
         labels:
           edu.caltech.imss-ads: "foobar"
 
+tunnels:
+  - name: test
+    service: cit-auth-prod
+    host: service.config.DB_HOST
+    port: 3306
+    local_port: 8888
