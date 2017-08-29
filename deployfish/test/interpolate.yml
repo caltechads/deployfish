@@ -50,6 +50,6 @@ services:
 tunnels:
   - name: test
     service: cit-auth-prod
-    host: service.config.DB_HOST
+    host: config.DB_HOST
     port: 3306
     local_port: 8888

@@ -75,6 +75,6 @@ class TestTunnelParameters_load_yqml(unittest.TestCase):
     def test_tunnel_find_instance(self):
         yml = self.config.get_category_item('tunnels', 'test')
         self.assertEqual(yml['service'], 'cit-auth-prod')
-        self.assertEqual(yml['host'], 'service.config.DB_HOST')
+        self.assertEqual(yml['host'], 'config.DB_HOST')
         self.assertEqual(yml['port'], 3306)
         self.assertEqual(yml['local_port'], 8888)
