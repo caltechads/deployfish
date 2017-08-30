@@ -1551,7 +1551,7 @@ class Service(object):
         :return:
         """
         hosts = self._get_cluster_hosts()
-        ecs_host = hosts[hosts.keys()[0]]
+        ecs_host = hosts[list(hosts.keys())[0]]
         host_ip, bastion = self._get_host_bastion(ecs_host)
 
         cmd = 'ssh -L {}:localhost:{} ec2-user@{} ssh -L {}:{}:{}  {}'.format(local_port, interim_port, bastion, interim_port, host, host_port, host_ip)

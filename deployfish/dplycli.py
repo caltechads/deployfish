@@ -581,32 +581,36 @@ def docker_exec(ctx, service_name):
     service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE']).get_service(service_name))
     service.docker_exec()
 
+def _interpolate_tunnel_info(value, service):
+    if type(value) == str and value.startswith('config.'):
+        param_key = value[7:]
+        for param in service.get_config():
+            if param.key == param_key:
+                return param.value
+    return value
+
 
 @cli.command('tunnel', short_help="Tunnel through an ECS cluster machine to the remote host")
 @click.pass_context
-@click.argument('service_name')
-def tunnel(ctx, service_name):
+@click.argument('tunnel_name')
+def tunnel(ctx, tunnel_name):
     """
     Tunnel through an EC2 instance in the ECS cluster for service SERVICE_NAME
     to the host defined by the DEPLOYFISH__TUNNEL_HOST environment variable.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE']).get_service(service_name))
-    host_substring = os.environ.get('DEPLOYFISH_TUNNEL_HOST', None)
-    if not host_substring:
-        click.secho("\nDEPLOYFISH_TUNNEL_HOST is not defined in your environment:", fg="red")
-        return
-    host_port = os.environ.get('DEPLOYFISH_TUNNEL_PORT', '3306')
-    local_port = os.environ.get('DEPLOYFISH_TUNNEL_LOCAL_PORT', '8888')
-    tunnel_host = None
-    for param in service.get_config():
-        if param.key.endswith(host_substring):
-            tunnel_host = param.value
-    if not tunnel_host:
-        click.secho("\nCould not find the host in your config:", fg="red")
-        return
+    config = Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'])
+    yml = config.get_category_item('tunnels', tunnel_name)
+    service_name = yml['service']
+
+
+    service = Service(yml=config.get_service(service_name))
+    host = _interpolate_tunnel_info(yml['host'], service)
+    port = int(_interpolate_tunnel_info(yml['port'], service))
+    local_port = int(_interpolate_tunnel_info(yml['local_port'], service))
+
     interim_port = random.randrange(10000, 64000, 1)
 
-    service.tunnel(tunnel_host, local_port, interim_port, host_port)
+    service.tunnel(host, local_port, interim_port, port)
 
 
 def main():
