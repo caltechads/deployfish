@@ -595,8 +595,25 @@ def _interpolate_tunnel_info(value, service):
 @click.argument('tunnel_name')
 def tunnel(ctx, tunnel_name):
     """
-    Tunnel through an EC2 instance in the ECS cluster for service SERVICE_NAME
-    to the host defined by the DEPLOYFISH__TUNNEL_HOST environment variable.
+    Tunnel through an EC2 instance in the ECS cluster.
+
+    The parameters for this command should be found in a tunnels: top-level section in the yaml file, in the format:
+
+    tunnels:
+
+      - name: my_tunnel
+
+        service: my_service
+
+        host: config.MY_TUNNEL_DESTINATION_HOST
+
+        port: 3306
+
+        local_port: 8888
+
+    where config.MY_TUNNEL_DESTINATION_HOST is the value of MY_TUNNEL_DESTINATION_HOST
+    for this service in the AWS Parameter Store. It could also just be a hostname.
+
     """
     config = Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'])
     yml = config.get_category_item('tunnels', tunnel_name)
