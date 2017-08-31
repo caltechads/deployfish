@@ -1,6 +1,6 @@
-**************
-Paramter Store
-**************
+***************
+Parameter Store
+***************
 
 .. contents::
     :local:
@@ -80,7 +80,7 @@ You might have noticed that so far this solution is still displaying passwords i
 
 To make this easier, *deployfish* allows you to pass an environment file on the command line::
 
-    deploy -f config.env create hello-world-test
+    deploy --env_file=config.env create hello-world-test
 
 This file is expected to be in the format::
 

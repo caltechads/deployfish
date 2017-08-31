@@ -162,11 +162,11 @@ Deploy
 
 To set the AWS Parameter Store values for *test*::
 
-    deploy -f test.env config write test
+    deploy --env_file=test.env config write test
 
 Then for *prod*::
 
-    deploy -f prod.env config write prod
+    deploy --env_file=prod.env config write prod
 
 The services are then created with::
 
