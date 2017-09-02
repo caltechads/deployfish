@@ -586,7 +586,10 @@ def _interpolate_tunnel_info(value, service):
         param_key = value[7:]
         for param in service.get_config():
             if param.key == param_key:
-                return param.value
+                try:
+                    return param.aws_value
+                except:
+                    return param.value
     return value
 
 
@@ -599,16 +602,12 @@ def tunnel(ctx, tunnel_name):
 
     The parameters for this command should be found in a tunnels: top-level section in the yaml file, in the format:
 
+    \b
     tunnels:
-
       - name: my_tunnel
-
         service: my_service
-
         host: config.MY_TUNNEL_DESTINATION_HOST
-
         port: 3306
-
         local_port: 8888
 
     where config.MY_TUNNEL_DESTINATION_HOST is the value of MY_TUNNEL_DESTINATION_HOST
