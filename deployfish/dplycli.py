@@ -586,7 +586,10 @@ def _interpolate_tunnel_info(value, service):
         param_key = value[7:]
         for param in service.get_config():
             if param.key == param_key:
-                return param.value
+                try:
+                    return param.aws_value
+                except:
+                    return param.value
     return value
 
 
