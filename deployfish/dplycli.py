@@ -599,20 +599,17 @@ def tunnel(ctx, tunnel_name):
 
     The parameters for this command should be found in a tunnels: top-level section in the yaml file, in the format:
 
+    \b
     tunnels:
-
       - name: my_tunnel
-
         service: my_service
-
         host: config.MY_TUNNEL_DESTINATION_HOST
-
         port: 3306
-
         local_port: 8888
 
     where config.MY_TUNNEL_DESTINATION_HOST is the value of MY_TUNNEL_DESTINATION_HOST
-    for this service in the AWS Parameter Store. It could also just be a hostname.
+    for this service in the AWS Parameter Store. The host value could also just
+    be a hostname.
 
     """
     config = Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'])

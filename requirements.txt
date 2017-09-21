@@ -13,4 +13,5 @@ testfixtures
 tox
 twine
 tzlocal
+wheel
 
