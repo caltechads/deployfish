@@ -642,6 +642,30 @@ and CONTAINER paths should be absolute paths. ::
           - /host/path:/container/path
           - /host/path-ro:/container/path-ro:ro
 
+logging
+-------
+
+(String and dictionary, Optional) Specify a log driver and its associated options.
+
+To configure awslogs::
+
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: awslogs-mysql
+        awslogs-region: ap-northeast-1
+        awslogs-stream-prefix: awslogs-example
+
+For fluentd::
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        tag: hello
+
+
+
 config
 ======
 
