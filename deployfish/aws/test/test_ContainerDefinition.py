@@ -125,6 +125,18 @@ class TestContainerDefinition_render(unittest.TestCase):
             {'hostname': 'foobaz', 'ipAddress': '127.0.0.2'},
         ])
 
+    def test_logging(self):
+        render = self.cd.render()
+        logconfig = render['logConfiguration']
+        self.assertIn('logDriver', logconfig)
+        self.assertEqual(logconfig['logDriver'], 'fluentd')
+        self.assertIn('options', logconfig)
+        options = logconfig['options']
+        self.assertIn('fluentd-address', options)
+        self.assertIn('tag', options)
+        self.assertEqual(options['fluentd-address'], '127.0.0.1:24224')
+        self.assertEqual(options['tag'], 'cit_auth')
+
 
 class TestContainerDefinition_load_yaml_alternates(unittest.TestCase):
 
@@ -233,6 +245,13 @@ class TestContainerDefinition_load_aws(unittest.TestCase):
 
     def test_extraHosts(self):
         compare(self.cd.extraHosts, ['foobar:127.0.0.1', 'foobaa:127.0.0.2'])
+
+    def test_logging(self):
+        lc = self.cd.logConfiguration
+        self.assertIsNotNone(lc)
+        self.assertEqual(lc.driver, 'fluentd')
+        self.assertEqual(lc.options['fluentd-address'], '127.0.0.1:24224')
+        self.assertEqual(lc.options['tag'], 'my-container')
 
 
 class TestContainerDefinition_tasks(unittest.TestCase):

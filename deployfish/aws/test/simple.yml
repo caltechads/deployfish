@@ -47,6 +47,11 @@ services:
           - SECRETS_BUCKET_NAME=ac-config-store
         labels:
           edu.caltech.imss-ads: "foobar"
+        logging:
+          driver: fluentd
+          options:
+            fluentd-address: 127.0.0.1:24224
+            tag: cit_auth
 
   - name: cit-auth-prod2
     cluster: access-caltech-proxy-prod

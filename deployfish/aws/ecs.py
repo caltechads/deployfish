@@ -57,6 +57,37 @@ class VolumeMixin(object):
         return mount
 
 
+class LogConfiguration(object):
+    """
+    Manage the logging configuration in a container definition.
+    """
+
+    def __init__(self, aws={}, yml={}):
+
+        if aws:
+            self.from_aws(aws)
+
+        if yml:
+            self.from_yaml(yml)
+
+    def from_aws(self, aws):
+        self.driver = aws['logDriver']
+        self.options = aws['options']
+
+    def from_yaml(self, yml):
+        self.driver = yml['driver']
+        self.options = yml['options']
+
+    def render(self):
+        return(self.__render())
+
+    def __render(self):
+        r = {}
+        r['logDriver'] = self.driver
+        r['options'] = self.options
+        return r
+
+
 class ContainerDefinition(VolumeMixin):
     """
     Manage one of the container definitions in a `TaskDefinition`.
@@ -92,6 +123,10 @@ class ContainerDefinition(VolumeMixin):
         self._ulimits = []
         self._environment = {}
         self._portMappings = []
+        self.logConfiguration = None
+
+        if 'logConfiguration' in aws:
+            self.logConfiguration = LogConfiguration(aws['logConfiguration'])
 
         if yml:
             self.from_yaml(yml)
@@ -269,13 +304,8 @@ class ContainerDefinition(VolumeMixin):
             for eh in self.extraHosts:
                 hostname, ipAddress = eh.split(':')
                 r['extraHosts'].append({'hostname': hostname, 'ipAddress': ipAddress})
-        r['logConfiguration'] = {
-            'logDriver': 'fluentd',
-            'options': {
-                'fluentd-address': '127.0.0.1:24224',
-                'tag': self.name
-            }
-        }
+        if self.logConfiguration:
+            r['logConfiguration'] = self.logConfiguration.render()
         return r
 
     def update_task_labels(self, family_revisions):
@@ -393,6 +423,8 @@ class ContainerDefinition(VolumeMixin):
             self.volumes = yml['volumes']
         if 'extra_hosts' in yml:
             self.extraHosts = yml['extra_hosts']
+        if 'logging' in yml:
+            self.logConfiguration = LogConfiguration(yml=yml['logging'])
 
     def __str__(self):
         """
