@@ -185,9 +185,9 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
         if parameters:
             click.secho('\nService has config parameters defined: SKIPPING', fg='red')
             if dry_run:
-                click.secho('    Either run create with the --update-configs flag or do "deploy write_config {}"'.format(service_name))
+                click.secho('    Either run create with the --update-configs flag or do "deploy config write {}"'.format(service_name))
             else:
-                click.secho('    To update them in AWS, do "deploy write_config {}"'.format(service_name))
+                click.secho('    To update them in AWS, do "deploy config write {}"'.format(service_name))
     if not dry_run:
         manage_asg_count(service, service.count, asg, force_asg)
         service.create()
