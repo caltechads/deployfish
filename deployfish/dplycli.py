@@ -513,7 +513,7 @@ def entrypoint(ctx, command, dry_run):
     * set those parameters and their values as environment variables
     * run COMMAND
 
-    If either DEPLOYFISH__SERVICE_NAME or DEPLOYFISH__CLUSTER_NAME are not in
+    If either DEPLOYFISH_SERVICE_NAME or DEPLOYFISH_CLUSTER_NAME are not in
     the environment, just run COMMMAND.
     """
     service_name = os.environ.get('DEPLOYFISH_SERVICE_NAME', None)

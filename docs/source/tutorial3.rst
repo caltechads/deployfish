@@ -10,7 +10,7 @@ We often want to scale an application to run on more than one running container,
 Setup
 =====
 
-To our basic setup in the previous tutorials, we need to add a load balancer. We're using an AWS Elastic Load Balancer (ELB) and naming it *hello-world-elb* in our example.
+In addition to our basic setup from the previous tutorials, you need to create a load balancer. In this example, we're using an AWS Elastic Load Balancer (ELB) and naming it *hello-world-elb*.
 
 Configuration
 =============
@@ -40,7 +40,7 @@ Here's the configuration file for this load balanced service::
               - VAR2=anothervar
               - DEBUG=True
 
-Here we've added the new parameter, *load_balancer*. This corresponds to the AWS ELB.
+Here we've added the new parameter, *load_balancer*. This corresponds to your AWS ELB.
 
 Load Balancer Parameters
 ------------------------
@@ -48,10 +48,10 @@ Load Balancer Parameters
 ELB
 ^^^
 
-The *load_balancer* parameter requires the following four parameters if you are using and AWS ELB:
+The *load_balancer* parameter requires the following four parameters if you are using a classic AWS ELB:
 
 *service_role_arn*
-    The name or full ARN of the IAM role that allows ECS to make calls to your load balancer on your behalf. You will need to used the ARN that corresponds to your account.
+    The name or full ARN of the IAM role that allows ECS to make calls to your load balancer on your behalf. You will need to use the ARN that corresponds to your account.
 
 *load_balancer_name*
     The name of the ELB.
@@ -65,7 +65,7 @@ The *load_balancer* parameter requires the following four parameters if you are 
 ALB
 ^^^
 
-AWS also offers the Application Load Balancer (ALB). I'f you are using that instead of the ELB, you will still use the *load_balancer* parameter, but it will require *target_group_arn* to be specified, rather than *load_balancer_name*:
+AWS also offers the Application Load Balancer (ALB). If you are using that instead of the ELB, you will still use the *load_balancer* parameter, but it will require *target_group_arn* to be specified, rather than *load_balancer_name*:
 
 *target_group_arn*
     The full ARN of the target group to use for this service.

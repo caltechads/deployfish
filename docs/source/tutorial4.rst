@@ -8,7 +8,7 @@ Parameter Store
 Problem
 =======
 
-Most applications need some configuration. Some configuration can be passed as environment variables, but what about passwords and other secrets? Do you want them listed in the config file? These would then be visible to anyone who had access to your version control system. Any developer would also see all of them, including production. AWS introduced `Parameter Store <http://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html>`_ as part of `Systems Manager <https://aws.amazon.com/ec2/systems-manager/>`_. This allows us to store encrypted passwords and other secrets.
+Most applications need some configuration. Some configuration can be passed as environment variables, but what about passwords and other secrets? Do you want them listed in the config file? These would then be visible to anyone who had access to your version control system. Any developer would also see all of them, including the production passwords. AWS introduced `Parameter Store <http://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html>`_ as part of `Systems Manager <https://aws.amazon.com/ec2/systems-manager/>`_. This allows us to store encrypted passwords and other secrets.
 
 Setup
 =====
