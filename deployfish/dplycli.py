@@ -193,8 +193,11 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
         service.create()
         if wait:
             click.secho("\n  Waiting until the service is stable ...", fg='white')
-            service.wait_until_stable()
-            click.secho("  Done.", fg='white')
+            if service.wait_until_stable():
+                click.secho("  Done.", fg='white')
+            else:
+                click.secho("  FAILURE: the service failed to start.", fg='red')
+                sys.exit(1)
 
 
 @cli.command('info', short_help="Print current AWS info about a service")
@@ -270,8 +273,11 @@ def update(ctx, service_name, dry_run, wait):
         service.update()
         if wait:
             click.secho("\n  Waiting until the service is stable with our new task def ...", fg='white')
-            service.wait_until_stable()
-            click.secho("  Done.", fg='white')
+            if service.wait_until_stable():
+                click.secho("  Done.", fg='white')
+            else:
+                click.secho("  FAILURE: the service failed to start.", fg='red')
+                sys.exit(1)
 
 
 @cli.command('restart', short_help="Restart all tasks in service")
@@ -317,8 +323,11 @@ def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
         service.scale(count)
         if wait:
             click.secho("  Waiting until the service is stable with our new count ...", fg='cyan')
-            service.wait_until_stable()
-            click.secho("  Done.", fg='cyan')
+            if service.wait_until_stable():
+                click.secho("  Done.", fg='white')
+            else:
+                click.secho("  FAILURE: the service failed to start.", fg='red')
+                sys.exit(1)
 
 
 @cli.command('delete', short_help="Delete a service from AWS")

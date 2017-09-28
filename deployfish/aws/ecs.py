@@ -1259,7 +1259,7 @@ class Service(object):
             success = self._show_current_status()
             if success:
                 print("\nDeployment successful.\n")
-                return
+                return True
             else:
                 print("\nDeployment unready\n")
 
@@ -1267,6 +1267,7 @@ class Service(object):
 
         # waiter = self.ecs.get_waiter('services_stable')
         # waiter.wait(cluster=self.clusterName, services=[self.serviceName])
+        return False
 
     def run_task(self, command):
         """
