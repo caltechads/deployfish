@@ -15,7 +15,7 @@ class Terraform(dict):
     def _get_state_file_from_s3(self, state_file_url):
         s3 = boto3.resource('s3')
         key = s3.Object(os.path.dirname(state_file_url)[5:], os.path.basename(state_file_url))
-        state_file = key.get()["Body"].read()
+        state_file = key.get()["Body"].read().decode('utf-8')
         return json.loads(state_file)
 
     def get_terraform_state(self, state_file_url):

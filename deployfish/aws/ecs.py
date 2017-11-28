@@ -1449,6 +1449,26 @@ class Service(object):
                     bastion = instance['PublicDnsName']
         return ip, bastion
 
+    def __is_or_has_file(self, data):
+        '''
+        Figure out if we have been given a file-like object as one of the inputs to the function that called this.
+        Is a bit clunky because 'file' doesn't exist as a bare-word type check in Python 3 and built in file objects
+        are not instances of io.<anything> in Python 2
+
+        https://stackoverflow.com/questions/1661262/check-if-object-is-file-like-in-python
+        Returns:
+            Boolean - True if we have a file-like object
+        '''
+        if (hasattr(data, 'file')):
+            data = data.file
+
+        try:
+            return isinstance(data, file)
+        except NameError:
+            from io import IOBase
+            return isinstance(data, IOBase)
+
+
     def push_remote_text_file(self, input_data=None, run=False, file_output=False):
         """
         Push a text file to the current remote ECS cluster instance and optionally run it.
@@ -1458,7 +1478,7 @@ class Service(object):
         :param file_output: Boolean that indicates if the output should be saved.
         :return: tuple - success, output
         """
-        if type(input_data) == file or (hasattr(input_data, 'file') and type(input_data.file) == file):
+        if self.__is_or_has_file(input_data):
             path, name = os.path.split(input_data.name)
         else:
             name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
@@ -1498,7 +1518,7 @@ class Service(object):
             stdout = subprocess.PIPE
 
         if input_data:
-            if type(input_data) == file or (hasattr(input_data, 'file') and type(input_data.file) == file):
+            if self.__is_or_has_file(input_data):
                 stdin = input_data
                 input_string = None
             else:
@@ -1508,7 +1528,7 @@ class Service(object):
             stdin = None
 
         try:
-            p = subprocess.Popen(cmd, stdout=stdout, stdin=stdin, shell=True)
+            p = subprocess.Popen(cmd, stdout=stdout, stdin=stdin, shell=True, universal_newlines=True)
             output, errors = p.communicate(input_string)
         except subprocess.CalledProcessError as err:
             success = False
@@ -1558,7 +1578,7 @@ class Service(object):
                 cmd = "{} {}".format(cmd, command)
 
             if with_output:
-                if type(with_output) == file or (hasattr(with_output, 'file') and type(with_output.file) == file):
+                if self.__is_or_has_file(with_output):
                     output_file = with_output
                 else:
                     output_file = None
