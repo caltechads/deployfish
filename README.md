@@ -180,7 +180,7 @@ This must be configured along with `minimum_healthy_percent`. If not provided wi
       - name: foobar-prod
         maximum_percent: 200
 
-See [Service Definition Parameters] (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
+See [Service Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
 
 ### minimum_healthy_percent
 
@@ -192,7 +192,7 @@ along with `maximum_percent`. If not provided will default to 0.
       - name: foobar-prod
         minimum_healthy_percent: 50
 
-See [Service Definition Parameters] (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
+See [Service Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
 
 ### launch_type
 
@@ -217,7 +217,7 @@ If you use the Fargate launch type, the following task parameters are not valid:
       - name: foobar-prod
         launch_type: FARGATE
 
-See [Amazon ECS Launch Types] (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html).
+See [Amazon ECS Launch Types](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html).
 
 ### vpc_configuration
 
