@@ -1,0 +1,85 @@
+# fargate.yml
+#
+# This file has two pretty standard fargate services.
+#
+# * They both use a load balancer
+# * They both create 2 tasks in the cluster my-cluster
+# * They both use a task role
+# * They both use a execution role which is required for fargate tasks
+# * They both use awsvpc networking which is required for fargate tasks
+# * Their tasks both have a single container whose image comes from an AWS ECR
+#   repository and which has a single port open
+#
+# my-service-elb uses an ELB for its load balancer (requires load_balancer_name)
+# my-service-alb uses an ALB for its load balancer (requires target_group_arn)
+#
+
+services:
+  - name: my-service-elb
+    cluster: my-cluster
+    count: 2
+    load_balancer:
+      service_role_arn: arn:aws:iam::123445564666:role/ecsServiceRole
+      load_balancer_name: my-elb
+      container_name: my-service
+      container_port: 80
+    family: my-service
+    network_mode: awsvpc
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    maximum_percent: 200
+    minimum_healthy_percent: 50
+    launch_type: FARGATE
+    cpu: 256
+    memory: 512
+    requires_compatibilities:
+      - FARGATE
+    vpc_configuration:
+      subnets:
+        - subnet-12345678
+        - subnet-87654321
+      security_groups:
+        - sg-12345678
+      public_ip: ENABLED
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket
+  - name: my-service-alb
+    cluster: my-cluster
+    count: 2
+    load_balancer:
+      service_role_arn: arn:aws:iam::123445564666:role/ecsServiceRole
+      target_group_arn: arn:aws:elasticloadbalancing:us-west-2:123445564666:targetgroup/my-service-alb/4bf28a0fa5978cea
+      container_name: my-service
+      container_port: 80
+    family: my-service
+    network_mode: awsvpc
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    maximum_percent: 200
+    minimum_healthy_percent: 50
+    launch_type: FARGATE
+    cpu: 256
+    memory: 512
+    requires_compatibilities:
+      - FARGATE
+    vpc_configuration:
+      subnets:
+        - subnet-12345678
+        - subnet-87654321
+      security_groups:
+        - sg-12345678
+      public_ip: ENABLED
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket

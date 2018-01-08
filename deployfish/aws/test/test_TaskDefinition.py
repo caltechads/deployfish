@@ -38,8 +38,23 @@ class TestTaskDefinition_load_yaml_alternate(unittest.TestCase):
             yml = yaml.load(f)
         self.td = TaskDefinition(yml=yml['services'][1])
 
+    def test_family(self):
+        self.assertEqual(self.td.family, 'cit-auth-prod2')
+
     def test_taskRoleArn(self):
         self.assertEqual(self.td.taskRoleArn, None)
+
+    def test_networkMode(self):
+        self.assertEqual(self.td.networkMode, 'awsvpc')
+
+    def test_executionRoleArn(self):
+        self.assertEqual(self.td.executionRoleArn, 'ecs_execution_role')
+
+    def test_cpu(self):
+        self.assertEqual(self.td.cpu, 256)
+
+    def test_memory(self):
+        self.assertEqual(self.td.memory, 512)
 
 
 class TestTaskDefinition_render(unittest.TestCase):
@@ -76,6 +91,30 @@ class TestTaskDefinition_render(unittest.TestCase):
         self.assertTrue('volumes' in td.render())
         self.assertEqual(len(td.render()['volumes']), 2)
         compare(td.render()['volumes'], [{'name': '_host_path', 'host': {'sourcePath': '/host/path'}}, {'name': '_host_path-ro', 'host': {'sourcePath': '/host/path-ro'}}])
+
+class TestTaskDefinition_render_alternate(unittest.TestCase):
+
+    def setUp(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        fname = os.path.join(current_dir, 'simple.yml')
+        with open(fname) as f:
+            self.yml = yaml.load(f)
+        self.td = TaskDefinition(yml=self.yml['services'][1])
+
+    def test_family(self):
+        self.assertEqual(self.td.render()['family'], 'cit-auth-prod2')
+
+    def test_networkMode(self):
+        self.assertEqual(self.td.render()['networkMode'], 'awsvpc')
+
+    def test_executionRoleArn(self):
+        self.assertEqual(self.td.render()['executionRoleArn'], 'ecs_execution_role')
+
+    def test_cpu(self):
+        self.assertEqual(self.td.render()['cpu'], '256')
+
+    def test_memory(self):
+        self.assertEqual(self.td.render()['memory'], '512')
 
 
 class TestTaskDefinition_volumes(unittest.TestCase):

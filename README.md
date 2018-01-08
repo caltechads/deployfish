@@ -170,6 +170,89 @@ is required. This has to exist in AWS before running `deploy create
 `count` is only meaningful at service creation time.  To change the count in an
 already created service, use `deploy scale <service_name> <count>`
 
+### maximum_percent
+
+(Integer, Optional) When we create the ECS service, this is the upper limit on the number of tasks
+that are allowed in the RUNNING or PENDING state during a deployment, as a percentage of the `count`.
+This must be configured along with `minimum_healthy_percent`. If not provided will default to 200.
+
+    services:
+      - name: foobar-prod
+        maximum_percent: 200
+
+See [Service Definition Parameters] (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
+
+### minimum_healthy_percent
+
+(Integer, Optional) When we create the ECS service, this is the lower limit on the number of tasks
+that must remain in the RUNNING state during a deployment, as a percentage of the `count`. This must be configured
+along with `maximum_percent`. If not provided will default to 0.
+
+    services:
+      - name: foobar-prod
+        minimum_healthy_percent: 50
+
+See [Service Definition Parameters] (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
+
+### launch_type
+
+(Required for Fargate tasks)
+
+If you are configuring a Fargate task you must specify the launch type as `FARGATE`, otherwise
+the default value of `EC2` is used.
+
+The Fargate launch type allows you to run your containerized applications without the need to 
+provision and manage the backend infrastructure. Just register your task definition and Fargate 
+launches the container for you. 
+
+If you use the Fargate launch type, the following task parameters are not valid:
+
+* `dockerSecurityOptions`
+* `links`
+* `linuxParameters`
+* `placementConstraints`
+* `privileged`
+
+    services:
+      - name: foobar-prod
+        launch_type: FARGATE
+
+See [Amazon ECS Launch Types] (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html).
+
+### vpc_configuration
+
+(Required for Fargate tasks)
+
+If you are configuring a Fargate task, you have to specify your vpc configuration at the task level.
+
+deployfish won't create the vpc, subnets or security groups for you --
+you'll need to create it before you can use `deploy create <service_name>`
+
+You'll need to specify 
+
+* `subnets`: (array) The subnets in the VPC that the task scheduler should consider for placement. 
+  Only private subnets are supported at this time. The VPC will be determined by the subnets you
+  specify, so if you specify multiple subnets they must be in the same VPC.
+* `security_groups`: (array) The ID of the security group to associate with the service.
+* `public_ip`: (string) Whether to enabled or disable public IPs. Valid Values are `ENABLED` or `DISABLED`
+
+Example:
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        vpc_configuration:
+          subnets:
+            - subnet-12345678
+            - subnet-87654321
+          security_groups:
+            - sg-12345678
+          public_ip: ENABLED
+
+
+
+
 ### autoscalinggroup_name
 
 (Optional)
@@ -415,7 +498,7 @@ See also the [AWS documentation](https://docs.aws.amazon.com/AmazonECS/latest/de
 ### network_mode
 
 (String, Required) The Docker networking mode for the containers in our task.
-One of: `bridge`, `host` or `none`.   
+One of: `bridge`, `host`, `awsvpc` or `none`.   
 
     services:
       - name: foobar-prod
@@ -447,6 +530,57 @@ before running `deploy create <service_name>`.
 See also the [AWS documentation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_role_arn), and
 [IAM Roles For Tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
 
+### execution_role_arn
+
+(String, Required for Fargate) A task exeuction role ARN for an IAM role that allows Fargate to pull container images and publish container logs
+to Amazon CloudWatch on your behalf.
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        family: foobar-prod-task-def
+        network_mode: bridge
+        execution_role_arn: arn:aws:iam::123142123547:role/my-task-role
+
+deployfish won't create the Task Execution Role for you -- you'll need to create it
+before running `deploy create <service_name>`.  
+
+See also the [IAM Roles For Tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html)
+
+### cpu
+
+(Required for Fargate tasks)
+
+If you are configuring a Fargate task, you have to specify the cpu at the task level, and there are specific values 
+for cpu which are supported which we describe below. 
+
+| CPU value      |
+| -------------- |
+| 256 (.25 vCPU) |
+| 512 (.5 vCPU)  |
+| 1024 (1 vCPU)  |
+| 2048 (2 vCPU)  |
+| 4096 (4 vCPU)  |
+
+See also the [Task Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size)
+
+### memory
+
+(Required for Fargate tasks)
+
+If you are configuring a Fargate task, you have to specify the memory at the task level, and there are specific values 
+for memory which are supported which we describe below. 
+
+| Memory value (MiB)                                                                 |
+| ---------------------------------------------------------------------------------- |
+| 512 (0.5GB), 1024 (1GB), 2048 (2GB)                                                |
+| 1024 (1GB), 2048 (2GB), 3072 (3GB), 4096 (4GB)                                     |
+| 2048 (2GB), 3072 (3GB), 4096 (4GB), 5120 (5GB), 6144 (6GB), 7168 (7GB), 8192 (8GB) |
+| Between 4096 (4GB) and 16384 (16GB) in increments of 1024 (1GB)                    |
+| Between 8192 (8GB) and 30720 (30GB) in increments of 1024 (1GB)                    |
+
+See also the [Task Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size)
 
 ### Containers
 

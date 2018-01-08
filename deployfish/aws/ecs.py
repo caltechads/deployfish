@@ -475,6 +475,10 @@ class TaskDefinition(VolumeMixin):
         self._revision = None
         self.containers = []
         self.__aws_task_definition = {}
+        self.requiresCompatibilities = []
+        self._cpu = None
+        self._memory = None
+        self._executionRoleArn = None
 
     def from_aws(self, task_definition_id):
         self.__aws_task_definition = self.__get_task_definition(task_definition_id)
@@ -512,6 +516,23 @@ class TaskDefinition(VolumeMixin):
             return self.__aws_task_definition['taskDefinitionArn']
         return None
 
+
+    @property
+    def executionRoleArn(self):
+        """
+        Return the execution role of our service. Only needed if launchType is FARGATE
+        and logDriver is awslogs.
+
+        :rtype: string
+        """
+        if self.__aws_service:
+            self._executionRoleArn = self.__aws_service['executionRoleArn']
+        return self._executionRoleArn
+
+    @executionRoleArn.setter
+    def executionRoleArn(self, executionRoleArn):
+        self._executionRoleArn = executionRoleArn
+
     @property
     def family_revision(self):
         """
@@ -529,7 +550,7 @@ class TaskDefinition(VolumeMixin):
         try:
             return self.__getattribute__(attr)
         except AttributeError:
-            if attr in ['family', 'networkMode', 'taskRoleArn', 'revision']:
+            if attr in ['family', 'networkMode', 'taskRoleArn', 'revision', 'requiresCompatibilities', 'executionRoleArn', 'cpu', 'memory']:
                 if not getattr(self, "_" + attr) and self.__aws_task_definition and attr in self.__aws_task_definition:
                     setattr(self, "_" + attr, self.__aws_task_definition[attr])
                 return getattr(self, "_" + attr)
@@ -537,7 +558,7 @@ class TaskDefinition(VolumeMixin):
                 raise AttributeError
 
     def __setattr__(self, attr, value):
-        if attr in ['family', 'networkMode', 'taskRoleArn']:
+        if attr in ['family', 'networkMode', 'taskRoleArn', 'requiresCompatibilities', 'executionRoleArn', 'cpu', 'memory']:
             setattr(self, "_" + attr, value)
         else:
             super(TaskDefinition, self).__setattr__(attr, value)
@@ -584,8 +605,14 @@ class TaskDefinition(VolumeMixin):
         r = {}
         r['family'] = self.family
         r['networkMode'] = self.networkMode
+        if self.cpu:
+            r['cpu'] = str(self.cpu)
+            r['memory'] = str(self.memory)
+        r['requiresCompatibilities'] = self.requiresCompatibilities
         if self.taskRoleArn:
             r['taskRoleArn'] = self.taskRoleArn
+        if self.executionRoleArn:
+            r['executionRoleArn'] = self.executionRoleArn
         r['containerDefinitions'] = [c.render() for c in self.containers]
         volumes = self.__get_volumes()
         if volumes:
@@ -617,7 +644,14 @@ class TaskDefinition(VolumeMixin):
             self.taskRoleArn = yml['task_role_arn']
         if 'network_mode' in yml:
             self.networkMode = yml['network_mode']
+        if 'cpu' in yml:
+            self.cpu = yml['cpu']
+        if 'memory' in yml:
+            self.memory = yml['memory']
         self.containers = [ContainerDefinition(yml=c_yml) for c_yml in yml['containers']]
+        if 'launch_type' in yml and yml['launch_type'] == 'FARGATE':
+            self.executionRoleArn = yml['execution_role']
+            self.requiresCompatibilities = ['FARGATE']
 
     def __str__(self):
         return json.dumps(self.__render(), indent=2, sort_keys=True)
@@ -752,6 +786,9 @@ class Service(object):
         self._clusterName = None
         self.__aws_service = None
         self._desired_count = 0
+        self._minimumHealthyPercent = 0
+        self._maximumPercent = 200
+        self._launchType = 'EC2'
         self.__defaults()
         self.from_yaml(yml)
         self.from_aws()
@@ -759,6 +796,7 @@ class Service(object):
     def __defaults(self):
         self._roleArn = None
         self.__load_balancer = {}
+        self.__vpc_configuration = {}
 
     def __get_service(self):
         """
@@ -785,7 +823,7 @@ class Service(object):
         try:
             return self.__getattribute__(attr)
         except AttributeError:
-            if attr in ['deployments', 'taskDefinition', 'clusterArn', 'desiredCount', 'runningCount', 'pendingCount']:
+            if attr in ['deployments', 'taskDefinition', 'clusterArn', 'desiredCount', 'runningCount', 'pendingCount', 'networkConfiguration', 'executionRoleArn']:
                 if self.__aws_service:
                     return self.__aws_service[attr]
                 return None
@@ -831,6 +869,58 @@ class Service(object):
         self._count = count
 
     @property
+    def maximumPercent(self):
+        """
+        For services yet to be created, return the what we want the minimum count
+        to be when we create the service.
+
+        For services already existing in AWS, return the actual maximum percent.
+
+        :rtype: int
+        """
+        if self.__aws_service:
+            self._maximumPercent = self.__aws_service['deploymentConfiguration']['maximumPercent']
+        return self._maximumPercent
+
+    @maximumPercent.setter
+    def maximumPercent(self, maximumPercent):
+        """
+        Set the maximum percent of tasks this service is allowed to be in the RUNNING
+        or PENDING state during a deployment.  Setting this
+        has no effect if the service already exists.
+
+        :param maximumPercent: Set the maximum percent of tasks this service is allowed to run
+        :type count: int
+        """
+        self._maximumPercent = maximumPercent
+
+    @property
+    def minimumHealthyPercent(self):
+        """
+        For services yet to be created, return the what we want the minimum count
+        to be when we create the service.
+
+        For services already existing in AWS, return the actual minimum capacity.
+
+        :rtype: int
+        """
+        if self.__aws_service:
+            self._minimumHealthyPercent = self.__aws_service['deploymentConfiguration']['minimumHealthyPercent']
+        return self._minimumHealthyPercent
+
+    @minimumHealthyPercent.setter
+    def minimumHealthyPercent(self, minimumHealthyPercent):
+        """
+        Set the minimum percent of tasks this service must maintain in the RUNNING
+        or PENDING state during a deployment.  Setting this
+        has no effect if the service already exists.
+
+        :param maximumPercent: Set the minimum percent of tasks this service must maintain
+        :type count: int
+        """
+        self._minimumHealthyPercent = minimumHealthyPercent
+
+    @property
     def serviceName(self):
         """
         Return the name of our service.
@@ -844,6 +934,21 @@ class Service(object):
     @serviceName.setter
     def serviceName(self, serviceName):
         self._serviceName = serviceName
+
+    @property
+    def launchType(self):
+        """
+        Return the launch type of our service.
+
+        :rtype: string
+        """
+        if self.__aws_service:
+            self._launchType = self.__aws_service['launchType']
+        return self._launchType
+
+    @launchType.setter
+    def launchType(self, launchType):
+        self._launchType = launchType
 
     @property
     def clusterName(self):
@@ -966,6 +1071,21 @@ class Service(object):
             'container_port': container_port
         }
 
+    @property
+    def vpc_configuration(self):
+         if self.__aws_service:
+            self.__vpc_configuration = self.__aws_service['networkConfiguration']['awsvpcConfiguration']
+         return self.__vpc_configuration
+
+
+
+    def set_vpc_configuration(self, subnets, security_groups, public_ip):
+        self.__vpc_configuration = {
+            'subnets': subnets,
+            'securityGroups': security_groups,
+            'assignPublicIp': public_ip
+        }
+
     def version(self):
         if self.active_task_definition:
             if self.load_balancer:
@@ -986,6 +1106,7 @@ class Service(object):
         r = {}
         r['cluster'] = self.clusterName
         r['serviceName'] = self.serviceName
+        r['launchType'] = self.launchType
         if self.load_balancer:
             r['role'] = self.roleArn
             r['loadBalancers'] = []
@@ -1001,12 +1122,16 @@ class Service(object):
                     'containerName': self.load_balancer['container_name'],
                     'containerPort': self.load_balancer['container_port'],
                 })
+        if self.launchType == 'FARGATE':
+            r['networkConfiguration'] = {
+                'awsvpcConfiguration': self.vpc_configuration
+            }
         r['taskDefinition'] = task_definition_id
         r['desiredCount'] = self.count
         r['clientToken'] = self.client_token
         r['deploymentConfiguration'] = {
-            'maximumPercent': 200,
-            'minimumHealthyPercent': 0
+            'maximumPercent': self.maximumPercent,
+            'minimumHealthyPercent': self.minimumHealthyPercent
         }
         return r
 
@@ -1020,8 +1145,14 @@ class Service(object):
         """
         self.serviceName = yml['name']
         self.clusterName = yml['cluster']
+        if 'launch_type' in yml:
+            self.launchType = yml['launch_type']
         self.environment = yml.get('environment', 'undefined')
         self.family = yml['family']
+        # backwards compatibility for deployfish.yml < 0.16.0
+        if 'maximum_percent' in yml:
+            self.maximumPercent = yml['maximum_percent']
+            self.minimumHealthyPercent = yml['minimum_healthy_percent']
         self.asg = ASG(yml=yml)
         if 'application_scaling' in yml:
             self.scaling = ApplicationAutoscaling(yml['name'], yml['cluster'], yml=yml['application_scaling'])
@@ -1043,6 +1174,12 @@ class Service(object):
                     yml['load_balancer']['container_name'],
                     yml['load_balancer']['container_port'],
                 )
+        if 'vpc_configuration' in yml:
+            self.set_vpc_configuration(
+                    yml['vpc_configuration']['subnets'],
+                    yml['vpc_configuration']['security_groups'],
+                    yml['vpc_configuration']['public_ip'],
+            )
         self._count = yml['count']
         self._desired_count = self._count
         self.desired_task_definition = TaskDefinition(yml=yml)
