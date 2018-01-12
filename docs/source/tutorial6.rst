@@ -1,5 +1,5 @@
 *****************
-Fargate Tutorialj
+Fargate Tutorial
 *****************
 
 
