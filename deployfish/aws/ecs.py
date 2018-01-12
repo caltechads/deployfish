@@ -1689,7 +1689,9 @@ class Service(object):
         if running_host:
             host = running_host
         else:
-            host = hosts[hosts.keys()[0]]
+            # just grab one
+            for k, host in hosts.items():
+                break
 
         self.hosts = hosts
         self.host_ip, self.bastion = self._get_host_bastion(host)
