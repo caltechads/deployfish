@@ -58,6 +58,10 @@ class Config(object):
                     value = parm[1]
                     self.environ[key] = value
 
+    def load_environ(self):
+        for key in os.environ.keys():
+            self.environ[key] = os.getenv(key)
+
     def replace(self):
         """
         Do variable replacement in all strings in the YAML data for
@@ -74,6 +78,7 @@ class Config(object):
                 self.load_env_file(service['env_file'])
             if self.env_file:
                 self.load_env_file(self.env_file)
+            self.load_environ()
             # else:
             #     self.environ = os.environ
 
