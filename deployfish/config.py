@@ -27,8 +27,9 @@ class Config(object):
     TERRAFORM_RE = re.compile('\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}')
     ENVIRONMENT_RE = re.compile('\$\{env.(?P<key>.+)\}$')
 
-    def __init__(self, filename='deployfish.yml', env_file=None, interpolate=True):
+    def __init__(self, filename='deployfish.yml', env_file=None, import_env=False, interpolate=True):
         self.__raw = self.load_config(filename)
+        self.import_env = import_env
         self.env_file = env_file
         self.environ = None
         self.terraform = None
@@ -58,6 +59,10 @@ class Config(object):
                     value = parm[1]
                     self.environ[key] = value
 
+    def load_environ(self):
+        for key in os.environ.keys():
+            self.environ[key] = os.getenv(key)
+
     def replace(self):
         """
         Do variable replacement in all strings in the YAML data for
@@ -74,6 +79,8 @@ class Config(object):
                 self.load_env_file(service['env_file'])
             if self.env_file:
                 self.load_env_file(self.env_file)
+            if self.import_env:
+                self.load_environ()
             # else:
             #     self.environ = os.environ
 
