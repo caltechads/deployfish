@@ -743,7 +743,7 @@ containers for this service, e.g:
     162.242.195.82  somehost
     50.31.209.229   otherhost
 
-#### entryPoint
+#### entrypoint
 
 (String, Optional) The entry point that is passed to the container.  Specify it
 as a string and Deployintaor will split the string into an array for you for
@@ -752,7 +752,7 @@ passing to ECS.
     containers:
       - name: foo
         image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
-        entryPoint: /entrypoint.sh here are arguments
+        entrypoint: /entrypoint.sh here are arguments
 
 #### command
 
