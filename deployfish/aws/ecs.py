@@ -1709,7 +1709,7 @@ class Service(object):
 
         if self.host_ip and self.bastion:
             if verbose:
-                verbose_flag = ""
+                verbose_flag = "-vv"
             else:
                 verbose_flag = "-q"
             cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(verbose_flag, self.bastion, verbose_flag, self.host_ip)
