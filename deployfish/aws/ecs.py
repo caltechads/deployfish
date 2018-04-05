@@ -516,7 +516,6 @@ class TaskDefinition(VolumeMixin):
             return self.__aws_task_definition['taskDefinitionArn']
         return None
 
-
     @property
     def executionRoleArn(self):
         """
@@ -1073,11 +1072,9 @@ class Service(object):
 
     @property
     def vpc_configuration(self):
-         if self.__aws_service:
+        if self.__aws_service:
             self.__vpc_configuration = self.__aws_service['networkConfiguration']['awsvpcConfiguration']
-         return self.__vpc_configuration
-
-
+        return self.__vpc_configuration
 
     def set_vpc_configuration(self, subnets, security_groups, public_ip):
         self.__vpc_configuration = {
@@ -1176,9 +1173,9 @@ class Service(object):
                 )
         if 'vpc_configuration' in yml:
             self.set_vpc_configuration(
-                    yml['vpc_configuration']['subnets'],
-                    yml['vpc_configuration']['security_groups'],
-                    yml['vpc_configuration']['public_ip'],
+                yml['vpc_configuration']['subnets'],
+                yml['vpc_configuration']['security_groups'],
+                yml['vpc_configuration']['public_ip'],
             )
         self._count = yml['count']
         self._desired_count = self._count
@@ -1605,7 +1602,6 @@ class Service(object):
             from io import IOBase
             return isinstance(data, IOBase)
 
-
     def push_remote_text_file(self, input_data=None, run=False, file_output=False):
         """
         Push a text file to the current remote ECS cluster instance and optionally run it.
@@ -1725,13 +1721,13 @@ class Service(object):
 
             subprocess.call(cmd, shell=True)
 
-    def docker_exec(self):
+    def docker_exec(self, verbose=False):
         """
         Exec into a running Docker container.
         """
         command = "\"/usr/bin/docker exec -it '\$(/usr/bin/docker ps --filter \"name=ecs-{}*\" -q)' bash\""
         command = command.format(self.family)
-        self.ssh(command, True)
+        self.ssh(command, is_running=True, verbose=verbose)
 
     def tunnel(self, host, local_port, interim_port, host_port):
         """

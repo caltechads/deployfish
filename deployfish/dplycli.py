@@ -582,13 +582,15 @@ def ssh(ctx, service_name, verbose):
 @cli.command('exec', short_help="Connect to a running container")
 @click.pass_context
 @click.argument('service_name')
-def docker_exec(ctx, service_name):
+@click.option('--verbose/--no-verbose', '-v', default=False, help="Show all SSH output.")
+def docker_exec(ctx, service_name, verbose):
     """
     SSH to an EC2 instance in the cluster defined in the service named SERVICE_NAME, then
     run docker exec on the appropriate container.
     """
     service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
-    service.docker_exec()
+    service.docker_exec(verbose=verbose)
+
 
 def _interpolate_tunnel_info(value, service):
     if type(value) == str and value.startswith('config.'):
@@ -627,7 +629,6 @@ def tunnel(ctx, tunnel_name):
     config = Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'])
     yml = config.get_category_item('tunnels', tunnel_name)
     service_name = yml['service']
-
 
     service = Service(yml=config.get_service(service_name))
     host = _interpolate_tunnel_info(yml['host'], service)
