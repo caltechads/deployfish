@@ -28,7 +28,7 @@ setup(name="deployfish",
           "boto3 >= 1.4.4",
           "click >= 6.7",
           "PyYAML == 3.12",
-          "tzlocal == 1.4"
+          "tzlocal >= 1.4"
       ],
       entry_points={'console_scripts': [
           'deploy = deployfish.dplycli:main',
