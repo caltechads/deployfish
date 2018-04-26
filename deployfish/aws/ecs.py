@@ -1105,7 +1105,8 @@ class Service(object):
         r['serviceName'] = self.serviceName
         r['launchType'] = self.launchType
         if self.load_balancer:
-            r['role'] = self.roleArn
+            if self.launchType != 'FARGATE':
+                r['role'] = self.roleArn
             r['loadBalancers'] = []
             if self.load_balancer['type'] == 'elb':
                 r['loadBalancers'].append({
