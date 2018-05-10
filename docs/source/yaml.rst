@@ -1067,7 +1067,7 @@ Terraform variable replacment
 
 If you're managing your AWS resources for your service with terraform and you
 export your terraform state files to S3, or if you are using terraform enterprise,
-you can the values of your terraform outputs as string values in your service definitions.
+you can use the values of your terraform outputs as string values in your service definitions.
 
 To do so, first declare a ``terraform`` top level section in your
 ``deployfish.yml`` file::
