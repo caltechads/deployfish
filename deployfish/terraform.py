@@ -1,5 +1,7 @@
 import json
 import requests
+import os
+import os.path
 
 import boto3
 
@@ -37,8 +39,14 @@ class Terraform(dict):
 
 class TerraformE(dict):
 
-    def __init__(self, yml, api_token):
-        self.api_token = api_token
+    def __init__(self, yml, api_token=None):
+        if api_token == None:
+                if 'ATLAS_TOKEN' in os.environ:
+                    self.api_token = os.getenv('ATLAS_TOKEN')
+                else:
+                    print("No Terraform Enterprise API token provided!")
+        else:
+            self.api_token = api_token
 
         self.organization = ''
         self.workspace = ''
