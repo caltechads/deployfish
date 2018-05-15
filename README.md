@@ -968,14 +968,28 @@ Then do
 ### Terraform variable replacment
 
 If you're managing your AWS resources for your service with terraform and you
-export your terraform state files to S3, you can the values of your terraform
-outputs as string values in your service definitions.  
+export your terraform state files to S3 or if you are using terraform enterprise, 
+you can use the values of your terraform outputs as string values in your service definitions.  
 
 To do so, first declare a `terraform` top level section in your
 `deployfish.yml` file:
 
     terraform:
       statefile: 's3://terraform-remote-state/my-service-terraform-state'
+      lookups:
+        ecs_service_role: 'ecs-service-role'
+        cluster_name: '{service-name}-ecs-cluster-name'
+        elb_name: '{service-name}-elb-name'
+        storage_bucket: 's3-{environment}-bucket'
+        task_role_arn: '{service-name}-task-role-arn'
+        ecr_repo_url: 'ecr-repository-url'
+
+If using terraform enterprise you need to provide the `workspace` and `organization`
+in place of the statefile:
+
+    terraform:
+      workspace: sample_workspace
+      organization: sampleOrganization
       lookups:
         ecs_service_role: 'ecs-service-role'
         cluster_name: '{service-name}-ecs-cluster-name'
@@ -1028,6 +1042,13 @@ You can use these replacements in the values:
   * `{cluster-name}`: replace with the name of the cluster for the current service
 
 These values are evaluated in the context of each service separately.
+
+### workspace
+(String, Required Terraform Enterprise) The Terraform Enterprise workspace.
+
+### organization
+(String, Required Terraform Enterprise) The Terraform Enterprise organization.
+
 
 ## Command line reference
 

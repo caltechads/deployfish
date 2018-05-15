@@ -159,7 +159,7 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
     """
     Create a new ECS service named SERVICE_NAME.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     print
     if service.exists():
         click.secho('Service "{}" already exists!'.format(service.serviceName), fg='red')
@@ -207,7 +207,7 @@ def info(ctx, service_name):
     """
     Show current AWS information about this service and its task definition
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     print
     if service.exists():
         click.secho('"{}" service live info:'.format(service.serviceName), fg="white")
@@ -229,7 +229,7 @@ def info(ctx, service_name):
 @click.argument('service_name')
 def version(ctx, service_name):
     """Print the tag of the image in the first container on the service"""
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     print(service.version())
 
 
@@ -255,7 +255,7 @@ def update(ctx, service_name, dry_run, wait):
 
     If you want to update the desiredCount on the service, use "deploy scale".
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     print
     click.secho('Updating "{}" service:'.format(service.serviceName), fg="white")
     click.secho('  Current task definition:', fg="yellow")
@@ -290,7 +290,7 @@ def restart(ctx, service_name, hard):
     one.  Kill each task and wait for it to be replaced before killing the next
     one off.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     print
     click.secho('Restarting tasks in "{}" service in cluster "{}"'.format(
         service.serviceName,
@@ -311,7 +311,7 @@ def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
     """
     Set the desired count for service SERVICE_NAME to COUNT.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     print
     manage_asg_count(service, count, asg, force_asg)
     click.secho('Updating desiredCount on "{}" service in cluster "{}" to {}.'.format(
@@ -338,7 +338,7 @@ def delete(ctx, service_name, dry_run):
     """
     Delete the service SERVICE_NAME from AWS.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     print()
     click.secho('Deleting service "{}":'.format(service.serviceName), fg="white")
     click.secho('  Service info:', fg="green")
@@ -368,7 +368,7 @@ def run_task(ctx, service_name, command):
     """
     Run the one-off task COMMAND on SERVICE_NAME.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     response = service.run_task(command)
     if response:
         print(response)
@@ -387,7 +387,7 @@ def cluster_info(ctx, service_name):
     Show information about the individual EC2 systems in the ECS cluster running
     SERVICE_NAME.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     instances = service.get_instance_data()
     for index, reservation in enumerate(instances):
         click.echo(click.style("Instance {}".format(index + 1), bold=True))
@@ -409,7 +409,7 @@ def cluster_run(ctx, service_name):
     """
     command = click.prompt('Command to run')
     service = Service(
-        yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+        yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     responses = service.cluster_run([command])
     for index, response in enumerate(responses):
         click.echo(click.style("Instance {}".format(index + 1), bold=True))
@@ -425,7 +425,7 @@ def cluster_ssh(ctx, service_name):
     SSH to the specified EC2 system in the ECS cluster running SERVICE_NAME.
     """
     service = Service(
-        yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+        yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     ips = service.get_host_ips()
     for index, ip in enumerate(ips):
         click.echo("Instance {}: {}".format(index+1, ip))
@@ -453,7 +453,7 @@ def show_config(ctx, service_name, diff, to_env_file):
     If the service SERVICE_NAME has a "config:" section defined, print a list of
     all parameters for the service and the values they currently have in AWS.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     if not to_env_file:
         if diff:
             click.secho('Diff between local and AWS parameters for service "{}":'.format(service_name), fg='white')
@@ -487,7 +487,7 @@ def write_config(ctx, service_name, dry_run):
     If the service SERVICE_NAME has a "config:" section defined, write
     all of the parameters for the service to AWS Parameter Store.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     parameters = service.get_config()
     if len(parameters) == 0:
         click.secho('No parameters found for service "{}":'.format(service_name), fg='white')
@@ -575,9 +575,8 @@ def ssh(ctx, service_name, verbose):
     If the service SERVICE_NAME has no running tasks, randomly choose one of
     the container instances in the cluster on which the service is defined.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     service.ssh(verbose=verbose)
-
 
 @cli.command('exec', short_help="Connect to a running container")
 @click.pass_context
@@ -588,7 +587,7 @@ def docker_exec(ctx, service_name, verbose):
     SSH to an EC2 instance in the cluster defined in the service named SERVICE_NAME, then
     run docker exec on the appropriate container.
     """
-    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV']).get_service(service_name))
+    service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     service.docker_exec(verbose=verbose)
 
 
@@ -626,7 +625,7 @@ def tunnel(ctx, tunnel_name):
     be a hostname.
 
     """
-    config = Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'])
+    config = Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN'])
     yml = config.get_category_item('tunnels', tunnel_name)
     service_name = yml['service']
 

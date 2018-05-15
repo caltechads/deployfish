@@ -4,6 +4,7 @@ import os
 import os.path
 
 from deployfish.terraform import Terraform
+from deployfish.terraform import TerraformE
 
 
 class Config(object):
@@ -27,15 +28,20 @@ class Config(object):
     TERRAFORM_RE = re.compile('\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}')
     ENVIRONMENT_RE = re.compile('\$\{env.(?P<key>.+)\}$')
 
-    def __init__(self, filename='deployfish.yml', env_file=None, import_env=False, interpolate=True):
+    def __init__(self, filename='deployfish.yml', env_file=None, import_env=False, interpolate=True, tfe_token=None):
         self.__raw = self.load_config(filename)
         self.import_env = import_env
         self.env_file = env_file
         self.environ = None
+        self.tfe_token = tfe_token
         self.terraform = None
         if interpolate:
             if 'terraform' in self.__raw:
-                self.terraform = Terraform(yml=self.__raw['terraform'])
+                self.replace_terraform()
+                if 'workspace' in self.__raw['terraform']:
+                    self.terraform = TerraformE(yml=self.__raw['terraform'], api_token=self.tfe_token)
+                else:
+                    self.terraform = Terraform(yml=self.__raw['terraform'])
             else:
                 self.terraform = None
             self.replace()
@@ -85,6 +91,18 @@ class Config(object):
             #     self.environ = os.environ
 
             self.__do_dict(service, replacers)
+
+    def replace_terraform(self):
+        for service in self.__raw['services']:
+            replacers = {
+                'environment': service.get('environment', 'prod'),
+                'service-name': service['name'],
+                'cluster-name': service['cluster']
+            }
+            if 'workspace' in self.__raw['terraform']:
+                self.__raw['terraform']['workspace'].format(**replacers)
+            else:
+                self.__raw['terraform']['statefile'] = self.__raw['terraform']['statefile'].format(**replacers)
 
     def __replace(self, raw, key, value, replacers):
         if isinstance(value, dict):
