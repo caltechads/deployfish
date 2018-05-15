@@ -82,8 +82,8 @@ without polluting your global python environment.
 
 download or clone from [Github](https://github.com/caltechads/deployfish), then:
 
-    unzip deployfish-0.18.5.zip
-    cd deployfish-0.18.5
+    unzip deployfish-0.19.0.zip
+    cd deployfish-0.19.0
     python setup.py install
 
 ### Using pyenv to install into a virtual environment (Recommended)
