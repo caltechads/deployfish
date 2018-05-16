@@ -528,7 +528,15 @@ def entrypoint(ctx, command, dry_run):
     service_name = os.environ.get('DEPLOYFISH_SERVICE_NAME', None)
     cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
     if service_name and cluster_name:
-        service_yml = Config(filename=ctx.obj['CONFIG_FILE'], interpolate=False).get_service(service_name)
+        config = Config(filename=ctx.obj['CONFIG_FILE'], interpolate=False)
+        try:
+            service_yml = config.get_service(service_name)
+        except KeyError:
+            click.echo("Our container's deployfish config file '{}' does not have service '{}'".format(
+                ctx.obj['CONFIG_FILE'] or 'deployfish.yml',
+                service_name
+            ))
+            sys.exit(1)
         parameter_store = []
         if 'config' in service_yml:
             parameter_store = ParameterStore(service_name, cluster_name, yml=service_yml['config'])
@@ -577,6 +585,7 @@ def ssh(ctx, service_name, verbose):
     """
     service = Service(yml=Config(filename=ctx.obj['CONFIG_FILE'], env_file=ctx.obj['ENV_FILE'], import_env=ctx.obj['IMPORT_ENV'], tfe_token=ctx.obj['TFE_TOKEN']).get_service(service_name))
     service.ssh(verbose=verbose)
+
 
 @cli.command('exec', short_help="Connect to a running container")
 @click.pass_context
