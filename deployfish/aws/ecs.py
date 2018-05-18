@@ -20,6 +20,7 @@ import botocore
 from deployfish.aws.asg import ASG
 from deployfish.aws.appscaling import ApplicationAutoscaling
 from deployfish.aws.systems_manager import ParameterStore
+from deployfish.aws.service_discovery import ServiceDiscovery
 
 
 class VolumeMixin(object):
@@ -777,6 +778,7 @@ class Service(object):
         self.ecs = boto3.client('ecs')
         self.asg = None
         self.scaling = None
+        self.serviceDiscovery = None
         self.searched_hosts = False
         self.is_running = False
         self.hosts = None
@@ -788,6 +790,7 @@ class Service(object):
         self._minimumHealthyPercent = 0
         self._maximumPercent = 200
         self._launchType = 'EC2'
+        self.__service_discovery = []
         self.__defaults()
         self.from_yaml(yml)
         self.from_aws()
@@ -1083,6 +1086,19 @@ class Service(object):
             'assignPublicIp': public_ip
         }
 
+    @property
+    def service_discovery(self):
+        if self.__aws_service:
+            if self.__aws_service['serviceRegistries']:
+                if 'registryArn' in self.__aws_service['serviceRegistries'][0]:
+                    self.__service_discovery = self.__aws_service['serviceRegistries']
+        return self.__service_discovery
+
+    def set_service_discovery(self, arn):
+        self.__service_discovery.append({
+            'registryArn': arn
+            })
+
     def version(self):
         if self.active_task_definition:
             if self.load_balancer:
@@ -1127,6 +1143,8 @@ class Service(object):
         r['taskDefinition'] = task_definition_id
         r['desiredCount'] = self.count
         r['clientToken'] = self.client_token
+        if self.__service_discovery:
+            r['serviceRegistries'] = self.__service_discovery
         r['deploymentConfiguration'] = {
             'maximumPercent': self.maximumPercent,
             'minimumHealthyPercent': self.minimumHealthyPercent
@@ -1178,6 +1196,10 @@ class Service(object):
                 yml['vpc_configuration']['security_groups'],
                 yml['vpc_configuration']['public_ip'],
             )
+        if 'network_mode' in yml:
+            if yml['network_mode'] == 'awsvpc' and 'service_discovery' in yml:
+                self.serviceDiscovery = ServiceDiscovery(yml=yml['service_discovery'])
+
         self._count = yml['count']
         self._desired_count = self._count
         self.desired_task_definition = TaskDefinition(yml=yml)
@@ -1222,6 +1244,7 @@ class Service(object):
         else:
             self.active_task_definition = None
 
+
     def __create_tasks_and_task_definition(self):
         """
         Create the new task definition for our service.
@@ -1241,6 +1264,12 @@ class Service(object):
         """
         Create the service in AWS.  If necessary, setup Application Scaling afterwards.
         """
+        if self.serviceDiscovery is not None:
+            if not self.serviceDiscovery.exists():
+                self.set_service_discovery(self.serviceDiscovery.create())
+            else:
+                print("Service Discovery already exists with this name")
+                raise SystemExit(1)
         self.__create_tasks_and_task_definition()
         kwargs = self.__render(self.desired_task_definition.arn)
         self.ecs.create_service(**kwargs)
@@ -1306,7 +1335,7 @@ class Service(object):
     def delete(self):
         """
         Delete the service from AWS, as well as any related Application Scaling
-        objects.
+        objects or service discovery objects.
         """
 
         # We need to delete any autoscaling stuff before deleting the service
@@ -1317,6 +1346,8 @@ class Service(object):
         # we won't know how to lookup the alarms
         if self.scaling and self.scaling.exists():
             self.scaling.delete()
+        if self.service_discovery:
+            self.serviceDiscovery.delete()
         if self.exists():
             self.ecs.delete_service(
                 cluster=self.clusterName,

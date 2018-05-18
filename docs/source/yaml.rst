@@ -227,6 +227,7 @@ Example::
 deployfish won't create the load balancer for you --
 you'll need to create it before running ``deploy create <service_name>``.
 
+
 ALB
 ---
 
@@ -255,6 +256,45 @@ Example::
           target_group_arn: foobar-prod-elb
           container_name: foobar-prod
           container_port: 80
+
+service_discovery
+=================
+
+(Optional)
+
+If you're going to use ECS service discovery, configure it with a ``service_discovery``
+block.
+
+The service discovery info for the service can't be changed after the service has
+been created. To change any part of the service discovery info, you'll need to destroy
+and recreate the service.
+
+To use service discovery you'll need to specify
+
+* ``namespace``: (string) The service discovery namespace that the new service will
+  be associated with.
+* ``name``: (string) The name of the service discovery service
+* ``dns_records``: (list) A list of DNS records the service discovery service should create
+    * ``type``: (string) The type of dns record. Valid values are ``A`` and ``SRV``.
+    * ``ttl``: (int) The ttl of the dns record.
+
+Example::
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        service_discovery:
+          namespace: local
+          name: foobar-prod
+          dns_records:
+            type: A
+            ttl: 10
+
+This would create a new service discovery service on the ``local`` Route53 private zone. The DNS would be
+``foobar-prod.local``
+
+See `Amazon ECS Service Discovery <https://aws.amazon.com/blogs/aws/amazon-ecs-service-discovery/)>`_.
 
 application_scaling
 ===================
