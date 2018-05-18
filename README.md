@@ -349,7 +349,8 @@ block.
 
 The service discovery info for the service can't be changed after the service has
 been created. To change any part of the service discovery info, you'll need to destroy
-and recreate the service.
+and recreate the service. Deployfish can create and delete service discovery services,
+but it requires a service discovery namespace already exists.
 
 To use service discovery you'll need to specify
 
