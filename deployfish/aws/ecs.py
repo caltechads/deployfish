@@ -1094,10 +1094,9 @@ class Service(object):
                     self.__service_discovery = self.__aws_service['serviceRegistries']
         return self.__service_discovery
 
-    def set_service_discovery(self, arn):
-        self.__service_discovery.append({
-            'registryArn': arn
-            })
+    @service_discovery.setter
+    def service_discovery(self, arn):
+        self.__service_discovery = [{'registryArn': arn}]
 
     def version(self):
         if self.active_task_definition:
@@ -1198,7 +1197,9 @@ class Service(object):
             )
         if 'network_mode' in yml:
             if yml['network_mode'] == 'awsvpc' and 'service_discovery' in yml:
-                self.serviceDiscovery = ServiceDiscovery(yml=yml['service_discovery'])
+                self.serviceDiscovery = ServiceDiscovery(None, yml=yml['service_discovery'])
+            elif 'service_discovery' in yml:
+                print("Ignoring service discovery config since network mode is not awsvpc")
 
         self._count = yml['count']
         self._desired_count = self._count
@@ -1241,9 +1242,13 @@ class Service(object):
             if helpers:
                 for t in self.tasks.values():
                     t.from_aws(helpers[t.family])
+
+            if self.__aws_service['serviceRegistries']:
+                self.serviceDiscovery = ServiceDiscovery(self.service_discovery[0]['registryArn'])
+            else:
+                self.serviceDiscovery = None
         else:
             self.active_task_definition = None
-
 
     def __create_tasks_and_task_definition(self):
         """
@@ -1266,10 +1271,9 @@ class Service(object):
         """
         if self.serviceDiscovery is not None:
             if not self.serviceDiscovery.exists():
-                self.set_service_discovery(self.serviceDiscovery.create())
+                self.service_discovery = self.serviceDiscovery.create()
             else:
                 print("Service Discovery already exists with this name")
-                raise SystemExit(1)
         self.__create_tasks_and_task_definition()
         kwargs = self.__render(self.desired_task_definition.arn)
         self.ecs.create_service(**kwargs)
@@ -1346,7 +1350,7 @@ class Service(object):
         # we won't know how to lookup the alarms
         if self.scaling and self.scaling.exists():
             self.scaling.delete()
-        if self.service_discovery:
+        if self.serviceDiscovery:
             self.serviceDiscovery.delete()
         if self.exists():
             self.ecs.delete_service(

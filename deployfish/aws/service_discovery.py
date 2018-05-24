@@ -9,7 +9,7 @@ class ServiceDiscovery(object):
     Requires that a private dns namespace already exists.
     """
 
-    def __init__(self, yml={}):
+    def __init__(self, registry_arn=None, yml={}):
         """
         ``yml`` is dict parsed from the ``service_discovery`` section from
         ``deployfish.yml``.  Example:
@@ -30,6 +30,7 @@ class ServiceDiscovery(object):
         """
         self.sd = boto3.client('servicediscovery')
         self.__defaults()
+        self._registry_arn = registry_arn
         self.from_yaml(yml)
 
 
@@ -130,9 +131,14 @@ class ServiceDiscovery(object):
             resources += current_batch
 
         for item in resources:
-            if item['Name'] == self._name:
-                self._service_id = item['Id']
-                return True
+            if self._registry_arn is not None:
+                if item['Arn'] == self._registry_arn:
+                    self._service_id = item['Id']
+                    return True
+            else:
+                if item['Name'] == self._name:
+                    self._service_id = item['Id']
+                    return True
 
         return False
 
