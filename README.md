@@ -174,9 +174,10 @@ already created service, use `deploy scale <service_name> <count>`
 
 ### maximum_percent
 
-(Integer, Optional) When we create the ECS service, this is the upper limit on the number of tasks
-that are allowed in the RUNNING or PENDING state during a deployment, as a percentage of the `count`.
-This must be configured along with `minimum_healthy_percent`. If not provided will default to 200.
+(Integer, Optional) This is the upper limit on the number of tasks that are
+allowed in the RUNNING or PENDING state during a deployment, as a percentage of
+the `count`.  This must be configured along with `minimum_healthy_percent`. If
+not provided will default to 200.
 
     services:
       - name: foobar-prod
@@ -186,9 +187,10 @@ See [Service Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest
 
 ### minimum_healthy_percent
 
-(Integer, Optional) When we create the ECS service, this is the lower limit on the number of tasks
-that must remain in the RUNNING state during a deployment, as a percentage of the `count`. This must be configured
-along with `maximum_percent`. If not provided will default to 0.
+(Integer, Optional) This is the lower limit on the number of tasks that must
+remain in the RUNNING state during a deployment, as a percentage of the
+`count`. This must be configured along with `maximum_percent`. If not provided
+will default to 0.
 
     services:
       - name: foobar-prod
@@ -698,21 +700,25 @@ the container tries to exceed this amount of memory, it is killed.
 
 #### memoryReservation
 
-(Integer, Optional) The soft limit of memory (in MB) available to the container. You
-must specify a non-zero integer for one or both of memory or memoryReservation. If
-you specify both, memory must be greater than memoryReservation.
-
-For example, if your container normally uses 128 MiB of memory, but occasionally bursts
-to 256 MiB of memory for short periods of time, you can set a memoryReservation of 128 MiB, and
-a memory hard limit of 300 MiB. This configuration would allow the container to only reserve 128 MiB
-of memory from the remaining resources on the container instance, but also allow the container to
-consume more memory resources when needed.
+(Integer, Optional) The soft limit (in MB) of memory to reserve for the
+container. When system memory is under heavy contention, Docker attempts to
+keep the container memory to this soft limit; however, your container can
+consume more memory when it needs to, up to the hard limit specified
+with the ``memory`` parameter.  ``memoryReservation`` must be less than
+``memory``.
 
     containers:
       - name: foo
         image: centos:7
         memory: 256
         memoryReservation: 128
+
+For example, if your container normally uses 128 MiB of memory, but
+occasionally bursts to 256 MiB of memory for short periods of time, you can set
+a memoryReservation of 128 MiB, and a memory hard limit of 300 MiB. This
+configuration would allow the container to only reserve 128 MiB of memory from
+the remaining resources on the container instance, but also allow the container
+to consume more memory resources when needed.
 
 #### cpu
 

@@ -82,7 +82,7 @@ already created service, use ``deploy scale <service_name> <count>``
 maximum_percent
 ===============
 
-(Integer, Optional) When we create the ECS service, this is the upper limit on the number of tasks
+(Integer, Optional) This is the upper limit on the number of tasks
 that are allowed in the RUNNING or PENDING state during a deployment, as a percentage of the ``count``.
 This must be configured along with ``minimum_healthy_percent``. If not provided will default to 200. ::
 
@@ -95,7 +95,7 @@ See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest
 minimum_healthy_percent
 ===============
 
-(Integer, Optional) When we create the ECS service, this is the lower limit on the number of tasks
+(Integer, Optional) ECS service, this is the lower limit on the number of tasks
 that must remain in the RUNNING state during a deployment, as a percentage of the ``count``. This must be configured
 along with ``maximum_percent``. If not provided will default to 0. ::
 
@@ -630,6 +630,22 @@ the container tries to exceed this amount of memory, it is killed. ::
       - name: foo
         image: centos:7
         memory: 512
+
+memoryReservation
+-----------------
+
+(Integer, Optional) The soft limit (in MB) of memory to reserve for the
+container. When system memory is under heavy contention, Docker attempts to
+keep the container memory to this soft limit; however, your container can
+consume more memory when it needs to, up to the hard limit specified
+with the ``memory`` parameter.  ``memoryReservation`` must be less than
+``memory`` ::
+
+    containers:
+      - name: foo
+        image: centos:7
+        memory: 512
+        memoryReservation: 256
 
 cpu
 ---
