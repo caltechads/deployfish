@@ -1,12 +1,12 @@
-``` 
-      _            _              __ _     _     
-     | |          | |            / _(_)   | |    
-   __| | ___ _ __ | | ___  _   _| |_ _ ___| |__  
-  / _` |/ _ \ '_ \| |/ _ \| | | |  _| / __| '_ \ 
+```
+      _            _              __ _     _
+     | |          | |            / _(_)   | |
+   __| | ___ _ __ | | ___  _   _| |_ _ ___| |__
+  / _` |/ _ \ '_ \| |/ _ \| | | |  _| / __| '_ \
  | (_| |  __/ |_) | | (_) | |_| | | | \__ \ | | |
   \__,_|\___| .__/|_|\___/ \__, |_| |_|___/_| |_|
-            | |             __/ |                
-            |_|            |___/                 
+            | |             __/ |
+            |_|            |___/
 ```
 
 Full documentation at [http://deployfish.readthedocs.io](http://deployfish.readthedocs.io).
@@ -47,7 +47,7 @@ A simple `deployfish.yml` looks like this:
         load_balancer:
           service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
           load_balancer_name: my-service-elb
-          container_name: my-service 
+          container_name: my-service
           container_port: 80
         family: my-service
         network_mode: bridge
@@ -57,6 +57,7 @@ A simple `deployfish.yml` looks like this:
             image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/my-service:0.0.1
             cpu: 128
             memory: 256
+            memoryReservation: 128
             ports:
               - "80"
             environment:
@@ -90,7 +91,7 @@ download or clone from [Github](https://github.com/caltechads/deployfish), then:
 ### Using pyenv to install into a virtual environment (Recommended)
 
 If you use python and frequently need to install additional python modules,
-[pyenv](https://github.com/pyenv/pyenv) and [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv) 
+[pyenv](https://github.com/pyenv/pyenv) and [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv)
 are extremely useful.  They allow some very useful things:
 
 * Manage your virtualenvs easily on a per-project basis
@@ -202,9 +203,9 @@ See [Service Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest
 If you are configuring a Fargate task you must specify the launch type as `FARGATE`, otherwise
 the default value of `EC2` is used.
 
-The Fargate launch type allows you to run your containerized applications without the need to 
-provision and manage the backend infrastructure. Just register your task definition and Fargate 
-launches the container for you. 
+The Fargate launch type allows you to run your containerized applications without the need to
+provision and manage the backend infrastructure. Just register your task definition and Fargate
+launches the container for you.
 
 If you use the Fargate launch type, the following task parameters are not valid:
 
@@ -229,9 +230,9 @@ If you are configuring a Fargate task, you have to specify your vpc configuratio
 deployfish won't create the vpc, subnets or security groups for you --
 you'll need to create it before you can use `deploy create <service_name>`
 
-You'll need to specify 
+You'll need to specify
 
-* `subnets`: (array) The subnets in the VPC that the task scheduler should consider for placement. 
+* `subnets`: (array) The subnets in the VPC that the task scheduler should consider for placement.
   Only private subnets are supported at this time. The VPC will be determined by the subnets you
   specify, so if you specify multiple subnets they must be in the same VPC.
 * `security_groups`: (array) The ID of the security group to associate with the service.
@@ -278,7 +279,7 @@ you'll need to create it before you can use `deploy scale <service_name>
 (Optional)
 
 If you're going to use an ELB or an ALB with your service, configure it with a
-`load_balancer` block.  
+`load_balancer` block.
 
 The load balancer info for the service can't be changed after the service has
 been created.  To change any part of the load balancer info, you'll need to
@@ -286,10 +287,10 @@ destroy and recreate the service.
 
 #### ELB
 
-To specify that the the service is to use an ELB, you'll need to specify 
+To specify that the the service is to use an ELB, you'll need to specify
 
 * `service_role_arn`: (string) The name or full ARN of the IAM role that allows
-  ECS to make calls to your load balancer on your behalf. 
+  ECS to make calls to your load balancer on your behalf.
 * `load_balancer_name`: (string) The name of the ELB.
 * `container_name`: (string) the name of the container to associate with the
   load balancer
@@ -310,14 +311,14 @@ Example:
           container_port: 80
 
 deployfish won't create the load balancer for you --
-you'll need to create it before running `deploy create <service_name>`.  
+you'll need to create it before running `deploy create <service_name>`.
 
 #### ALB
 
-To specify that the the service is to use an ALB, you'll need to specify 
+To specify that the the service is to use an ALB, you'll need to specify
 
 * `service_role_arn`: (string) The name or full ARN of the IAM role that allows
-  ECS to make calls to your load balancer on your behalf. 
+  ECS to make calls to your load balancer on your behalf.
 * `target_group_arn`: (string) The full ARN of the target group to use for this service.
 * `container_name`: (string) the name of the container to associate with the
   load balancer
@@ -326,7 +327,7 @@ To specify that the the service is to use an ALB, you'll need to specify
   `container_name` in your service's task definition
 
 deployfish won't create the target group for you -- you'll need to create it
-before running `deploy create <service_name>`.  
+before running `deploy create <service_name>`.
 
 Example:
 
@@ -515,7 +516,7 @@ scale up, make the number positive; to scale down, make it negative.
 
 (Integer, Required) The amount of time, in seconds, after a scaling activity
 completes where previous trigger-related scaling activities can influence
-future scaling events.  
+future scaling events.
 
 See "Cooldown" in AWS' [PutScalingPolicy](https://docs.aws.amazon.com/ApplicationAutoScaling/latest/APIReference/API_PutScalingPolicy.html) documentation.
 
@@ -524,7 +525,7 @@ See "Cooldown" in AWS' [PutScalingPolicy](https://docs.aws.amazon.com/Applicatio
 
 (String, Required) When we create task definitions for this service, put them
 in this family.  When you go to the "Task Definitions" page in the AWS web
-console, what is listed under "Task Definition" is the family name.  
+console, what is listed under "Task Definition" is the family name.
 
     services:
       - name: foobar-prod
@@ -538,7 +539,7 @@ See also the [AWS documentation](https://docs.aws.amazon.com/AmazonECS/latest/de
 ### network_mode
 
 (String, Required) The Docker networking mode for the containers in our task.
-One of: `bridge`, `host`, `awsvpc` or `none`.   
+One of: `bridge`, `host`, `awsvpc` or `none`.
 
     services:
       - name: foobar-prod
@@ -547,7 +548,7 @@ One of: `bridge`, `host`, `awsvpc` or `none`.
         family: foobar-prod-task-def
         network_mode: bridge
 
-See the [AWS documentation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#network_mode) for 
+See the [AWS documentation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#network_mode) for
 what each of those modes are.
 
 ### task_role_arn
@@ -565,7 +566,7 @@ on your behalf.
         task_role_arn: arn:aws:iam::123142123547:role/my-task-role
 
 deployfish won't create the Task Role for you -- you'll need to create it
-before running `deploy create <service_name>`.  
+before running `deploy create <service_name>`.
 
 See also the [AWS documentation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_role_arn), and
 [IAM Roles For Tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
@@ -584,7 +585,7 @@ to Amazon CloudWatch on your behalf.
         execution_role_arn: arn:aws:iam::123142123547:role/my-task-role
 
 deployfish won't create the Task Execution Role for you -- you'll need to create it
-before running `deploy create <service_name>`.  
+before running `deploy create <service_name>`.
 
 See also the [IAM Roles For Tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html)
 
@@ -592,8 +593,8 @@ See also the [IAM Roles For Tasks](https://docs.aws.amazon.com/AmazonECS/latest/
 
 (Required for Fargate tasks)
 
-If you are configuring a Fargate task, you have to specify the cpu at the task level, and there are specific values 
-for cpu which are supported which we describe below. 
+If you are configuring a Fargate task, you have to specify the cpu at the task level, and there are specific values
+for cpu which are supported which we describe below.
 
 | CPU value      |
 | -------------- |
@@ -609,8 +610,8 @@ See also the [Task Definition Parameters](https://docs.aws.amazon.com/AmazonECS/
 
 (Required for Fargate tasks)
 
-If you are configuring a Fargate task, you have to specify the memory at the task level, and there are specific values 
-for memory which are supported which we describe below. 
+If you are configuring a Fargate task, you have to specify the memory at the task level, and there are specific values
+for memory which are supported which we describe below.
 
 | Memory value (MiB)                                                                 |
 | ---------------------------------------------------------------------------------- |
@@ -635,10 +636,12 @@ See also the [Task Definition Parameters](https://docs.aws.amazon.com/AmazonECS/
             image: my_repository/foo:0.0.1
             cpu: 128
             memory: 256
+            memoryReservation: 128
           - name: bar
             image: my_repository/baz:0.0.1
             cpu: 256
             memory: 1024
+            memoryReservation: 1000
 
 Each of the containers listed in the `containers` list will be added to the
 task definition for the service.
@@ -685,13 +688,31 @@ For a Docker hub repository:
 
 #### memory
 
-(Integer, Required) The hard limit of memory (in MB) available to the container.  If
+(Integer, Optional) The hard limit of memory (in MB) available to the container.  If
 the container tries to exceed this amount of memory, it is killed.
 
     containers:
       - name: foo
         image: centos:7
         memory: 512
+
+#### memoryReservation
+
+(Integer, Optional) The soft limit of memory (in MB) available to the container. You
+must specify a non-zero integer for one or both of memory or memoryReservation. If
+you specify both, memory must be greater than memoryReservation.
+
+For example, if your container normally uses 128 MiB of memory, but occasionally bursts
+to 256 MiB of memory for short periods of time, you can set a memoryReservation of 128 MiB, and
+a memory hard limit of 300 MiB. This configuration would allow the container to only reserve 128 MiB
+of memory from the remaining resources on the container instance, but also allow the container to
+consume more memory resources when needed.
+
+    containers:
+      - name: foo
+        image: centos:7
+        memory: 256
+        memoryReservation: 128
 
 #### cpu
 
@@ -726,8 +747,8 @@ specified, we assume 'tcp'.
 
 (List of strings, Optional) A list of names of other containers in
 our task definition.  Adding a container name to links allows
-containers to communicate with each other without the need for 
-port mappings. 
+containers to communicate with each other without the need for
+port mappings.
 
 Links should be specified as `CONTAINER_NAME`, or `CONTAINER_NAME:ALIAS`.
 
@@ -777,7 +798,7 @@ be essential.
         - "somehost:162.242.195.82"
         - "otherhost:50.31.209.229"
 
-An entry with the ip address and hostname will be created in `/etc/hosts` inside 
+An entry with the ip address and hostname will be created in `/etc/hosts` inside
 containers for this service, e.g:
 
     162.242.195.82  somehost
@@ -803,7 +824,7 @@ passing to ECS.
     containers:
       - name: foo
         image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
-        command: apachectl -DFOREGROUND 
+        command: apachectl -DFOREGROUND
 
 #### environment
 
@@ -835,7 +856,7 @@ a single limit as an integer or soft/hard limits as a mapping.
         image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
         ulimits:
           nproc: 65535
-          nofile: 
+          nofile:
             soft: 65535
             hard: 65535
 
@@ -880,7 +901,7 @@ and CONTAINER paths should be absolute paths.
 
 In the `tasks` section of the service defintion, you can define helper tasks
 to be associated with your service and define commands on them that you can run via
-`deploy run_task <service> <command>`.  
+`deploy run_task <service> <command>`.
 
 The reason this exists is to enable us to run one-off or periodic
 functions (migrate datbases, clear caches, update search indexes, do database
@@ -924,13 +945,13 @@ correct task revision.
               - ENVIRONMENT=prod
               - SECRETS_BUCKET_NAME=my-secrets-bucket
         tasks:
-          - family: foobar-helper-prod  
+          - family: foobar-helper-prod
             environment: prod
             network_mode: bridge
             task_role_arn: arn:aws:iam::123142123547:role/myTaskRole
             containers:
               - name: foobar
-                image: foobar:0.0.1 
+                image: foobar:0.0.1
                 cpu: 128
                 memory: 256
                 environment:
@@ -951,7 +972,7 @@ the `foobar-prod` task definition of
 
 Then when you run `deploy run_task foobar-prod migrate`, deployfish will:
 
-1. Search for `migrate` among all the separate `commands` listings under `tasks` 
+1. Search for `migrate` among all the separate `commands` listings under `tasks`
 1. Determine that `migrate` belongs to the `foobar-helper-prod` task
 1. Look on the active `foobar-prod` service task definition for the
    `foobar-helper-prod` docker label
@@ -1008,8 +1029,8 @@ Then do
 ### Terraform variable replacment
 
 If you're managing your AWS resources for your service with terraform and you
-export your terraform state files to S3 or if you are using terraform enterprise, 
-you can use the values of your terraform outputs as string values in your service definitions.  
+export your terraform state files to S3 or if you are using terraform enterprise,
+you can use the values of your terraform outputs as string values in your service definitions.
 
 To do so, first declare a `terraform` top level section in your
 `deployfish.yml` file:

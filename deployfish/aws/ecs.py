@@ -114,6 +114,7 @@ class ContainerDefinition(VolumeMixin):
         self._cpu = None
         self._image = None
         self._memory = None
+        self._memoryReservation = None
         self._command = None
         self._entryPoint = None
         self._essential = True
@@ -136,7 +137,7 @@ class ContainerDefinition(VolumeMixin):
         try:
             return self.__getattribute__(attr)
         except AttributeError:
-            if attr in ['cpu', 'dockerLabels', 'essential', 'image', 'links', 'memory', 'name']:
+            if attr in ['cpu', 'dockerLabels', 'essential', 'image', 'links', 'memory', 'memoryReservation', 'name']:
                 if (not getattr(self, '_' + attr) and self.__aws_container_definition and attr in self.__aws_container_definition):
                     setattr(self, "_" + attr, self.__aws_container_definition[attr])
                 return getattr(self, '_' + attr)
@@ -173,7 +174,7 @@ class ContainerDefinition(VolumeMixin):
                 raise AttributeError
 
     def __setattr__(self, attr, value):
-        if attr in ['command', 'cpu', 'dockerLabels', 'entryPoint', 'environment', 'essential', 'image', 'links', 'memory', 'name', 'ulimits']:
+        if attr in ['command', 'cpu', 'dockerLabels', 'entryPoint', 'environment', 'essential', 'image', 'links', 'memory', 'memoryReservation', 'name', 'ulimits']:
             setattr(self, "_" + attr, value)
         else:
             super(ContainerDefinition, self).__setattr__(attr, value)
@@ -243,7 +244,10 @@ class ContainerDefinition(VolumeMixin):
         r['name'] = self.name
         r['image'] = self.image
         r['cpu'] = self.cpu
-        r['memory'] = self.memory
+        if self.memory is not None:
+            r['memory'] = self.memory
+        if self.memoryReservation is not None:
+            r['memoryReservation'] = self.memoryReservation
         if self.portMappings:
             r['portMappings'] = []
             for mapping in self.portMappings:
@@ -383,8 +387,10 @@ class ContainerDefinition(VolumeMixin):
             self.cpu = 256  # Give a reasonable default if none was specified
         if 'memory' in yml:
             self.memory = yml['memory']
-        else:
-            self.memory = 512  # Give a reasonable default if none was specified
+        if 'memoryReservation' in yml:
+            self.memoryReservation = yml['memoryReservation']
+        if self.memory is None and self.memoryReservation is None:
+            self.memory = 512 # Give a reasonable default if none was specified
         if 'command' in yml:
             self.command = yml['command']
         if 'entrypoint' in yml:

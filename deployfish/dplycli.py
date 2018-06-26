@@ -47,23 +47,26 @@ def print_service_info(service):
 
 def print_task_definition(task_definition, indent="  "):
     if task_definition.arn:
-        click.secho('{}    arn               : {}'.format(indent, task_definition.arn), fg="cyan")
-    click.secho('{}    family            : {}'.format(indent, task_definition.family), fg="cyan")
-    click.secho('{}    network_mode      : {}'.format(indent, task_definition.networkMode), fg="cyan")
+        click.secho('{}    arn                      : {}'.format(indent, task_definition.arn), fg="cyan")
+    click.secho('{}    family                   : {}'.format(indent, task_definition.family), fg="cyan")
+    click.secho('{}    network_mode             : {}'.format(indent, task_definition.networkMode), fg="cyan")
     if task_definition.taskRoleArn:
-        click.secho('{}    task_role_arn     : {}'.format(indent, task_definition.taskRoleArn), fg="cyan")
+        click.secho('{}    task_role_arn            : {}'.format(indent, task_definition.taskRoleArn), fg="cyan")
     click.secho('{}    containers:'.format(indent), fg="cyan")
     for c in task_definition.containers:
         click.secho('{}      {}:'.format(indent, c.name), fg="cyan")
-        click.secho('{}        image         : {}'.format(indent, c.image), fg="cyan")
-        click.secho('{}        cpu           : {}'.format(indent, c.cpu), fg="cyan")
-        click.secho('{}        memory        : {}'.format(indent, c.memory), fg="cyan")
+        click.secho('{}        image                : {}'.format(indent, c.image), fg="cyan")
+        click.secho('{}        cpu                  : {}'.format(indent, c.cpu), fg="cyan")
+        if c.memory:
+            click.secho('{}        memory               : {}'.format(indent, c.memory), fg="cyan")
+        if c.memoryReservation:
+            click.secho('{}        memoryReservation    : {}'.format(indent, c.memory), fg="cyan")
         if c.portMappings:
             for p in c.portMappings:
-                click.secho('{}        port          : {}'.format(indent, p), fg="cyan")
+                click.secho('{}        port                 : {}'.format(indent, p), fg="cyan")
         if c.extraHosts:
             for h in c.extraHosts:
-                click.secho('{}        extra_host    : {}'.format(indent, h), fg="cyan")
+                click.secho('{}        extra_host           : {}'.format(indent, h), fg="cyan")
 
 
 def print_sorted_parameters(parameters):  # NOQA
