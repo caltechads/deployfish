@@ -789,6 +789,8 @@ class Service(object):
         self._desired_count = 0
         self._minimumHealthyPercent = 0
         self._maximumPercent = 200
+        self._minimumHealthyPercent_from_yml = 0
+        self._maximumPercent_from_yml = 200
         self._launchType = 'EC2'
         self.__service_discovery = []
         self.__defaults()
@@ -1168,6 +1170,9 @@ class Service(object):
         if 'maximum_percent' in yml:
             self.maximumPercent = yml['maximum_percent']
             self.minimumHealthyPercent = yml['minimum_healthy_percent']
+            # save for ecs service update
+            self._maximumPercent_from_yml = yml['maximum_percent']
+            self._minimumHealthyPercent_from_yml = yml['minimum_healthy_percent']
         self.asg = ASG(yml=yml)
         if 'application_scaling' in yml:
             self.scaling = ApplicationAutoscaling(yml['name'], yml['cluster'], yml=yml['application_scaling'])
@@ -1304,7 +1309,11 @@ class Service(object):
         self.ecs.update_service(
             cluster=self.clusterName,
             service=self.serviceName,
-            taskDefinition=self.desired_task_definition.arn
+            taskDefinition=self.desired_task_definition.arn,
+            deploymentConfiguration={
+                'maximumPercent': self._maximumPercent_from_yml,
+                'minimumHealthyPercent': self._minimumHealthyPercent_from_yml
+            }
         )
         self.__defaults()
         self.from_aws()
