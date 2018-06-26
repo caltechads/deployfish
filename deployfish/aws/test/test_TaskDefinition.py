@@ -14,7 +14,7 @@ class TestTaskDefinition_load_yaml(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             yml = yaml.load(f)
-        self.td = TaskDefinition(yml=yml['services'][0])
+            self.td = TaskDefinition(yml=yml['services'][0])
 
     def test_family(self):
         self.assertEqual(self.td.family, 'cit-auth-prod')
@@ -36,7 +36,7 @@ class TestTaskDefinition_load_yaml_alternate(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             yml = yaml.load(f)
-        self.td = TaskDefinition(yml=yml['services'][1])
+            self.td = TaskDefinition(yml=yml['services'][1])
 
     def test_family(self):
         self.assertEqual(self.td.family, 'cit-auth-prod2')
@@ -56,6 +56,9 @@ class TestTaskDefinition_load_yaml_alternate(unittest.TestCase):
     def test_memory(self):
         self.assertEqual(self.td.memory, 512)
 
+    def test_memory(self):
+        self.assertEqual(self.td.memory, 512)
+
 
 class TestTaskDefinition_render(unittest.TestCase):
 
@@ -64,7 +67,7 @@ class TestTaskDefinition_render(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             self.yml = yaml.load(f)
-        self.td = TaskDefinition(yml=self.yml['services'][0])
+            self.td = TaskDefinition(yml=self.yml['services'][0])
 
     def test_family(self):
         self.assertEqual(self.td.render()['family'], 'cit-auth-prod')
@@ -99,7 +102,7 @@ class TestTaskDefinition_render_alternate(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             self.yml = yaml.load(f)
-        self.td = TaskDefinition(yml=self.yml['services'][1])
+            self.td = TaskDefinition(yml=self.yml['services'][1])
 
     def test_family(self):
         self.assertEqual(self.td.render()['family'], 'cit-auth-prod2')
@@ -124,4 +127,4 @@ class TestTaskDefinition_volumes(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             yml = yaml.load(f)
-        self.td = TaskDefinition(yml=yml['services'][1])
+            self.td = TaskDefinition(yml=yml['services'][1])

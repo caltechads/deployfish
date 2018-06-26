@@ -17,13 +17,7 @@ class TestService_load_yaml(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             yml = yaml.load(f)
-
-        # service_client = Mock()
-        # service_client.describe_services = Mock(return_value={'services':[]})
-        # client = Mock(return_value=service_client)
         with Replacer() as r:
-            # r.replace('boto3.client', client)
-            # r.replace('deployfish.aws.ecs.Service.__get_service', Mock(return_value={}), strict=False)
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service(yml=yml['services'][0])
 
@@ -61,12 +55,7 @@ class TestService_load_yaml_alternate(unittest.TestCase):
         with open(fname) as f:
             yml = yaml.load(f)
 
-        # service_client = Mock()
-        # service_client.describe_services = Mock(return_value={'services':[]})
-        # client = Mock(return_value=service_client)
         with Replacer() as r:
-            # r.replace('boto3.client', client)
-            # r.replace('deployfish.aws.ecs.Service.__get_service', Mock(return_value={}), strict=False)
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service(yml=yml['services'][1])
 
@@ -105,4 +94,3 @@ class TestService_load_yaml_alternate(unittest.TestCase):
             'securityGroups': ['sg-12345678'],
             'assignPublicIp': 'ENABLED'
             })
-

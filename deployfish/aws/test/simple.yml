@@ -28,6 +28,7 @@ services:
         image: 467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3
         cpu: 1024
         memory: 4000
+        memoryReservation: 2000
         command: /usr/bin/supervisord
         entrypoint: /entrypoint.sh
         extra_hosts:
@@ -40,7 +41,7 @@ services:
           - "8021:8021/udp"
         ulimits:
           nproc: 65535
-          nofile: 
+          nofile:
             soft: 65535
             hard: 65535
         environment:
@@ -97,4 +98,3 @@ services:
         image: redis:latest
       - name: db
         image: mysql:5.5.47
-     

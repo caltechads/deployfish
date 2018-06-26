@@ -26,6 +26,9 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
     def test_memory(self):
         self.assertEqual(self.cd.memory, 4000)
 
+    def test_memoryReservation(self):
+        self.assertEqual(self.cd.memoryReservation, 2000)
+
     def test_image(self):
         self.assertEqual(self.cd.image, '467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3')
 
@@ -71,6 +74,9 @@ class TestContainerDefinition_render(unittest.TestCase):
 
     def test_memory(self):
         self.assertEqual(self.cd.render()['memory'], 4000)
+
+    def test_memoryReservation(self):
+        self.assertEqual(self.cd.render()['memoryReservation'], 2000)
 
     def test_image(self):
         self.assertEqual(self.cd.render()['image'], '467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3')
