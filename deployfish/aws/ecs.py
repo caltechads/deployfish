@@ -64,7 +64,6 @@ class LogConfiguration(object):
     """
 
     def __init__(self, aws={}, yml={}):
-
         if aws:
             self.from_aws(aws)
 
@@ -782,6 +781,9 @@ class Service(object):
 
     def __init__(self, yml={}):
         self.ecs = boto3.client('ecs')
+
+        self.__aws_service = None
+
         self.asg = None
         self.scaling = None
         self.serviceDiscovery = None
@@ -791,10 +793,9 @@ class Service(object):
         self.host_ips = None
         self._serviceName = None
         self._clusterName = None
-        self.__aws_service = None
         self._desired_count = 0
-        self._minimumHealthyPercent = 0
-        self._maximumPercent = 200
+        self._minimumHealthyPercent = None
+        self._maximumPercent = None
         self._launchType = 'EC2'
         self.__service_discovery = []
         self.__defaults()
@@ -831,7 +832,16 @@ class Service(object):
         try:
             return self.__getattribute__(attr)
         except AttributeError:
-            if attr in ['deployments', 'taskDefinition', 'clusterArn', 'desiredCount', 'runningCount', 'pendingCount', 'networkConfiguration', 'executionRoleArn']:
+            if attr in [
+                'deployments',
+                'taskDefinition',
+                'clusterArn',
+                'desiredCount',
+                'runningCount',
+                'pendingCount',
+                'networkConfiguration',
+                'executionRoleArn'
+            ]:
                 if self.__aws_service:
                     return self.__aws_service[attr]
                 return None
@@ -879,23 +889,30 @@ class Service(object):
     @property
     def maximumPercent(self):
         """
-        For services yet to be created, return the what we want the minimum count
-        to be when we create the service.
+        If maximumPercent is defined in deployfish.yml for our service,
+        return that value.
 
-        For services already existing in AWS, return the actual maximum percent.
+        If it is not defined in deployfish.yml, but it is defined in AWS, return
+        the AWS maximumPercent value.
+
+        Else, return 200.
 
         :rtype: int
         """
-        if self.__aws_service:
-            self._maximumPercent = self.__aws_service['deploymentConfiguration']['maximumPercent']
+        if not self._maximumPercent:
+            if self.__aws_service:
+                self._maximumPercent = self.__aws_service['deploymentConfiguration']['maximumPercent']
+            else:
+                # Give a reasonable default if it was not defined in deployfish.yml
+                self._maximumPercent = 200
         return self._maximumPercent
 
     @maximumPercent.setter
     def maximumPercent(self, maximumPercent):
         """
-        Set the maximum percent of tasks this service is allowed to be in the RUNNING
-        or PENDING state during a deployment.  Setting this
-        has no effect if the service already exists.
+        Set the maximum percent of tasks this service is allowed to be in the
+        RUNNING or PENDING state during a deployment.  Setting this has no
+        effect if the service already exists.
 
         :param maximumPercent: Set the maximum percent of tasks this service is allowed to run
         :type count: int
@@ -905,23 +922,30 @@ class Service(object):
     @property
     def minimumHealthyPercent(self):
         """
-        For services yet to be created, return the what we want the minimum count
-        to be when we create the service.
+        If minimumHealthyPercent is defined in deployfish.yml for our service,
+        return that value.
 
-        For services already existing in AWS, return the actual minimum capacity.
+        If it is not defined in deployfish.yml, but it is defined in AWS, return
+        the AWS minimumHealthyPercent value.
+
+        Else, return 0.
 
         :rtype: int
         """
-        if self.__aws_service:
-            self._minimumHealthyPercent = self.__aws_service['deploymentConfiguration']['minimumHealthyPercent']
+        if not self._minimumHealthyPercent:
+            if self.__aws_service:
+                self._minimumHealthyPercent = self.__aws_service['deploymentConfiguration']['minimumHealthyPercent']
+            else:
+                # Give a reasonable default if it was not defined in deployfish.yml
+                self._minimumHealthyPercent = 0
         return self._minimumHealthyPercent
 
     @minimumHealthyPercent.setter
     def minimumHealthyPercent(self, minimumHealthyPercent):
         """
-        Set the minimum percent of tasks this service must maintain in the RUNNING
-        or PENDING state during a deployment.  Setting this
-        has no effect if the service already exists.
+        Set the minimum percent of tasks this service must maintain in the
+        RUNNING or PENDING state during a deployment.  Setting this has no
+        effect if the service already exists.
 
         :param maximumPercent: Set the minimum percent of tasks this service must maintain
         :type count: int
@@ -1290,27 +1314,33 @@ class Service(object):
 
     def update(self):
         """
-        Update the task definition for our service, and modify Application Scaling
-        appropriately.
+        Update the service and Application Scaling setup (if any).
 
         If we currently don't have Application Scaling enabled, but we want it now,
         set it up appropriately.
 
         If we currently do have Application Scaling enabled, but it's setup differently
-        than we want it, updated it appropriately.
+        than we want it, update it appropriately.
 
         If we currently do have Application Scaling enabled, but we no longer want it,
         remove Application Scaling.
         """
-        self.update_task_definition()
+        self.update_service()
         self.update_scaling()
 
-    def update_task_definition(self):
+    def update_service(self):
+        """
+        Update the taskDefinition and deploymentConfiguration on the service.
+        """
         self.__create_tasks_and_task_definition()
         self.ecs.update_service(
             cluster=self.clusterName,
             service=self.serviceName,
-            taskDefinition=self.desired_task_definition.arn
+            taskDefinition=self.desired_task_definition.arn,
+            deploymentConfiguration={
+                'maximumPercent': self.maximumPercent,
+                'minimumHealthyPercent': self.minimumHealthyPercent
+            }
         )
         self.__defaults()
         self.from_aws()

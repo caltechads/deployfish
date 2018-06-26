@@ -14,7 +14,7 @@ services:
     cluster: access-caltech-proxy-prod
     service_role_arn: a_task_role_arn
     count: 2
-    maximum_percent: 200
+    maximum_percent: 250
     minimum_healthy_percent: 50
     load_balancer:
       load_balancer_name: access-caltech-proxy-prod
@@ -60,7 +60,7 @@ services:
     cluster: access-caltech-proxy-prod
     family: cit-auth-prod2
     network_mode: awsvpc
-    maximum_percent: 200
+    maximum_percent: 250
     minimum_healthy_percent: 50
     launch_type: FARGATE
     execution_role: ecs_execution_role
