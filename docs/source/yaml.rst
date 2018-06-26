@@ -647,6 +647,13 @@ with the ``memory`` parameter.  ``memoryReservation`` must be less than
         memory: 512
         memoryReservation: 256
 
+For example, if your container normally uses 128 MiB of memory, but
+occasionally bursts to 256 MiB of memory for short periods of time, you can set
+a memoryReservation of 128 MiB, and a memory hard limit of 300 MiB. This
+configuration would allow the container to only reserve 128 MiB of memory from
+the remaining resources on the container instance, but also allow the container
+to consume more memory resources when needed.
+
 cpu
 ---
 
