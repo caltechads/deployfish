@@ -21,6 +21,7 @@ services:
     config:
         - FOOBAR=${env.FOOBAR_ENV}
         - DB_HOST=my_host
+        - FOO_BAR_PREFIX=${env.FOO_BAR_PREFIX_ENV}/test
     family: cit-auth-prod
     network_mode: host
     task_role_arn: ${terraform.cit_auth_iam_task_role}
