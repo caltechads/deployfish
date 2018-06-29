@@ -26,7 +26,7 @@ class Config(object):
     """
 
     TERRAFORM_RE = re.compile('\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}')
-    ENVIRONMENT_RE = re.compile('\$\{env.(?P<key>.+)\}$')
+    ENVIRONMENT_RE = re.compile('\$\{env.(?P<key>.+)\}')
 
     def __init__(self, filename='deployfish.yml', env_file=None, import_env=False, interpolate=True, tfe_token=None):
         self.__raw = self.load_config(filename)
