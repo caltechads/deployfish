@@ -8,7 +8,6 @@ import random
 import subprocess
 import sys
 
-
 import click
 
 from deployfish.config import Config

@@ -103,8 +103,14 @@ first time
 ## deployfish.yml services reference
 
 The deployfish service config file is a YAML file defining ECS services, task
-definitions and one-off tasks associated with those services. The default path
-for a deployfish configuration file is `./deployfish.yml`.
+definitions and one-off tasks associated with those services.  `deployfish`
+finds its config file like so:
+
+* The default path for a deployfish configuration file is `./deployfish.yml`.  
+* If the environment variable `DEPLOYFISH_CONFIG_FILE` is defined, `deployfish`
+  will use that instead.
+* If you pass a filename to `deploy` with the `-f` or `--filename` command line
+  flag, that will be used even if `DEPLOYFISH_CONFIG_FILE` is defined.
 
 Options specified in the Dockerfile for your containers (e.g., `ENTRYPOINT`,
 `CMD`, `ENV`) are respected by default - you don’t need to specify them again
