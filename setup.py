@@ -18,14 +18,15 @@ setup(name="deployfish",
       url="https://github.com/caltechads/deployfish",
       long_description=intro,
       keywords=['aws', 'ecs', 'docker', 'devops'],
-      classifiers = [
+      classifiers=[
           "Programming Language :: Python :: 2.7",
           "Programming Language :: Python :: 3"
       ],
       packages=find_packages(),
       include_package_data=True,
       install_requires=[
-          "boto3 >= 1.4.4",
+          "boto3 >= 1.6.15",
+          "botocore >= 1.9.15",
           "click >= 6.7",
           "PyYAML == 3.12",
           "tzlocal >= 1.4",
