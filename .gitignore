@@ -8,3 +8,5 @@ dist
 .idea
 docs/build
 #terraform.tfstate
+tags
+build
