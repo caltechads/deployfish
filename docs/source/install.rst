@@ -22,7 +22,7 @@ Clone or download from `Github <https://github.com/caltechads/deployfish>`_.
 
 ::
 
-    cd deployfish-0.21.1
+    cd deployfish-0.21.2
     python setup.py install
 
 
