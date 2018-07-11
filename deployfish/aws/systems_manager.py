@@ -300,8 +300,14 @@ class ParameterFactory(object):
             if m:
                 parameter_list = []
                 ssm = boto3.client('ssm')
-                response = ssm.describe_parameters(Filters=[{'Key': 'Name', 'Values': [m.group('key')]}], MaxResults=50)
-                parms = response['Parameters']
+                paginator = ssm.get_paginator('describe_parameters')
+                response_iterator = paginator.paginate(
+                    ParameterFilters=[{'Key': 'Name', 'Option': 'BeginsWith', 'Values': [m.group('key')]}],
+                    PaginationConfig={'MaxItems': 100, 'PageSize': 50}
+                )
+                parms = []
+                for r in response_iterator:
+                    parms.extend(r['Parameters'])
                 for parm in parms:
                     if parm['Type'] == 'SecureString':
                         line = "{}:external:secure:{}".format(parm['Name'], parm['KeyId'])
