@@ -11,9 +11,10 @@
 
 `deployfish` has commands for managing the whole lifecycle of your application:
 
-* Safely and easily create, update, destroy and restart ECS services, including
-  load balancing, application autoscaling and service discovery
-* Scale the number of containers in your service, optionally scaling its
+* Safely and easily create, update, destroy and restart ECS services
+* Extensive support for ECS related services like load balancing, application
+  autoscaling and service discovery
+* Easily scale the number of containers in your service, optionally scaling its
   associated autoscaling group at the same time
 * Manage multiple environments for your service (test, qa, prod, etc.) in
   multiple AWS accounts.
@@ -26,6 +27,8 @@
   uses so that you can connect to them from your work machine.
 
 * Extensible! Add additional functionality through custom deployfish modules.
+* Works great in CodeBuild steps in a CodePipeline based CI/CD system!
+
 
 Additionally, `deployfish` integrates with
 [terraform](https://www.terraform.io) state files so that you can use the
