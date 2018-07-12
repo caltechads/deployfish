@@ -7,6 +7,7 @@ import os
 
 import yaml
 
+from deployfish.config import Config
 from deployfish.aws.ecs import Service
 
 
@@ -15,13 +16,12 @@ class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
-            yml = yaml.load(f)
-        del yml['services'][0]['maximum_percent']
-        del yml['services'][0]['minimum_healthy_percent']
+        config = Config(filename=fname, interpolate=False)
+        del config.raw['services'][0]['maximum_percent']
+        del config.raw['services'][0]['minimum_healthy_percent']
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service(yml=yml['services'][0])
+            self.service = Service('foobar-prod', config=config)
 
     def test_maximum_percent(self):
         self.assertEqual(self.service.maximumPercent, 200)
@@ -29,18 +29,18 @@ class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
     def test_minimum_healthy_percent(self):
         self.assertEqual(self.service.minimumHealthyPercent, 0)
 
+
 class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
-            yml = yaml.load(f)
-        del yml['services'][0]['maximum_percent']
-        del yml['services'][0]['minimum_healthy_percent']
+        config = Config(filename=fname, interpolate=False)
+        del config.raw['services'][0]['maximum_percent']
+        del config.raw['services'][0]['minimum_healthy_percent']
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service(yml=yml['services'][0])
+            self.service = Service('foobar-prod', config=config)
             # This is ugly, but it was the only way I could figure out to
             # simulate the AWS load
             self.service._Service__aws_service = {
@@ -62,11 +62,10 @@ class TestService_load_yaml(unittest.TestCase):
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
-            yml = yaml.load(f)
+        config = Config(filename=fname, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service(yml=yml['services'][0])
+            self.service = Service('foobar-prod', config=config)
 
     def test_serviceName(self):
         self.assertEqual(self.service.serviceName, 'foobar-prod')
@@ -94,17 +93,16 @@ class TestService_load_yaml(unittest.TestCase):
             'container_port': 443
         })
 
+
 class TestService_load_yaml_alternate(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
-            yml = yaml.load(f)
-
+        config = Config(filename=fname, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service(yml=yml['services'][1])
+            self.service = Service('cit-auth-prod2', config=config)
 
     def test_serviceName(self):
         self.assertEqual(self.service.serviceName, 'cit-auth-prod2')
@@ -140,4 +138,4 @@ class TestService_load_yaml_alternate(unittest.TestCase):
             'subnets': ['subnet-12345678', 'subnet-87654321'],
             'securityGroups': ['sg-12345678'],
             'assignPublicIp': 'ENABLED'
-            })
+        })

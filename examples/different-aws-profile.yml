@@ -1,18 +1,12 @@
 # basic.yml
 #
-# This file has two pretty standard services.
+# This is exactly like basic.yml, except that we're telling deployfish to
+# use a different AWS Named Profile to connect to AWS.
 #
-# * They both use a load balancer
-# * They both create 2 tasks in the cluster my-cluster
-# * They both use a task role
-# * They both use bridge networking
-# * Their tasks both have a single container whose image comes from an AWS ECR
-#   repository and which has a single port open
-#
-# my-service-elb uses an ELB for its load balancer (requires load_balancer_name)
-# my-service-alb uses an ALB for its load balancer (requires target_group_arn)
-#
-#
+aws:
+  profile: other
+  allowed_account_ids:
+    - "12134566"
 
 services:
   - name: my-service-elb

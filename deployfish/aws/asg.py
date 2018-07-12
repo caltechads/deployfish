@@ -1,5 +1,6 @@
-import boto3
 import botocore
+
+from deployfish.aws import get_boto3_session
 
 
 class ASG(object):
@@ -10,7 +11,7 @@ class ASG(object):
     """
 
     def __init__(self, group_name=None, yml={}):
-        self.asg = boto3.client('autoscaling')
+        self.asg = get_boto3_session().client('autoscaling')
         self.__groupName = group_name
         self.from_yaml(yml)
         self.from_aws()

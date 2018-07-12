@@ -22,7 +22,7 @@ Clone or download from `Github <https://github.com/caltechads/deployfish>`_.
 
 ::
 
-    cd deployfish-0.21.2
+    cd deployfish
     python setup.py install
 
 
@@ -37,4 +37,3 @@ are extremely useful.  They allow some very useful things:
 
 * Manage your virtualenvs easily on a per-project basis
 * Provide support for per-project Python versions.
-

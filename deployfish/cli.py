@@ -6,6 +6,7 @@ import sys
 import click
 
 import deployfish
+from deployfish.config import Config
 
 DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
 
@@ -16,8 +17,9 @@ DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
 @click.option('--import_env/--no-import_env', '-i', default=False, help="Whether or not to load environment variables from the host")
 @click.option('--version/--no-version', '-v', default=False, help="Print the current version and exit.")
 @click.option('--tfe_token', '-t', default=None, help="Terraform Enterprise API Token")
+@click.option('--profile', '-p', default=None, help="The name of the AWS credentials profile to use when talking to the AWS CLI")
 @click.pass_context
-def cli(ctx, filename, env_file, import_env, version, tfe_token):
+def cli(ctx, filename, env_file, import_env, version, tfe_token, profile):
     """
     Run and maintain ECS services.
 
@@ -27,6 +29,10 @@ def cli(ctx, filename, env_file, import_env, version, tfe_token):
         * If no ``-f/--filename`` flag was used, use the value from the environment variable ``DEPLOYFISH_CONFIG_FILE``
         * If no ``-f/--filename`` flag was used and `DEPLOYFISH_CONFIG_FILE` does not exist, use ``./deployfish.yml``
     """
+    if version:
+        print(deployfish.__version__)
+        sys.exit(0)
+
     if not filename:
         if 'DEPLOYFISH_CONFIG_FILE' in os.environ:
             filename = os.environ['DEPLOYFISH_CONFIG_FILE']
@@ -41,10 +47,7 @@ def cli(ctx, filename, env_file, import_env, version, tfe_token):
     else:
         if ctx.obj['CONFIG_FILE'] != DEFAULT_DEPLOYFISH_CONFIG_FILE:
             click.echo("Using '{}' as our deployfish config file".format(ctx.obj['CONFIG_FILE']))
+
     ctx.obj['ENV_FILE'] = env_file
     ctx.obj['IMPORT_ENV'] = import_env
     ctx.obj['TFE_TOKEN'] = tfe_token
-
-    if version:
-        print(deployfish.__version__)
-        sys.exit(0)

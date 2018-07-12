@@ -8,17 +8,25 @@ Advanced Features
 Architectural Assumptions
 =========================
 
-A few assuptions are made as to how your VPCs are structured. It is assumed that you have a bastion host for each of your VPCs. These bastion hosts are used to access the individual EC2 instances in your ECS clusters. These bastion hosts must also have a *Name* tag beginning with *bastion*, like *bastion-test*, etc.
+A few assuptions are made as to how your VPCs are structured. It is assumed
+that you have a bastion host for each of your VPCs. These bastion hosts are
+used to access the individual EC2 instances in your ECS clusters. We expect
+these bastion hosts must also have a ``Name`` tag beginning with ``bastion*``,
+like ``bastion-test``, etc.
 
-Cluster Command
-===============
+deploy cluster
+==============
 
-The *cluster* command allows you to interract with the individual EC2 machines that make up your ECS cluster. It provides three subcommands, *info*, *run*, and *ssh*. For many of the advanced features of deployfish, certain assumptions have been made about your architecture that are required for them to work.
+The ``deploy cluster`` commands allow you to interract with the individual EC2
+machines that make up your ECS cluster. It provides three subcommands,
+``info``, ``run``, and ``ssh``. For many of the advanced features of
+deployfish, the above assumptions have been made about your architecture that
+are required for them to work.
 
 Info
 ----
-
-The *info* subcommand allows you to view information about the individual EC2 systems that make up your ECS cluster. For example::
+The ``info`` subcommand allows you to view information about the individual EC2
+systems that make up your ECS cluster. For example::
 
     deploy cluster info test
 
@@ -40,10 +48,11 @@ Might return the output below::
             Name: ecs.web-test.c.2
             project: infrastructure
 
-Run
----
+deploy cluster run <service_name>
+---------------------------------
 
-The *run* subcommand allows you to run a command on each of the instances of the cluster. When you run this command::
+The ``deploy cluster run`` subcommand allows you to run a command on each of
+the instances of the cluster. When you run this command::
 
     deploy cluster run test
 
@@ -51,7 +60,8 @@ You will be prompted for the command to run::
 
     Command to run: rpm -qa|grep mysql
 
-The command will then be run on each of the members of the cluster, returning their output::
+The command will then be run on each of the members of the cluster, returning
+their output::
 
     Instance 1
     mysql55-5.5.56-1.17.amzn1.x86_64
@@ -63,32 +73,38 @@ The command will then be run on each of the members of the cluster, returning th
     mysql55-libs-5.5.56-1.17.amzn1.x86_64
 
 
-SSH
----
+deploy cluster ssh <service_name>
+---------------------------------
 
-The *ssh* subcommand allows you to ssh into a specific EC2 instance in your cluster::
+The ``deploy cluster ssh`` subcommand allows you to ssh into a specific EC2
+instance in your cluster::
 
     deploy cluster ssh test
 
-This command will list the members of the cluster and ask which one you want to connect to::
+This command will list the members of the cluster and ask which one you want to
+connect to::
 
     Instance 1: 10.0.0.1
     Instance 2: 10.0.0.2
     Which instance to ssh to?:
 
-In this case, you would have input either *1* or *2*. Once you've inputed the instance, you will be connect via ssh to that instance.
+In this case, you would have input either *1* or *2*. Once you've inputted the
+instance, you will be connect via ssh to that instance.
 
-SSH Command
-===========
+deploy ssh <service_name>
+=========================
 
-The *ssh* command will connect you via SSH to a system in your ECS cluster. If you have any running containers, it will choose one of those, otherwise it will connect to a random one. This is useful for debugging::
+The ``deploy ssh`` command will connect you via SSH to a system in your ECS
+cluster. If you have any running containers, it will choose one of those,
+otherwise it will connect to a random one. This is useful for debugging::
 
     deploy ssh test
 
-Exec Command
-============
+deploy exec <service_name>
+==========================
 
-The *exec* command will connect you to a running container, similar to connecting to the host running the container and running::
+The ``deploy exec`` command will connect you to a running container, similar to
+connecting to the host running the container and running::
 
     docker exec -it <contianer_id> /bin/bash
 

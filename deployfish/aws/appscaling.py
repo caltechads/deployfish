@@ -3,6 +3,7 @@
 import boto3
 import botocore
 
+from deployfish.aws import get_boto3_session
 from deployfish.aws.cloudwatch import ECSServiceCPUAlarm
 
 
@@ -39,7 +40,7 @@ class ScalingPolicy(object):
         :param aws: scaling policy AWS dict as described above
         :type aws: dict
         """
-        self.scaling = boto3.client('application-autoscaling')
+        self.scaling = get_boto3_session().client('application-autoscaling')
         self.serviceName = serviceName
         self.clusterName = clusterName
         self.alarm = None
@@ -352,7 +353,7 @@ class ApplicationAutoscaling(object):
         :param aws: scalable target AWS dict as described above
         :type aws: dict
         """
-        self.scaling = boto3.client('application-autoscaling')
+        self.scaling = get_boto3_session().client('application-autoscaling')
         self.serviceName = serviceName
         self.clusterName = clusterName
         self.__yml = {}

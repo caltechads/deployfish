@@ -1,9 +1,16 @@
 import json
-import requests
 import os
 import os.path
+import requests
 
 import boto3
+from botocore.exceptions import ClientError
+
+from deployfish.aws import get_boto3_session
+
+
+class NoSuchStateFile(Exception):
+    pass
 
 
 class Terraform(dict):
@@ -11,16 +18,30 @@ class Terraform(dict):
     This class allows us to retrieve values from our terraform state file.
     """
 
-    def __init__(self, yml):
+    def __init__(self, yml=None):
         self.load_yaml(yml)
 
-    def _get_state_file_from_s3(self, state_file_url):
-        s3 = boto3.resource('s3')
+    def _get_state_file_from_s3(self, config):
+        state_file_url = config['statefile']
+        if 'profile' in config:
+            session = boto3.session.Session(
+                profile_name=config['profile'],
+                region_name=config.get('region', None),
+            )
+        else:
+            session = get_boto3_session()
+        s3 = session.resource('s3')
         parts = state_file_url[5:].split('/')
         bucket = parts[0]
         filename = "/".join(parts[1:])
         key = s3.Object(bucket, filename)
-        state_file = key.get()["Body"].read().decode('utf-8')
+        try:
+            state_file = key.get()["Body"].read().decode('utf-8')
+        except ClientError as ex:
+            if ex.response['Error']['Code'] == 'NoSuchKey':
+                raise NoSuchStateFile("Could not find Terraform state file {}".format(state_file_url))
+            else:
+                raise ex
         return json.loads(state_file)
 
     def get_terraform_state(self, state_file_url):
@@ -31,20 +52,21 @@ class Terraform(dict):
                     self[key] = value
 
     def load_yaml(self, yml):
-        self.get_terraform_state(yml['statefile'])
+        self.get_terraform_state(yml)
         self.lookups = yml['lookups']
 
     def lookup(self, attr, keys):
         return self[self.lookups[attr].format(**keys)]['value']
 
+
 class TerraformE(dict):
 
     def __init__(self, yml, api_token=None):
-        if api_token == None:
-                if 'ATLAS_TOKEN' in os.environ:
-                    self.api_token = os.getenv('ATLAS_TOKEN')
-                else:
-                    print("No Terraform Enterprise API token provided!")
+        if api_token is None:
+            if 'ATLAS_TOKEN' in os.environ:
+                self.api_token = os.getenv('ATLAS_TOKEN')
+            else:
+                print("No Terraform Enterprise API token provided!")
         else:
             self.api_token = api_token
 
@@ -54,7 +76,6 @@ class TerraformE(dict):
 
         self.load_yaml(yml)
 
-
     def load_yaml(self, yml):
         self.workspace = yml['workspace']
         self.organization = yml['organization']
@@ -62,7 +83,6 @@ class TerraformE(dict):
         self.list_state_versions()
 
     def list_state_versions(self):
-
         end_point = self.api_end_point + "/state-versions?"
         org_filter = "filter[organization][name]=" + self.organization
         workspace_filter = "filter[workspace][name]=" + self.workspace
@@ -70,10 +90,8 @@ class TerraformE(dict):
         web_request = end_point + org_filter + "&" + workspace_filter
 
         headers = {'Authorization': 'Bearer ' + self.api_token,
-                    'Content-Type': 'application/vnd.api+json'}
-
+                   'Content-Type': 'application/vnd.api+json'}
         response = requests.get(web_request, headers=headers)
-
         data = json.loads(response.text)
         state_download_url = data['data'][0]['attributes']['hosted-state-download-url']
 

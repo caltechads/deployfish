@@ -8,12 +8,17 @@ Using Terraform
 Problem
 =======
 
-If we use `Terraform <https://www.terraform.io/>`_ to build our infrastructure in AWS, we can use its outputs to populate the relevant portions of our *deployfish.yml* file.
+If we use `Terraform <https://www.terraform.io/>`_ to build our infrastructure
+in AWS, we can use its outputs to populate the relevant portions of our
+``deployfish.yml`` file.
 
 Setup
 =====
 
-We're going to presume a more sophisticated setup with an ECS cluster, an ELB, a task role to allow the container to have rights to other AWS services, an S3 bucket, and and RDS database.We'll also use the terraform state file that has been uploaded to S3.
+We're going to presume a more sophisticated setup with an ECS cluster, an ELB,
+a task role to allow the container to have rights to other AWS services, an S3
+bucket, and and RDS database.We'll also use the terraform state file that has
+been uploaded to S3.
 
 Configuration
 =============
@@ -58,14 +63,21 @@ Here's the configuration file with terraform::
           - DB_HOST=${terraform.rds_address}
           - AWS_BUCKET=${terraform.app_bucket}
 
-We first declare a *terraform* section in the top-level of your *deployfish.yml* file. The values we define in that section are then available as a variable in *service* definitions, in the form *${terraform.variable_name}*. In the above config, we've defined *cluster* to be *${terraform.cluster_name}*. When we deploy, this will be automatically converted to::
+We first declare a ``terraform:`` section in the top-level of your
+``deployfish.yml`` file. The values we define in that section are then
+available as a variable in ``services:`` section definitions, in the form
+``${terraform.variable_name}``. In the above config, we've defined ``cluster`` to
+be ``${terraform.cluster_name}``. When we deploy, this will be automatically
+converted to::
 
     cluster: test-cluster-name
 
 Defining an Environment
 -----------------------
 
-We can take this a step further, though. Typically, we will use terraform to define all of the various environments, like test and prod. We can define the environment in our *service* definition with the *environment* parameter::
+We can take this a step further, though. Typically, we will use terraform to
+define all of the various environments, like test and prod. We can define the
+environment in our *service* definition with the *environment* parameter::
 
     services:
       - name: hello-world-test
@@ -74,7 +86,7 @@ We can take this a step further, though. Typically, we will use terraform to def
         count: 1
         ...
 
-We can then use this environmant value in our *terraform* section::
+We can then use this environmant value in our ``terraform:`` section::
 
     terraform:
       statefile: 's3://hello-world-remotestate-file/hello-world-terraform-state'
@@ -89,7 +101,8 @@ We can then use this environmant value in our *terraform* section::
 Multiple Environments
 ^^^^^^^^^^^^^^^^^^^^^
 
-This section can then be used for multiple *service* definitions based on the different environments::
+This section can then be used for multiple service definitions under
+``services:`` based on the different environments::
 
     terraform:
       statefile: 's3://hello-world-remotestate-file/hello-world-terraform-state'
@@ -153,9 +166,12 @@ This section can then be used for multiple *service* definitions based on the di
           - DB_HOST=${terraform.rds_address}
           - AWS_BUCKET=${terraform.app_bucket}
 
-Here we defined both a *test* and *prod* environment. When we deploy *test* we will use one environment file to set the *config* parameters that contains the *test* values, and a *prod* environment file to define its values.
+Here we defined both a *test* and *prod* environment. When we deploy *test* we
+will use one environment file to set the *config* parameters that contains the
+*test* values, and a *prod* environment file to define its values.
 
-Another advantage of specifying an envieronment, is that you can use this environment in place of the service name when calling *deploy*.
+Another advantage of specifying an envieronment, is that you can use this
+environment in place of the service name when calling ``deploy``.
 
 Deploy
 ======
