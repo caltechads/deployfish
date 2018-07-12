@@ -18,10 +18,15 @@ Install via pip
 Install via `setup.py`
 ======================
 
-Clone or download from `Github <https://github.com/caltechads/deployfish>`_.
+Download a release from `Github <https://github.com/caltechads/deployfish/releases>`_, then::
 
-::
+    unzip deployfish-0.21.2.zip
+    cd deployfish-0.21.2
+    python setup.py install
 
+Or::
+
+    git clone https://github.com/caltechads/deployfish.git
     cd deployfish
     python setup.py install
 
