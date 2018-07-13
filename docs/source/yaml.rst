@@ -6,8 +6,7 @@ deployfish.yml Reference
     .. contents::
 
 The deployfish service config file is a YAML file defining ECS services, task
-definitions and one-off tasks associated with those services. The default path
-for a deployfish configuration file is ``./deployfish.yml``.
+definitions and one-off tasks associated with those services.
 
 * The default path for a deployfish configuration file is ``./deployfish.yml``.  
 * If the environment variable ``DEPLOYFISH_CONFIG_FILE`` is defined, ``deployfish``

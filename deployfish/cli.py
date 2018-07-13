@@ -18,7 +18,7 @@ DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
 @click.option('--version/--no-version', '-v', default=False, help="Print the current version and exit.")
 @click.option('--tfe_token', '-t', default=None, help="Terraform Enterprise API Token")
 @click.pass_context
-def cli(ctx, filename, env_file, import_env, version, tfe_token, profile):
+def cli(ctx, filename, env_file, import_env, version, tfe_token):
     """
     Run and maintain ECS services.
 
