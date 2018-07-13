@@ -17,7 +17,6 @@ DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
 @click.option('--import_env/--no-import_env', '-i', default=False, help="Whether or not to load environment variables from the host")
 @click.option('--version/--no-version', '-v', default=False, help="Print the current version and exit.")
 @click.option('--tfe_token', '-t', default=None, help="Terraform Enterprise API Token")
-@click.option('--profile', '-p', default=None, help="The name of the AWS credentials profile to use when talking to the AWS CLI")
 @click.pass_context
 def cli(ctx, filename, env_file, import_env, version, tfe_token, profile):
     """
