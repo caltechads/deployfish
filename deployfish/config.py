@@ -1,10 +1,35 @@
-import yaml
-import re
+from functools import wraps
 import os
 import os.path
+import re
+import yaml
+import sys
 
-from deployfish.terraform import Terraform
-from deployfish.terraform import TerraformE
+import click
+
+from deployfish.aws import build_boto3_session
+from deployfish.terraform import (NoSuchStateFile, Terraform, TerraformE)
+
+
+def needs_config(func):
+    """
+    Add a fully configured Config() object to the ctx variable for our click function.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            args[0].obj['CONFIG'] = Config(
+                filename=args[0].obj['CONFIG_FILE'],
+                env_file=args[0].obj['ENV_FILE'],
+                import_env=args[0].obj['IMPORT_ENV'],
+                tfe_token=args[0].obj['TFE_TOKEN']
+            )
+        except NoSuchStateFile as e:
+            click.echo(str(e))
+            sys.exit(1)
+        else:
+            return func(*args, **kwargs)
+    return wrapper
 
 
 class Config(object):
@@ -28,12 +53,18 @@ class Config(object):
     TERRAFORM_RE = re.compile('\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}')
     ENVIRONMENT_RE = re.compile('\$\{env.(?P<key>.+)\}')
 
-    def __init__(self, filename='deployfish.yml', env_file=None, import_env=False, interpolate=True, tfe_token=None):
+    def __init__(self, filename='deployfish.yml', env_file=None, import_env=False, interpolate=True, tfe_token=None, use_aws_section=True):
         self.__raw = self.load_config(filename)
+        # Setup our boto3_session here because we might need it when retrieving
+        # the terraform file from S3
+        if use_aws_section:
+            build_boto3_session(self)
+        else:
+            build_boto3_session()
         self.import_env = import_env
         self.env_file = env_file
-        self.environ = None
         self.tfe_token = tfe_token
+        self.environ = None
         self.terraform = None
         if interpolate:
             if 'terraform' in self.__raw:
@@ -46,7 +77,19 @@ class Config(object):
                 self.terraform = None
             self.replace()
 
+    @property
+    def raw(self):
+        return self.__raw
+
     def load_config(self, filename):
+        """
+        Read our deployfish.yml file from disk and return it as parsed YAML.
+
+        :param filename: the path to our deployfish.yml file
+        :type filename: string
+
+        :rtype: dict
+        """
         with open(filename) as f:
             return yaml.load(f)
 
@@ -147,7 +190,8 @@ class Config(object):
         Get the full config for the service named ``service_name`` from our
         parsed YAML file.
 
-        :param service_name: the name of an ECS service listed in our YAML file under the ``services:`` section
+        :param service_name: the name of an ECS service listed in our YAML
+                             file under the ``services:`` section
         :type service_name: string
 
         :rtype: dict
@@ -159,16 +203,31 @@ class Config(object):
                 return service
         raise KeyError
 
-    def get_category_item(self, category, item_name):
+    def get_section(self, section):
         """
-        Get the raw values of an item in a custom category list.
+        Return the contents of a whole top level section from our deployfish.yml file.
 
-        :param category: The name of the top level category to search
-        :param item_name: The name of the instance of the category
-        :return:
+        :param section: The name of the top level section to search
+        :type section: string
+
+        :rtype: dict
         """
-        if category in self.__raw:
-            for item in self.__raw[category]:
+        return self.__raw[section]
+
+    def get_section_item(self, section, item_name):
+        """
+        Get an item from a top level section with 'name' equal to ``item_name``
+        from our parsed ``deployfish.yml`` file.
+
+        :param section: The name of the top level section to search
+        :type section: string
+
+        :param item: The name of the instance of the section
+
+        :rtype: dict
+        """
+        if section in self.__raw:
+            for item in self.__raw[section]:
                 if item['name'] == item_name:
                     return item
         raise KeyError

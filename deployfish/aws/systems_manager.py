@@ -1,7 +1,6 @@
-import string
 import re
 
-import boto3
+from deployfish.aws import get_boto3_session
 
 
 class KeyPrefixMixin(object):
@@ -17,7 +16,7 @@ class Parameter(KeyPrefixMixin):
     """
 
     def __init__(self, service, cluster, aws={}, yml=None):
-        self.ssm = boto3.client('ssm')
+        self.ssm = get_boto3_session().client('ssm')
         self.service = service
         self.cluster = cluster
         self.__defaults()
@@ -299,7 +298,7 @@ class ParameterFactory(object):
             m = ParameterFactory.WILDCARE_RE.search(yml)
             if m:
                 parameter_list = []
-                ssm = boto3.client('ssm')
+                ssm = get_boto3_session().client('ssm')
                 paginator = ssm.get_paginator('describe_parameters')
                 response_iterator = paginator.paginate(
                     ParameterFilters=[{'Key': 'Name', 'Option': 'BeginsWith', 'Values': [m.group('key')]}],
@@ -339,7 +338,7 @@ class ParameterStore(KeyPrefixMixin, list):
         if self.populated:
             return
 
-        self.ssm = boto3.client('ssm')
+        self.ssm = get_boto3_session().client('ssm')
         self.from_yaml(self.yml)
         self.from_aws()
         self.populated = True

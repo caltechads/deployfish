@@ -18,11 +18,16 @@ Install via pip
 Install via `setup.py`
 ======================
 
-Clone or download from `Github <https://github.com/caltechads/deployfish>`_.
+Download a release from `Github <https://github.com/caltechads/deployfish/releases>`_, then::
 
-::
+    unzip deployfish-0.22.2.zip
+    cd deployfish-0.22.2
+    python setup.py install
 
-    cd deployfish-0.21.2
+Or::
+
+    git clone https://github.com/caltechads/deployfish.git
+    cd deployfish
     python setup.py install
 
 
@@ -37,4 +42,3 @@ are extremely useful.  They allow some very useful things:
 
 * Manage your virtualenvs easily on a per-project basis
 * Provide support for per-project Python versions.
-

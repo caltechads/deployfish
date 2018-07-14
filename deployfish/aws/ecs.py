@@ -14,9 +14,9 @@ from tempfile import NamedTemporaryFile
 import time
 import tzlocal
 
-import boto3
 import botocore
 
+from deployfish.aws import get_boto3_session
 from deployfish.aws.asg import ASG
 from deployfish.aws.appscaling import ApplicationAutoscaling
 from deployfish.aws.systems_manager import ParameterStore
@@ -105,8 +105,8 @@ class ContainerDefinition(VolumeMixin):
         :param yml: a container definition from our deployfish.yml file
         :type yml: dict
         """
-        self.ecs = boto3.client('ecs')
-        self.ecr = boto3.client('ecr')
+        self.ecs = get_boto3_session().client('ecs')
+        self.ecr = get_boto3_session().client('ecr')
         self.__aws_container_definition = aws
 
         self._name = None
@@ -132,7 +132,7 @@ class ContainerDefinition(VolumeMixin):
         if yml:
             self.from_yaml(yml)
 
-    def __getattr__(self, attr): #NOQA
+    def __getattr__(self, attr):
         try:
             return self.__getattribute__(attr)
         except AttributeError:
@@ -150,7 +150,7 @@ class ContainerDefinition(VolumeMixin):
                 if (not self._portMappings and self.__aws_container_definition and 'portMappings' in self.__aws_container_definition):
                     ports = self.__aws_container_definition['portMappings']
                     for mapping in ports:
-                        self._portMappings.append('{}:{}/{}'.format(mapping['hostPort'],  mapping['containerPort'], mapping['protocol']))
+                        self._portMappings.append('{}:{}/{}'.format(mapping['hostPort'], mapping['containerPort'], mapping['protocol']))
                 return self._portMappings
             elif attr == 'command':
                 if (not self._command and self.__aws_container_definition and 'command' in self.__aws_container_definition):
@@ -283,11 +283,11 @@ class ContainerDefinition(VolumeMixin):
         if self.ulimits:
             r['ulimits'] = []
             for limit in self.ulimits:
-                l = {}
-                l['name'] = limit['name']
-                l['softLimit'] = limit['soft']
-                l['hardLimit'] = limit['hard']
-                r['ulimits'].append(l)
+                lc = {}
+                lc['name'] = limit['name']
+                lc['softLimit'] = limit['soft']
+                lc['hardLimit'] = limit['hard']
+                r['ulimits'].append(lc)
         if self.dockerLabels:
             r['dockerLabels'] = self.dockerLabels
         if self.volumes:
@@ -334,14 +334,14 @@ class ContainerDefinition(VolumeMixin):
         :param family_revisions: dict of `<family>:<revision>` strings
         :type family_revisions: list of strings
         """
-        l = {}
+        labels = {}
         for key, value in self.dockerLabels.items():
             if not key.startswith('edu.caltech.task'):
-                l[key] = value
+                labels[key] = value
         for revision in family_revisions:
             family = revision.split(':')[0]
-            l['edu.caltech.task.{}.id'.format(family)] = revision
-        self.dockerLabels = l
+            labels['edu.caltech.task.{}.id'.format(family)] = revision
+        self.dockerLabels = labels
 
     def get_helper_tasks(self):
         """
@@ -361,11 +361,11 @@ class ContainerDefinition(VolumeMixin):
 
         :rtype: dict of strings
         """
-        l = {}
+        labels = {}
         for key, value in self.dockerLabels.items():
             if key.startswith('edu.caltech.task'):
-                l[value.split(':')[0]] = value
-        return l
+                labels[value.split(':')[0]] = value
+        return labels
 
     def render(self):
         return(self.__render())
@@ -389,7 +389,7 @@ class ContainerDefinition(VolumeMixin):
         if 'memoryReservation' in yml:
             self.memoryReservation = yml['memoryReservation']
         if self.memory is None and self.memoryReservation is None:
-            self.memory = 512 # Give a reasonable default if none was specified
+            self.memory = 512  # Give a reasonable default if none was specified
         if 'command' in yml:
             self.command = yml['command']
         if 'entrypoint' in yml:
@@ -466,7 +466,7 @@ class TaskDefinition(VolumeMixin):
         )
 
     def __init__(self, task_definition_id=None, yml={}):
-        self.ecs = boto3.client('ecs')
+        self.ecs = get_boto3_session().client('ecs')
 
         self.__defaults()
         if task_definition_id:
@@ -683,7 +683,7 @@ class Task(object):
         :type yml: dict
         """
         self.clusterName = clusterName
-        self.ecs = boto3.client('ecs')
+        self.ecs = get_boto3_session().client('ecs')
         self.commands = {}
         self.from_yaml(yml)
         self.desired_task_definition = TaskDefinition(yml=yml)
@@ -779,8 +779,9 @@ class Service(object):
             service
         )
 
-    def __init__(self, yml={}):
-        self.ecs = boto3.client('ecs')
+    def __init__(self, service_name, config=None):
+        yml = config.get_service(service_name)
+        self.ecs = get_boto3_session().client('ecs')
 
         self.__aws_service = None
 
@@ -1473,7 +1474,7 @@ class Service(object):
         if lbtype == 'elb':
             print("")
             print("Load Balancer")
-            elb = boto3.client('elb')
+            elb = get_boto3_session().client('elb')
             response = elb.describe_instance_health(LoadBalancerName=self.load_balancer['load_balancer_name'])
             states = response['InstanceStates']
             if len(states) < desired_count:
@@ -1485,7 +1486,7 @@ class Service(object):
         elif lbtype == 'alb':
             print("")
             print("Load Balancer")
-            alb = boto3.client('elbv2')
+            alb = get_boto3_session().client('elbv2')
             response = alb.describe_target_health(
                 TargetGroupArn=self.load_balancer['target_group_arn']
             )
@@ -1605,7 +1606,7 @@ class Service(object):
         """
         self._search_hosts()
         instances = self.hosts.values()
-        ec2 = boto3.client('ec2')
+        ec2 = get_boto3_session().client('ec2')
         response = ec2.describe_instances(InstanceIds=instances)
         if response['Reservations']:
             instances = response['Reservations']
@@ -1671,7 +1672,7 @@ class Service(object):
         ip = None
         vpc_id = None
         bastion = ''
-        ec2 = boto3.client('ec2')
+        ec2 = get_boto3_session().client('ec2')
         response = ec2.describe_instances(InstanceIds=[instance_id])
         if response['Reservations']:
             instances = response['Reservations'][0]['Instances']

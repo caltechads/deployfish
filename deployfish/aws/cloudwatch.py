@@ -1,5 +1,6 @@
 import re
-import boto3
+
+from deployfish.aws import get_boto3_session
 
 
 class ECSServiceCPUAlarm(object):
@@ -32,7 +33,7 @@ class ECSServiceCPUAlarm(object):
         :type scaling_policy_arn: string
 
         """
-        self.cloudwatch = boto3.client('cloudwatch')
+        self.cloudwatch = get_boto3_session().client('cloudwatch')
         self.serviceName = serviceName
         self.clusterName = clusterName
         self.scaling_policy_arn = scaling_policy_arn

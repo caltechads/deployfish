@@ -1,6 +1,5 @@
-import boto3
-import botocore
-import json
+from deployfish.aws import get_boto3_session
+
 
 class ServiceDiscovery(object):
 
@@ -28,11 +27,10 @@ class ServiceDiscovery(object):
         :param yml: service discovery config from ``deployfish.yml`` as described above
         :type yml: dict
         """
-        self.sd = boto3.client('servicediscovery')
+        self.sd = get_boto3_session().client('servicediscovery')
         self.__defaults()
         self._registry_arn = registry_arn
         self.from_yaml(yml)
-
 
     def __defaults(self):
         self._routing_policy = 'MULTIVALUE'
@@ -40,7 +38,6 @@ class ServiceDiscovery(object):
         self._name = None
         self._namespace_id = None
         self._service_arn = None
-
 
     def from_yaml(self, yml):
         """
@@ -56,10 +53,7 @@ class ServiceDiscovery(object):
             self._namespace = yml['namespace']
             self._namespace_id = self.get_namespace(self._namespace)
             self.dns_records = []
-            dns = {
-                    'Type': yml['dns_records']['type'],
-                    'TTL': yml['dns_records']['ttl']
-                    }
+            dns = {'Type': yml['dns_records']['type'], 'TTL': yml['dns_records']['ttl']}
             self.dns_records.append(dns)
 
     def get_namespace(self, name):
@@ -107,7 +101,6 @@ class ServiceDiscovery(object):
             raise SystemExit(1)
 
         return namespace_id
-
 
     def get_resources_from(self, details, index):
         results = details[index]

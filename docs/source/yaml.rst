@@ -1,13 +1,18 @@
-*******************
-YAML file reference
-*******************
+************************
+deployfish.yml Reference
+************************
 
 ..
     .. contents::
 
 The deployfish service config file is a YAML file defining ECS services, task
-definitions and one-off tasks associated with those services. The default path
-for a deployfish configuration file is ``./deployfish.yml``.
+definitions and one-off tasks associated with those services.
+
+* The default path for a deployfish configuration file is ``./deployfish.yml``.  
+* If the environment variable ``DEPLOYFISH_CONFIG_FILE`` is defined, ``deployfish``
+  will use that instead.
+* If you pass a filename to ``deploy`` with the ``-f`` or ``--filename`` command line
+  flag, that will be used even if ``DEPLOYFISH_CONFIG_FILE`` is defined.
 
 Options specified in the Dockerfile for your containers (e.g., ``ENTRYPOINT``,
 ``CMD``, ``ENV``) are respected by default - you don’t need to specify them again
@@ -20,8 +25,63 @@ You can also use the values of environment variables in configuration values wit
 ``${env.<key>}`` syntax - see the Interpolation_ section for full details.
 
 
+AWS Credentials
+===============
+
+deployfish uses `boto3 <https://boto3.readthedocs.io>`_ to do all its work in
+AWS and by default defers to boto3 credential resolution to figure out what
+AWS credentials it should use.  See `Configuring Credentials <https://boto3.readthedocs.io/en/latest/guide/configuration.html#guide-configuration)>`_
+in boto3's documentation for details.
+
+Alternately, you can tell deployfish specifically how to get your AWS credentials by
+defining an ``aws:`` section in ``deployfish.yml``.
+
+.. note:: 
+  
+  The ``deploy entrypoint`` command will ignore any ``aws:`` section in
+  ``deployfish.yml`` We're assuming that you're only ever running ``deploy
+  entrypoint`` inside a container in your AWS service.  It should get its
+  credentials from the container's IAM ECS Task Role.
+
+Static credentials
+------------------
+
+Static credentials can be provided by adding an ``access_key`` and ``secret_key``
+in-line in an ``aws:`` section in ``deployfish.yml``. 
+
+Usage::
+
+    aws:
+      access_key: anaccesskey
+      secret_key: asecretkey
+      region: us-west-2
+
+If you specify static credentials in this way, they will be used instead of any
+credentials found in your environment.  ``region`` here is optional.
+
+Using a profile from your AWS credentials file
+----------------------------------------------
+
+You can use an AWS credentials file to specify your credentials and then set up
+your ``aws:`` section to use credentials from a particular profile. The default
+location is ``$HOME/.aws/credentials`` on Linux and OS X.  You can specify a
+different location for this file via the ``AWS_SHARED_CREDENTIALS_FILE``
+environment variable. 
+
+Usage::
+
+    aws:
+      profile: customprofile
+      region: us-west-2
+
+
+``region`` here is optional.
+
+ECS Service Definition
+======================
+
 This section contains a list of all configuration options supported by a
-service definition in version 1.
+ECS Service definition in version 1.
 
 Services are specified in a YAML list under the top level ``services:`` key like
 so::
@@ -32,12 +92,14 @@ so::
       - name: foobar-test
         ...
 
-name
-====
 
-(String, Required) The name of the actual ECS service.  ``name`` is required.  The restrictions on
-characters in ECS services are in play here:  Up to 255 letters (uppercase and
-lowercase), numbers, hyphens, and underscores are allowed.
+name
+----
+
+(String, Required) The name of the actual ECS service.  ``name`` is required.
+The restrictions on characters in ECS services are in play here:  Up to 255
+letters (uppercase and lowercase), numbers, hyphens, and underscores are
+allowed.
 
 Once your service has been created, this is not changable without deleting and
 re-creating the service. ::
@@ -46,7 +108,7 @@ re-creating the service. ::
       - name: foobar-prod
 
 cluster
-=======
+-------
 
 (String, Required) The name of the actual ECS cluster in which we'll create our service. ``cluster``
 is required. This has to exist in AWS before running ``deploy create
@@ -57,7 +119,7 @@ is required. This has to exist in AWS before running ``deploy create
         cluster: foobar-cluster
 
 environment
-===========
+-----------
 
 (String, Optional) This is a keyword that can be used in terraform lookups (see
 "Interpolation_", below).  It can also be used as an alias for the service name in the ``deploy`` command. ::
@@ -67,7 +129,7 @@ environment
         environment: prod
 
 count
-=====
+-----
 
 (Integer, Required) When we create the ECS service, configure the service to run this many tasks. ::
 
@@ -80,7 +142,7 @@ count
 already created service, use ``deploy scale <service_name> <count>``
 
 maximum_percent
-===============
+---------------
 
 (Integer, Optional) This is the upper limit on the number of tasks
 that are allowed in the RUNNING or PENDING state during a deployment, as a percentage of the ``count``.
@@ -93,7 +155,7 @@ This must be configured along with ``minimum_healthy_percent``. If not provided 
 See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
 
 minimum_healthy_percent
-===============
+---------------
 
 (Integer, Optional) ECS service, this is the lower limit on the number of tasks
 that must remain in the RUNNING state during a deployment, as a percentage of the ``count``. This must be configured
@@ -134,7 +196,7 @@ placement_strategy
 See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
 
 launch_type
-===========
+-----------
 
 (Required for Fargate tasks)
 
@@ -162,7 +224,7 @@ Example::
 See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html)>`_.
 
 vpc_configuration
-=================
+-----------------
 
 (Required for Fargate tasks)
 
@@ -195,7 +257,7 @@ Example::
 
 
 autoscalinggroup_name
-=====================
+---------------------
 
 (Optional)
 
@@ -215,7 +277,7 @@ you'll need to create it before you can use ``deploy scale <service_name>
         autoscalinggroup_name: foobar-asg
 
 load_balancer
-=============
+-------------
 
 (Optional)
 
@@ -227,7 +289,7 @@ been created.  To change any part of the load balancer info, you'll need to
 destroy and recreate the service.
 
 ELB
----
+^^^
 
 To specify that the the service is to use an ELB, you'll need to specify
 
@@ -257,7 +319,7 @@ you'll need to create it before running ``deploy create <service_name>``.
 
 
 ALB
----
+^^^
 
 To specify that the the service is to use an ALB, you'll need to specify
 
@@ -286,7 +348,7 @@ Example::
           container_port: 80
 
 service_discovery
-=================
+-----------------
 
 (Optional)
 
@@ -325,7 +387,7 @@ This would create a new service discovery service on the ``local`` Route53 priva
 See `Amazon ECS Service Discovery <https://aws.amazon.com/blogs/aws/amazon-ecs-service-discovery/)>`_.
 
 application_scaling
-===================
+-------------------
 
 (Optional)
 
@@ -369,20 +431,20 @@ This block says that, for this service:
 
 
 min_capacity
-------------
+^^^^^^^^^^^^
 
 (Integer, Required) The minimum number of tasks that should be running in
 our service.
 
 max_capacity
-------------
+^^^^^^^^^^^^
 
 (Integer, Required) The maximum number of tasks that should be running in
 our service.  Note that you should ensure that you have enough resources in
 your cluster to actually run this many of your tasks.
 
 role_arn
---------
+^^^^^^^^
 
 (String, Required) The name or full ARN of the IAM role that allows Application
 Autoscaling to muck with your service.  Your role definition should look like
@@ -434,13 +496,13 @@ role to act on any service. ::
 See `Amazon ECS Service Auto Scaling IAM Role <http://docs.aws.amazon.com/AmazonECS/latest/developerguide/autoscale_IAM_role.html)>`_.
 
 scale-up, scale-down
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 (Required) You should have exactly two scaling rules sections, and they should
 be named precisely ``scale-up`` and ``scale-down``.
 
 cpu
----
+^^^
 
 (String, Required) What CPU change causes this rule to be activated?  Valid
 operators are: ``<=``, ``<``, ``>``, ``>=``.  The CPU value itself is a float.
@@ -449,24 +511,24 @@ You'll need to put quotes around your value of ``cpu``, else the YAML parser wil
 freak out about the ``=`` sign.
 
 check_every_seconds
--------------------
+^^^^^^^^^^^^^^^^^^^
 
 (Integer, Required) Check the Average service CPU every this many seconds.
 
 periods
--------
+^^^^^^^
 
 (Integer, Required) The ``cpu`` test must be true for ``check_every_seconds *
 periods`` seconds for scaling to actually happen.
 
 scale_by
---------
+^^^^^^^^
 
 (Integer, Required) When it's time to scale, scale by this number of tasks.  To
 scale up, make the number positive; to scale down, make it negative.
 
 cooldown
---------
+^^^^^^^^
 
 (Integer, Required) The amount of time, in seconds, after a scaling activity
 completes where previous trigger-related scaling activities can influence
@@ -476,7 +538,7 @@ See "Cooldown" in AWS' `PutScalingPolicy <https://docs.aws.amazon.com/Applicatio
 
 
 family
-======
+------
 
 (String, Required) When we create task definitions for this service, put them
 in this family.  When you go to the "Task Definitions" page in the AWS web
@@ -492,7 +554,7 @@ console, what is listed under "Task Definition" is the family name. ::
 See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#family>`_.
 
 network_mode
-============
+------------
 
 (String, Optional) The Docker networking mode for the containers in our task.
 One of: ``bridge``, ``host``, ``awsvpc`` or ``none``. If this parameter is omitted, a service is assumed to
@@ -509,7 +571,7 @@ See the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/develop
 what each of those modes are.
 
 task_role_arn
-=============
+-------------
 
 (String, Optional) A task role ARN for an IAM role that allows the containers in the task
 permission to call the AWS APIs that are specified in its associated policies
@@ -530,7 +592,7 @@ See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/de
 `IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html>`_
 
 execution_role_arn
-==================
+------------------
 
 (String, Required for Fargate) A task exeuction role ARN for an IAM role that allows Fargate to pull container images and publish container logs
 to Amazon CloudWatch on your behalf.::
@@ -549,16 +611,16 @@ before running ``deploy create <service_name>``.
 See also the `IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html>`_
 
 cpu
-===
+---
 
 (Required for Fargate tasks)
 
 If you are configuring a Fargate task, you have to specify the cpu at the task level, and there are specific values
 for cpu which are supported which we describe below.
 
-==================
+------------------
  CPU value
-==================
+------------------
  256 (.25 vCPU)
  512 (.5 vCPU)
  1024 (1 vCPU)
@@ -568,16 +630,16 @@ for cpu which are supported which we describe below.
 See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
 
 memory
-======
+------
 
 (Required for Fargate tasks)
 
 If you are configuring a Fargate task, you have to specify the memory at the task level, and there are specific values
 for memory which are supported which we describe below.
 
-=====================================================================================
+-------------------------------------------------------------------------------------
  Memory value (MiB)
-=====================================================================================
+-------------------------------------------------------------------------------------
  512 (0.5GB), 1024 (1GB), 2048 (2GB)
  1024 (1GB), 2048 (2GB), 3072 (3GB), 4096 (4GB)
  2048 (2GB), 3072 (3GB), 4096 (4GB), 5120 (5GB), 6144 (6GB), 7168 (7GB), 8192 (8GB)
@@ -586,8 +648,10 @@ for memory which are supported which we describe below.
 
 See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
 
-containers
-==========
+Container Definitions
+=====================
+
+Define your containers within a service by using a ``containers:`` subsection.
 
 ``containers`` is a list of containers like so::
 
@@ -899,28 +963,33 @@ For fluentd::
         tag: hello
 
 
+**NOTE**: if you don't provide a ``logging:`` section, no logs will be emitted
+from your service.
 
-config
-======
+Secrets Management with AWS Parameter Store
+===========================================
 
-``config`` is a list of parameters that are stored in the `AWS Parameter Store <http://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html>`_ as part of `Systems Manager <https://aws.amazon.com/ec2/systems-manager/>`_. This allows us to store settings, encrypted passwords and other secrets.
+The ``config:`` subsection of an ECS service is a list of parameters that are
+stored in the `AWS Parameter Store <http://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html>`_
+as part of `Systems Manager <https://aws.amazon.com/ec2/systems-manager/>`_.
+This allows us to store settings, encrypted passwords and other secrets without
+exposing them to casual view in the AWS Console via the ``environment`` section
+of the container definition.
 
-    This is a list, so each item begins with a dash. For an unencrypted value, it is in the form::
+This is a list, so each item begins with a dash. For an unencrypted value, it is in the form::
 
-        - VARIABLE=VALUE
+    - VARIABLE=VALUE
 
-    For an encrypted value, you must add the *secure* flag::
+For an encrypted value, you must add the *secure* flag::
 
-        - VARIABLE:secure=VALUE
+    - VARIABLE:secure=VALUE
 
-    In this format, the encrypted value will be encrypted with the default key. For better security, make a unique key for each app and specify it in this format::
+In this format, the encrypted value will be encrypted with the default key. For
+better security, make a unique key for each app and specify it in this format::
 
-        - VARIABLE:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
+    - VARIABLE:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
 
 For more information about creating keys, see `AWS Key Management Service (KMS) <https://aws.amazon.com/kms/>`_.
-
-Example
--------
 
 Here's an example configuration::
 
@@ -940,23 +1009,26 @@ Here's an example configuration::
           - PASSWORD1:secure=password1
           - PASSWORD2:secure=password2
 
-Managing Config Parameters
---------------------------
+Managing Config Parameters in AWS
+---------------------------------
 
-In addition to deploying your services, you can also manage your config with *deployfish* using the *config* subcommand.
+In addition to deploying your services, you manage your config with ``deploy``
+using the ``config`` subcommand.
 
-To view your current config in AWS, run::
+To view your current values of your config in AWS, run::
 
     deploy config show hello-world-test
 
-To save config to AWS, run::
+To update the values of the config to AWS, run::
 
     deploy config write hello-world-test
 
 Reading From The Environment
 ----------------------------
 
-In practice, you do not want the *deployfish.yml* file to contain actual passwords, so the best practice is to have the secret parameter values defined in an environment variable. You would then change the *config* section to be::
+In practice, you do not want the ``deployfish.yml`` file to contain actual
+passwords, so the best practice is to have the secret parameter values defined
+in an environment variable. You would then change the *config* section to be::
 
     ...
     config:
@@ -965,37 +1037,26 @@ In practice, you do not want the *deployfish.yml* file to contain actual passwor
       - PASSWORD1:secure=${env.PASSWORD1}
       - PASSWORD2:secure=${env.PASSWORD2}
 
-To make this easier, *deployfish* allows you to pass an environment file on the command line::
 
-    deploy --env_file=config.env create hello-world-test
+See the Interpolation_ section for full details on how environment variable
+replacement in ``deployfish.yml`` works.
 
-This file is expected to be in the format::
+You typically should use a different file for each service.
 
-    VARIABLE=VALUE
-    VARIABLE=VALUE
 
-These variables will all be loaded into the environment, so available to read from the *config* parameters. You would typically use a different file for each service.
+Loading config: variables into your container environment
+---------------------------------------------------------
 
-You can also specify this file in the *service* definition itself::
-
-    services:
-      - name: hello-world-test
-        cluster: hello-world-cluster
-        count: 1
-        family: hello-world
-        env_file: config.env
-        ...
-
-Using Config Parameters
------------------------
-
-So now that we have all of these values loaded into the AWS Parameter Store, how do we use them? We've included a subcommand in *deployfish* called *entrypoint*. You would define this as your *entrypoint* in your *Dockerfile*::
+So now that we have all of these values loaded into the AWS Parameter Store,
+how do we use them? We've included a subcommand in ``deployfish`` called
+``entrypoint``. Define this as your ``entrypoint`` in your ``Dockerfile``::
 
     ENTRYPOINT ["deploy", "entrypoint"]
 
-You would have to install *deployfish* in your container for this to work.
+You have to install ``deployfish`` in your container for this to work.
 
-With this as your *entrypoint*, you will need to set the *command* parameter of the *container* to be your original *entrypoint*::
+With this as your ``entrypoint``, you will need to set the ``command`` parameter of
+the container to be your original ``ENTRYPOINT``::
 
     ...
     containers:
@@ -1014,9 +1075,16 @@ or in this case::
 
     deploy entrypoint /usr/bin/supervisord
 
-When this is run, your defined *config* parameters will be downloaded from AWS Parameter Store and defined locally as environment variables, which you will then access as you would any environment variable.
+When this is run, your defined ``config`` parameters will be downloaded from AWS
+Parameter Store and defined locally as environment variables, which you will
+then access as you would any environment variable.
 
-**NOTE:** If you run your docker container locally, the *entrypoint* subcommand will simply call the command without downloading anything from AWS Parameter Store. You would then use locally defined environment variables to set the various parameter values.
+.. note::
+  
+  If you run your docker container locally, the ``entrypoint`` subcommand
+  will simply call the command without downloading anything from AWS Parameter
+  Store. You would then use locally defined environment variables to set the
+  various parameter values.
 
 Service Helper Tasks
 ====================
@@ -1034,7 +1102,7 @@ options as those in the ``services`` list: ``family``, ``environment``,
 ``network_mode``, ``task_role_arn``, and all the same options under ``containers``.
 
 Example
--------
+^^^^^^^
 
 When you do a ``deploy update <service_name>``, deployfish automaticaly updates
 the task definition to what is listed in the ``tasks`` entry for each task, and
@@ -1112,8 +1180,8 @@ running the task.
 
 .. _Interpolation:
 
-Variable interpolation
-======================
+Variable interpolation in deployfish.yml
+========================================
 
 You can use variable replacement in your service definitions to dynamically
 replace values from two sources: your local shell environment and from a remote
@@ -1133,32 +1201,63 @@ example, for the following ``deployfish.yml`` snippet::
         config:
           - MY_PASSWORD=${env.MY_PASSWORD}
 
-``${env.MY_PASSWORD}`` will be replaced by the value of the ``MY_PASSWORD``
-environment variable in your shell environment.
+``deployfish`` does not by default inherit your shell environment when doing
+these ``${env.VAR}`` replacements. You must tell ``deployfish`` how you want it
+to load those environment variables.
 
---env_file option
-^^^^^^^^^^^^^^^^^
+deploy --import_env command line option
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``deploy`` supports declaring environment variables in a file instead of having
-to actually have them set in your environment.  The file should follow these
-rules:
+If you run ``deploy`` with the ``--import_env`` option, it will import your
+shell environment into the deployfish environment.  Then anything you've
+defined in your shell environment will be available for ``${env.VAR}`` 
+replacements.
+
+Example::
+
+    deploy --import_env <subcommand> [options] 
+
+deploy --env_file command line option
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``deploy`` also supports declaring environment variables in a file instead of
+having to actually have them set in your environment.  The file should follow
+these rules:
 
 * Each line should be in ``VAR=VAL`` format.
 * Lines beginning with # (i.e. comments) are ignored.
 * Blank lines are ignored.
 * There is no special handling of quotation marks.
 
-Then do
+Example::
 
-    ``deploy --env_file=<filename> <subcommand> [options]``
+    deploy --env_file=<filename> <subcommand> [options]
 
+Then anything you've defined in ``<filename>`` defined in your shell environment
+will be available for ``${env.VAR}`` replacements.
+
+
+The "env_file" service definition option
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can also specify this environment variable file in the ECS service
+definition itself::
+
+    services:
+      - name: hello-world-test
+        cluster: hello-world-cluster
+        count: 1
+        family: hello-world
+        env_file: config.env
+        ...
 
 Terraform variable replacment
 -----------------------------
 
-If you're managing your AWS resources for your service with terraform and you
-export your terraform state files to S3, or if you are using terraform enterprise,
-you can use the values of your terraform outputs as string values in your service definitions.
+If you're managing your AWS resources for your service with Terraform and you
+export your Terraform state files to S3, or if you are using Terraform
+Enterprise, you can use the values of your terraform outputs as string values
+in your service definitions.
 
 To do so, first declare a ``terraform`` top level section in your
 ``deployfish.yml`` file::
@@ -1173,7 +1272,7 @@ To do so, first declare a ``terraform`` top level section in your
         task_role_arn: '{service-name}-task-role-arn'
         ecr_repo_url: 'ecr-repository-url'
 
-If using terraform enterprise you need to provide the ``workspace`` and ``organization``
+If using Terraform Enterprise you need to provide the ``workspace`` and ``organization``
 in place of the statefile::
 
     terraform:
@@ -1234,6 +1333,17 @@ You can use these replacements in the values:
 
 These values are evaluated in the context of each service separately.
 
+profile
+^^^^^^^
+(String, Optional) The name of the AWS CLI Named Profile to use when retrieving
+the statefile from S3.
+
+See `Named Profiles <https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html>`_
+
+region
+^^^^^^^
+(String, Optional) The AWS region in which your S3 bucket lives.
+
 workspace
 ^^^^^^^^^
 
@@ -1243,6 +1353,7 @@ organization
 ^^^^^^^^^^^^
 
 (String, Required Terraform Enterprise) The Terraform Enterprise organization.
+
 
 --tfe_token option
 ^^^^^^^^^^^^^^^^^^
@@ -1257,3 +1368,28 @@ It will also work if you specify an ``ATLAS_TOKEN`` environment variable
 while using the ``--import_env`` option.
 
     ``deploy --import_env <subcommand> [options]``
+
+Advanced Usage: using a different AWS Profile for the statefile
+===============================================================
+
+It is not uncommon to of your Terraform state files in a single bucket, even if
+the associated Terraform templates affect resources in many different accounts.
+
+If this is the case with you, you can specify which AWS Credentials named profile
+(see `Named Profiles <https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html>`_
+for more information).  use to retrieve the state files by adding the ``profile`` and ``region``
+settings to your ``terrraform:`` section::
+
+    terraform:
+      statefile: 's3://hello-world-remotestate-file/hello-world-terraform-state'
+      profile: configs
+      region: us-west-2
+      lookups:
+        cluster_name: '{environment}-cluster-name'
+        load_balancer_name: '{environment}-elb-id'
+        task_role_arn: 'iam-role-hello-world-{environment}-task'
+        rds_address: '{environment}-rds-address'
+        app_bucket: 's3-hello-world-{environment}-bucket'
+
+This will tell ``deployfish`` that, for retrieving this statefile only, it
+should use the "configs" AWS profile.

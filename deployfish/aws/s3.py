@@ -2,7 +2,8 @@ import os
 import os.path
 import subprocess
 
-import boto3
+from deployfish.aws import get_boto3_session
+
 
 class S3(object):
 
@@ -50,11 +51,9 @@ class S3(object):
         return dest, filename
 
     def put_string(self, data, key):
-        s3 = boto3.client('s3')
+        s3 = get_boto3_session().client('s3')
         s3.put_object(Bucket=self.config["dest"], Key=key, Body=data)
 
     def delete_object(self, key):
-        s3 = boto3.client('s3')
+        s3 = get_boto3_session().client('s3')
         s3.delete_object(Bucket=self.config["dest"], Key=key)
-
-
