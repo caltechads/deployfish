@@ -807,6 +807,8 @@ class Service(object):
         self._roleArn = None
         self.__load_balancer = {}
         self.__vpc_configuration = {}
+        self.__placement_constraints = []
+        self.__placement_strategy = []
 
     def __get_service(self):
         """
@@ -1140,6 +1142,40 @@ class Service(object):
                 return self.active_task_definition.containers[0].image.split(":")[1]
         return None
 
+    @property
+    def placementConstraints(self):
+        if self.__aws_service:
+            if self.__aws_service['placementConstraints']:
+                self.__placement_constraints = self.__aws_service['placementConstraints']
+        return self.__placement_constraints
+
+    @placementConstraints.setter
+    def placementConstraints(self, placementConstraints):
+        if isinstance(placementConstraints, list):
+            self.__placement_constraints = []
+            for placement in placementConstraints:
+                configDict = {'type': placement['type']}
+                if 'expression' in placement:
+                    configDict['expression'] = placement['expression']
+                self.__placement_constraints.append(configDict)
+
+    @property
+    def placementStrategy(self):
+        if self.__aws_service:
+            if self.__aws_service['placementStrategy']:
+                self.__placement_strategy = self.__aws_service['placementStrategy']
+        return self.__placement_strategy
+
+    @placementStrategy.setter
+    def placementStrategy(self, placementStrategy):
+        if isinstance(placementStrategy, list):
+            self.__placement_strategy = []
+            for placement in placementStrategy:
+                configDict = {'type': placement['type']}
+                if 'field' in placement:
+                    configDict['field'] = placement['field']
+                self.__placement_strategy.append(configDict)
+
     def __render(self, task_definition_id):
         """
         Generate the dict we will pass to boto3's `create_service()`.
@@ -1179,6 +1215,10 @@ class Service(object):
             'maximumPercent': self.maximumPercent,
             'minimumHealthyPercent': self.minimumHealthyPercent
         }
+        if len(self.placementConstraints) > 0:
+            r['placementConstraints'] = self.placementConstraints
+        if len(self.placementStrategy) > 0:
+            r['placementStrategy'] = self.placementStrategy
         return r
 
     def from_yaml(self, yml):
@@ -1231,6 +1271,10 @@ class Service(object):
                 self.serviceDiscovery = ServiceDiscovery(None, yml=yml['service_discovery'])
             elif 'service_discovery' in yml:
                 print("Ignoring service discovery config since network mode is not awsvpc")
+        if 'placement_constraints' in yml:
+            self.placementConstraints = yml['placement_constraints']
+        if 'placement_strategy' in yml:
+            self.placementStrategy = yml['placement_strategy']
 
         self._count = yml['count']
         self._desired_count = self._count
