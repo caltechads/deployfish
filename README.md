@@ -106,7 +106,7 @@ The deployfish service config file is a YAML file defining ECS services, task
 definitions and one-off tasks associated with those services.  `deployfish`
 finds its config file like so:
 
-* The default path for a deployfish configuration file is `./deployfish.yml`.  
+* The default path for a deployfish configuration file is `./deployfish.yml`.
 * If the environment variable `DEPLOYFISH_CONFIG_FILE` is defined, `deployfish`
   will use that instead.
 * If you pass a filename to `deploy` with the `-f` or `--filename` command line
@@ -201,6 +201,32 @@ will default to 0.
     services:
       - name: foobar-prod
         minimum_healthy_percent: 50
+
+See [Service Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
+
+### placement_constraints
+
+(Optional) An array of placement constraint objects to use for tasks in your service. You can specify a maximum of 10 constraints per task (this limit includes constraints in the task definition and those specified at run time).
+
+    services:
+         - name: foobar-prod
+           placement_constraints:
+            - type: distinctInstance
+            - type: memberOf
+              expression: 'attribute:ecs.instance-type =~ t2.*'
+
+See [Service Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
+
+### placement_strategy
+
+(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy rules per service.
+
+    services:
+         - name: foobar-prod
+           placement_strategy:
+            - type: random
+            - type: spread
+              field: 'attribute:ecs.availability-zone'
 
 See [Service Definition Parameters](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
 

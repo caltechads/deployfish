@@ -105,6 +105,34 @@ along with ``maximum_percent``. If not provided will default to 0. ::
 
 See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
 
+placement_constraints
+===============
+
+(Optional) An array of placement constraint objects to use for tasks in your service. You can specify a maximum of 10 constraints per task (this limit includes constraints in the task definition and those specified at run time).
+
+    services:
+         - name: foobar-prod
+           placement_constraints:
+            - type: distinctInstance
+            - type: memberOf
+              expression: 'attribute:ecs.instance-type =~ t2.*'
+
+See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
+
+placement_strategy
+===============
+
+(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy rules per service.
+
+    services:
+         - name: foobar-prod
+           placement_strategy:
+            - type: random
+            - type: spread
+              field: 'attribute:ecs.availability-zone'
+
+See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
+
 launch_type
 ===========
 
@@ -113,9 +141,9 @@ launch_type
 If you are configuring a Fargate task you must specify the launch type as ``FARGATE``, otherwise
 the default value of ``EC2`` is used.
 
-The Fargate launch type allows you to run your containerized applications without the need to 
-provision and manage the backend infrastructure. Just register your task definition and Fargate 
-launches the container for you. 
+The Fargate launch type allows you to run your containerized applications without the need to
+provision and manage the backend infrastructure. Just register your task definition and Fargate
+launches the container for you.
 
 If you use the Fargate launch type, the following task parameters are not valid:
 
@@ -143,9 +171,9 @@ If you are configuring a Fargate task, you have to specify your vpc configuratio
 deployfish won't create the vpc, subnets or security groups for you --
 you'll need to create it before you can use ``deploy create <service_name>``
 
-You'll need to specify 
+You'll need to specify
 
-* ``subnets``: (array) The subnets in the VPC that the task scheduler should consider for placement. 
+* ``subnets``: (array) The subnets in the VPC that the task scheduler should consider for placement.
   Only private subnets are supported at this time. The VPC will be determined by the subnets you
   specify, so if you specify multiple subnets they must be in the same VPC.
 * ``security_groups``: (array) The ID of the security group to associate with the service.
@@ -516,7 +544,7 @@ to Amazon CloudWatch on your behalf.::
         execution_role_arn: arn:aws:iam::123142123547:role/my-task-role
 
 deployfish won't create the Task Execution Role for you -- you'll need to create it
-before running ``deploy create <service_name>``.  
+before running ``deploy create <service_name>``.
 
 See also the `IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html>`_
 
@@ -525,8 +553,8 @@ cpu
 
 (Required for Fargate tasks)
 
-If you are configuring a Fargate task, you have to specify the cpu at the task level, and there are specific values 
-for cpu which are supported which we describe below. 
+If you are configuring a Fargate task, you have to specify the cpu at the task level, and there are specific values
+for cpu which are supported which we describe below.
 
 ==================
  CPU value
@@ -544,8 +572,8 @@ memory
 
 (Required for Fargate tasks)
 
-If you are configuring a Fargate task, you have to specify the memory at the task level, and there are specific values 
-for memory which are supported which we describe below. 
+If you are configuring a Fargate task, you have to specify the memory at the task level, and there are specific values
+for memory which are supported which we describe below.
 
 =====================================================================================
  Memory value (MiB)
