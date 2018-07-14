@@ -29,6 +29,10 @@ class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
     def test_minimum_healthy_percent(self):
         self.assertEqual(self.service.minimumHealthyPercent, 0)
 
+    def test_placements(self):
+        self.assertEqual(self.service.placementConstraints, [])
+        self.assertEqual(self.service.placementStrategy, [])
+
 class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.TestCase):
 
     def setUp(self):
@@ -47,7 +51,15 @@ class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.Te
                 'deploymentConfiguration': {
                     'minimumHealthyPercent': 53,
                     'maximumPercent': 275
-                }
+                },
+                'placementConstraints': [{
+                    'type': 'memberOf',
+                    'expression': 'attribute:ecs.instance-type =~ t2.*'
+                }],
+                'placementStrategy': [{
+                    'type': 'binpack',
+                    'field': 'memory'
+                }]
             }
 
     def test_maximum_percent(self):
@@ -55,6 +67,16 @@ class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.Te
 
     def test_minimum_healthy_percent(self):
         self.assertEqual(self.service.minimumHealthyPercent, 53)
+
+    def test_placements(self):
+        compare(self.service.placementConstraints, [{
+            'type': 'memberOf',
+            'expression': 'attribute:ecs.instance-type =~ t2.*'
+        }])
+        compare(self.service.placementStrategy, [{
+            'type': 'binpack',
+            'field': 'memory'
+        }])
 
 
 class TestService_load_yaml(unittest.TestCase):
@@ -141,3 +163,13 @@ class TestService_load_yaml_alternate(unittest.TestCase):
             'securityGroups': ['sg-12345678'],
             'assignPublicIp': 'ENABLED'
             })
+
+    def test_placements(self):
+        compare(self.service.placementConstraints, [
+            {'type': 'distinctInstance'},
+            {'type': 'memberOf', 'expression': 'attribute:ecs.instance-type =~ t2.*'}
+        ])
+        compare(self.service.placementStrategy, [
+            {'type': 'random'},
+            {'type': 'spread', 'field': 'attribute:ecs.availability-zone'}
+        ])
