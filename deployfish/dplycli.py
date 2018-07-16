@@ -604,6 +604,7 @@ def entrypoint(ctx, command, dry_run):
 @click.pass_context
 @click.argument('service_name')
 @click.option('--verbose/--no-verbose', '-v', default=False, help="Show all SSH output.")
+@needs_config
 def ssh(ctx, service_name, verbose):
     """
     If the service SERVICE_NAME has any running tasks, randomly choose one of
@@ -621,6 +622,7 @@ def ssh(ctx, service_name, verbose):
 @click.pass_context
 @click.argument('service_name')
 @click.option('--verbose/--no-verbose', '-v', default=False, help="Show all SSH output.")
+@needs_config
 def docker_exec(ctx, service_name, verbose):
     """
     SSH to an EC2 instance in the cluster defined in the service named SERVICE_NAME, then
@@ -645,6 +647,7 @@ def _interpolate_tunnel_info(value, service):
 @cli.command('tunnel', short_help="Tunnel through an ECS cluster machine to the remote host")
 @click.pass_context
 @click.argument('tunnel_name')
+@needs_config
 def tunnel(ctx, tunnel_name):
     """
     Tunnel through an EC2 instance in the ECS cluster.
