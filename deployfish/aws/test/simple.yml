@@ -62,6 +62,14 @@ services:
     network_mode: awsvpc
     maximum_percent: 250
     minimum_healthy_percent: 50
+    placement_constraints:
+      - type: distinctInstance
+      - type: memberOf
+        expression: 'attribute:ecs.instance-type =~ t2.*'
+    placement_strategy:
+      - type: random
+      - type: spread
+        field: 'attribute:ecs.availability-zone'
     launch_type: FARGATE
     execution_role: ecs_execution_role
     cpu: 256
