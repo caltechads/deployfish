@@ -1607,7 +1607,7 @@ class Service(object):
         self._search_hosts()
         instances = self.hosts.values()
         ec2 = get_boto3_session().client('ec2')
-        response = ec2.describe_instances(InstanceIds=instances)
+        response = ec2.describe_instances(InstanceIds=list(instances))
         if response['Reservations']:
             instances = response['Reservations']
             return instances
