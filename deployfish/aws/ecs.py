@@ -809,6 +809,7 @@ class Service(object):
         self.__vpc_configuration = {}
         self.__placement_constraints = []
         self.__placement_strategy = []
+        self.__schedulingStrategy = "REPLICA"
 
     def __get_service(self):
         """
@@ -892,7 +893,7 @@ class Service(object):
     @property
     def maximumPercent(self):
         """
-        If maximumPercent is defined in deployfish.yml for our service,
+        If maximumPercent is defined in deployfish.yml for our service
         return that value.
 
         If it is not defined in deployfish.yml, but it is defined in AWS, return
@@ -1176,6 +1177,17 @@ class Service(object):
                     configDict['field'] = placement['field']
                 self.__placement_strategy.append(configDict)
 
+    @property
+    def schedulingStrategy(self):
+        if self.__aws_service:
+            if self.__aws_service['schedulingStrategy']:
+                self.__schedulingStrategy = self.__aws_service['schedulingStrategy']
+        return self.__schedulingStrategy
+
+    @schedulingStrategy.setter
+    def schedulingStrategy(self, schedulingStrategy):
+        self.__schedulingStrategy = schedulingStrategy
+
     def __render(self, task_definition_id):
         """
         Generate the dict we will pass to boto3's `create_service()`.
@@ -1207,7 +1219,8 @@ class Service(object):
                 'awsvpcConfiguration': self.vpc_configuration
             }
         r['taskDefinition'] = task_definition_id
-        r['desiredCount'] = self.count
+        if self.schedulingStrategy != "DAEMON":
+            r['desiredCount'] = self.count
         r['clientToken'] = self.client_token
         if self.__service_discovery:
             r['serviceRegistries'] = self.__service_discovery
@@ -1219,6 +1232,8 @@ class Service(object):
             r['placementConstraints'] = self.placementConstraints
         if len(self.placementStrategy) > 0:
             r['placementStrategy'] = self.placementStrategy
+        if self.schedulingStrategy:
+            r['schedulingStrategy'] = self.schedulingStrategy
         return r
 
     def from_yaml(self, yml):
@@ -1275,9 +1290,13 @@ class Service(object):
             self.placementConstraints = yml['placement_constraints']
         if 'placement_strategy' in yml:
             self.placementStrategy = yml['placement_strategy']
-
-        self._count = yml['count']
-        self._desired_count = self._count
+        if 'scheduling_strategy' in yml and yml['scheduling_strategy'] == 'DAEMON':
+            self.schedulingStrategy = yml['scheduling_strategy']
+            self._count = 'automatically'
+            self.maximumPercent = 100
+        else:
+            self._count = yml['count']
+            self._desired_count = self._count
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
             "DEPLOYFISH_SERVICE_NAME": yml['name'],

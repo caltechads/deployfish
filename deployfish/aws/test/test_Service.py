@@ -33,6 +33,8 @@ class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
         self.assertEqual(self.service.placementConstraints, [])
         self.assertEqual(self.service.placementStrategy, [])
 
+    def test_scheduling_strategy(self):
+        self.assertEqual(self.service.schedulingStrategy, 'REPLICA')
 
 class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.TestCase):
 
