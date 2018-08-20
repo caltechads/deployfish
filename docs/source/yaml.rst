@@ -128,10 +128,20 @@ environment
       - name: foobar-prod
         environment: prod
 
+scheduling_strategy
+-------------------
+
+(String, Optional) When we create the ECS service, configure the service to run in REPLICA or DAEMON. Default to REPLICA. ::
+
+    services:
+      - name: foobar-prod
+        clsuter: foodbar-cluster
+        scheduling_strategy: DAEMON
+
 count
 -----
 
-(Integer, Required) When we create the ECS service, configure the service to run this many tasks. ::
+(Integer, Required for REPLICA) When we create the ECS service, configure the service to run this many tasks. ::
 
     services:
       - name: foobar-prod
@@ -146,7 +156,7 @@ maximum_percent
 
 (Integer, Optional) This is the upper limit on the number of tasks
 that are allowed in the RUNNING or PENDING state during a deployment, as a percentage of the ``count``.
-This must be configured along with ``minimum_healthy_percent``. If not provided will default to 200. ::
+This must be configured along with ``minimum_healthy_percent``. If not provided will default to 200. If schdeuling strategy is set to DAMEON, it will be fixd at 100 ::
 
     services:
       - name: foobar-prod
