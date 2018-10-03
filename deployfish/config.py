@@ -143,7 +143,7 @@ class Config(object):
                 'cluster-name': service['cluster']
             }
             if 'workspace' in self.__raw['terraform']:
-                self.__raw['terraform']['workspace'].format(**replacers)
+                self.__raw['terraform']['workspace'] = self.__raw['terraform']['workspace'].format(**replacers)
             else:
                 self.__raw['terraform']['statefile'] = self.__raw['terraform']['statefile'].format(**replacers)
 
