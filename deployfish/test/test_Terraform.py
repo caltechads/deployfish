@@ -13,6 +13,7 @@ YAML = {
         'lookup1': 'proxy-{environment}-cluster-name',
         'lookup2': 'proxy-{environment}-elb-id',
         'lookup3': 'proxy-{environment}-autoscalinggroup-name',
+        'lookup4': 'security-group-list'
     }
 }
 
@@ -29,6 +30,7 @@ class TestTerraform_load_yaml(unittest.TestCase):
             'lookup1': 'proxy-{environment}-cluster-name',
             'lookup2': 'proxy-{environment}-elb-id',
             'lookup3': 'proxy-{environment}-autoscalinggroup-name',
+            'lookup4': 'security-group-list',
         })
 
 
@@ -63,3 +65,4 @@ class TestTerraform_lookup(unittest.TestCase):
     def test_lookup(self):
         self.assertEqual(self.terraform.lookup('lookup1', {'environment': 'qa'}), 'foobar-proxy-qa')
         self.assertEqual(self.terraform.lookup('lookup1', {'environment': 'prod'}), 'foobar-proxy-prod')
+        self.assertListEqual(self.terraform.lookup('lookup4', {}), ['sg-1234567', 'sg-2345678', 'sg-3456789'])

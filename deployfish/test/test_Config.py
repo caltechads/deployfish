@@ -33,6 +33,14 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
     def test_terraform_nested_list_interpolation(self):
         self.assertEqual(self.config.get_service('cit-auth-prod')['containers'][0]['environment'][2], 'SECRETS_BUCKET_NAME=ac-config-store')
 
+    def test_terraform_list_output_interpolation(self):
+        self.assertListEqual(self.config.get_service('cit-auth-prod')['vpc_configuration']['security_groups'], ['sg-1234567', 'sg-2345678', 'sg-3456789'])
+
+    def test_terraform_map_output_interpolation(self):
+        self.assertListEqual(self.config.get_service('cit-output-test')['vpc_configuration']['subnets'], ['subnet-1234567'])
+        self.assertListEqual(self.config.get_service('cit-output-test')['vpc_configuration']['security_groups'], ['sg-1234567'])
+        self.assertEqual(self.config.get_service('cit-output-test')['vpc_configuration']['public_ip'], 'DISABLED')
+
     def test_environment_simple_interpolation(self):
         self.assertEqual(self.config.get_service('cit-auth-prod')['config'][0], 'FOOBAR=hi_mom')
         self.assertEqual(self.config.get_service('cit-auth-prod')['config'][2], 'FOO_BAR_PREFIX=oh_no/test')

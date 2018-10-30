@@ -7,6 +7,8 @@ terraform:
     core_cluster_name: 'core-{environment}-cluster-name'
     secrets_bucket_name: 's3-config-store-bucket'
     cit_auth_iam_task_role: 'iam-role-cit-auth-{environment}-task'
+    security_group_list: 'security-group-list'
+    vpc_configuration: 'vpc-configuration'
 
 services:
   - name: cit-auth-prod
@@ -25,6 +27,8 @@ services:
     family: cit-auth-prod
     network_mode: host
     task_role_arn: ${terraform.cit_auth_iam_task_role}
+    vpc_configuration:
+      security_groups: ${terraform.security_group_list}
     containers:
       - name: cit_auth
         image: 467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3
@@ -47,6 +51,9 @@ services:
           - SECRETS_BUCKET_NAME=${terraform.secrets_bucket_name}
         labels:
           edu.caltech.imss-ads: "foobar"
+  - name: cit-output-test
+    vpc_configuration: ${terraform.vpc_configuration}
+    cluster: ${terraform.proxy_cluster_name}
 
 tunnels:
   - name: test
