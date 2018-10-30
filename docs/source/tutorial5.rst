@@ -173,6 +173,28 @@ will use one environment file to set the *config* parameters that contains the
 Another advantage of specifying an envieronment, is that you can use this
 environment in place of the service name when calling ``deploy``.
 
+Terraform List and Map Outputs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Terraform supports outputting lists and maps, and you can use lookups of list
+and map values in your service definitions::
+
+  terraform:
+    statefile: 's3://hello-world-remotestate-file/hello-world-terraform-state'
+    lookups:
+      cluster_name: '{environment}-cluster-name'
+      security_groups: 'service-security-groups'
+      load_balancer: 'load-balancer-config'
+
+  services:
+    - name: hello-world
+      cluster: ${terraform.cluster_name}
+      environment: prod
+      count: 1
+      load_balancer: ${terraform.load_balancer}
+      vpc_configuration:
+        security_groups: ${terraform.security_groups}
+
 Deploy
 ======
 

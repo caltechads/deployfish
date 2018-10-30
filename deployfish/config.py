@@ -164,7 +164,12 @@ class Config(object):
         if self.terraform:
             m = self.TERRAFORM_RE.search(value)
             if m:
-                raw[key] = self.TERRAFORM_RE.sub(self.terraform.lookup(m.group('key'), replacers), value)
+                tfvalue = self.terraform.lookup(m.group('key'), replacers)
+                if isinstance(tfvalue, (list, tuple, dict)):
+                    raw[key] = tfvalue
+                    self.__replace(raw, key, tfvalue, replacers)
+                    return
+                raw[key] = self.TERRAFORM_RE.sub(tfvalue, value)
                 value = raw[key]
         m = self.ENVIRONMENT_RE.search(value)
         if m:

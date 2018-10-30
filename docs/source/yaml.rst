@@ -1266,7 +1266,7 @@ Terraform variable replacment
 
 If you're managing your AWS resources for your service with Terraform and you
 export your Terraform state files to S3, or if you are using Terraform
-Enterprise, you can use the values of your terraform outputs as string values
+Enterprise, you can use the values of your terraform outputs as string, list, or map values
 in your service definitions.
 
 To do so, first declare a ``terraform`` top level section in your
@@ -1295,8 +1295,10 @@ in place of the statefile::
         storage_bucket: 's3-{environment}-bucket'
         task_role_arn: '{service-name}-task-role-arn'
         ecr_repo_url: 'ecr-repository-url'
+        security_groups: '{service-name}-security-groups'
+        subnets: 'service-subnets'
 
-Then, wherever you have a string value in your service definition, you can
+Then, wherever you have a string, list, or map value in your service definition, you can
 replace that with a terraform lookup, like so::
 
     services:
@@ -1311,7 +1313,10 @@ replace that with a terraform lookup, like so::
           container_port: 80
         family: my-service
         network_mode: bridge
-        task_role_arn: ${terraform.task-role-arn}
+        task_role_arn: ${terraform.task_role_arn}
+        vpc_configuration:
+          security_groups: ${terraform.security_groups}
+          subnets: ${terraform.subnets}
         containers:
           - name: my-service
             image: ${terraform.ecr_repo_url}:0.1.0
