@@ -61,7 +61,14 @@ class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.Te
                 'placementStrategy': [{
                     'type': 'binpack',
                     'field': 'memory'
-                }]
+                }],
+                'networkConfiguration': {
+                    'awsvpcConfiguration': {
+                        'subnets': ['subnet-12345678'],
+                        'security_groups': ['sg-12345678'],
+                        'assignPublicIp': 'DISABLED'
+                    }
+                }
             }
 
     def test_maximum_percent(self):
@@ -79,6 +86,11 @@ class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.Te
             'type': 'binpack',
             'field': 'memory'
         }])
+        compare(self.service.vpc_configuration, {
+            'subnets': ['subnet-12345678'],
+            'security_groups': ['sg-12345678'],
+            'assignPublicIp': 'DISABLED'
+        })
 
 
 class TestService_load_yaml(unittest.TestCase):

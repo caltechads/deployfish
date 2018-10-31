@@ -1109,7 +1109,7 @@ class Service(object):
 
     @property
     def vpc_configuration(self):
-        if self.__aws_service:
+        if self.__aws_service and self.__aws_service['networkConfiguration'] and not self.__vpc_configuration:
             self.__vpc_configuration = self.__aws_service['networkConfiguration']['awsvpcConfiguration']
         return self.__vpc_configuration
 
