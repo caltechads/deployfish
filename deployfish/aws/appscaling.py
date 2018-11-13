@@ -25,6 +25,15 @@ class ScalingPolicy(object):
                 'scale_by': 1
             }
 
+            Example for TargetTrackingScaling:
+            {
+                'disable_scale_in': 'false',
+                'scale_in_cool_down': 300,
+                'scale_out_cool_down': 60,
+                'target_value': 0.02,
+                'PredefinedMetricType': 'ECSServiceAverageCPUUtilization'
+            }
+
         ``aws`` is an entry from the ``ScalingPolicies`` list in the response from
         ``boto3.client('application-autoscaling').describe_scaling_policies()`
 
@@ -48,7 +57,8 @@ class ScalingPolicy(object):
         self.from_yaml(yml)
         self.from_aws(aws)
         self.alarm = None
-        if yml:
+
+        if 'target_value' not in yml:
             self.alarm = ECSServiceCPUAlarm(
                 self.serviceName,
                 self.clusterName,
@@ -180,10 +190,28 @@ class ScalingPolicy(object):
         :param yml: a scaling policy level entry from the ``deployfish.yml`` file
         :type yml: dict
         """
-        if yml:
+        if 'target_value' in yml:
+            self.scaling_type = 'TargetTrackingScaling'
+            self.DisableScaleIn = yml['disable_scale_in']
+            self.ScaleInCoolDown = yml['scale_in_cool_down']
+            self.ScaleOutCooldown = yml['scale_out_cool_down']
+            self.TargetValue = yml['target_value']
+            if 'customized_metric_specification' in yml:
+                self.customized_metric_specification = True
+                self.dimension_name = yml['customized_metric_specification']['dimensions']['dimension_name']
+                self.dimension_value = yml['customized_metric_specification']['dimensions']['dimension_value']
+                self.MetricName = yml['customized_metric_specification']['metric_name']
+                self.Namespace = yml['customized_metric_specification']['namespace']
+                self.statistic = yml['customized_metric_specification']['statistic']
+                self.unit = yml['customized_metric_specification']['unit'] if 'unit' in yml['customized_metric_specification'] else 'None'
+            else:
+                self.customized_metric_specification = False
+                self.PredefinedMetricType = yml['PredefinedMetricType']
+        else:
             self.cooldown = yml['cooldown']
             self.scale_by = yml['scale_by']
             self.cpu = yml['cpu']
+            self.scaling_type = 'StepScaling'
 
     def exists(self):
         """
@@ -209,19 +237,49 @@ class ScalingPolicy(object):
         r['ServiceNamespace'] = 'ecs'
         r['ResourceId'] = 'service/{}/{}'.format(self.clusterName, self.serviceName)
         r['ScalableDimension'] = 'ecs:service:DesiredCount'
-        r['PolicyType'] = 'StepScaling'
-        r['StepScalingPolicyConfiguration'] = {}
-        r['StepScalingPolicyConfiguration']['AdjustmentType'] = 'ChangeInCapacity'
-        r['StepScalingPolicyConfiguration']['StepAdjustments'] = []
-        adjustment = {}
-        adjustment['ScalingAdjustment'] = self.scale_by
-        if self.MetricIntervalLowerBound is not None:
-            adjustment['MetricIntervalLowerBound'] = self.MetricIntervalLowerBound
-        if self.MetricIntervalUpperBound is not None:
-            adjustment['MetricIntervalUpperBound'] = self.MetricIntervalUpperBound
-        r['StepScalingPolicyConfiguration']['StepAdjustments'].append(adjustment)
-        r['StepScalingPolicyConfiguration']['Cooldown'] = self.cooldown
-        r['StepScalingPolicyConfiguration']['MetricAggregationType'] = 'Average'
+
+        if self.scaling_type == 'StepScaling':
+            r['PolicyType'] = 'StepScaling'
+            r['StepScalingPolicyConfiguration'] = {}
+            r['StepScalingPolicyConfiguration']['AdjustmentType'] = 'ChangeInCapacity'
+            r['StepScalingPolicyConfiguration']['StepAdjustments'] = []
+            adjustment = {}
+            adjustment['ScalingAdjustment'] = self.scale_by
+            if self.MetricIntervalLowerBound is not None:
+                adjustment['MetricIntervalLowerBound'] = self.MetricIntervalLowerBound
+            if self.MetricIntervalUpperBound is not None:
+                adjustment['MetricIntervalUpperBound'] = self.MetricIntervalUpperBound
+            r['StepScalingPolicyConfiguration']['StepAdjustments'].append(adjustment)
+            r['StepScalingPolicyConfiguration']['Cooldown'] = self.cooldown
+            r['StepScalingPolicyConfiguration']['MetricAggregationType'] = 'Average'
+        else:
+            r['PolicyType'] = 'TargetTrackingScaling'
+            r['TargetTrackingScalingPolicyConfiguration'] = {}
+            r['TargetTrackingScalingPolicyConfiguration']['DisableScaleIn'] = self.DisableScaleIn
+            r['TargetTrackingScalingPolicyConfiguration']['ScaleInCooldown'] = self.ScaleInCoolDown
+            r['TargetTrackingScalingPolicyConfiguration']['ScaleOutCooldown'] = self.ScaleOutCooldown
+            r['TargetTrackingScalingPolicyConfiguration']['TargetValue'] = self.TargetValue
+
+            if self.customized_metric_specification:
+                r['TargetTrackingScalingPolicyConfiguration']['CustomizedMetricSpecification'] = {}
+                r['TargetTrackingScalingPolicyConfiguration']['CustomizedMetricSpecification']['Dimensions'] = []
+                dimensions = {}
+                dimensions['Name'] = self.dimension_name
+                dimensions['Value'] = self.dimension_value
+                r['TargetTrackingScalingPolicyConfiguration']['CustomizedMetricSpecification']['Dimensions'].append(
+                    dimensions)
+                r['TargetTrackingScalingPolicyConfiguration']['CustomizedMetricSpecification'][
+                    'MetricName'] = self.MetricName
+                r['TargetTrackingScalingPolicyConfiguration']['CustomizedMetricSpecification'][
+                    'Namespace'] = self.Namespace
+                r['TargetTrackingScalingPolicyConfiguration']['CustomizedMetricSpecification'][
+                    'Statistic'] = self.statistic
+                r['TargetTrackingScalingPolicyConfiguration']['CustomizedMetricSpecification']['Unit'] = self.unit
+            else:
+                r['TargetTrackingScalingPolicyConfiguration']['PredefinedMetricSpecification'] = {}
+                r['TargetTrackingScalingPolicyConfiguration']['PredefinedMetricSpecification'][
+                    'PredefinedMetricType'] = self.PredefinedMetricType
+
         return r
 
     def _render_delete(self):
@@ -254,10 +312,13 @@ class ScalingPolicy(object):
         """
         Create the scaling policy and its associated CloudWhach alarm.
         """
+        if self.scaling_type == '':
+            self.scaling_type = 'TargetTrackingScaling'
         self.scaling.put_scaling_policy(**self._render_create())
         self.from_aws()
-        self.alarm.scaling_policy_arn = self.arn
-        self.alarm.create()
+        if self.scaling_type == 'StepScaling':
+            self.alarm.scaling_policy_arn = self.arn
+            self.alarm.create()
 
     def delete(self):
         """
@@ -268,7 +329,8 @@ class ScalingPolicy(object):
                 self.scaling.delete_scaling_policy(**self._render_delete())
             except botocore.exceptions.ClientError:
                 pass
-            self.alarm.delete()
+            if self.scaling_type == 'StepScaling':
+                self.alarm.delete()
         self.__aws_scaling_policy = {}
 
     def needs_update(self):
@@ -413,8 +475,12 @@ class ApplicationAutoscaling(object):
             self.MinCapacity = yml['min_capacity']
             self.MaxCapacity = yml['max_capacity']
             self._RoleARN = yml['role_arn']
-            self.policies['scale-up'] = ScalingPolicy(self.serviceName, self.clusterName, yml['scale-up'])
-            self.policies['scale-down'] = ScalingPolicy(self.serviceName, self.clusterName, yml['scale-down'])
+            self.scaling_type = yml['scaling_type']
+            if self.scaling_type == 'StepScaling':
+                self.policies['scale-up'] = ScalingPolicy(self.serviceName, self.clusterName, yml['scale-up'])
+                self.policies['scale-down'] = ScalingPolicy(self.serviceName, self.clusterName, yml['scale-down'])
+            else:
+                self.policies['scale-target'] = ScalingPolicy(self.serviceName, self.clusterName, yml['scale-target'])
 
     def exists(self):
         """
