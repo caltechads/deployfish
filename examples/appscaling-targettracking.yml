@@ -1,0 +1,31 @@
+services:
+  - name: my-service-1
+    environment: dev
+    cluster: demo-ecs
+    count: 2
+    application_scaling:
+        scaling_type: TargetTracking
+        min_capacity: 2
+        max_capacity: 4
+        role_arn: arn:aws:iam::123445678901:role/ApplicationAutoscalingECSRole
+        scale-target:
+                disable_scale_in: false
+                scale_in_cool_down: 300
+                scale_out_cool_down: 60
+                target_value: 0.02
+                PredefinedMetricType: ECSServiceAverageCPUUtilization
+    family: my-service-1
+    network_mode: bridge
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    containers:
+      - name: my-service-1
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        memoryReservation: 128
+        ports:
+          - "80"
+        environment:
+          - ENVIRONMENT=dev
+          - ANOTHER_ENV_VAR=value
+          - THIRD_ENV_VAR=value
