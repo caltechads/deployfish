@@ -107,7 +107,7 @@ class TestService_load_yaml(unittest.TestCase):
         self.assertEqual(self.service.serviceName, 'foobar-prod')
 
     def test_clusterName(self):
-        self.assertEqual(self.service.clusterName, 'access-caltech-proxy-prod')
+        self.assertEqual(self.service.clusterName, 'foobar-prod')
 
     def test_roleArn(self):
         self.assertEqual(self.service.roleArn, 'a_task_role_arn')
@@ -124,8 +124,8 @@ class TestService_load_yaml(unittest.TestCase):
     def test_load_balancer(self):
         compare(self.service.load_balancer, {
             'type': 'elb',
-            'load_balancer_name': 'access-caltech-proxy-prod',
-            'container_name': 'cit_auth',
+            'load_balancer_name': 'foobar-prod',
+            'container_name': 'example',
             'container_port': 443
         })
 
@@ -138,13 +138,13 @@ class TestService_load_yaml_alternate(unittest.TestCase):
         config = Config(filename=fname, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service('cit-auth-prod2', config=config)
+            self.service = Service('foobar-prod2', config=config)
 
     def test_serviceName(self):
-        self.assertEqual(self.service.serviceName, 'cit-auth-prod2')
+        self.assertEqual(self.service.serviceName, 'foobar-prod2')
 
     def test_clusterName(self):
-        self.assertEqual(self.service.clusterName, 'access-caltech-proxy-prod')
+        self.assertEqual(self.service.clusterName, 'foobar-prod2')
 
     def test_roleArn(self):
         self.assertEqual(self.service.roleArn, 'a_task_role_arn')
@@ -162,7 +162,7 @@ class TestService_load_yaml_alternate(unittest.TestCase):
         compare(self.service.load_balancer, {
             'type': 'alb',
             'target_group_arn': 'my_target_group_arn',
-            'container_name': 'cit_auth',
+            'container_name': 'example',
             'container_port': 443
         })
 

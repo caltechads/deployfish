@@ -25,16 +25,16 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         pass
 
     def test_terraform_simple_interpolation(self):
-        self.assertEqual(self.config.get_service('cit-auth-prod')['cluster'], 'foobar-proxy-prod')
+        self.assertEqual(self.config.get_service('foobar-prod')['cluster'], 'foobar-proxy-prod')
 
     def test_terraform_nested_dict_interpolation(self):
-        self.assertEqual(self.config.get_service('cit-auth-prod')['load_balancer']['load_balancer_name'], 'foobar-proxy-prod')
+        self.assertEqual(self.config.get_service('foobar-prod')['load_balancer']['load_balancer_name'], 'foobar-proxy-prod')
 
     def test_terraform_nested_list_interpolation(self):
-        self.assertEqual(self.config.get_service('cit-auth-prod')['containers'][0]['environment'][2], 'SECRETS_BUCKET_NAME=ac-config-store')
+        self.assertEqual(self.config.get_service('foobar-prod')['containers'][0]['environment'][2], 'SECRETS_BUCKET_NAME=ac-config-store')
 
     def test_terraform_list_output_interpolation(self):
-        self.assertListEqual(self.config.get_service('cit-auth-prod')['vpc_configuration']['security_groups'], ['sg-1234567', 'sg-2345678', 'sg-3456789'])
+        self.assertListEqual(self.config.get_service('foobar-prod')['vpc_configuration']['security_groups'], ['sg-1234567', 'sg-2345678', 'sg-3456789'])
 
     def test_terraform_map_output_interpolation(self):
         self.assertListEqual(self.config.get_service('cit-output-test')['vpc_configuration']['subnets'], ['subnet-1234567'])
@@ -42,8 +42,8 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         self.assertEqual(self.config.get_service('cit-output-test')['vpc_configuration']['public_ip'], 'DISABLED')
 
     def test_environment_simple_interpolation(self):
-        self.assertEqual(self.config.get_service('cit-auth-prod')['config'][0], 'FOOBAR=hi_mom')
-        self.assertEqual(self.config.get_service('cit-auth-prod')['config'][2], 'FOO_BAR_PREFIX=oh_no/test')
+        self.assertEqual(self.config.get_service('foobar-prod')['config'][0], 'FOOBAR=hi_mom')
+        self.assertEqual(self.config.get_service('foobar-prod')['config'][2], 'FOO_BAR_PREFIX=oh_no/test')
 
 
 class TestContainerDefinition_load_yaml_no_interpolate(unittest.TestCase):
@@ -61,17 +61,17 @@ class TestContainerDefinition_load_yaml_no_interpolate(unittest.TestCase):
             self.config = Config(filename=config_yml, env_file=env_file, interpolate=False)
 
     def test_simple_interpolation(self):
-        self.assertEqual(self.config.get_service('cit-auth-prod')['cluster'], '${terraform.proxy_cluster_name}')
+        self.assertEqual(self.config.get_service('foobar-prod')['cluster'], '${terraform.proxy_cluster_name}')
 
     def test_nested_dict_interpolation(self):
-        self.assertEqual(self.config.get_service('cit-auth-prod')['load_balancer']['load_balancer_name'], '${terraform.proxy_elb_id}')
+        self.assertEqual(self.config.get_service('foobar-prod')['load_balancer']['load_balancer_name'], '${terraform.proxy_elb_id}')
 
     def test_nested_list_interpolation(self):
-        self.assertEqual(self.config.get_service('cit-auth-prod')['containers'][0]['environment'][2], 'SECRETS_BUCKET_NAME=${terraform.secrets_bucket_name}')
+        self.assertEqual(self.config.get_service('foobar-prod')['containers'][0]['environment'][2], 'SECRETS_BUCKET_NAME=${terraform.secrets_bucket_name}')
 
     def test_environment_simple_interpolation(self):
-        self.assertEqual(self.config.get_service('cit-auth-prod')['config'][0], 'FOOBAR=${env.FOOBAR_ENV}')
-        self.assertEqual(self.config.get_service('cit-auth-prod')['config'][2], 'FOO_BAR_PREFIX=${env.FOO_BAR_PREFIX_ENV}/test')
+        self.assertEqual(self.config.get_service('foobar-prod')['config'][0], 'FOOBAR=${env.FOOBAR_ENV}')
+        self.assertEqual(self.config.get_service('foobar-prod')['config'][2], 'FOO_BAR_PREFIX=${env.FOO_BAR_PREFIX_ENV}/test')
 
 
 class TestTunnelParameters_load_yqml(unittest.TestCase):
@@ -84,7 +84,7 @@ class TestTunnelParameters_load_yqml(unittest.TestCase):
 
     def test_tunnel_find_instance(self):
         yml = self.config.get_section_item('tunnels', 'test')
-        self.assertEqual(yml['service'], 'cit-auth-prod')
+        self.assertEqual(yml['service'], 'foobar-prod')
         self.assertEqual(yml['host'], 'config.DB_HOST')
         self.assertEqual(yml['port'], 3306)
         self.assertEqual(yml['local_port'], 8888)
