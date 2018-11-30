@@ -1,10 +1,10 @@
 # volumes.yml
 #
-# This file demonstrates how to declare a volume mount for a container
+# This file demonstrates two ways to to declare a volume mount for a container
 #
 
 services:
-  - name: my-service
+  - name: my-simple-volume-service
     cluster: my-cluster
     count: 2
     family: my-service
@@ -22,3 +22,32 @@ services:
         volumes:
           - /host/path:/container/path
           - /host/path-ro:/container/path-ro:ro
+
+  - name: my-full-volume-service
+    cluster: my-cluster
+    count: 2
+    family: my-service
+    network_mode: bridge
+    task_role_arn: arn:aws:iam::123445564666:role/ecsTaskRole
+    containers:
+      - name: my-service
+        image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+        cpu: 128
+        memory: 256
+        ports:
+          - "80"
+        environment:
+          - S3_BUCKET=my-bucket
+        volumes:
+          - storage:/container/path
+    volumes:
+      - name: storage
+        config:
+          scope: shared
+          driver: my_vol_driver:latest
+          driverOpts:
+            opt1: value1
+            opt2: value2
+          labels:
+            key: value
+            key: value

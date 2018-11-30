@@ -110,3 +110,47 @@ services:
         image: redis:latest
       - name: db
         image: mysql:5.5.47
+
+  - name: explicit-volumes
+    cluster: explicit-volumes-prod
+    family: explicit-volumes
+    network_mode: bridge
+    maximum_percent: 250
+    minimum_healthy_percent: 50
+    cpu: 256
+    memory: 512
+    count: 2
+    load_balancer:
+      target_group_arn: my_target_group_arn
+      container_name: example
+      container_port: 443
+      service_role_arn: a_task_role_arn
+    containers:
+      - name: example
+        image: example:1.2.3
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: ac-config-store
+        volumes:
+          - storage_local:/container/path
+          - storage_task:/container/path2
+          - storage_shared:/container/path3:ro
+    volumes:
+      - name: storage_local
+        path: /foo/bar
+      - name: storage_task
+        config:
+          scope: task
+          driver: my_vol_driver:latest
+          autoprovision: true
+      - name: storage_shared
+        config:
+          scope: shared
+          driver: my_vol_driver:latest
+          driverOpts:
+            opt1: value1
+            opt2: value2
+          labels:
+            key1: val1
+            key2: val2

@@ -102,7 +102,17 @@
       }
   },
   "sourceVolumes": {
-	 "_host_path": "/host/path",
-	 "_host_path-ro": "/host/path-ro"
+    "_host_path": {
+      "name": "_host_path",
+      "host": {
+        "sourcePath": "/host/path"
+      }
+    },
+    "_host_path-ro": {
+      "name": "_host_path-ro",
+      "host": {
+        "sourcePath": "/host/path-ro"
+      }
+    }
   }
 }

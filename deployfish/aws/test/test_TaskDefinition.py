@@ -128,11 +128,53 @@ class TestTaskDefinition_render_alternate(unittest.TestCase):
         self.assertEqual(self.td.render()['memory'], '512')
 
 
-class TestTaskDefinition_volumes(unittest.TestCase):
+class TestTaskDefinition_explicit_volumes(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             yml = yaml.load(f)
-            self.td = TaskDefinition(yml=yml['services'][1])
+            # This should be the explicit-volumes service
+            self.td = TaskDefinition(yml=yml['services'][2])
+
+    def test_task_defines_volumes(self):
+        self.assertTrue('volumes' in self.td.render())
+        self.assertEqual(len(self.td.render()['volumes']), 3)
+        compare(self.td.render()['volumes'], [{
+            'name': 'storage_local',
+            'host': {'sourcePath': '/foo/bar'}
+        }, {
+            'name': 'storage_task',
+            'dockerVolumeConfiguration': {
+                'scope': 'task',
+                'autoprovision': True,
+                'driver': 'my_vol_driver:latest'
+            }
+        }, {
+            'name': 'storage_shared',
+            'dockerVolumeConfiguration': {
+                'scope': 'shared',
+                'driver': 'my_vol_driver:latest',
+                'driverOpts': {
+                    'opt1': 'value1',
+                    'opt2': 'value2',
+                },
+                'labels': {
+                    'key1': 'val1',
+                    'key2': 'val2',
+                }
+            }
+        },
+        ])
+
+    def test_container_mounts(self):
+        r = self.td.render()
+        self.assertTrue('mountPoints' in r['containerDefinitions'][0])
+        mp = r['containerDefinitions'][0]['mountPoints']
+        self.assertEqual(len(mp), 3)
+        compare(mp, [
+            {'sourceVolume': 'storage_local', 'containerPath': '/container/path', 'readOnly': False},
+            {'sourceVolume': 'storage_task', 'containerPath': '/container/path2', 'readOnly': False},
+            {'sourceVolume': 'storage_shared', 'containerPath': '/container/path3', 'readOnly': True}
+        ])
