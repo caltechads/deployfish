@@ -122,6 +122,8 @@ class ContainerDefinition(VolumeMixin):
         self._extraHosts = []
         self._links = []
         self._ulimits = []
+        self._cap_add = []
+        self._cap_drop = []
         self._environment = {}
         self._portMappings = []
         self.logConfiguration = None
@@ -169,11 +171,40 @@ class ContainerDefinition(VolumeMixin):
                             'hard': ulimit['hardLimit'],
                         })
                 return self._ulimits
+            elif attr == 'cap_add':
+                if (not self._cap_add and self.__aws_container_definition):
+                    try:
+                        self._cap_add = self.__aws_container_definition['linuxParameters']['capabilites']['add']
+                    except KeyError:
+                        pass
+                return self._cap_add
+            elif attr == 'cap_drop':
+                if (not self._cap_drop and self.__aws_container_definition):
+                    try:
+                        self._cap_drop = self.__aws_container_definition['linuxParameters']['capabilites']['drop']
+                    except KeyError:
+                        pass
+                return self._cap_drop
             else:
                 raise AttributeError
 
     def __setattr__(self, attr, value):
-        if attr in ['command', 'cpu', 'dockerLabels', 'entryPoint', 'environment', 'essential', 'image', 'links', 'memory', 'memoryReservation', 'name', 'ulimits']:
+        if attr in [
+            'command',
+            'cpu',
+            'dockerLabels',
+            'entryPoint',
+            'environment',
+            'essential',
+            'image',
+            'links',
+            'memory',
+            'memoryReservation',
+            'name',
+            'ulimits',
+            'cap_add',
+            'cap_drop'
+        ]:
             setattr(self, "_" + attr, value)
         else:
             super(ContainerDefinition, self).__setattr__(attr, value)
@@ -310,6 +341,13 @@ class ContainerDefinition(VolumeMixin):
                 r['extraHosts'].append({'hostname': hostname, 'ipAddress': ipAddress})
         if self.logConfiguration:
             r['logConfiguration'] = self.logConfiguration.render()
+        if self.cap_add or self.cap_drop:
+            r['linuxParameters'] = {}
+            r['linuxParameters']['capabilities'] = {}
+            if self.cap_add:
+                r['linuxParameters']['capabilities']['add'] = self.cap_add
+            if self.cap_drop:
+                r['linuxParameters']['capabilities']['drop'] = self.cap_drop
         return r
 
     def update_task_labels(self, family_revisions):
@@ -431,6 +469,10 @@ class ContainerDefinition(VolumeMixin):
             self.extraHosts = yml['extra_hosts']
         if 'logging' in yml:
             self.logConfiguration = LogConfiguration(yml=yml['logging'])
+        if 'cap_add' in yml:
+            self.cap_add = yml['cap_add']
+        if 'cap_drop' in yml:
+            self.cap_drop = yml['cap_drop']
 
     def __str__(self):
         """

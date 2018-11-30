@@ -34,6 +34,10 @@ services:
         extra_hosts:
           - "foobar:127.0.0.1"
           - "foobaz:127.0.0.2"
+        cap_add:
+          - SYS_ADMIN
+        cap_drop:
+          - SYS_RAWIO
         ports:
           - "22"
           - "80:80"

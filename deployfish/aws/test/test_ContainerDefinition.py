@@ -15,6 +15,7 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             yml = yaml.load(f)
+        # This should be the container named "example" in the "foobar-prod" service
         self.cd = ContainerDefinition(yml=yml['services'][0]['containers'][0])
 
     def test_name(self):
@@ -56,6 +57,11 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         self.assertTrue('foobar:127.0.0.1' in self.cd.extraHosts)
         self.assertTrue('foobaz:127.0.0.2' in self.cd.extraHosts)
 
+    def test_cap_add(self):
+        self.assertEqual(self.cd.cap_add, ['SYS_ADMIN'])
+
+    def test_cap_drop(self):
+        self.assertEqual(self.cd.cap_drop, ['SYS_RAWIO'])
 
 class TestContainerDefinition_render(unittest.TestCase):
 
@@ -71,6 +77,12 @@ class TestContainerDefinition_render(unittest.TestCase):
 
     def test_cpu(self):
         self.assertEqual(self.cd.render()['cpu'], 1024)
+
+    def test_cap_add(self):
+        compare(self.cd.render()['linuxParameters']['capabilities']['add'], ["SYS_ADMIN"])
+
+    def test_cap_drop(self):
+        compare(self.cd.render()['linuxParameters']['capabilities']['drop'], ["SYS_RAWIO"])
 
     def test_memory(self):
         self.assertEqual(self.cd.render()['memory'], 4000)

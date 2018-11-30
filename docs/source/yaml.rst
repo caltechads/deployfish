@@ -911,6 +911,42 @@ a single limit as an integer or soft/hard limits as a mapping. ::
             soft: 65535
             hard: 65535
 
+cap_add
+-------
+
+(List of strings, Optional) List here any Linux kernel capabilities your container should have ::
+
+    containers:
+      - name: foo
+        image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+        cap_add:
+          - SYS_ADMIN
+          - CHOWN
+
+.. note ::
+
+  The capabilities should be in ALL CAPS.  Valid values are given in the link below.
+
+See `Task Definition Parameters: Linux Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_linuxparameters>`_.
+
+cap_drop
+--------
+
+(List of strings, Optional) List here any Linux kernel capabilities your container should **not** have ::
+
+    containers:
+      - name: foo
+        image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+        cap_drop:
+          - SYS_RAWIO
+
+.. note ::
+
+  The capabilities should be in ALL CAPS.  Valid values are given in the link below.
+
+
+See `Task Definition Parameters: Linux Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_linuxparameters>`_.
+
 dockerLabels
 ------------
 
