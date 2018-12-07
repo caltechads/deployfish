@@ -3,6 +3,7 @@ from __future__ import print_function
 
 from datetime import datetime
 import json
+from copy import copy
 import os
 import os.path
 import random
@@ -122,6 +123,8 @@ class ContainerDefinition(VolumeMixin):
         self._extraHosts = []
         self._links = []
         self._ulimits = []
+        self._cap_add = []
+        self._cap_drop = []
         self._environment = {}
         self._portMappings = []
         self.logConfiguration = None
@@ -169,11 +172,40 @@ class ContainerDefinition(VolumeMixin):
                             'hard': ulimit['hardLimit'],
                         })
                 return self._ulimits
+            elif attr == 'cap_add':
+                if (not self._cap_add and self.__aws_container_definition):
+                    try:
+                        self._cap_add = self.__aws_container_definition['linuxParameters']['capabilites']['add']
+                    except KeyError:
+                        pass
+                return self._cap_add
+            elif attr == 'cap_drop':
+                if (not self._cap_drop and self.__aws_container_definition):
+                    try:
+                        self._cap_drop = self.__aws_container_definition['linuxParameters']['capabilites']['drop']
+                    except KeyError:
+                        pass
+                return self._cap_drop
             else:
                 raise AttributeError
 
     def __setattr__(self, attr, value):
-        if attr in ['command', 'cpu', 'dockerLabels', 'entryPoint', 'environment', 'essential', 'image', 'links', 'memory', 'memoryReservation', 'name', 'ulimits']:
+        if attr in [
+            'command',
+            'cpu',
+            'dockerLabels',
+            'entryPoint',
+            'environment',
+            'essential',
+            'image',
+            'links',
+            'memory',
+            'memoryReservation',
+            'name',
+            'ulimits',
+            'cap_add',
+            'cap_drop'
+        ]:
             setattr(self, "_" + attr, value)
         else:
             super(ContainerDefinition, self).__setattr__(attr, value)
@@ -208,8 +240,9 @@ class ContainerDefinition(VolumeMixin):
             "HOST:CONTAINER"
             "HOST:CONTAINER:ro"
 
-        where `HOST` is the path on the container instance to mount and
-        `CONTAINER` is the path in the container on which to mount that.
+        where `HOST` is either the path on the container instance to mount
+        or a name from the ``volumes`` section of the deployfish.yml `services`
+        stanza, and `CONTAINER` is the path in the container on which to mount that.
 
         :rtype: list of strings
         """
@@ -217,9 +250,15 @@ class ContainerDefinition(VolumeMixin):
         # self.__aws_container_definition["sourceVolumes"] is not from AWS; it's
         # something we injected in TaskDefinition.from_aws()
         if (not self._volumes and self.__aws_container_definition and 'mountPoints' in self.__aws_container_definition):
-            for mp in self.__aws_container_definition['mountPoints']:
-                print(mp)
-                volume = "{}:{}".format(self.__aws_container_definition['sourceVolumes'][mp['sourceVolume']], mp['containerPath'])
+            cd = self.__aws_container_definition
+            for mp in cd['mountPoints']:
+                print('sourceVolumes: {}'.format(cd['sourceVolumes']))
+                name = mp['sourceVolume']
+                print('name: {}'.format(name))
+                volume = "{}:{}".format(
+                    cd['sourceVolumes'][name]['host']['sourcePath'],
+                    mp['containerPath']
+                )
                 if mp['readOnly']:
                     volume += ":ro"
                 self._volumes.append(volume)
@@ -250,7 +289,7 @@ class ContainerDefinition(VolumeMixin):
         if self.portMappings:
             r['portMappings'] = []
             for mapping in self.portMappings:
-                fields = mapping.split(':')
+                fields = str(mapping).split(':')
                 m = {}
                 if len(fields) == 1:
                     m['containerPort'] = int(fields[0])
@@ -310,6 +349,13 @@ class ContainerDefinition(VolumeMixin):
                 r['extraHosts'].append({'hostname': hostname, 'ipAddress': ipAddress})
         if self.logConfiguration:
             r['logConfiguration'] = self.logConfiguration.render()
+        if self.cap_add or self.cap_drop:
+            r['linuxParameters'] = {}
+            r['linuxParameters']['capabilities'] = {}
+            if self.cap_add:
+                r['linuxParameters']['capabilities']['add'] = self.cap_add
+            if self.cap_drop:
+                r['linuxParameters']['capabilities']['drop'] = self.cap_drop
         return r
 
     def update_task_labels(self, family_revisions):
@@ -431,6 +477,10 @@ class ContainerDefinition(VolumeMixin):
             self.extraHosts = yml['extra_hosts']
         if 'logging' in yml:
             self.logConfiguration = LogConfiguration(yml=yml['logging'])
+        if 'cap_add' in yml:
+            self.cap_add = yml['cap_add']
+        if 'cap_drop' in yml:
+            self.cap_drop = yml['cap_drop']
 
     def __str__(self):
         """
@@ -485,6 +535,7 @@ class TaskDefinition(VolumeMixin):
         self._cpu = None
         self._memory = None
         self._executionRoleArn = None
+        self._volumes = []
 
     def from_aws(self, task_definition_id):
         self.__aws_task_definition = self.__get_task_definition(task_definition_id)
@@ -496,14 +547,34 @@ class TaskDefinition(VolumeMixin):
         # a bit from the container def.
 
         # We'd like the container definition to be able to return
-        # "host_path:container_path", so we inject the "volume name" to host
+        # "volume_name:container_path", so we inject the "volume name" to host
         # path mapping into the container definition dict from AWS as
         # "sourceVolumes"
 
         sourceVolumes = {}
         if 'volumes' in self.__aws_task_definition and self.__aws_task_definition['volumes']:
             for v in self.__aws_task_definition['volumes']:
-                sourceVolumes[v['name']] = v['host']['sourcePath']
+                sourceVolumes[v['name']] = v
+                # v here looks like
+                #
+                # v = {
+                #       'name': 'string',
+                #       'host': {
+                #           'sourcePath': 'string'
+                #       },
+                #       'dockerVolumeConfiguration': {
+                #           'scope': 'task'|'shared',
+                #           'autoprovision': True|False,
+                #           'driver': 'string',
+                #           'driverOpts': {
+                #               'string': 'string'
+                #           },
+                #           'labels': {
+                #               'string': 'string'
+                #           }
+                #       }
+                #   }
+
         self.containers = []
         for cd in self.__aws_task_definition['containerDefinitions']:
             if sourceVolumes:
@@ -551,14 +622,45 @@ class TaskDefinition(VolumeMixin):
         else:
             return None
 
+    def __load_volumes_from_aws(self):
+        for v in self.__aws_task_definition['volumes']:
+            v_dict = {}
+            v_dict['name'] = v['name']
+            if 'host' in v:
+                v_dict['path'] = v['host']['sourcePath']
+            elif 'dockerVolumeConfiguration' in v:
+                dvc = v['dockerVolumeConfiguration']
+                v_dict['config'] = {}
+                v_dict['config']['scope'] = dvc['scope']
+                v_dict['config']['driver'] = dvc['driver']
+                if 'autoprovision' in dvc:
+                    v_dict['config']['autoprovision'] = dvc['autoprovision']
+                if 'driverOpts' in dvc:
+                    v_dict['config']['driverOpts'] = dvc['driverOpts']
+                if 'labels' in dvc:
+                    v_dict['config']['labels'] = dvc['labels']
+
     def __getattr__(self, attr):
         try:
             return self.__getattribute__(attr)
         except AttributeError:
-            if attr in ['family', 'networkMode', 'taskRoleArn', 'revision', 'requiresCompatibilities', 'executionRoleArn', 'cpu', 'memory']:
+            if attr in [
+                'family',
+                'networkMode',
+                'taskRoleArn',
+                'revision',
+                'requiresCompatibilities',
+                'executionRoleArn',
+                'cpu',
+                'memory'
+            ]:
                 if not getattr(self, "_" + attr) and self.__aws_task_definition and attr in self.__aws_task_definition:
                     setattr(self, "_" + attr, self.__aws_task_definition[attr])
                 return getattr(self, "_" + attr)
+            elif attr == 'volumes':
+                if not self._volumes and self.__aws_task_definition and 'volumes' in self.__aws_task_definition:
+                    self.__load_volumes_from_aws()
+                return self._volumes
             else:
                 raise AttributeError
 
@@ -589,6 +691,39 @@ class TaskDefinition(VolumeMixin):
         """
         volume_names = set()
         volumes = []
+
+        # First get the volumes defined in the task definition portion of the yml. These look like:
+
+        # volumes:
+        #   - name: 'string'
+        #     path: 'string'
+        #     config:
+        #       scope: 'task' | 'shared'
+        #       autoprovision: true | false
+        #       driver: 'string'
+        #       driverOpts:
+        #         'string': 'string'
+        #       labels:
+        #         'string': 'string'
+
+        if self.volumes:
+            for v in self.volumes:
+                if v['name'] in volume_names:
+                    continue
+                v_dict = {}
+                v_dict['name'] = v['name']
+                if 'path' in v:
+                    v_dict['host'] = {}
+                    v_dict['host']['sourcePath'] = v['path']
+                elif 'config' in v:
+                    v_dict['dockerVolumeConfiguration'] = copy(v['config'])
+                volumes.append(v_dict)
+                volume_names.add(v_dict['name'])
+
+        # Now see if there are any old-style definitions.  Before we allowed the "volumes:" section in the task
+        # definition yml, you could define volumes on individual containers and the "volumes" list in the
+        # register_task_definition() AWS API call would be autoconstructed based on the host and container path.  So do
+        # that bit here.
         for c in self.containers:
             for v in c.volumes:
                 host_path = v.split(':')[0]
@@ -653,6 +788,8 @@ class TaskDefinition(VolumeMixin):
             self.cpu = yml['cpu']
         if 'memory' in yml:
             self.memory = yml['memory']
+        if 'volumes' in yml:
+            self.volumes = yml['volumes']
         self.containers = [ContainerDefinition(yml=c_yml) for c_yml in yml['containers']]
         if 'launch_type' in yml and yml['launch_type'] == 'FARGATE':
             self.executionRoleArn = yml['execution_role']

@@ -28,10 +28,10 @@ You can also use the values of environment variables in configuration values wit
 AWS Credentials
 ===============
 
-deployfish uses `boto3 <https://boto3.readthedocs.io>`_ to do all its work in
-AWS and by default defers to boto3 credential resolution to figure out what
-AWS credentials it should use.  See `Configuring Credentials <https://boto3.readthedocs.io/en/latest/guide/configuration.html#guide-configuration)>`_
-in boto3's documentation for details.
+deployfish uses `boto3 <https://boto3.readthedocs.io>`_ to do all its work in AWS and by default defers to boto3
+credential resolution to figure out what AWS credentials it should use.  See `Configuring Credentials
+<https://boto3.readthedocs.io/en/latest/guide/configuration.html#guide-configuration)>`_ in boto3's documentation for
+details.
 
 Alternately, you can tell deployfish specifically how to get your AWS credentials by
 defining an ``aws:`` section in ``deployfish.yml``.
@@ -271,14 +271,12 @@ autoscalinggroup_name
 
 (Optional)
 
-If you have a dedicated Autoscaling Group for your service, you can declare it
-with the ``autoscalinggroup_name`` option.  This will allow you to scale the ASG
-up and down when you scale the service up and down with ``deploy scale
+If you have a dedicated Autoscaling Group for your service, you can declare it with the ``autoscalinggroup_name``
+option.  This will allow you to scale the ASG up and down when you scale the service up and down with ``deploy scale
 <service-name> <count>``.
 
-deployfish won't create the autoscaling group for you --
-you'll need to create it before you can use ``deploy scale <service_name>
-<count>`` to manipulate it. ::
+deployfish won't create the autoscaling group for you -- you'll need to create it before you can use ``deploy scale
+<service_name> <count>`` to manipulate it. ::
 
     services:
       - name: foobar-prod
@@ -286,17 +284,67 @@ you'll need to create it before you can use ``deploy scale <service_name>
         count: 2
         autoscalinggroup_name: foobar-asg
 
+volumes
+-------
+
+(Optional)
+
+You can define volumes that can be mounted inside your task's containers via the ``volumes`` section of your deployfish
+service definition.  You only really need to do use this if you want to use a docker volume driver that is not the built
+in ``local`` one -- the one that allows you to mount host machinefolders into your container.  To mount one of the
+volumes you define here in one of your containers, see "volumes" under "Container Definitions" on this page.
+
+Here is a fully qualfied example ::
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-prod
+        volumes:
+          - name: storage_task
+            config:
+              scope: task
+              autoprovision: true
+              driver: my_vol_driver:latest
+          - name: storage
+            config:
+              scope: shared
+              driver: my_vol_driver:latest
+              driverOpts:
+                opt1: value1
+                opt2: value2
+              labels:
+                key: value
+                key: value
+          - name: local_storage
+            path: /host/path
+
+The above defines three volumes:
+
+* (EC2 launch type only) a task specific (not usable by other tasks) volume named ``storage_task`` that will be
+  autocreated and which will use the ``my_vol_driver:latest`` volume driver
+* (EC2 launch type only) a shared (usable by other tasks) volume named ``storage`` that uses the docker volume driver
+  ``my_vol_driver:latest`` with the driver options given in the ``driverOpts:`` section (driver options are volume
+  driver specific) and labels given by ``labels``.
+* (Both EC2 or FARGATE launch types) a volume named ``local_storage`` that just allows you to mount ``/host/path`` from
+  the host machine using the builtin ``local`` volume driver.  For this type of mount, you can also mount ``/host/path``
+  directly via the ``volumes`` section of your container definition and not define it here.  
+
+See `Using Data Volumes in Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_data_volumes.html>`_.
+
+.. note::
+
+  You are responsible for installing and confuring any 3rd party docker volume drivers on your ECS container machines.
+  The ``volumes` section just allows you to use that driver once you've properly set it up and configured it.
+
 load_balancer
 -------------
 
 (Optional)
 
-If you're going to use an ELB or an ALB with your service, configure it with a
-``load_balancer`` block.
+If you're going to use an ELB or an ALB with your service, configure it with a ``load_balancer`` block.
 
-The load balancer info for the service can't be changed after the service has
-been created.  To change any part of the load balancer info, you'll need to
-destroy and recreate the service.
+The load balancer info for the service can't be changed after the service has been created.  To change any part of the
+load balancer info, you'll need to destroy and recreate the service.
 
 ELB
 ^^^
@@ -692,12 +740,10 @@ being tagged with the name of the container.
 name
 ----
 
-(String, Required) The name of the container. If you are linking multiple
-containers together in a task definition, the name of one container can be
-entered in the links of another container to connect the containers.  The
-restrictions on characters in ECS container are in play here:  Up to 255
-letters (uppercase and lowercase), numbers, hyphens, and underscores are
-allowed. ::
+(String, Required) The name of the container. If you are linking multiple containers together in a task definition, the
+name of one container can be entered in the links of another container to connect the containers.  The restrictions on
+characters in ECS container are in play here:  Up to 255 letters (uppercase and lowercase), numbers, hyphens, and
+underscores are allowed. ::
 
     containers:
       - name: foo
@@ -705,9 +751,8 @@ allowed. ::
 image
 -----
 
-(String, Required) The image used to start the container. Up to 255 letters
-(uppercase and lowercase), numbers, hyphens, underscores, colons, periods,
-forward slashes, and number signs are allowed.
+(String, Required) The image used to start the container. Up to 255 letters (uppercase and lowercase), numbers, hyphens,
+underscores, colons, periods, forward slashes, and number signs are allowed.
 
 For an AWS ECR repository::
 
@@ -725,8 +770,8 @@ For a Docker hub repository::
 memory
 ------
 
-(Integer, Required) The hard limit of memory (in MB) available to the container.  If
-the container tries to exceed this amount of memory, it is killed. ::
+(Integer, Required) The hard limit of memory (in MB) available to the container.  If the container tries to exceed this
+amount of memory, it is killed. ::
 
     containers:
       - name: foo
@@ -736,12 +781,10 @@ the container tries to exceed this amount of memory, it is killed. ::
 memoryReservation
 -----------------
 
-(Integer, Optional) The soft limit (in MB) of memory to reserve for the
-container. When system memory is under heavy contention, Docker attempts to
-keep the container memory to this soft limit; however, your container can
-consume more memory when it needs to, up to the hard limit specified
-with the ``memory`` parameter.  ``memoryReservation`` must be less than
-``memory`` ::
+(Integer, Optional) The soft limit (in MB) of memory to reserve for the container. When system memory is under heavy
+contention, Docker attempts to keep the container memory to this soft limit; however, your container can consume more
+memory when it needs to, up to the hard limit specified with the ``memory`` parameter.  ``memoryReservation`` must be
+less than ``memory`` ::
 
     containers:
       - name: foo
@@ -749,18 +792,16 @@ with the ``memory`` parameter.  ``memoryReservation`` must be less than
         memory: 512
         memoryReservation: 256
 
-For example, if your container normally uses 128 MiB of memory, but
-occasionally bursts to 256 MiB of memory for short periods of time, you can set
-a memoryReservation of 128 MiB, and a memory hard limit of 300 MiB. This
-configuration would allow the container to only reserve 128 MiB of memory from
-the remaining resources on the container instance, but also allow the container
-to consume more memory resources when needed.
+For example, if your container normally uses 128 MiB of memory, but occasionally bursts to 256 MiB of memory for short
+periods of time, you can set a memoryReservation of 128 MiB, and a memory hard limit of 300 MiB. This configuration
+would allow the container to only reserve 128 MiB of memory from the remaining resources on the container instance, but
+also allow the container to consume more memory resources when needed.
 
 cpu
 ---
 
-(Integer, Required) The number of cpu units to reserve for the container. A
-container instance has 1,024 cpu units for every CPU core. ::
+(Integer, Required) The number of cpu units to reserve for the container. A container instance has 1,024 cpu units for
+every CPU core. ::
 
     containers:
       - name: foo
@@ -772,12 +813,10 @@ ports
 
 (List of strings, Optional) A list of port mappings for the container.
 
-Either specify both ports (HOST:CONTAINER), or just the container port (a
-random host port will be chosen).  You can also specify a protocol as
-(HOST:CONTAINER/PROTOCOL).  Note that both HOST and CONTAINER here must be
-single ports, not port ranges as ``docker-compose.yml`` allows in its port
-definitions.  PROTOCOL must be one of 'tcp' or 'udp'.  If no PROTOCOL is
-specified, we assume 'tcp'. ::
+Either specify both ports (HOST:CONTAINER), or just the container port (a random host port will be chosen).  You can
+also specify a protocol as (HOST:CONTAINER/PROTOCOL).  Note that both HOST and CONTAINER here must be single ports, not
+port ranges as ``docker-compose.yml`` allows in its port definitions.  PROTOCOL must be one of 'tcp' or 'udp'.  If no
+PROTOCOL is specified, we assume 'tcp'. ::
 
     containers:
       - name: foo
@@ -790,10 +829,8 @@ specified, we assume 'tcp'. ::
 links
 -----
 
-(List of strings, Optional) A list of names of other containers in
-our task definition.  Adding a container name to links allows
-containers to communicate with each other without the need for
-port mappings.
+(List of strings, Optional) A list of names of other containers in our task definition.  Adding a container name to
+links allows containers to communicate with each other without the need for port mappings.
 
 Links should be specified as ``CONTAINER_NAME``, or ``CONTAINER_NAME:ALIAS``. ::
 
@@ -819,12 +856,10 @@ Links should be specified as ``CONTAINER_NAME``, or ``CONTAINER_NAME:ALIAS``. ::
 essential
 ---------
 
-(Boolean, Optional) If the essential parameter of a container is marked as
-true, and that container fails or stops for any reason, all other containers
-that are part of the task are stopped. If the essential parameter of a
-container is marked as false, then its failure does not affect the rest of the
-containers in a task. If this parameter is omitted, a container is assumed to
-be essential. ::
+(Boolean, Optional) If the essential parameter of a container is marked as true, and that container fails or stops for
+any reason, all other containers that are part of the task are stopped. If the essential parameter of a container is
+marked as false, then its failure does not affect the rest of the containers in a task. If this parameter is omitted, a
+container is assumed to be essential. ::
 
     containers:
       - name: foo
@@ -845,8 +880,7 @@ extra_hosts
         - "somehost:162.242.195.82"
         - "otherhost:50.31.209.229"
 
-An entry with the ip address and hostname will be created in ``/etc/hosts`` inside
-containers for this service, e.g::
+An entry with the ip address and hostname will be created in ``/etc/hosts`` inside containers for this service, e.g::
 
     162.242.195.82  somehost
     50.31.209.229   otherhost
@@ -854,9 +888,8 @@ containers for this service, e.g::
 entrypoint
 ----------
 
-(String, Optional) The entry point that is passed to the container.  Specify it
-as a string and Deployintaor will split the string into an array for you for
-passing to ECS. ::
+(String, Optional) The entry point that is passed to the container.  Specify it as a string and Deployintaor will split
+the string into an array for you for passing to ECS. ::
 
     containers:
       - name: foo
@@ -866,9 +899,8 @@ passing to ECS. ::
 command
 -------
 
-(String, Optional) The command that is passed to the container.  Specify it
-as a string and Deployintaor will split the string into an array for you for
-passing to ECS. ::
+(String, Optional) The command that is passed to the container.  Specify it as a string and Deployintaor will split the
+string into an array for you for passing to ECS. ::
 
     containers:
       - name: foo
@@ -878,9 +910,8 @@ passing to ECS. ::
 environment
 -----------
 
-(Optional) Add environment variables. You can use either an array or a
-dictionary. Any boolean values; true, false, yes no, need to be enclosed in
-quotes to ensure they are not converted to True or False by the YML parser. ::
+(Optional) Add environment variables. You can use either an array or a dictionary. Any boolean values; true, false, yes
+no, need to be enclosed in quotes to ensure they are not converted to True or False by the YML parser. ::
 
     containers:
       - name: foo
@@ -911,6 +942,44 @@ a single limit as an integer or soft/hard limits as a mapping. ::
             soft: 65535
             hard: 65535
 
+See `Task Definition Parameters: Resource Limits <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_limits>`_.
+
+cap_add
+-------
+
+(List of strings, Optional) List here any Linux kernel capabilities your container should have ::
+
+    containers:
+      - name: foo
+        image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+        cap_add:
+          - SYS_ADMIN
+          - CHOWN
+
+.. note ::
+
+  The capabilities should be in ALL CAPS.  Valid values are given in the link below.
+
+See `Task Definition Parameters: Linux Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_linuxparameters>`_.
+
+cap_drop
+--------
+
+(List of strings, Optional) List here any Linux kernel capabilities your container should **not** have ::
+
+    containers:
+      - name: foo
+        image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+        cap_drop:
+          - SYS_RAWIO
+
+.. note ::
+
+  The capabilities should be in ALL CAPS.  Valid values are given in the link below.
+
+
+See `Task Definition Parameters: Linux Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_linuxparameters>`_.
+
 dockerLabels
 ------------
 
@@ -938,17 +1007,39 @@ used by other software. ::
 volumes
 -------
 
-(List of strings, Optional) Specify a path on the host machine
-(HOST:CONTAINER), or an access mode (HOST:CONTAINER:ro).  The HOST
-and CONTAINER paths should be absolute paths. ::
+(List of strings, Optional) Specify a path on the host machine (VOLUME:CONTAINER), or an access mode
+(VOLUME:CONTAINER:ro).  The HOST and CONTAINER paths should be absolute paths. ::
 
     containers:
       - name: foo
         image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
-        dockerLabels:
         volumes:
           - /host/path:/container/path
           - /host/path-ro:/container/path-ro:ro
+
+If you set the VOLUME portion of the mount to a filesystem path (e.g. "``/host/path``" in the above example), deployfish
+will mount that folder on the host machine into your container via the `local` docker volume driver.   You won't need to
+define the volume specifically in the ``volumes`` section in your task definition.
+
+You can also set the VOLUME portion of the mount to the name of a volume defined in your task definition's ``volumes``
+section ::
+
+    services:
+      - name: foobar
+        cluster: foobar
+        containers:
+          - name: foo
+            image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+            volumes:
+              - storage:/container/path
+        volumes:
+          - name: storage
+            config:
+              scope: shared
+              driver: rexray/s3fs:0.11.1
+
+The above will cause the volume named ``storage`` from the docker volume driver ``rexray/s3fs:0.11.1`` to be mounted
+inside your container on ``/container/path``
 
 logging
 -------
@@ -975,6 +1066,7 @@ For fluentd::
 
 **NOTE**: if you don't provide a ``logging:`` section, no logs will be emitted
 from your service.
+
 
 Secrets Management with AWS Parameter Store
 ===========================================

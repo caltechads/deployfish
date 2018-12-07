@@ -65,12 +65,16 @@ class AWSSessionBuilder(object):
         return self.boto3_session.client('sts').get_caller_identity().get('Account')
 
 
-def build_boto3_session(config=None):
+def build_boto3_session(config=None, boto3_session_override=None):
     global boto3_session
-    boto3_session = AWSSessionBuilder().new(config)
+    if boto3_session_override:
+        boto3_session = boto3_session_override
+    else:
+        boto3_session = AWSSessionBuilder().new(config)
 
-
-def get_boto3_session():
+def get_boto3_session(boto3_session_override=None):
+    if boto3_session_override:
+        return boto3_session_override
     global boto3_session
     if boto3_session:
         return boto3_session

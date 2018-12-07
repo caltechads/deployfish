@@ -15,13 +15,15 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
             yml = yaml.load(f)
+        # This should be the container named "example" in the "foobar-prod" service
         self.cd = ContainerDefinition(yml=yml['services'][0]['containers'][0])
 
     def test_name(self):
-        self.assertEqual(self.cd.name, 'cit_auth')
+        self.assertEqual(self.cd.name, 'example')
 
     def test_cpu(self):
         self.assertEqual(self.cd.cpu, 1024)
+
 
     def test_memory(self):
         self.assertEqual(self.cd.memory, 4000)
@@ -30,7 +32,7 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         self.assertEqual(self.cd.memoryReservation, 2000)
 
     def test_image(self):
-        self.assertEqual(self.cd.image, '467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3')
+        self.assertEqual(self.cd.image, 'example:1.2.3')
 
     def test_command(self):
         self.assertEqual(self.cd.command, '/usr/bin/supervisord')
@@ -56,6 +58,12 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         self.assertTrue('foobar:127.0.0.1' in self.cd.extraHosts)
         self.assertTrue('foobaz:127.0.0.2' in self.cd.extraHosts)
 
+    def test_cap_add(self):
+        self.assertEqual(self.cd.cap_add, ['SYS_ADMIN'])
+
+    def test_cap_drop(self):
+        self.assertEqual(self.cd.cap_drop, ['SYS_RAWIO'])
+
 
 class TestContainerDefinition_render(unittest.TestCase):
 
@@ -67,10 +75,16 @@ class TestContainerDefinition_render(unittest.TestCase):
         self.cd = ContainerDefinition(yml=self.yml['services'][0]['containers'][0])
 
     def test_name(self):
-        self.assertEqual(self.cd.render()['name'], 'cit_auth')
+        self.assertEqual(self.cd.render()['name'], 'example')
 
     def test_cpu(self):
         self.assertEqual(self.cd.render()['cpu'], 1024)
+
+    def test_cap_add(self):
+        compare(self.cd.render()['linuxParameters']['capabilities']['add'], ["SYS_ADMIN"])
+
+    def test_cap_drop(self):
+        compare(self.cd.render()['linuxParameters']['capabilities']['drop'], ["SYS_RAWIO"])
 
     def test_memory(self):
         self.assertEqual(self.cd.render()['memory'], 4000)
@@ -79,7 +93,7 @@ class TestContainerDefinition_render(unittest.TestCase):
         self.assertEqual(self.cd.render()['memoryReservation'], 2000)
 
     def test_image(self):
-        self.assertEqual(self.cd.render()['image'], '467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3')
+        self.assertEqual(self.cd.render()['image'], 'example:1.2.3')
 
     def test_command(self):
         self.assertEqual(self.cd.render()['command'], ['/usr/bin/supervisord'])
@@ -141,13 +155,13 @@ class TestContainerDefinition_render(unittest.TestCase):
         self.assertIn('fluentd-address', options)
         self.assertIn('tag', options)
         self.assertEqual(options['fluentd-address'], '127.0.0.1:24224')
-        self.assertEqual(options['tag'], 'cit_auth')
+        self.assertEqual(options['tag'], 'foobar')
 
 
 class TestContainerDefinition_load_yaml_alternates(unittest.TestCase):
 
     """
-    This test loads the cit-auth-prod2 service from simple.yml.  The reason we have this test
+    This test loads the foobar-prod2 service from simple.yml.  The reason we have this test
     is to test different code paths than those executed loading the foobar-prod service.
 
     Specifically:
@@ -176,10 +190,10 @@ class TestContainerDefinition_load_yaml_alternates(unittest.TestCase):
         self.assertEqual(self.cd.memory, 512)
 
     def test_name(self):
-        self.assertEqual(self.cd.name, 'cit_auth')
+        self.assertEqual(self.cd.name, 'example')
 
     def test_image(self):
-        self.assertEqual(self.cd.image, '467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3')
+        self.assertEqual(self.cd.image, 'example:1.2.3')
 
     def test_command(self):
         self.assertEqual(self.cd.command, None)
@@ -191,7 +205,11 @@ class TestContainerDefinition_load_yaml_alternates(unittest.TestCase):
         self.assertEqual(self.cd.ulimits, [])
 
     def test_environment(self):
-        compare(self.cd.environment, {'LDAPTLS_REQCERT': 'never', 'ENVIRONMENT': 'prod', 'SECRETS_BUCKET_NAME': 'ac-config-store'})
+        compare(self.cd.environment, {
+            'LDAPTLS_REQCERT': 'never',
+            'ENVIRONMENT': 'prod',
+            'SECRETS_BUCKET_NAME': 'ac-config-store'
+        })
 
     def test_dockerLabels(self):
         compare(self.cd.dockerLabels, {'edu.caltech.imss-ads': 'foobar'})
@@ -238,16 +256,25 @@ class TestContainerDefinition_load_aws(unittest.TestCase):
         compare(self.cd.ulimits, [{'name': 'nproc', 'soft': 65535, 'hard': 65535}])
 
     def test_environment(self):
-        compare(self.cd.environment, {'AUTOPROXY_SERVER_NAME': 'test1.autoproxy-test.caltech.edu', 'ENVIRONMENT': 'prod'})
+        compare(self.cd.environment, {
+            'AUTOPROXY_SERVER_NAME': 'test1.autoproxy-test.caltech.edu',
+            'ENVIRONMENT': 'prod'
+        })
 
     def test_dockerLabels(self):
-        compare(self.cd.dockerLabels, {'edu.caltech.imss-ads': 'foobar', 'edu.caltech.task.helper1.id': 'foobar-helper:1'})
+        compare(self.cd.dockerLabels, {
+            'edu.caltech.imss-ads': 'foobar',
+            'edu.caltech.task.helper1.id': 'foobar-helper:1'
+        })
 
     def test_links(self):
         compare(self.cd.links, ['db'])
 
     def test_volumes(self):
-        compare(self.cd.volumes, ['/host/path:/container/path', '/host/path-ro:/container/path-ro:ro'])
+        compare(self.cd.volumes, [
+            '/host/path:/container/path',
+            '/host/path-ro:/container/path-ro:ro'
+        ])
 
     def test_extraHosts(self):
         compare(self.cd.extraHosts, ['foobar:127.0.0.1', 'foobaa:127.0.0.2'])

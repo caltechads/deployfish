@@ -6,32 +6,32 @@ terraform:
     proxy_elb_id: 'proxy-{environment}-elb-id'
     core_cluster_name: 'core-{environment}-cluster-name'
     secrets_bucket_name: 's3-config-store-bucket'
-    cit_auth_iam_task_role: 'iam-role-cit-auth-{environment}-task'
+    foobar_iam_task_role: 'iam-role-foobar-{environment}-task'
     security_group_list: 'security-group-list'
     vpc_configuration: 'vpc-configuration'
 
 services:
-  - name: cit-auth-prod
+  - name: foobar-prod
     environment: prod
     cluster: ${terraform.proxy_cluster_name}
     service_role_arn: a_task_role_arn
     count: 2
     load_balancer:
       load_balancer_name: ${terraform.proxy_elb_id}
-      container_name: cit_auth
+      container_name: example
       container_port: 443
     config:
       - FOOBAR=${env.FOOBAR_ENV}
       - DB_HOST=my_host
       - FOO_BAR_PREFIX=${env.FOO_BAR_PREFIX_ENV}/test
-    family: cit-auth-prod
+    family: foobar-prod
     network_mode: host
-    task_role_arn: ${terraform.cit_auth_iam_task_role}
+    task_role_arn: ${terraform.foobar_iam_task_role}
     vpc_configuration:
       security_groups: ${terraform.security_group_list}
     containers:
-      - name: cit_auth
-        image: 467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3
+      - name: example
+        image: example:1.2.3
         cpu: 1024
         memory: 4000
         command: /usr/bin/supervisord
@@ -57,7 +57,7 @@ services:
 
 tunnels:
   - name: test
-    service: cit-auth-prod
+    service: foobar-prod
     host: config.DB_HOST
     port: 3306
     local_port: 8888

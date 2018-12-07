@@ -11,21 +11,21 @@ terraform:
 services:
   - name: foobar-prod
     environment: prod
-    cluster: access-caltech-proxy-prod
+    cluster: foobar-prod
     service_role_arn: a_task_role_arn
     count: 2
     maximum_percent: 250
     minimum_healthy_percent: 50
     load_balancer:
-      load_balancer_name: access-caltech-proxy-prod
-      container_name: cit_auth
+      load_balancer_name: foobar-prod
+      container_name: example
       container_port: 443
-    family: cit-auth-prod
+    family: foobar-prod
     network_mode: host
     task_role_arn: a_task_role_arn
     containers:
-      - name: cit_auth
-        image: 467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3
+      - name: example
+        image: example:1.2.3
         cpu: 1024
         memory: 4000
         memoryReservation: 2000
@@ -34,6 +34,10 @@ services:
         extra_hosts:
           - "foobar:127.0.0.1"
           - "foobaz:127.0.0.2"
+        cap_add:
+          - SYS_ADMIN
+        cap_drop:
+          - SYS_RAWIO
         ports:
           - "22"
           - "80:80"
@@ -54,11 +58,11 @@ services:
           driver: fluentd
           options:
             fluentd-address: 127.0.0.1:24224
-            tag: cit_auth
+            tag: foobar
 
-  - name: cit-auth-prod2
-    cluster: access-caltech-proxy-prod
-    family: cit-auth-prod2
+  - name: foobar-prod2
+    cluster: foobar-prod2
+    family: foobar-prod2
     network_mode: awsvpc
     maximum_percent: 250
     minimum_healthy_percent: 50
@@ -84,12 +88,12 @@ services:
     count: 2
     load_balancer:
       target_group_arn: my_target_group_arn
-      container_name: cit_auth
+      container_name: example
       container_port: 443
       service_role_arn: a_task_role_arn
     containers:
-      - name: cit_auth
-        image: 467892444047.dkr.ecr.us-west-2.amazonaws.com/caltech-imss-ads/cit_auth:1.2.3
+      - name: example
+        image: example:1.2.3
         environment:
           LDAPTLS_REQCERT: never
           ENVIRONMENT: prod
@@ -106,3 +110,47 @@ services:
         image: redis:latest
       - name: db
         image: mysql:5.5.47
+
+  - name: explicit-volumes
+    cluster: explicit-volumes-prod
+    family: explicit-volumes
+    network_mode: bridge
+    maximum_percent: 250
+    minimum_healthy_percent: 50
+    cpu: 256
+    memory: 512
+    count: 2
+    load_balancer:
+      target_group_arn: my_target_group_arn
+      container_name: example
+      container_port: 443
+      service_role_arn: a_task_role_arn
+    containers:
+      - name: example
+        image: example:1.2.3
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: ac-config-store
+        volumes:
+          - storage_local:/container/path
+          - storage_task:/container/path2
+          - storage_shared:/container/path3:ro
+    volumes:
+      - name: storage_local
+        path: /foo/bar
+      - name: storage_task
+        config:
+          scope: task
+          driver: my_vol_driver:latest
+          autoprovision: true
+      - name: storage_shared
+        config:
+          scope: shared
+          driver: my_vol_driver:latest
+          driverOpts:
+            opt1: value1
+            opt2: value2
+          labels:
+            key1: val1
+            key2: val2
