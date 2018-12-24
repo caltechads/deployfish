@@ -38,6 +38,14 @@ services:
           - SYS_ADMIN
         cap_drop:
           - SYS_RAWIO
+        tmpfs:
+          - container_path: /tmpfs
+            size: 256
+            mount_options:
+              - defaults
+              - noatime
+          - container_path: /tmpfs_another
+            size: 128
         ports:
           - "22"
           - "80:80"

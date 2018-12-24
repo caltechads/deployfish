@@ -64,6 +64,12 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
     def test_cap_drop(self):
         self.assertEqual(self.cd.cap_drop, ['SYS_RAWIO'])
 
+    def test_tmpfs(self):
+        self.assertEqual(self.cd.tmpfs, [
+            {'containerPath': '/tmpfs', 'size': 256, 'mountOptions': ['defaults', 'noatime']},
+            {'containerPath': '/tmpfs_another', 'size': 128}
+        ])
+
 
 class TestContainerDefinition_render(unittest.TestCase):
 
@@ -85,6 +91,12 @@ class TestContainerDefinition_render(unittest.TestCase):
 
     def test_cap_drop(self):
         compare(self.cd.render()['linuxParameters']['capabilities']['drop'], ["SYS_RAWIO"])
+
+    def test_tmpfs(self):
+        compare(self.cd.render()['linuxParameters']['tmpfs'], [
+            {'containerPath': '/tmpfs', 'size': 256, 'mountOptions': ['defaults', 'noatime']},
+            {'containerPath': '/tmpfs_another', 'size': 128}
+        ])
 
     def test_memory(self):
         self.assertEqual(self.cd.render()['memory'], 4000)

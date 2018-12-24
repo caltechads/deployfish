@@ -165,7 +165,7 @@ This must be configured along with ``minimum_healthy_percent``. If not provided 
 See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
 
 minimum_healthy_percent
----------------
+-----------------------
 
 (Integer, Optional) ECS service, this is the lower limit on the number of tasks
 that must remain in the RUNNING state during a deployment, as a percentage of the ``count``. This must be configured
@@ -178,9 +178,9 @@ along with ``maximum_percent``. If not provided will default to 0. ::
 See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
 
 placement_constraints
------------
+---------------------
 
-(Optional) An array of placement constraint objects to use for tasks in your service. You can specify a maximum of 10 constraints per task (this limit includes constraints in the task definition and those specified at run time).
+(Optional) An array of placement constraint objects to use for tasks in your service. You can specify a maximum of 10 constraints per task (this limit includes constraints in the task definition and those specified at run time). ::
 
     services:
          - name: foobar-prod
@@ -192,9 +192,9 @@ placement_constraints
 See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
 
 placement_strategy
------------
+------------------
 
-(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy rules per service.
+(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy rules per service. ::
 
     services:
          - name: foobar-prod
@@ -327,14 +327,14 @@ The above defines three volumes:
   driver specific) and labels given by ``labels``.
 * (Both EC2 or FARGATE launch types) a volume named ``local_storage`` that just allows you to mount ``/host/path`` from
   the host machine using the builtin ``local`` volume driver.  For this type of mount, you can also mount ``/host/path``
-  directly via the ``volumes`` section of your container definition and not define it here.  
+  directly via the ``volumes`` section of your container definition and not define it here.
 
 See `Using Data Volumes in Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_data_volumes.html>`_.
 
 .. note::
 
   You are responsible for installing and confuring any 3rd party docker volume drivers on your ECS container machines.
-  The ``volumes` section just allows you to use that driver once you've properly set it up and configured it.
+  The `volumes` section just allows you to use that driver once you've properly set it up and configured it.
 
 load_balancer
 -------------
@@ -977,6 +977,22 @@ cap_drop
 
   The capabilities should be in ALL CAPS.  Valid values are given in the link below.
 
+tmpfs
+--------
+
+(Optional) The container path, mount options, and size (in MiB) of the tmpfs mount. This parameter maps to the --tmpfs option to docker run, mount_options is optional ::
+
+    containers:
+      - name: foo
+        image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+        tmpfs:
+          - container_path: /tmpfs
+            size: 256
+            mount_options:
+              - defaults
+              - noatime
+          - container_path: /tmpfs_another
+            size: 128
 
 See `Task Definition Parameters: Linux Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_linuxparameters>`_.
 
