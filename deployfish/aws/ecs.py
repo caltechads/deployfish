@@ -125,6 +125,7 @@ class ContainerDefinition(VolumeMixin):
         self._ulimits = []
         self._cap_add = []
         self._cap_drop = []
+        self._tmpfs = []
         self._environment = {}
         self._portMappings = []
         self.logConfiguration = None
@@ -186,6 +187,13 @@ class ContainerDefinition(VolumeMixin):
                     except KeyError:
                         pass
                 return self._cap_drop
+            elif attr == 'tmpfs':
+                if (not self._tmpfs and self.__aws_container_definition):
+                    try:
+                        self._tmpfs = self.__aws_container_definition['linuxParameters']['tmpfs']
+                    except KeyError:
+                        pass
+                return self._tmpfs
             else:
                 raise AttributeError
 
@@ -204,7 +212,8 @@ class ContainerDefinition(VolumeMixin):
             'name',
             'ulimits',
             'cap_add',
-            'cap_drop'
+            'cap_drop',
+            'tmpfs',
         ]:
             setattr(self, "_" + attr, value)
         else:
@@ -349,13 +358,16 @@ class ContainerDefinition(VolumeMixin):
                 r['extraHosts'].append({'hostname': hostname, 'ipAddress': ipAddress})
         if self.logConfiguration:
             r['logConfiguration'] = self.logConfiguration.render()
-        if self.cap_add or self.cap_drop:
+        if self.cap_add or self.cap_drop or self.tmpfs:
             r['linuxParameters'] = {}
-            r['linuxParameters']['capabilities'] = {}
-            if self.cap_add:
-                r['linuxParameters']['capabilities']['add'] = self.cap_add
-            if self.cap_drop:
-                r['linuxParameters']['capabilities']['drop'] = self.cap_drop
+            if self.cap_add or self.cap_drop:
+                r['linuxParameters']['capabilities'] = {}
+                if self.cap_add:
+                    r['linuxParameters']['capabilities']['add'] = self.cap_add
+                if self.cap_drop:
+                    r['linuxParameters']['capabilities']['drop'] = self.cap_drop
+            if self.tmpfs:
+                r['linuxParameters']['tmpfs'] = self.tmpfs
         return r
 
     def update_task_labels(self, family_revisions):
@@ -481,6 +493,14 @@ class ContainerDefinition(VolumeMixin):
             self.cap_add = yml['cap_add']
         if 'cap_drop' in yml:
             self.cap_drop = yml['cap_drop']
+        if 'tmpfs' in yml:
+            for tc in yml['tmpfs']:
+                tc_append = {}
+                tc_append['containerPath'] = tc['container_path']
+                tc_append['size'] = tc['size']
+                if 'mount_options' in tc and type(tc['mount_options']) == list:
+                    tc_append['mountOptions'] = tc['mount_options']
+                self.tmpfs.append(tc_append)
 
     def __str__(self):
         """

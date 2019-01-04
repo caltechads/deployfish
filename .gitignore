@@ -10,3 +10,6 @@ docs/build
 #terraform.tfstate
 tags
 build
+.vscode
+.venv
+/deployfish.yml
