@@ -130,8 +130,10 @@ class ServiceDiscovery(object):
                     return True
             else:
                 if item['Name'] == self._name:
-                    self._service_id = item['Id']
-                    return True
+                    res = self.sd.get_service(Id=item['Id'])
+                    if res['Service']['DnsConfig']['NamespaceId'] == self._namespace_id:
+                        self._service_id = item['Id']
+                        return True
 
         return False
 
