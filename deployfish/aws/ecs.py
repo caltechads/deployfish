@@ -89,6 +89,49 @@ class LogConfiguration(object):
         return r
 
 
+class HealthCheck(object):
+    """
+    Manage the health check configuration in container definition.
+    """
+
+    def __init__(self, aws={}, yml={}):
+        if aws:
+            self.from_aws(aws)
+
+        if yml:
+            self.from_yaml(yml)
+
+    def from_aws(self, aws):
+        self.command = aws['command']
+        self.interval = aws.get('interval')
+        self.timeout = aws.get('timeout')
+        self.retries = aws.get('retries')
+        self.start_period = aws.get('startPeriod')
+
+    def from_yaml(self, yml):
+        self.command = yml['command']
+        self.interval = yml.get('interval')
+        self.timeout = yml.get('timeout')
+        self.retries = yml.get('retries')
+        self.start_period = yml.get('start_period')
+
+    def render(self):
+        return(self.__render())
+
+    def __render(self):
+        r = {}
+        r['command'] = self.command
+        if self.interval is not None:
+            r['interval'] = self.interval
+        if self.timeout is not None:
+            r['timeout'] = self.timeout
+        if self.retries is not None:
+            r['retries'] = self.retries
+        if self.start_period is not None:
+            r['startPeriod'] = self.start_period
+        return r
+
+
 class ContainerDefinition(VolumeMixin):
     """
     Manage one of the container definitions in a `TaskDefinition`.
@@ -132,6 +175,11 @@ class ContainerDefinition(VolumeMixin):
 
         if 'logConfiguration' in aws:
             self.logConfiguration = LogConfiguration(aws['logConfiguration'])
+
+        self.healthCheck = None
+
+        if 'healthCheck' in aws:
+            self.healthCheck = HealthCheck(aws['healthCheck'])
 
         if yml:
             self.from_yaml(yml)
@@ -368,6 +416,8 @@ class ContainerDefinition(VolumeMixin):
                     r['linuxParameters']['capabilities']['drop'] = self.cap_drop
             if self.tmpfs:
                 r['linuxParameters']['tmpfs'] = self.tmpfs
+        if self.healthCheck:
+            r['healthCheck'] = self.healthCheck.render()
         return r
 
     def update_task_labels(self, family_revisions):
@@ -501,6 +551,8 @@ class ContainerDefinition(VolumeMixin):
                 if 'mount_options' in tc and type(tc['mount_options']) == list:
                     tc_append['mountOptions'] = tc['mount_options']
                 self.tmpfs.append(tc_append)
+        if 'health_check' in yml:
+            self.healthCheck = HealthCheck(yml=yml['health_check'])
 
     def __str__(self):
         """

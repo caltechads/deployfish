@@ -1083,6 +1083,21 @@ For fluentd::
 **NOTE**: if you don't provide a ``logging:`` section, no logs will be emitted
 from your service.
 
+health_check
+------------
+
+(dictionary, Optional) Specify a health check configuration.
+
+To configure health check::
+
+    health_check:
+      command: [ "CMD-SHELL", "curl -f http://localhost/ || exit 1" ]
+      interval: 30
+      retries: 3
+      start_period: 10
+      timeout: 5
+
+See `Task Definition Parameters: Health Check <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_healthcheck>`_.
 
 Secrets Management with AWS Parameter Store
 ===========================================
