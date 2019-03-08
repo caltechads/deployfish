@@ -196,6 +196,24 @@ class Config(object):
         for key, value in raw.items():
             self.__replace(raw, key, value, replacers)
 
+    def get_task(self, task_name):
+        """
+        Get the full config for the task named ``task_name`` from our
+        parsed YAML file.
+
+        :param task_name: the name of an ECS task listed in our YAML
+                             file under the ``tasks:`` section
+        :type task_name: string
+
+        :rtype: dict
+        """
+        for task in self.__raw['tasks']:
+            if task['name'] == task_name:
+                return task
+            if 'environment' in task and task['environment'] == task_name:
+                return task
+        raise KeyError
+
     def get_service(self, service_name):
         """
         Get the full config for the service named ``service_name`` from our
