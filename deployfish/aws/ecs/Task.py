@@ -851,7 +851,7 @@ class Task(object):
 
     def __defaults(self):
         self._roleArn = None
-        self.schedule = False
+        self.schedule_expression = None
         self.__vpc_configuration = {}
         self.placement_constraints = []
         self.placement_strategy = []
@@ -930,7 +930,7 @@ class Task(object):
             parameters = yml['config']
         self.parameter_store = ParameterStore(self.taskName, self.clusterName, yml=parameters)
         if 'schedule' in yml:
-            self.schedule = yml['schedule']
+            self.schedule_expression = yml['schedule']
 
     def from_aws(self):
         task_definition_id = self.desired_task_definition.get_latest_revision()
@@ -938,6 +938,22 @@ class Task(object):
             self.active_task_definition = TaskDefinition(task_definition_id)
         else:
             self.active_task_definition = None
+
+    def get_config(self):
+        """
+        Return the ``ParameterStore()`` for our service.
+
+        :rtype: a ``deployfish.systems_manager.ParameterStore`` object
+        """
+        self.parameter_store.populate()
+        return self.parameter_store
+
+    def write_config(self):
+        """
+        Update the AWS System Manager Parameter Store parameters to match
+        what we have defined in our ``deployfish.yml``.
+        """
+        self.parameter_store.save()
 
     def register_task_definition(self):
         if not self.active_task_definition:
@@ -1009,12 +1025,12 @@ class Task(object):
             self._wait_until_stopped()
             self._get_cloudwatch_logs()
 
-    def create_schedule(self):
-        if not self.schedule:
+    def schedule(self):
+        if not self.schedule_expression:
             return
         self.register_task_definition()
 
-    def remove_schedule(self):
+    def unschedule(self):
         pass
 
     def update(self):

@@ -123,44 +123,67 @@ class Config(object):
         Do variable replacement in all strings in the YAML data for
         each listed services under the ``services:`` section.
         """
-        if 'tasks' in self.__raw:
-            for task in self.__raw['tasks']:
-                replacers = {
-                    'environment': task.get('environment', 'prod'),
-                    'task-name': task['name']
-                }
-                if 'cluster' in task:
-                    replacers['cluster-name'] = task['cluster']
-                self.environ = {}
-                if 'env_file' in task:
-                    self.load_env_file(task['env_file'])
-                if self.env_file:
-                    self.load_env_file(self.env_file)
-                if self.import_env:
-                    self.load_environ()
-                # else:
-                #     self.environ = os.environ
 
-                self.__do_dict(task, replacers)
+        sections = ['task', 'service']
 
-        if 'services' in self.__raw:
-            for service in self.__raw['services']:
-                replacers = {
-                    'environment': service.get('environment', 'prod'),
-                    'service-name': service['name'],
-                    'cluster-name': service['cluster']
-                }
-                self.environ = {}
-                if 'env_file' in service:
-                    self.load_env_file(service['env_file'])
-                if self.env_file:
-                    self.load_env_file(self.env_file)
-                if self.import_env:
-                    self.load_environ()
-                # else:
-                #     self.environ = os.environ
+        for name in sections:
+            plural = "{}s".format(name)
+            if plural in self.__raw:
+                for section in self.__raw[plural]:
+                    replacers = {
+                        "{}-name".format(name):section['name']
+                    }
+                    replacers['environment'] = section.get('environment', 'prod')
+                    if 'cluster' in section:
+                        replacers['cluster'] = section['cluster']
+                    self.environ = {}
+                    if 'env_file' in section:
+                        self.load_env_file(section['env_file'])
+                    if self.env_file:
+                        self.load_env_file(self.env_file)
+                    if self.import_env:
+                        self.load_environ()
 
-                self.__do_dict(service, replacers)
+                    self.__do_dict(section, replacers)
+
+        # if 'tasks' in self.__raw:
+        #     for task in self.__raw['tasks']:
+        #         replacers = {
+        #             'environment': task.get('environment', 'prod'),
+        #             'task-name': task['name']
+        #         }
+        #         if 'cluster' in task:
+        #             replacers['cluster-name'] = task['cluster']
+        #         self.environ = {}
+        #         if 'env_file' in task:
+        #             self.load_env_file(task['env_file'])
+        #         if self.env_file:
+        #             self.load_env_file(self.env_file)
+        #         if self.import_env:
+        #             self.load_environ()
+        #         # else:
+        #         #     self.environ = os.environ
+        #
+        #         self.__do_dict(task, replacers)
+        #
+        # if 'services' in self.__raw:
+        #     for service in self.__raw['services']:
+        #         replacers = {
+        #             'environment': service.get('environment', 'prod'),
+        #             'service-name': service['name'],
+        #             'cluster-name': service['cluster']
+        #         }
+        #         self.environ = {}
+        #         if 'env_file' in service:
+        #             self.load_env_file(service['env_file'])
+        #         if self.env_file:
+        #             self.load_env_file(self.env_file)
+        #         if self.import_env:
+        #             self.load_environ()
+        #         # else:
+        #         #     self.environ = os.environ
+        #
+        #         self.__do_dict(service, replacers)
 
     def replace_terraform(self):
         for service in self.__raw['services']:
