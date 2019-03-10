@@ -11,7 +11,7 @@ import sys
 import click
 
 from deployfish.config import Config, needs_config
-from deployfish.aws.ecs import Service
+from deployfish.aws.ecs import Service, Task
 from deployfish.aws.systems_manager import ParameterStore
 from deployfish.cli import cli
 
@@ -680,6 +680,32 @@ def tunnel(ctx, tunnel_name):
 
     service.tunnel(host, local_port, interim_port, port)
 
+@cli.group(short_help="Manage tasks.")
+def task():
+    pass
+
+
+@task.command('run', short_help="Run a task")
+@click.pass_context
+@click.argument('task_name')
+@click.option('--wait/--no-wait', '-w', default=False, help="Wait for log output.")
+@needs_config
+def task_run(ctx, task_name, wait):
+    task = Task(task_name, config=ctx.obj['CONFIG'])
+    # task.register_task_definition()
+    # print(task.desired_task_definition.get_latest_revision())
+    task.run(wait)
+
+
+@task.command('update', short_help="Update a task")
+@click.pass_context
+@click.argument('task_name')
+@needs_config
+def task_update(ctx, task_name):
+    task = Task(task_name, config=ctx.obj['CONFIG'])
+    # task.register_task_definition()
+    # print(task.desired_task_definition.get_latest_revision())
+    task.update()
 
 def main():
     load_local_click_modules()

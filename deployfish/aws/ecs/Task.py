@@ -832,7 +832,7 @@ class TaskDefinition(VolumeMixin):
 
 class Task(object):
 
-    def __init__(self, name, service=True, config=None):
+    def __init__(self, name, service=False, config=None):
         if service:
             yml = config.get_service(name)
         else:
@@ -853,8 +853,18 @@ class Task(object):
         self._roleArn = None
         self.schedule = False
         self.__vpc_configuration = {}
-        self.__placement_constraints = []
-        self.__placement_strategy = []
+        self.placement_constraints = []
+        self.placement_strategy = []
+
+    def set_vpc_configuration(self, yml):
+        self.__vpc_configuration = {
+            'subnets': yml['subnets'],
+        }
+        if 'security_groups' in yml:
+            self.__vpc_configuration['security_groups'] = yml['security_groups']
+
+        if 'public_ip' in yml:
+            self.__vpc_configuration['assignPublicIp'] = yml['public_ip']
 
     def __render(self, task_definition_id):
         """
@@ -865,16 +875,18 @@ class Task(object):
         r = {}
         if self.cluster_specified:
             r['cluster'] = self.clusterName
+        if self._desired_count:
+            r['count'] = self._desired_count
         r['launchType'] = self.launchType
         if self.launchType == 'FARGATE':
             r['networkConfiguration'] = {
-                'awsvpcConfiguration': self.vpc_configuration
+                'awsvpcConfiguration': self.__vpc_configuration
             }
         r['taskDefinition'] = task_definition_id
-        if len(self.placementConstraints) > 0:
-            r['placementConstraints'] = self.placementConstraints
-        if len(self.placementStrategy) > 0:
-            r['placementStrategy'] = self.placementStrategy
+        if len(self.placement_constraints) > 0:
+            r['placementConstraints'] = self.placement_constraints
+        if len(self.placement_strategy) > 0:
+            r['placementStrategy'] = self.placement_strategy
         return r
 
     def from_yaml(self, yml):
@@ -893,27 +905,24 @@ class Task(object):
         if 'cluster' in yml:
             self.clusterName = yml['cluster']
             self.cluster_specified = True
-        elif self.launchType == 'FARGATE':
-            self.clusterName = 'fargate-{}'.format(self.environment)
         else:
-            self.clusterName = 'default-{}'.format(self.environment)
+            self.clusterName = 'default'
 
         if 'vpc_configuration' in yml:
             self.set_vpc_configuration(
-                yml['vpc_configuration']['subnets'],
-                yml['vpc_configuration']['security_groups'],
-                yml['vpc_configuration']['public_ip'],
+                yml['vpc_configuration']
             )
         if 'placement_constraints' in yml:
             self.placementConstraints = yml['placement_constraints']
         if 'placement_strategy' in yml:
             self.placementStrategy = yml['placement_strategy']
-        self._count = yml['count']
+        if 'count' in yml:
+            self._desired_count = yml['count']
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
             "DEPLOYFISH_TASK_NAME": yml['name'],
             "DEPLOYFISH_ENVIRONMENT": yml.get('environment', 'undefined'),
-            "DEPLOYFISH_CLUSTER_NAME": yml['cluster']
+            "DEPLOYFISH_CLUSTER_NAME": self.clusterName
         }
         self.desired_task_definition.inject_environment(deployfish_environment)
         parameters = []
@@ -935,13 +944,70 @@ class Task(object):
             self.desired_task_definition.create()
             self.from_aws()
 
-    def run(self):
+    def _get_cloudwatch_logs(self):
+        if not self.active_task_definition.containers[0].logConfiguration.driver == 'awslogs':
+            return
+
+        prefix = self.active_task_definition.containers[0].logConfiguration.options['awslogs-stream-prefix']
+        group = self.active_task_definition.containers[0].logConfiguration.options['awslogs-group']
+        container = self.active_task_definition.containers[0].name
+        task_id = self.taskarn.split(':')[-1][5:]
+        stream = "{}/{}/{}".format(prefix, container, task_id)
+
+        logclient = get_boto3_session().client('logs')
+
+
+        nextToken = None
+        kwargs = {
+            'logGroupName':group,
+            'logStreamName':stream,
+            'startFromHead':True
+        }
+
+        print("Waiting for logs...\n")
+        for i in range(40):
+            time.sleep(5)
+            response = logclient.get_log_events(**kwargs)
+            for event in response['events']:
+                print(event['message'])
+            token = response['nextForwardToken']
+            if token == nextToken:
+                return
+            nextToken = response['nextForwardToken']
+            kwargs['nextToken'] = nextToken
+
+    def _wait_until_stopped(self):
+        if 'tasks' in self.response and len(self.response['tasks']) > 0:
+            task = self.response['tasks'][0]
+            cluster = task['clusterArn']
+            self.taskarn = task['taskArn']
+        print("Waiting for task to complete...\n")
+        for i in range(40):
+            time.sleep(5)
+            response = self.ecs.describe_tasks(
+                cluster=cluster,
+                tasks=[self.taskarn]
+            )
+            if 'tasks' in response and len(response['tasks']) > 0:
+                status = response['tasks'][0]['lastStatus']
+                print("\tCurrent status: {}".format(status))
+                if status == "STOPPED":
+                    print("")
+                    return
+            else:
+                return
+
+    def run(self, wait):
         self.register_task_definition()
         if not self.active_task_definition:
             # problem
             return
         kwargs = self.__render(self.active_task_definition.arn)
-        self.ecs.run_task(**kwargs)
+        self.response = self.ecs.run_task(**kwargs)
+        # print(self.response)
+        if wait:
+            self._wait_until_stopped()
+            self._get_cloudwatch_logs()
 
     def create_schedule(self):
         if not self.schedule:
@@ -949,11 +1015,11 @@ class Task(object):
         self.register_task_definition()
 
     def remove_schedule(self):
-        if not self.schedule:
-            return
+        pass
 
     def update(self):
-        pass
+        self.desired_task_definition.create()
+        self.from_aws()
 
     def purge(self):
         pass
