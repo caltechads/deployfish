@@ -514,6 +514,61 @@ def write_config(ctx, service_name, dry_run):
     else:
         click.echo('\nDRY RUN: not making changes in AWS')
 
+def _entrypoint(ctx, section, section_name, cluster_name, command, dry_run):
+    if section_name and cluster_name:
+        # The only thing we need out of Config is the names of any config:
+        # section variables we might have.  We don't need to do interpolation
+        # in the config: section, because we retrieve the values from Parameter
+        # Store, and we don't want to use any aws: section that might be in the
+        # deployfish.yml to configure our boto3 session because we want to defer
+        # to the IAM ECS Task Role.
+        config = Config(
+            filename=ctx.obj['CONFIG_FILE'],
+            interpolate=False,
+            use_aws_section=False
+        )
+        try:
+            section_yml = config.get_service(section_name)
+        except KeyError:
+            click.echo("Our container's deployfish config file '{}' does not have section '{}'".format(
+                ctx.obj['CONFIG_FILE'] or 'deployfish.yml',
+                section_name
+            ))
+            sys.exit(1)
+        parameter_store = []
+        if 'config' in section_yml:
+            parameter_store = ParameterStore(section_name, cluster_name, yml=section_yml['config'])
+            parameter_store.populate()
+        if not dry_run:
+            for param in parameter_store:
+                if param.exists:
+                    if param.should_exist:
+                        os.environ[param.key] = param.aws_value
+                    else:
+                        print(
+                            "event='deploy.entrypoint.parameter.ignored.not_in_deployfish_yml' section='{}' parameter='{}'".format(
+                                section_name, param.name))
+                else:
+                    print("event='deploy.entrypoint.parameter.ignored.not_in_aws' section='{}' parameter='{}'".format(
+                        section_name, param.name))
+        else:
+            exists = []
+            notexists = []
+            for param in parameter_store:
+                if param.exists:
+                    exists.append(param)
+                else:
+                    notexists.append(param)
+            click.secho("Would have set these environment variables:", fg="cyan")
+            for param in exists:
+                click.echo('  {}={}'.format(param.key, param.aws_value))
+            click.secho("\nThese parameters are not in AWS:", fg="red")
+            for param in notexists:
+                click.echo('  {}'.format(param.key))
+    if dry_run:
+        click.secho('\n\nCOMMAND: {}'.format(command))
+    else:
+        subprocess.call(command)
 
 @cli.command('entrypoint', short_help="Use for a Docker entrypoint", context_settings=dict(ignore_unknown_options=True))
 @click.pass_context
@@ -547,57 +602,7 @@ def entrypoint(ctx, command, dry_run):
     """
     service_name = os.environ.get('DEPLOYFISH_SERVICE_NAME', None)
     cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
-    if service_name and cluster_name:
-        # The only thing we need out of Config is the names of any config:
-        # section variables we might have.  We don't need to do interpolation
-        # in the config: section, because we retrieve the values from Parameter
-        # Store, and we don't want to use any aws: section that might be in the
-        # deployfish.yml to configure our boto3 session because we want to defer
-        # to the IAM ECS Task Role.
-        config = Config(
-            filename=ctx.obj['CONFIG_FILE'],
-            interpolate=False,
-            use_aws_section=False
-        )
-        try:
-            service_yml = config.get_service(service_name)
-        except KeyError:
-            click.echo("Our container's deployfish config file '{}' does not have service '{}'".format(
-                ctx.obj['CONFIG_FILE'] or 'deployfish.yml',
-                service_name
-            ))
-            sys.exit(1)
-        parameter_store = []
-        if 'config' in service_yml:
-            parameter_store = ParameterStore(service_name, cluster_name, yml=service_yml['config'])
-            parameter_store.populate()
-        if not dry_run:
-            for param in parameter_store:
-                if param.exists:
-                    if param.should_exist:
-                        os.environ[param.key] = param.aws_value
-                    else:
-                        print("event='deploy.entrypoint.parameter.ignored.not_in_deployfish_yml' service='{}' parameter='{}'".format(service_name, param.name))
-                else:
-                    print("event='deploy.entrypoint.parameter.ignored.not_in_aws' service='{}' parameter='{}'".format(service_name, param.name))
-        else:
-            exists = []
-            notexists = []
-            for param in parameter_store:
-                if param.exists:
-                    exists.append(param)
-                else:
-                    notexists.append(param)
-            click.secho("Would have set these environment variables:", fg="cyan")
-            for param in exists:
-                click.echo('  {}={}'.format(param.key, param.aws_value))
-            click.secho("\nThese parameters are not in AWS:", fg="red")
-            for param in notexists:
-                click.echo('  {}'.format(param.key))
-    if dry_run:
-        click.secho('\n\nCOMMAND: {}'.format(command))
-    else:
-        subprocess.call(command)
+    _entrypoint(ctx, "services", service_name, cluster_name, command, dry_run)
 
 
 @cli.command('ssh', short_help="Connect to an ECS cluster machine")
@@ -707,6 +712,7 @@ def task_update(ctx, task_name):
     # print(task.desired_task_definition.get_latest_revision())
     task.update()
 
+
 @task.group("config", short_help="Manage AWS Parameter Store values")
 def task_config():
     pass
@@ -734,6 +740,7 @@ def _show_config(section, name, diff, to_env_file):
                 else:
                     if not to_env_file:
                         click.secho("  {}".format(p.display(p.key, "[NOT IN AWS]")), fg="red")
+
 
 @task_config.command('show', short_help="Show the config parameters as they are currently set in AWS")
 @click.pass_context
@@ -764,6 +771,7 @@ def _write_config(section, name, dry_run):
     else:
         click.echo('\nDRY RUN: not making changes in AWS')
 
+
 @task_config.command('write', short_help="Write the config parameters to AWS System Manager Parameter Store")
 @click.pass_context
 @click.argument('service_name')
@@ -792,75 +800,25 @@ def task_entrypoint(ctx, command, dry_run):
 
     \b
     * download the parameters listed in "config:" section for service
-      DEPLOYFISH_SERVICE_NAME from the AWS System Manager Parameter Store (which
+      DEPLOYFISH_TASK_NAME from the AWS System Manager Parameter Store (which
       are prefixed by "${DEPLOYFISH_CLUSTER_NAME}.${DEPLOYFISH_SERVICE_NAME}.")
     * set those parameters and their values as environment variables
     * run COMMAND
 
-    If either DEPLOYFISH_SERVICE_NAME or DEPLOYFISH_CLUSTER_NAME are not in
+    If either DEPLOYFISH_TASK_NAME or DEPLOYFISH_CLUSTER_NAME are not in
     the environment, just run COMMMAND.
 
     \b
     NOTE:
 
-        "deploy entrypoint" IGNORES any "aws:" section in your config file.
+        "entrypoint" commands IGNORE any "aws:" section in your config file.
         We're assuming that you're only ever running "deploy entrypoint" inside
         a container in your AWS service.  It should get its credentials
         from the container's IAM ECS Task Role.
     """
-    service_name = os.environ.get('DEPLOYFISH_SERVICE_NAME', None)
+    task_name = os.environ.get('DEPLOYFISH_TASK_NAME', None)
     cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
-    if service_name and cluster_name:
-        # The only thing we need out of Config is the names of any config:
-        # section variables we might have.  We don't need to do interpolation
-        # in the config: section, because we retrieve the values from Parameter
-        # Store, and we don't want to use any aws: section that might be in the
-        # deployfish.yml to configure our boto3 session because we want to defer
-        # to the IAM ECS Task Role.
-        config = Config(
-            filename=ctx.obj['CONFIG_FILE'],
-            interpolate=False,
-            use_aws_section=False
-        )
-        try:
-            service_yml = config.get_service(service_name)
-        except KeyError:
-            click.echo("Our container's deployfish config file '{}' does not have service '{}'".format(
-                ctx.obj['CONFIG_FILE'] or 'deployfish.yml',
-                service_name
-            ))
-            sys.exit(1)
-        parameter_store = []
-        if 'config' in service_yml:
-            parameter_store = ParameterStore(service_name, cluster_name, yml=service_yml['config'])
-            parameter_store.populate()
-        if not dry_run:
-            for param in parameter_store:
-                if param.exists:
-                    if param.should_exist:
-                        os.environ[param.key] = param.aws_value
-                    else:
-                        print("event='deploy.entrypoint.parameter.ignored.not_in_deployfish_yml' service='{}' parameter='{}'".format(service_name, param.name))
-                else:
-                    print("event='deploy.entrypoint.parameter.ignored.not_in_aws' service='{}' parameter='{}'".format(service_name, param.name))
-        else:
-            exists = []
-            notexists = []
-            for param in parameter_store:
-                if param.exists:
-                    exists.append(param)
-                else:
-                    notexists.append(param)
-            click.secho("Would have set these environment variables:", fg="cyan")
-            for param in exists:
-                click.echo('  {}={}'.format(param.key, param.aws_value))
-            click.secho("\nThese parameters are not in AWS:", fg="red")
-            for param in notexists:
-                click.echo('  {}'.format(param.key))
-    if dry_run:
-        click.secho('\n\nCOMMAND: {}'.format(command))
-    else:
-        subprocess.call(command)
+    _entrypoint(ctx, 'tasks', task_name, cluster_name, command, dry_run)
 
 def main():
     load_local_click_modules()

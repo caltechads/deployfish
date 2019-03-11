@@ -830,6 +830,34 @@ class TaskDefinition(VolumeMixin):
         return json.dumps(self.__render(), indent=2, sort_keys=True)
 
 
+class TaskScheduler(object):
+
+    def __init__(self,
+                 schedule_expression,
+                 task_definition,
+                 cluster,
+                 count=1,
+                 network_configuration=None,
+                 version=None,
+                 group=None):
+        self.schedule_expression = schedule_expression
+        self.task_definition = task_definition
+        self.cluster = cluster
+        self.count = count
+        self.network_configuration = network_configuration
+        self.version = version
+        self.group = group
+
+    def schedule(self):
+        pass
+
+    def unschedule(self):
+        pass
+
+    def _render(self):
+        pass
+
+
 class Task(object):
 
     def __init__(self, name, service=False, config=None):
