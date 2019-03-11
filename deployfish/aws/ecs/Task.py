@@ -920,7 +920,7 @@ class Task(object):
             self._desired_count = yml['count']
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
-            "DEPLOYFISH_TASK_NAME": yml['name'],
+            "DEPLOYFISH_TASK_NAME": "task-{}".format(yml['name']),
             "DEPLOYFISH_ENVIRONMENT": yml.get('environment', 'undefined'),
             "DEPLOYFISH_CLUSTER_NAME": self.clusterName
         }
@@ -928,7 +928,7 @@ class Task(object):
         parameters = []
         if 'config' in yml:
             parameters = yml['config']
-        self.parameter_store = ParameterStore(self.taskName, self.clusterName, yml=parameters)
+        self.parameter_store = ParameterStore("task-{}".format(self.taskName), self.clusterName, yml=parameters)
         if 'schedule' in yml:
             self.schedule_expression = yml['schedule']
 
