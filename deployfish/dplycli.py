@@ -702,6 +702,28 @@ def task_run(ctx, task_name, wait):
     task.run(wait)
 
 
+@task.command('schedule', short_help="Schedule a task")
+@click.pass_context
+@click.argument('task_name')
+@needs_config
+def task_schedule(ctx, task_name):
+    task = Task(task_name, config=ctx.obj['CONFIG'])
+    # task.register_task_definition()
+    # print(task.desired_task_definition.get_latest_revision())
+    task.schedule()
+
+
+@task.command('unschedule', short_help="Unschedule a task")
+@click.pass_context
+@click.argument('task_name')
+@needs_config
+def task_schedule(ctx, task_name):
+    task = Task(task_name, config=ctx.obj['CONFIG'])
+    # task.register_task_definition()
+    # print(task.desired_task_definition.get_latest_revision())
+    task.unschedule()
+
+
 @task.command('update', short_help="Update a task")
 @click.pass_context
 @click.argument('task_name')
@@ -716,6 +738,7 @@ def task_update(ctx, task_name):
 @task.group("config", short_help="Manage AWS Parameter Store values")
 def task_config():
     pass
+
 
 def _show_config(section, name, diff, to_env_file):
     if not to_env_file:
@@ -750,11 +773,12 @@ def _show_config(section, name, diff, to_env_file):
 @needs_config
 def task_show_config(ctx, task_name, diff, to_env_file):
     """
-    If the service SERVICE_NAME has a "config:" section defined, print a list of
+    If the service TASK_NAME has a "config:" section defined, print a list of
     all parameters for the service and the values they currently have in AWS.
     """
     task = Task(task_name, config=ctx.obj['CONFIG'])
     _show_config(task, task_name, diff, to_env_file)
+
 
 def _write_config(section, name, dry_run):
     parameters = section.get_config()
@@ -779,7 +803,7 @@ def _write_config(section, name, dry_run):
 @needs_config
 def task_write_config(ctx, task_name, dry_run):
     """
-    If the service SERVICE_NAME has a "config:" section defined, write
+    If the service TASK_NAME has a "config:" section defined, write
     all of the parameters for the service to AWS Parameter Store.
     """
     task = Task(task_name, config=ctx.obj['CONFIG'])

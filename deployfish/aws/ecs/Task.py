@@ -23,6 +23,8 @@ from deployfish.aws.appscaling import ApplicationAutoscaling
 from deployfish.aws.systems_manager import ParameterStore
 from deployfish.aws.service_discovery import ServiceDiscovery
 
+from .TaskScheduler import TaskScheduler
+
 
 class VolumeMixin(object):
     """
@@ -830,34 +832,6 @@ class TaskDefinition(VolumeMixin):
         return json.dumps(self.__render(), indent=2, sort_keys=True)
 
 
-class TaskScheduler(object):
-
-    def __init__(self,
-                 schedule_expression,
-                 task_definition,
-                 cluster,
-                 count=1,
-                 network_configuration=None,
-                 version=None,
-                 group=None):
-        self.schedule_expression = schedule_expression
-        self.task_definition = task_definition
-        self.cluster = cluster
-        self.count = count
-        self.network_configuration = network_configuration
-        self.version = version
-        self.group = group
-
-    def schedule(self):
-        pass
-
-    def unschedule(self):
-        pass
-
-    def _render(self):
-        pass
-
-
 class Task(object):
 
     def __init__(self, name, service=False, config=None):
@@ -870,29 +844,34 @@ class Task(object):
 
         self.taskName = None
         self._clusterName = None
-        self._desired_count = 0
+        self.desired_count = 1
         self._launchType = 'EC2'
         self.cluster_specified = False
         self.__defaults()
         self.from_yaml(yml)
         self.from_aws()
+        self.scheduler = TaskScheduler(self)
 
     def __defaults(self):
         self._roleArn = None
         self.schedule_expression = None
-        self.__vpc_configuration = {}
+        self.schedule_role = None
+        self.vpc_configuration = {}
         self.placement_constraints = []
         self.placement_strategy = []
+        self.platform_version = "LATEST"
+        self.cluster_arn = ''
+        self.group = None
 
     def set_vpc_configuration(self, yml):
-        self.__vpc_configuration = {
+        self.vpc_configuration = {
             'subnets': yml['subnets'],
         }
         if 'security_groups' in yml:
-            self.__vpc_configuration['security_groups'] = yml['security_groups']
+            self.vpc_configuration['security_groups'] = yml['security_groups']
 
         if 'public_ip' in yml:
-            self.__vpc_configuration['assignPublicIp'] = yml['public_ip']
+            self.vpc_configuration['assignPublicIp'] = yml['public_ip']
 
     def __render(self, task_definition_id):
         """
@@ -903,19 +882,33 @@ class Task(object):
         r = {}
         if self.cluster_specified:
             r['cluster'] = self.clusterName
-        if self._desired_count:
-            r['count'] = self._desired_count
+        if self.desired_count:
+            r['count'] = self.desired_count
         r['launchType'] = self.launchType
         if self.launchType == 'FARGATE':
             r['networkConfiguration'] = {
-                'awsvpcConfiguration': self.__vpc_configuration
+                'awsvpcConfiguration': self.vpc_configuration
             }
         r['taskDefinition'] = task_definition_id
         if len(self.placement_constraints) > 0:
             r['placementConstraints'] = self.placement_constraints
         if len(self.placement_strategy) > 0:
             r['placementStrategy'] = self.placement_strategy
+        if self.group:
+            r['group'] = self.group
         return r
+
+    def _get_cluster_arn(self):
+        if self.cluster_specified:
+            response = self.ecs.describe_clusters(clusters=[self._clusterName])
+            for cluster in response['clusters']:
+                self.cluster_arn = cluster['clusterArn']
+                return
+
+        response = self.ecs.describe_clusters()
+        for cluster in response['clusters']:
+            self.cluster_arn = cluster['clusterArn']
+            return
 
     def from_yaml(self, yml):
         """
@@ -945,7 +938,9 @@ class Task(object):
         if 'placement_strategy' in yml:
             self.placementStrategy = yml['placement_strategy']
         if 'count' in yml:
-            self._desired_count = yml['count']
+            self.desired_count = yml['count']
+        if 'platform_version' in yml:
+            self.platform_version = yml['platform_version']
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
             "DEPLOYFISH_TASK_NAME": "task-{}".format(yml['name']),
@@ -959,6 +954,12 @@ class Task(object):
         self.parameter_store = ParameterStore("task-{}".format(self.taskName), self.clusterName, yml=parameters)
         if 'schedule' in yml:
             self.schedule_expression = yml['schedule']
+        if 'schedule_role' in yml:
+            self.schedule_role = yml['schedule_role']
+        if 'group' in yml:
+            self.group = yml['group']
+
+        self._get_cluster_arn()
 
     def from_aws(self):
         task_definition_id = self.desired_task_definition.get_latest_revision()
@@ -1057,9 +1058,10 @@ class Task(object):
         if not self.schedule_expression:
             return
         self.register_task_definition()
+        self.scheduler.schedule()
 
     def unschedule(self):
-        pass
+        self.scheduler.unschedule()
 
     def update(self):
         self.desired_task_definition.create()
