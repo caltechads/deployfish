@@ -528,7 +528,7 @@ def _entrypoint(ctx, section, section_name, cluster_name, command, dry_run):
             use_aws_section=False
         )
         try:
-            section_yml = config.get_service(section_name)
+            section_yml = config.get_section_item(section, section_name)
         except KeyError:
             click.echo("Our container's deployfish config file '{}' does not have section '{}'".format(
                 ctx.obj['CONFIG_FILE'] or 'deployfish.yml',
