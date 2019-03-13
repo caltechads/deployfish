@@ -842,6 +842,7 @@ def task_entrypoint(ctx, command, dry_run):
     """
     task_name = os.environ.get('DEPLOYFISH_TASK_NAME', None)
     cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
+    print("Task name: {}, cluster name: {}".format(task_name, cluster_name))
     _entrypoint(ctx, 'tasks', task_name, cluster_name, command, dry_run)
 
 def main():
