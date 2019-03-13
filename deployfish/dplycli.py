@@ -798,7 +798,7 @@ def _write_config(section, name, dry_run):
 
 @task_config.command('write', short_help="Write the config parameters to AWS System Manager Parameter Store")
 @click.pass_context
-@click.argument('service_name')
+@click.argument('task_name')
 @click.option('--dry-run/--no-dry-run', default=False, help="Don't actually run the task")
 @needs_config
 def task_write_config(ctx, task_name, dry_run):
