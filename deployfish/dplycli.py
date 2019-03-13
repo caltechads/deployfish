@@ -522,6 +522,7 @@ def _entrypoint(ctx, section, section_name, cluster_name, command, dry_run):
         # Store, and we don't want to use any aws: section that might be in the
         # deployfish.yml to configure our boto3 session because we want to defer
         # to the IAM ECS Task Role.
+        click.echo("A")
         config = Config(
             filename=ctx.obj['CONFIG_FILE'],
             interpolate=False,
@@ -535,6 +536,7 @@ def _entrypoint(ctx, section, section_name, cluster_name, command, dry_run):
                 section_name
             ))
             sys.exit(1)
+        click.echo("B")
         parameter_store = []
         if 'config' in section_yml:
             parameter_store = ParameterStore(section_name, cluster_name, yml=section_yml['config'])
@@ -565,6 +567,7 @@ def _entrypoint(ctx, section, section_name, cluster_name, command, dry_run):
             click.secho("\nThese parameters are not in AWS:", fg="red")
             for param in notexists:
                 click.echo('  {}'.format(param.key))
+    click.echo("C")
     if dry_run:
         click.secho('\n\nCOMMAND: {}'.format(command))
     else:
@@ -843,6 +846,7 @@ def task_entrypoint(ctx, command, dry_run):
     task_name = os.environ.get('DEPLOYFISH_TASK_NAME', None)
     cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
     print("Task name: {}, cluster name: {}".format(task_name, cluster_name))
+    click.echo("Task name: {}, cluster name: {}".format(task_name, cluster_name))
     _entrypoint(ctx, 'tasks', task_name, cluster_name, command, dry_run)
 
 def main():
