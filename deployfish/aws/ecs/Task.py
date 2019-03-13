@@ -943,7 +943,7 @@ class Task(object):
             self.platform_version = yml['platform_version']
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
-            "DEPLOYFISH_TASK_NAME": "task-{}".format(yml['name']),
+            "DEPLOYFISH_TASK_NAME": yml['name'],
             "DEPLOYFISH_ENVIRONMENT": yml.get('environment', 'undefined'),
             "DEPLOYFISH_CLUSTER_NAME": self.clusterName
         }

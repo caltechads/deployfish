@@ -514,7 +514,7 @@ def write_config(ctx, service_name, dry_run):
     else:
         click.echo('\nDRY RUN: not making changes in AWS')
 
-def _entrypoint(ctx, section, section_name, cluster_name, command, dry_run):
+def _entrypoint(ctx, section, section_name, cluster_name, parameter_prefix, command, dry_run):
     if section_name and cluster_name:
         # The only thing we need out of Config is the names of any config:
         # section variables we might have.  We don't need to do interpolation
@@ -539,7 +539,8 @@ def _entrypoint(ctx, section, section_name, cluster_name, command, dry_run):
         click.echo("B")
         parameter_store = []
         if 'config' in section_yml:
-            parameter_store = ParameterStore(section_name, cluster_name, yml=section_yml['config'])
+            parameter_name = parameter_prefix + section_name
+            parameter_store = ParameterStore(parameter_name, cluster_name, yml=section_yml['config'])
             parameter_store.populate()
         if not dry_run:
             for param in parameter_store:
@@ -845,9 +846,10 @@ def task_entrypoint(ctx, command, dry_run):
     """
     task_name = os.environ.get('DEPLOYFISH_TASK_NAME', None)
     cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
+    parameter_prefix = "task-"
     print("Task name: {}, cluster name: {}".format(task_name, cluster_name))
     click.echo("Task name: {}, cluster name: {}".format(task_name, cluster_name))
-    _entrypoint(ctx, 'tasks', task_name, cluster_name, command, dry_run)
+    _entrypoint(ctx, 'tasks', task_name, cluster_name, parameter_prefix, command, dry_run)
 
 def main():
     load_local_click_modules()
