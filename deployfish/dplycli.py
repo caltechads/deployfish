@@ -572,6 +572,7 @@ def _entrypoint(ctx, section, section_name, cluster_name, parameter_prefix, comm
     if dry_run:
         click.secho('\n\nCOMMAND: {}'.format(command))
     else:
+        click.echo("Running: {}".format(command))
         subprocess.call(command)
 
 @cli.command('entrypoint', short_help="Use for a Docker entrypoint", context_settings=dict(ignore_unknown_options=True))
@@ -606,7 +607,7 @@ def entrypoint(ctx, command, dry_run):
     """
     service_name = os.environ.get('DEPLOYFISH_SERVICE_NAME', None)
     cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
-    _entrypoint(ctx, "services", service_name, cluster_name, command, dry_run)
+    _entrypoint(ctx, "services", service_name, cluster_name, "", command, dry_run)
 
 
 @cli.command('ssh', short_help="Connect to an ECS cluster machine")
