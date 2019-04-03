@@ -697,9 +697,11 @@ def task():
 @click.option('--wait/--no-wait', '-w', default=False, help="Wait for log output.")
 @needs_config
 def task_run(ctx, task_name, wait):
+    """
+    Run the specified task, and if wait is true, wait for the task to finish and display
+    any logs.
+    """
     task = Task(task_name, config=ctx.obj['CONFIG'])
-    # task.register_task_definition()
-    # print(task.desired_task_definition.get_latest_revision())
     task.run(wait)
 
 
@@ -708,9 +710,10 @@ def task_run(ctx, task_name, wait):
 @click.argument('task_name')
 @needs_config
 def task_schedule(ctx, task_name):
+    """
+    Schedule the specified task according to the schedule expression defined in the yml file.
+    """
     task = Task(task_name, config=ctx.obj['CONFIG'])
-    # task.register_task_definition()
-    # print(task.desired_task_definition.get_latest_revision())
     task.schedule()
 
 
@@ -718,10 +721,11 @@ def task_schedule(ctx, task_name):
 @click.pass_context
 @click.argument('task_name')
 @needs_config
-def task_schedule(ctx, task_name):
+def task_unschedule(ctx, task_name):
+    """
+    Unschedule the specified task.
+    """
     task = Task(task_name, config=ctx.obj['CONFIG'])
-    # task.register_task_definition()
-    # print(task.desired_task_definition.get_latest_revision())
     task.unschedule()
 
 
@@ -730,9 +734,10 @@ def task_schedule(ctx, task_name):
 @click.argument('task_name')
 @needs_config
 def task_update(ctx, task_name):
+    """
+    Update the task definition for the specified task.
+    """
     task = Task(task_name, config=ctx.obj['CONFIG'])
-    # task.register_task_definition()
-    # print(task.desired_task_definition.get_latest_revision())
     task.update()
 
 
@@ -774,8 +779,8 @@ def _show_config(section, name, diff, to_env_file):
 @needs_config
 def task_show_config(ctx, task_name, diff, to_env_file):
     """
-    If the service TASK_NAME has a "config:" section defined, print a list of
-    all parameters for the service and the values they currently have in AWS.
+    If the task TASK_NAME has a "config:" section defined, print a list of
+    all parameters for the task and the values they currently have in AWS.
     """
     task = Task(task_name, config=ctx.obj['CONFIG'])
     _show_config(task, task_name, diff, to_env_file)
@@ -804,8 +809,8 @@ def _write_config(section, name, dry_run):
 @needs_config
 def task_write_config(ctx, task_name, dry_run):
     """
-    If the service TASK_NAME has a "config:" section defined, write
-    all of the parameters for the service to AWS Parameter Store.
+    If the task TASK_NAME has a "config:" section defined, write
+    all of the parameters for the task to AWS Parameter Store.
     """
     task = Task(task_name, config=ctx.obj['CONFIG'])
     _write_config(task, task_name, dry_run)
@@ -820,13 +825,13 @@ def task_entrypoint(ctx, command, dry_run):
     Use this as the entrypoint for your containers.
 
     It will look in the shell environment for the environment variables
-    DEPLOYFISH_SERVICE_NAME and DEPLOYFISH_CLUSTER_NAME.  If found, it will
+    DEPLOYFISH_TASK_NAME and DEPLOYFISH_CLUSTER_NAME.  If found, it will
     use them to:
 
     \b
-    * download the parameters listed in "config:" section for service
+    * download the parameters listed in "config:" section for task
       DEPLOYFISH_TASK_NAME from the AWS System Manager Parameter Store (which
-      are prefixed by "${DEPLOYFISH_CLUSTER_NAME}.${DEPLOYFISH_SERVICE_NAME}.")
+      are prefixed by "${DEPLOYFISH_CLUSTER_NAME}.task-${DEPLOYFISH_SERVICE_NAME}.")
     * set those parameters and their values as environment variables
     * run COMMAND
 

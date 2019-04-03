@@ -6,7 +6,7 @@ tasks:
     launch_type: FARGATE
     cpu: 256
     memory: 512
-    execution_role: arn:aws:iam::123445564666:role/run-task-test
+    execution_role_arn: arn:aws:iam::123445564666:role/run-task-test
     containers:
       - name: hello-world
         image: hello-world

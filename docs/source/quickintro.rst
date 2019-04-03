@@ -1,11 +1,12 @@
 ``deployfish`` has commands for managing the whole lifecycle of your application:
 
 * Safely and easily create, update, destroy and restart ECS services
+* Safely and easily create, update, run, schedule and unschedule ECS tasks
 * Extensive support for ECS related services like load balancing, application
   autoscaling and service discovery
 * Easily scale the number of containers in your service, optionally scaling its
   associated autoscaling group at the same time
-* Manage multiple environments for your service (test, qa, prod, etc.) in
+* Manage multiple environments for your task or service (test, qa, prod, etc.) in
   multiple AWS accounts.
 * Uses AWS Parameter Store for secrets for your containers
 * View the configuration and status of running ECS services

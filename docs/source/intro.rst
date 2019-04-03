@@ -6,8 +6,8 @@ Introduction
 To use ``deployfish``, you
 
 * Install ``deployfish``
-* Define your service in ``deployfish.yml``
-* Use ``deploy`` to start managing your service
+* Define your tasks and services in ``deployfish.yml``
+* Use ``deploy`` to start managing your tasks and services
 
 A simple ``deployfish.yml`` looks like this::
 

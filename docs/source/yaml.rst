@@ -649,7 +649,7 @@ before running ``deploy create <service_name>``.
 See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_role_arn>`_, and
 `IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html>`_
 
-execution_role_arn
+execution_role
 ------------------
 
 (String, Required for Fargate) A task exeuction role ARN for an IAM role that allows Fargate to pull container images and publish container logs
@@ -661,7 +661,7 @@ to Amazon CloudWatch on your behalf.::
         count: 2
         family: foobar-prod-task-def
         network_mode: bridge
-        execution_role_arn: arn:aws:iam::123142123547:role/my-task-role
+        execution_role: arn:aws:iam::123142123547:role/my-task-role
 
 deployfish won't create the Task Execution Role for you -- you'll need to create it
 before running ``deploy create <service_name>``.
@@ -676,14 +676,17 @@ cpu
 If you are configuring a Fargate task, you have to specify the cpu at the task level, and there are specific values
 for cpu which are supported which we describe below.
 
-------------------
- CPU value
-------------------
- 256 (.25 vCPU)
- 512 (.5 vCPU)
- 1024 (1 vCPU)
- 2048 (2 vCPU)
- 4096 (4 vCPU)
+The available CPU values are:
+
+=====  ============
+Value  Virtual CPUs
+=====  ============
+256    .25 vCPU
+512    .5 vCPU
+1024   1 vCPU
+2048   2 vCPU
+4096   4 vCPU
+=====  ============
 
 See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
 
@@ -695,21 +698,384 @@ memory
 If you are configuring a Fargate task, you have to specify the memory at the task level, and there are specific values
 for memory which are supported which we describe below.
 
--------------------------------------------------------------------------------------
- Memory value (MiB)
--------------------------------------------------------------------------------------
- 512 (0.5GB), 1024 (1GB), 2048 (2GB)
- 1024 (1GB), 2048 (2GB), 3072 (3GB), 4096 (4GB)
- 2048 (2GB), 3072 (3GB), 4096 (4GB), 5120 (5GB), 6144 (6GB), 7168 (7GB), 8192 (8GB)
- Between 4096 (4GB) and 16384 (16GB) in increments of 1024 (1GB)
- Between 8192 (8GB) and 30720 (30GB) in increments of 1024 (1GB)
+The available memory choices for a specific CPU value are:
+
+================  ========
+CPU               Memory Configurations
+================  ========
+256 (.25 vCPU)    512 (0.5GB), 1024 (1GB), 2048 (2GB)
+512 (.5 vCPU)     1024 (1GB), 2048 (2GB), 3072 (3GB), 4096 (4GB)
+1024 (1 vCPU)     2048 (2GB), 3072 (3GB), 4096 (4GB), 5120 (5GB), 6144 (6GB), 7168 (7GB), 8192 (8GB)
+2048 (2 vCPU)     Between 4096 (4GB) and 16384 (16GB) in increments of 1024 (1GB)
+4096 (4 vCPU)     Between 8192 (8GB) and 30720 (30GB) in increments of 1024 (1GB)
+================  ========
 
 See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
+
+ECS Task Configuration
+======================
+
+This section contains a list of all configuration options supported by a
+ECS Task definition in version 1.
+
+Services are specified in a YAML list under the top level ``tasks:`` key like
+so::
+
+    tasks:
+      - name: foobar-prod
+        ...
+      - name: foobar-test
+        ...
+
+
+name
+----
+
+(String, Required) The name of the actual ECS tasks.  ``name`` is required.
+The restrictions on characters in ECS tasks are in play here:  Up to 255
+letters (uppercase and lowercase), numbers, hyphens, and underscores are
+allowed.
+
+    tasks:
+      - name: foobar-prod
+
+cluster
+-------
+
+(String, Required) The name of the actual ECS cluster in which we'll run our task.::
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+
+environment
+-----------
+
+(String, Optional) This is a keyword that can be used in terraform lookups (see
+"Interpolation_", below).  It can also be used as an alias for the task name in the ``deploy`` command. ::
+
+    tasks:
+      - name: foobar-prod
+        environment: prod
+
+count
+-----
+
+(Integer) When we run the ECS task, run this many instances. ::
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+
+launch_type
+-----------
+
+(Required for Fargate tasks)
+
+If you are configuring a Fargate task you must specify the launch type as ``FARGATE``, otherwise
+the default value of ``EC2`` is used.
+
+The Fargate launch type allows you to run your containerized applications without the need to
+provision and manage the backend infrastructure. Just register your task definition and Fargate
+launches the container for you.
+
+If you use the Fargate launch type, the following task parameters are not valid:
+
+* ``dockerSecurityOptions``
+* ``links``
+* ``linuxParameters``
+* ``placementConstraints``
+* ``privileged``
+
+Example::
+
+    tasks:
+      - name: foobar-prod
+        launch_type: FARGATE
+
+See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html)>`_.
+
+vpc_configuration
+-----------------
+
+(Required for Fargate tasks)
+
+If you are configuring a Fargate task, you have to specify your vpc configuration at the task level.
+
+deployfish won't create the vpc, subnets or security groups for you --
+you'll need to create it before you can use ``deploy task run <task_name>``
+
+You'll specify
+
+* ``subnets``: (array) REQUIRED The subnets in the VPC that the task scheduler should consider for placement.
+  Only private subnets are supported at this time. The VPC will be determined by the subnets you
+  specify, so if you specify multiple subnets they must be in the same VPC.
+* ``security_groups``: (array) OPTIONAL The ID of the security group to associate with the task.
+* ``public_ip``: (string) OPTIONAL Whether to enabled or disable public IPs. Valid Values are ``ENABLED`` or ``DISABLED``
+
+Example::
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        launch_type: FARGATE
+        vpc_configuration:
+          subnets:
+            - subnet-12345678
+            - subnet-87654321
+          security_groups:
+            - sg-12345678
+          public_ip: ENABLED
+
+volumes
+-------
+
+(Optional)
+
+You can define volumes that can be mounted inside your task's containers via the ``volumes`` section of your deployfish
+task definition.  You only really need to do use this if you want to use a docker volume driver that is not the built
+in ``local`` one -- the one that allows you to mount host machinefolders into your container.  To mount one of the
+volumes you define here in one of your containers, see "volumes" under "Container Definitions" on this page.
+
+Here is a fully qualfied example ::
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-prod
+        volumes:
+          - name: storage_task
+            config:
+              scope: task
+              autoprovision: true
+              driver: my_vol_driver:latest
+          - name: storage
+            config:
+              scope: shared
+              driver: my_vol_driver:latest
+              driverOpts:
+                opt1: value1
+                opt2: value2
+              labels:
+                key: value
+                key: value
+          - name: local_storage
+            path: /host/path
+
+The above defines three volumes:
+
+* (EC2 launch type only) a task specific (not usable by other tasks) volume named ``storage_task`` that will be
+  autocreated and which will use the ``my_vol_driver:latest`` volume driver
+* (EC2 launch type only) a shared (usable by other tasks) volume named ``storage`` that uses the docker volume driver
+  ``my_vol_driver:latest`` with the driver options given in the ``driverOpts:`` section (driver options are volume
+  driver specific) and labels given by ``labels``.
+* (Both EC2 or FARGATE launch types) a volume named ``local_storage`` that just allows you to mount ``/host/path`` from
+  the host machine using the builtin ``local`` volume driver.  For this type of mount, you can also mount ``/host/path``
+  directly via the ``volumes`` section of your container definition and not define it here.
+
+See `Using Data Volumes in Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_data_volumes.html>`_.
+
+.. note::
+
+  You are responsible for installing and confuring any 3rd party docker volume drivers on your ECS container machines.
+  The `volumes` section just allows you to use that driver once you've properly set it up and configured it.
+
+family
+------
+
+(String, Required) When we create task definitions for this task, put them
+in this family.  When you go to the "Task Definitions" page in the AWS web
+console, what is listed under "Task Definition" is the family name. ::
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        family: foobar-prod-task-def
+
+
+See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#family>`_.
+
+network_mode
+------------
+
+(String, Optional) The Docker networking mode for the containers in our task.
+One of: ``bridge``, ``host``, ``awsvpc`` or ``none``. If this parameter is omitted, a task is assumed to
+use ``bridge`` mode. ::
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        family: foobar-prod-task-def
+        network_mode: bridge
+
+See the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#network_mode>`_ for
+what each of those modes are.
+
+task_role_arn
+-------------
+
+(String, Optional) A task role ARN for an IAM role that allows the containers in the task
+permission to call the AWS APIs that are specified in its associated policies
+on your behalf. ::
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        family: foobar-prod-task-def
+        network_mode: bridge
+        task_role_arn: arn:aws:iam::123142123547:role/my-task-role
+
+deployfish won't create the Task Role for you -- you'll need to create it
+before running ``deploy task run <task_name>``.
+
+See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_role_arn>`_, and
+`IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html>`_
+
+execution_role
+------------------
+
+(String, Required for Fargate) A task exeuction role ARN for an IAM role that allows Fargate to pull container images and publish container logs
+to Amazon CloudWatch on your behalf.::
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        family: foobar-prod-task-def
+        network_mode: bridge
+        execution_role: arn:aws:iam::123142123547:role/my-task-role
+
+deployfish won't create the Task Execution Role for you -- you'll need to create it
+before running ``deploy task run <task_name>``.
+
+See also the `IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html>`_
+
+cpu
+---
+
+(Required for Fargate tasks)
+
+If you are configuring a Fargate task, you have to specify the cpu at the task level, and there are specific values
+for cpu which are supported which we describe below.
+
+
+The available CPU values are:
+
+=====  ============
+Value  Virtual CPUs
+=====  ============
+256    .25 vCPU
+512    .5 vCPU
+1024   1 vCPU
+2048   2 vCPU
+4096   4 vCPU
+=====  ============
+
+See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
+
+memory
+------
+
+(Required for Fargate tasks)
+
+If you are configuring a Fargate task, you have to specify the memory at the task level, and there are specific values
+for memory which are supported which we describe below.
+
+The available memory choices for a specific CPU value are:
+
+================  ========
+CPU               Memory Configurations
+================  ========
+256 (.25 vCPU)    512 (0.5GB), 1024 (1GB), 2048 (2GB)
+512 (.5 vCPU)     1024 (1GB), 2048 (2GB), 3072 (3GB), 4096 (4GB)
+1024 (1 vCPU)     2048 (2GB), 3072 (3GB), 4096 (4GB), 5120 (5GB), 6144 (6GB), 7168 (7GB), 8192 (8GB)
+2048 (2 vCPU)     Between 4096 (4GB) and 16384 (16GB) in increments of 1024 (1GB)
+4096 (4 vCPU)     Between 8192 (8GB) and 30720 (30GB) in increments of 1024 (1GB)
+================  ========
+
+See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
+
+placement_constraints
+---------------------
+
+(Optional) An array of placement constraint objects to use for tasks. You can specify a maximum of 10 constraints per task (this limit includes constraints in the task definition and those specified at run time). ::
+
+    tasks:
+         - name: foobar-prod
+           placement_constraints:
+            - type: distinctInstance
+            - type: memberOf
+              expression: 'attribute:ecs.instance-type =~ t2.*'
+
+See `Task Placement Constraints <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-placement-constraints.html)>`_.
+
+placement_strategy
+------------------
+
+(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy rules per service. ::
+
+    services:
+         - name: foobar-prod
+           placement_strategy:
+            - type: random
+            - type: spread
+              field: 'attribute:ecs.availability-zone'
+
+See `Task Placement Strategies <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-placement-strategies.html)>`_.
+
+platform_version
+----------------
+
+(Optional) The platform version the task should run. A platform version is only specified for tasks using the Fargate launch type. If one is not specified, the LATEST platform version is used by default.
+
+See `AWS Fargate Platform Versions <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html>`_.
+
+group
+-----
+
+The name of the task group to associate with the task. The default value is the family name of the task definition.
+
+schedule
+--------
+
+The scheduling expression. For example, "cron(0 20 * * ? *)" or "rate(5 minutes)".
+
+See `Schedule Expressions for Rules <https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html>`_.
+
+schedule_role
+-------------
+
+The Amazon Resource Name (ARN) of the IAM role associated with the schedule rule. This should just allow the cloudwatch scheduled event to run the task. It should have a policy like::
+
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "iam:PassRole",
+                "Resource": "*"
+            },
+            {
+                "Sid": "Stmt1455323356000",
+                "Effect": "Allow",
+                "Action": [
+                    "ecs:RunTask"
+                ],
+                "Resource": [
+                    "*"
+                ]
+            }
+        ]
+    }
 
 Container Definitions
 =====================
 
-Define your containers within a service by using a ``containers:`` subsection.
+Define your containers within a task or service by using a ``containers:`` subsection.
 
 ``containers`` is a list of containers like so::
 
@@ -1087,7 +1453,7 @@ from your service.
 Secrets Management with AWS Parameter Store
 ===========================================
 
-The ``config:`` subsection of an ECS service is a list of parameters that are
+The ``config:`` subsection of an ECS service or task is a list of parameters that are
 stored in the `AWS Parameter Store <http://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html>`_
 as part of `Systems Manager <https://aws.amazon.com/ec2/systems-manager/>`_.
 This allows us to store settings, encrypted passwords and other secrets without
@@ -1130,16 +1496,30 @@ Here's an example configuration::
 Managing Config Parameters in AWS
 ---------------------------------
 
-In addition to deploying your services, you manage your config with ``deploy``
+In addition to deploying your services and tasks, you manage your config with ``deploy``
 using the ``config`` subcommand.
 
-To view your current values of your config in AWS, run::
+Services
+^^^^^^^^
+
+To view your current values of the service config in AWS, run::
 
     deploy config show hello-world-test
 
-To update the values of the config to AWS, run::
+To update the values of the service config to AWS, run::
 
     deploy config write hello-world-test
+
+Tasks
+^^^^^
+
+To view your current values of the task config in AWS, run::
+
+    deploy task config show hello-world-test
+
+To update the values of the task config to AWS, run::
+
+    deploy task config write hello-world-test
 
 Reading From The Environment
 ----------------------------
@@ -1220,7 +1600,7 @@ options as those in the ``services`` list: ``family``, ``environment``,
 ``network_mode``, ``task_role_arn``, and all the same options under ``containers``.
 
 Example
-^^^^^^^
+-------
 
 When you do a ``deploy update <service_name>``, deployfish automaticaly updates
 the task definition to what is listed in the ``tasks`` entry for each task, and

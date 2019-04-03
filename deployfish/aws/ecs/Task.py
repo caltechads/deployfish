@@ -513,6 +513,9 @@ class ContainerDefinition(VolumeMixin):
 
 
 class TaskDefinition(VolumeMixin):
+    """
+    An object represting an ECS task definition.
+    """
 
     @staticmethod
     def url(task_def):
@@ -833,6 +836,9 @@ class TaskDefinition(VolumeMixin):
 
 
 class Task(object):
+    """
+    An object represting an ECS task.
+    """
 
     def __init__(self, name, service=False, config=None):
         if service:
@@ -912,10 +918,10 @@ class Task(object):
 
     def from_yaml(self, yml):
         """
-        Load our service information from the parsed yaml.  ``yml`` should be
-        a service level entry from the ``deployfish.yml`` file.
+        Load our task information from the parsed yaml.  ``yml`` should be
+        a task level entry from the ``deployfish.yml`` file.
 
-        :param yml: a service level entry from the ``deployfish.yml`` file
+        :param yml: a task level entry from the ``deployfish.yml`` file
         :type yml: dict
         """
         self.taskName = yml['name']
@@ -962,6 +968,9 @@ class Task(object):
         self._get_cluster_arn()
 
     def from_aws(self):
+        """
+        Update our task definition from the most recent version in AWS.
+        """
         task_definition_id = self.desired_task_definition.get_latest_revision()
         if task_definition_id:
             self.active_task_definition = TaskDefinition(task_definition_id)
@@ -970,7 +979,7 @@ class Task(object):
 
     def get_config(self):
         """
-        Return the ``ParameterStore()`` for our service.
+        Return the ``ParameterStore()`` for our task.
 
         :rtype: a ``deployfish.systems_manager.ParameterStore`` object
         """
@@ -985,11 +994,17 @@ class Task(object):
         self.parameter_store.save()
 
     def register_task_definition(self):
+        """
+        If our task definition has not been registered, do it here.
+        """
         if not self.active_task_definition:
             self.desired_task_definition.create()
             self.from_aws()
 
     def _get_cloudwatch_logs(self):
+        """
+        Retrieve and display the logs corresponding to our task until there are no more available.
+        """
         if not self.active_task_definition.containers[0].logConfiguration.driver == 'awslogs':
             return
 
@@ -1022,6 +1037,9 @@ class Task(object):
             kwargs['nextToken'] = nextToken
 
     def _wait_until_stopped(self):
+        """
+        Inspect and display the status of the task until it has finished.
+        """
         if 'tasks' in self.response and len(self.response['tasks']) > 0:
             task = self.response['tasks'][0]
             cluster = task['clusterArn']
@@ -1043,6 +1061,11 @@ class Task(object):
                 return
 
     def run(self, wait):
+        """
+        Run the task. If wait is specified, show the status and logs from the task.
+        :param wait: Should we wait for the task to finish and display any logs
+        :type waite: bool
+        """
         self.register_task_definition()
         if not self.active_task_definition:
             # problem
@@ -1055,15 +1078,24 @@ class Task(object):
             self._get_cloudwatch_logs()
 
     def schedule(self):
+        """
+        If a schedule expression is defined in the yml file, schedule the task accordingly via the `TaskScheduler` object.
+        """
         if not self.schedule_expression:
             return
         self.register_task_definition()
         self.scheduler.schedule()
 
     def unschedule(self):
+        """
+        Unschedule the task.
+        """
         self.scheduler.unschedule()
 
     def update(self):
+        """
+        Update the task definition as appropriate.
+        """
         self.desired_task_definition.create()
         self.from_aws()
 
