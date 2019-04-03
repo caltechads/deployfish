@@ -38,7 +38,7 @@ defining an ``aws:`` section in ``deployfish.yml``.
 
 .. note::
 
-  The ``deploy entrypoint`` command will ignore any ``aws:`` section in
+  The ``deploy entrypoint`` and ``deploy task entrypoint`` commands will ignore any ``aws:`` section in
   ``deployfish.yml`` We're assuming that you're only ever running ``deploy
   entrypoint`` inside a container in your AWS service.  It should get its
   credentials from the container's IAM ECS Task Role.
@@ -1547,9 +1547,15 @@ Loading config: variables into your container environment
 
 So now that we have all of these values loaded into the AWS Parameter Store,
 how do we use them? We've included a subcommand in ``deployfish`` called
-``entrypoint``. Define this as your ``entrypoint`` in your ``Dockerfile``::
+``entrypoint``. Define this as your ``ENTRYPOINT`` in your ``Dockerfile``.
+
+For a service, use::
 
     ENTRYPOINT ["deploy", "entrypoint"]
+
+For a task, use::
+
+    ENTRYPOINT ["deploy", "task", "entrypoint"]
 
 You have to install ``deployfish`` in your container for this to work.
 
