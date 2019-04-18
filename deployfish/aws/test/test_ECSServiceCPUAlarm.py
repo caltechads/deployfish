@@ -75,7 +75,7 @@ class TestECSServiceCPUAlarm_load_aws(unittest.TestCase):
                         },
                     ],
                     'Period': 60,
-                    'Unit': 'Seconds',
+                    'Unit': 'Percent',
                     'EvaluationPeriods': 5,
                     'Threshold': 60.0,
                     'ComparisonOperator': 'GreaterThanOrEqualToThreshold'
@@ -141,7 +141,7 @@ class TestECSServiceCPUAlarm_load_aws_obj(unittest.TestCase):
                 },
             ],
             'Period': 60,
-            'Unit': 'Seconds',
+            'Unit': 'Percent',
             'EvaluationPeriods': 5,
             'Threshold': 60.0,
             'ComparisonOperator': 'GreaterThanOrEqualToThreshold'
@@ -212,7 +212,7 @@ class TestECSServiceCPUAlarm__render_create(unittest.TestCase):
         self.assertEqual(self.alarm._render_create()['Period'], 60)
 
     def test_Unit(self):
-        self.assertEqual(self.alarm._render_create()['Unit'], "Seconds")
+        self.assertEqual(self.alarm._render_create()['Unit'], "Percent")
 
     def test_EvaluationPeriods(self):
         self.assertEqual(self.alarm._render_create()['EvaluationPeriods'], 5)

@@ -46,6 +46,7 @@ class ECSServiceCPUAlarm(object):
         self._cpu = None
         self._check_every_seconds = None
         self._periods = None
+        self._unit = None
         self.__aws_alarm = {}
 
     def metric_exists(self):
@@ -111,6 +112,16 @@ class ECSServiceCPUAlarm(object):
         self._cpu = cpu
 
     @property
+    def unit(self):
+        if not self._unit and self.exists():
+            self._unit = self.__aws_alarm['Unit']
+        return self._unit
+
+    @unit.setter
+    def unit(self, unit):
+        self._unit = unit
+
+    @property
     def check_every_seconds(self):
         if not self._check_every_seconds and self.exists():
             self.check_every_seconds = self.__aws_alarm['Period']
@@ -144,6 +155,7 @@ class ECSServiceCPUAlarm(object):
             self.cpu = yml['cpu']
             self.check_every_seconds = yml['check_every_seconds']
             self.periods = yml['periods']
+            self.unit = yml.get('unit', 'Percent')
 
     def exists(self):
         """
@@ -183,7 +195,7 @@ class ECSServiceCPUAlarm(object):
             {'Name': 'ServiceName', 'Value': self.serviceName}
         ]
         r['Period'] = self.check_every_seconds
-        r['Unit'] = 'Seconds'
+        r['Unit'] = self.unit
         r['EvaluationPeriods'] = self.periods
         if '<=' in self.cpu:
             operator = "LessThanOrEqualToThreshold"
@@ -212,7 +224,8 @@ class ECSServiceCPUAlarm(object):
             self.cpu == other.cpu and
             self.check_every_seconds == other.check_every_seconds and
             self.periods == other.periods and
-            self.scaling_policy_arn == other.scaling_policy_arn):  # NOQA
+            self.scaling_policy_arn == other.scaling_policy_arn and
+            self.unit == other.unit):  # NOQA
             return True
         return False
 
