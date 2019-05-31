@@ -1,0 +1,29 @@
+Changelog
+=========
+
+0.29.0 (2019-05-30)
+~~~~~~~~~~~~~~~~~~~
+
+* Added the `deploy parameters` subcommand, which allows you to manage :external: type parameters in AWS SSM
+
+0.28.1 (2019-04-18)
+~~~~~~~~~~~~~~~~~~~
+
+* Fix: we should no longer be creating invalid cpu Cloudwatch Alarms for Application Autoscaling
+
+0.28.0 (2019-04-16)
+~~~~~~~~~~~~~~~~~~~
+
+* Standalone task support, outside of an ECS service
+
+0.27.0 (2019-01-04)
+~~~~~~~~~~~~~~~~~~~
+
+* Added tmpfs support for ECS container definitions (ChrisLeeTW)
+* Added support for target tracking to our Application Autoscaling implementation (rv-vmalhotra)
+
+0.26.0 (2018-11-30)
+~~~~~~~~~~~~~~~~~~~
+
+* Added full docker volumes support
+* Added `cap_add` and `cap_drop` to our ECS container definitions

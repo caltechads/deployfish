@@ -111,3 +111,61 @@ connecting to the host running the container and running::
 It will choose a random container. The command in our case would be::
 
     deploy exec test
+
+
+deploy parameters 
+=================
+
+External parameter definitions in your service ``config:`` block look like this::
+
+    config:
+      - foo.bar.*
+      - bar.baz.BARNEY
+
+Such a definition tells deployfish that you want to use those parameters from AWS SSM Parameter Store in your service,
+but you don't want deployfish to manage them via the ``deploy config`` set of subcommands.  You might do this if you
+have a common set of configuration variables that you use across many services, for example.
+
+The ``deploy parameters`` set of commands allows you to manage those external parameters.
+
+
+deploy parameters copy <from_name> <to_name>
+--------------------------------------------
+
+The ``deploy parameters copy`` command allows you to copy an existing AWS SSM Parameter Store parameter to a new one
+with a different name, optionally re-encrypting it with a new AWS KMS encryption key.  Examples::
+
+    deploy parameters copy foo.bar.BAZ foo.bar.BARNEY
+    deploy parameters copy --new-kms-key=alias/my-new-key foo.bar.BAZ foo.bar.BARNEY
+
+The first example will copy the value from ``foo.bar.BAZ`` to a key named ``foo.bar.BARNEY``, re-encrypting it with the
+same KMS Key that was used fo ``foo.bar.BAZ``.  The second example does the same thing, but encrypts the new key with
+with KMS Key with alias ``alias/my-new-key``.  You can use KMS key ARNs there, too.
+
+Wildcards::
+
+    deploy parameters copy foo.bar.* foo.baz.
+
+This will copy the all parameters that start with ``foo.bar.`` to paramaters with the same ending, but which start with
+``foo.baz.``, re-encrypting it with the same KMS Key that was used fo ``foo.bar.BAZ``.
+
+deploy parameters update <name>
+-------------------------------
+
+The ``deploy parameters update`` command allows you to update the value of an existing parameter, 
+re-encrypt the parameter with a new AWS KMS encryption key, or do both.  Examples::
+
+    deploy parameters update --value=something foo.bar.BAZ 
+    deploy parameters update --new-kms-key=alias/my-new-key foo.bar.BAZ 
+    deploy parameters update --new-kms-key=alias/my-new-key --value=something foo.bar.BAZ 
+
+The first example will update the value of ``foo.bar.BAZ`` to a "something".  The second example will re-encrypt the
+value for ``foo.bar.BAZ`` with the KMS key matching ``alias/my-new-key``, and the last example will do both.
+
+Wildcards::
+
+    deploy parameters update --new-kms-key=alias/my-new-key foo.bar.*
+    deploy parameters update --value="something" --force-multple foo.bar.*
+
+You can use ``deploy parameters update`` with wildcards, also.  For updating values, we make you specify
+``--force-multiple`` to ensure you mean to change the value of all keys.

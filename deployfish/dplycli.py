@@ -12,7 +12,7 @@ import click
 
 from deployfish.config import Config, needs_config
 from deployfish.aws.ecs import Service, Task
-from deployfish.aws.systems_manager import ParameterStore
+from deployfish.aws.systems_manager import ParameterStore, UnboundParameterFactory, WILDCARD_RE
 from deployfish.cli import cli
 
 
@@ -130,7 +130,10 @@ def manage_asg_count(service, count, asg, force_asg):
                     click.secho('  (3) use --no-asg to not change the AutoscalingGroup size')
                     sys.exit(1)
                 else:
-                    click.secho('Updating MinCount on AutoscalingGroup "{}" to {}.'.format(service.serviceName, count), fg="white")
+                    click.secho(
+                        'Updating MinCount on AutoscalingGroup "{}" to {}.'.format(service.serviceName, count),
+                        fg="white"
+                    )
             if count > service.asg.max:
                 if not force_asg:
                     click.secho('Service count {} is greater than max_size of {} on AutoscalingGroup "{}".'.format(
@@ -143,8 +146,14 @@ def manage_asg_count(service, count, asg, force_asg):
                     click.secho('  (2) specify service count <= {}'.format(service.asg.max))
                     sys.exit(1)
                 else:
-                    click.secho('Updating MaxCount on AutoscalingGroup "{}" to {}.'.format(service.serviceName, count), fg="white")
-            click.secho('Updating DesiredCount on AutoscalingGroup "{}" to {}.'.format(service.serviceName, count), fg="white")
+                    click.secho(
+                        'Updating MaxCount on AutoscalingGroup "{}" to {}.'.format(service.serviceName, count),
+                        fg="white"
+                    )
+            click.secho('Updating DesiredCount on AutoscalingGroup "{}" to {}.'.format(
+                service.serviceName,
+                count
+            ), fg="white")
             service.asg.scale(count, force=force_asg)
 
 
@@ -153,9 +162,17 @@ def manage_asg_count(service, count, asg, force_asg):
 @click.argument('service_name')
 @click.option('--update-configs/--no-update-configs', default=False, help="Update our config parameters in AWS")
 @click.option('--dry-run/--no-dry-run', default=False, help="Don't actually create the service")
-@click.option('--wait/--no-wait', default=True, help="Don't exit until the service is created and all its tasks are running")
+@click.option(
+    '--wait/--no-wait',
+    default=True,
+    help="Don't exit until the service is created and all its tasks are running"
+)
 @click.option('--asg/--no-asg', default=True, help="Scale your ASG to fit our service count")
-@click.option('--force-asg/--no-force-asg', default=False, help="Force your ASG to scale outside of its MinCount or MaxCount")
+@click.option(
+    '--force-asg/--no-force-asg',
+    default=False,
+    help="Force your ASG to scale outside of its MinCount or MaxCount"
+)
 @needs_config
 def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
     """
@@ -187,7 +204,9 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
         if parameters:
             click.secho('\nService has config parameters defined: SKIPPING', fg='red')
             if dry_run:
-                click.secho('    Either run create with the --update-configs flag or do "deploy config write {}"'.format(service_name))
+                click.secho(
+                    '    Either run create with the --update-configs flag or do "deploy config write {}"'.format(service_name)
+                )
             else:
                 click.secho('    To update them in AWS, do "deploy config write {}"'.format(service_name))
     if not dry_run:
@@ -241,7 +260,11 @@ def version(ctx, service_name):
 @click.pass_context
 @click.argument('service_name')
 @click.option('--dry-run/--no-dry-run', default=False, help="Don't actually create a new task definition")
-@click.option('--wait/--no-wait', default=True, help="Don't exit until all tasks are running the new task definition revision")
+@click.option(
+    '--wait/--no-wait',
+    default=True,
+    help="Don't exit until all tasks are running the new task definition revision"
+)
 @needs_config
 def update(ctx, service_name, dry_run, wait):
     """
@@ -312,7 +335,11 @@ def restart(ctx, service_name, hard):
 @click.option('--dry-run/--no-dry-run', default=False, help="Don't actually scale the service")
 @click.option('--wait/--no-wait', default=True, help="Don't exit until the service is stable with the new count")
 @click.option('--asg/--no-asg', default=True, help="Scale your ASG also")
-@click.option('--force-asg/--no-force-asg', default=False, help="Force your ASG to scale outside of its MinCount or MaxCount")
+@click.option(
+    '--force-asg/--no-force-asg',
+    default=False,
+    help="Force your ASG to scale outside of its MinCount or MaxCount"
+)
 @needs_config
 def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
     """
@@ -514,6 +541,7 @@ def write_config(ctx, service_name, dry_run):
     else:
         click.echo('\nDRY RUN: not making changes in AWS')
 
+
 def _entrypoint(ctx, section, section_name, cluster_name, parameter_prefix, command, dry_run):
     if section_name and cluster_name:
         # The only thing we need out of Config is the names of any config:
@@ -571,10 +599,15 @@ def _entrypoint(ctx, section, section_name, cluster_name, parameter_prefix, comm
     else:
         subprocess.call(command)
 
+
 @cli.command('entrypoint', short_help="Use for a Docker entrypoint", context_settings=dict(ignore_unknown_options=True))
 @click.pass_context
 @click.argument('command', nargs=-1)
-@click.option('--dry-run/--no-dry-run', default=False, help="Don't actually run the task, but print what we would have done")
+@click.option(
+    '--dry-run/--no-dry-run',
+    default=False,
+    help="Don't actually run the task, but print what we would have done"
+)
 def entrypoint(ctx, command, dry_run):
     """
     Use this as the entrypoint for your containers.
@@ -645,7 +678,7 @@ def _interpolate_tunnel_info(value, service):
             if param.key == param_key:
                 try:
                     return param.aws_value
-                except:
+                except ValueError:
                     return param.value
     return value
 
@@ -685,6 +718,7 @@ def tunnel(ctx, tunnel_name):
     interim_port = random.randrange(10000, 64000, 1)
 
     service.tunnel(host, local_port, interim_port, port)
+
 
 @cli.group(short_help="Manage tasks.")
 def task():
@@ -816,10 +850,18 @@ def task_write_config(ctx, task_name, dry_run):
     _write_config(task, task_name, dry_run)
 
 
-@task.command('entrypoint', short_help="Use for a Docker entrypoint", context_settings=dict(ignore_unknown_options=True))
+@task.command(
+    'entrypoint',
+    short_help="Use for a Docker entrypoint",
+    context_settings=dict(ignore_unknown_options=True)
+)
 @click.pass_context
 @click.argument('command', nargs=-1)
-@click.option('--dry-run/--no-dry-run', default=False, help="Don't actually run the task, but print what we would have done")
+@click.option(
+    '--dry-run/--no-dry-run',
+    default=False,
+    help="Don't actually run the task, but print what we would have done"
+)
 def task_entrypoint(ctx, command, dry_run):
     """
     Use this as the entrypoint for your containers.
@@ -849,6 +891,131 @@ def task_entrypoint(ctx, command, dry_run):
     task_name = os.environ.get('DEPLOYFISH_TASK_NAME', None)
     cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
     _entrypoint(ctx, 'tasks', task_name, cluster_name, "task-", command, dry_run)
+
+
+@cli.group(short_help="Manage SSM Parameter Store Parameters.")
+def parameters():
+    pass
+
+
+@parameters.command('show', short_help="Print the values one or more parameters")
+@click.pass_context
+@click.argument('name')
+def show(ctx, name):
+    """
+    Print out all parameters that match NAME.   If NAME ends with a '*', do a wildcard search on all parameters that
+    begin with the prefix.
+    """
+    parms = UnboundParameterFactory.new(name)
+    parms.sort()
+    if not parms:
+        print('No parameters found that match "{}"'.format(name))
+    else:
+        for parm in parms:
+            print(parm)
+
+
+@parameters.command('copy', short_help="Copy the values from one parameter or set of parameters to another")
+@click.pass_context
+@click.argument('from_name')
+@click.argument('to_name')
+@click.option('--new-kms-key', default=None, help="Encrypt the copy with the KMS Key whose alias or ARN is TEXT")
+@click.option(
+    '--overwrite/--no-overwrite',
+    default=False,
+    help="Force an overwrite of any existing parameters with the new name. Default: --no-overwrite."
+)
+@click.option(
+    '--dry-run/--no-dry-run',
+    default=False,
+    help="Don't actually copy.  Default: --no-dry-run."
+)
+def parameters_copy(ctx, from_name, to_name, new_kms_key, overwrite, dry_run):
+    """
+    If FROM_NAME does not end with a "*", copy a parameter named FROM_NAME to another named TO_NAME.
+
+    If FROM_NAME does end with a '*', do a wildcard search on all parameters that begin with the FROM_NAME, and copy
+    those parameters to new ones with the FROM_NAME as prefix replaced with TO_NAME as prefix.
+    """
+    parms = UnboundParameterFactory.new(from_name)
+    if not parms:
+        print('No parameters found that match "{}"'.format(from_name))
+    else:
+        parms.sort()
+        print("\FROM:")
+        print("-----------------------------------------------------------------------")
+        for parm in parms:
+            print(parm)
+        m = WILDCARD_RE.search(from_name)
+        if m:
+            if not to_name.endswith('.'):
+                to_name += "."
+            for parm in parms:
+                parm.prefix = to_name
+                if new_kms_key:
+                    parm.kms_key_id = new_kms_key
+        else:
+            for parm in parms:
+                parm.name = to_name
+        print("\nTO:")
+        print("-----------------------------------------------------------------------")
+        for parm in parms:
+            if not dry_run:
+                try:
+                    parm.save(overwrite=overwrite)
+                except ValueError:
+                    pass
+                else:
+                    print(parm)
+
+
+@parameters.command('update', short_help="Update the value or KMS Key on one or more parameters")
+@click.pass_context
+@click.argument('name')
+@click.option('--new-kms-key', default=None, help="Re-encrypt with KMS Key whose alias or ARN matches TEXT")
+@click.option('--value', default=None, help="Update the value to TEXT")
+@click.option(
+    '--force-multiple/--no-force-multiple',
+    default=False,
+    help="If NAME is a wildcard and you used --value, actually update all matching "
+         "parameters to that value. Default: --no-force-multiple."
+)
+@click.option(
+    '--dry-run/--no-dry-run',
+    default=False,
+    help="Don't actually copy.  Default: --no-dry-run."
+)
+def parameters_update(ctx, name, new_kms_key, value, force_multiple, dry_run):
+    """
+    Update the parameter that matches NAME with either a new KMS Key ID, a new value, or both.
+
+    If NAME ends with a '*', and you use the --new-kms-key parameter, update the KMS Key ID on on all parameters that
+    begin with the prefix.
+
+    If NAME ends with a '*', and you use the --value parameter, don't update the value for all parameters that begin
+    with the prefix unless you also specify --force-multiple.
+    """
+    parms = UnboundParameterFactory.new(name)
+    if not parms:
+        print('No parameters found that match "{}"'.format(name))
+    else:
+        parms.sort()
+        print("\nBEFORE:")
+        print("-----------------------------------------------------------------------")
+        for parm in parms:
+            print(parm)
+        print("\nAFTER:")
+        print("-----------------------------------------------------------------------")
+        for parm in parms:
+            if new_kms_key:
+                parm.kms_key_id = new_kms_key
+            if len(parms) == 1 or force_multiple:
+                if value:
+                    parm.value = value
+            if not dry_run:
+                parm.save(overwrite=True)
+            print(parm)
+
 
 def main():
     load_local_click_modules()

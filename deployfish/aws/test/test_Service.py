@@ -1,11 +1,9 @@
 import unittest
-from mock import Mock, patch
+from mock import Mock
 from testfixtures import compare
 from testfixtures import Replacer
 
 import os
-
-import yaml
 
 from deployfish.config import Config
 from deployfish.aws.ecs import Service
@@ -35,6 +33,7 @@ class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
 
     def test_scheduling_strategy(self):
         self.assertEqual(self.service.schedulingStrategy, 'REPLICA')
+
 
 class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.TestCase):
 
