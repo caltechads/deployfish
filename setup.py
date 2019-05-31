@@ -4,11 +4,8 @@ import os.path
 from deployfish import __version__
 from setuptools import setup, find_packages  # @UnresolvedImport
 
-intro_path = 'docs/source/intro.rst'
-if os.path.isfile(intro_path):
-    intro = open(intro_path).read()
-else:
-    intro = "[Testing]"
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(name="deployfish",
       version=__version__,
@@ -16,7 +13,8 @@ setup(name="deployfish",
       author="Caltech IMSS ADS",
       author_email="imss-ads-staff@caltech.edu",
       url="https://github.com/caltechads/deployfish",
-      long_description=intro,
+      long_description=long_description,
+      long_description_type="text/markdown",
       keywords=['aws', 'ecs', 'docker', 'devops'],
       classifiers=[
           "Programming Language :: Python :: 2.7",
