@@ -14,7 +14,7 @@ setup(name="deployfish",
       author_email="imss-ads-staff@caltech.edu",
       url="https://github.com/caltechads/deployfish",
       long_description=long_description,
-      long_description_type="text/markdown",
+      long_description_content_type="text/markdown",
       keywords=['aws', 'ecs', 'docker', 'devops'],
       classifiers=[
           "Programming Language :: Python :: 2.7",
