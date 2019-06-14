@@ -219,6 +219,9 @@ class Config(object):
                     raw[key] = tfvalue
                     self.__replace(raw, key, tfvalue, replacers)
                     return
+                print(tfvalue, value)
+                if type(tfvalue) == int:
+                    tfvalue = str(tfvalue)
                 raw[key] = self.TERRAFORM_RE.sub(tfvalue, value)
                 value = raw[key]
         m = self.ENVIRONMENT_RE.search(value)
