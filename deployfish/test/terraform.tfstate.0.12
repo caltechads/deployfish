@@ -1,0 +1,83 @@
+{
+  "version": 4,
+  "terraform_version": "0.12.2",
+  "serial": 1,
+  "lineage": "1acc247b-67a5-06ad-b168-9918cb0db95e",
+  "outputs": {
+    "alb-target-group-arn-prod": {
+      "value": "arn:aws:elasticloadbalancing:us-west-2:1234566777881:targetgroup/foobar-prod/6cb8d354ee4dff3e",
+      "type": "string"
+    },
+    "alb-target-group-arn-test": {
+      "value": "arn:aws:elasticloadbalancing:us-west-2:1234566777881:targetgroup/foobar-test/718aa450937e606e",
+      "type": "string"
+    },
+    "ecr_registry_arn": {
+      "value": "arn:aws:ecr:us-west-2:1234566777881:repository/examplecorp/foobar",
+      "type": "string"
+    },
+    "ecr_registry_id": {
+      "value": "1234566777881",
+      "type": "string"
+    },
+    "ecr_repository_name": {
+      "value": "examplecorp/foobar",
+      "type": "string"
+    },
+    "elb-id-prod": {
+      "value": "arn:aws:elasticloadbalancing:us-west-2:1234566777881:loadbalancer/app/prod-foobar-foo-apps/75f25c6d6bd426aa",
+      "type": "string"
+    },
+    "elb-id-test": {
+      "value": "arn:aws:elasticloadbalancing:us-west-2:1234566777881:loadbalancer/app/test-foobar-foo-apps/5b06556fb14d2b23",
+      "type": "string"
+    },
+    "prod-cluster-name": {
+      "value": "foobar-foo-apps-prod",
+      "type": "string"
+    },
+    "prod-kms-key-arn": {
+      "value": "arn:aws:kms:us-west-2:1234566777881:key/7b005881-ec3e-4320-b80a-c07b7b7b9812",
+      "type": "string"
+    },
+    "prod-rds-address": {
+      "value": "foo-prod.c970jsizrrcy.us-west-2.rds.amazonaws.com",
+      "type": "string"
+    },
+    "prod-rds-port": {
+      "value": 3306,
+      "type": "number"
+    },
+    "s3-bucket": {
+      "value": "foobar-files",
+      "type": "string"
+    },
+    "task-role-arn-prod": {
+      "value": "arn:aws:iam::1234566777881:role/foobar-prod-task",
+      "type": "string"
+    },
+    "task-role-arn-test": {
+      "value": "arn:aws:iam::1234566777881:role/foobar-test-task",
+      "type": "string"
+    },
+    "test-cluster-name": {
+      "value": "foobar-foo-apps-test",
+      "type": "string"
+    },
+    "test-kms-key-arn": {
+      "value": "arn:aws:kms:us-west-2:1234566777881:key/ea869a78-bb70-46c4-bdf1-ecaacca2b95e",
+      "type": "string"
+    },
+    "test-rds-address": {
+      "value": "foo-test.c970jsizrrcy.us-west-2.rds.amazonaws.com",
+      "type": "string"
+    },
+    "test-rds-port": {
+      "value": 3306,
+      "type": "number"
+    }
+  },
+  "resources": [
+  ]
+}
+
