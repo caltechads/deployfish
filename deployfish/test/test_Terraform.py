@@ -50,6 +50,21 @@ class TestTerraform_get_terraform_state(unittest.TestCase):
         self.assertTrue('proxy-qa-cluster-name' in self.terraform)
 
 
+class TestTerraform_get_terraform_state_v12(unittest.TestCase):
+
+    def setUp(self):
+        with Replacer() as r:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            fname = os.path.join(current_dir, 'terraform.tfstate.0.12')
+            with open(fname) as f:
+                tfstate = json.loads(f.read())
+            get_mock = r('deployfish.terraform.Terraform._get_state_file_from_s3', Mock())
+            get_mock.return_value = tfstate
+            self.terraform = Terraform(YAML)
+
+    def test_lookup(self):
+        self.assertTrue('prod-rds-address' in self.terraform)
+
 class TestTerraform_lookup(unittest.TestCase):
 
     def setUp(self):

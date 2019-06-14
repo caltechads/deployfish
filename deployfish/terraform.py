@@ -46,10 +46,15 @@ class Terraform(dict):
 
     def get_terraform_state(self, state_file_url):
         tfstate = self._get_state_file_from_s3(state_file_url)
-        for i in tfstate['modules']:
-            if i['path'] == [u'root']:
-                for key, value in i['outputs'].items():
-                    self[key] = value
+        major, minor, patch = tfstate['terraform_version'].split('.')
+        if int(minor) >= 12:
+            for key, value in tfstate['outputs'].items():
+                self[key] = value
+        else:
+            for i in tfstate['modules']:
+                if i['path'] == [u'root']:
+                    for key, value in i['outputs'].items():
+                        self[key] = value
 
     def load_yaml(self, yml):
         self.get_terraform_state(yml)
