@@ -849,7 +849,7 @@ class Task(object):
         self.ecs = get_boto3_session().client('ecs')
 
         self.taskName = None
-        self._clusterName = None
+        self.clusterName = None
         self.desired_count = 1
         self._launchType = 'EC2'
         self.cluster_specified = False
@@ -906,7 +906,7 @@ class Task(object):
 
     def _get_cluster_arn(self):
         if self.cluster_specified:
-            response = self.ecs.describe_clusters(clusters=[self._clusterName])
+            response = self.ecs.describe_clusters(clusters=[self.clusterName])
             for cluster in response['clusters']:
                 self.cluster_arn = cluster['clusterArn']
                 return
