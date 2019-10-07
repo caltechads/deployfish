@@ -53,7 +53,9 @@ class Config(object):
     TERRAFORM_RE = re.compile('\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}')
     ENVIRONMENT_RE = re.compile('\$\{env.(?P<key>.+)\}')
 
-    def __init__(self, filename='deployfish.yml', env_file=None, import_env=False, interpolate=True, tfe_token=None, use_aws_section=True, raw_config=None, boto3_session=None):
+    def __init__(self, filename='deployfish.yml', env_file=None, import_env=False,
+                 interpolate=True, tfe_token=None, use_aws_section=True, raw_config=None,
+                 boto3_session=None):
         #Load a raw config if it was provided
         if raw_config:
             self.__raw = raw_config
@@ -73,14 +75,6 @@ class Config(object):
         self.environ = None
         self.terraform = None
         if interpolate:
-            if 'terraform' in self.__raw:
-                self.replace_terraform()
-                if 'workspace' in self.__raw['terraform']:
-                    self.terraform = TerraformE(yml=self.__raw['terraform'], api_token=self.tfe_token)
-                else:
-                    self.terraform = Terraform(yml=self.__raw['terraform'])
-            else:
-                self.terraform = None
             self.replace()
 
     @property
@@ -118,12 +112,34 @@ class Config(object):
         for key in os.environ.keys():
             self.environ[key] = os.getenv(key)
 
+    def reload_terraform(self, replacers):
+        """
+        Since the statefile URL, when using ``terraform workspace``, can be different by environment/service,
+        we may need to reload the terraform file for each new service.
+        """
+        if 'terraform' in self.__raw:
+            if 'workspace' in self.__raw['terraform']:
+                workspace = self.__raw['terraform']['workspace'].format(**replacers)
+                organization = self.__raw['terraform']['organization'].format(**replacers)
+                if (not self.terraform or (self.terraform and self.terraform.workspace != workspace)):
+                    self.terraform = TerraformE(
+                        workspace,
+                        organization,
+                        self.__raw['terraform']['lookups'],
+                        api_token=self.tfe_token
+                    )
+            else:
+                state_file_url = self.__raw['terraform']['statefile'].format(**replacers)
+                if (not self.terraform or (self.terraform and self.terraform.state_file_url != state_file_url)):
+                    self.terraform = Terraform(state_file_url, yml=self.__raw['terraform'])
+        else:
+            self.terraform = None
+
     def replace(self):
         """
         Do variable replacement in all strings in the YAML data for
         each listed services under the ``services:`` section.
         """
-
         sections = ['task', 'service']
 
         for name in sections:
@@ -131,11 +147,11 @@ class Config(object):
             if plural in self.__raw:
                 for section in self.__raw[plural]:
                     replacers = {
-                        "{}-name".format(name):section['name']
+                        "environment": section.get('environment', 'prod'),
+                        "{}-name".format(name): section['name']
                     }
-                    replacers['environment'] = section.get('environment', 'prod')
                     if 'cluster' in section:
-                        replacers['cluster'] = section['cluster']
+                        replacers['cluster-name'] = section['cluster']
                     self.environ = {}
                     if 'env_file' in section:
                         self.load_env_file(section['env_file'])
@@ -143,59 +159,8 @@ class Config(object):
                         self.load_env_file(self.env_file)
                     if self.import_env:
                         self.load_environ()
-
+                    self.reload_terraform(replacers)
                     self.__do_dict(section, replacers)
-
-        # if 'tasks' in self.__raw:
-        #     for task in self.__raw['tasks']:
-        #         replacers = {
-        #             'environment': task.get('environment', 'prod'),
-        #             'task-name': task['name']
-        #         }
-        #         if 'cluster' in task:
-        #             replacers['cluster-name'] = task['cluster']
-        #         self.environ = {}
-        #         if 'env_file' in task:
-        #             self.load_env_file(task['env_file'])
-        #         if self.env_file:
-        #             self.load_env_file(self.env_file)
-        #         if self.import_env:
-        #             self.load_environ()
-        #         # else:
-        #         #     self.environ = os.environ
-        #
-        #         self.__do_dict(task, replacers)
-        #
-        # if 'services' in self.__raw:
-        #     for service in self.__raw['services']:
-        #         replacers = {
-        #             'environment': service.get('environment', 'prod'),
-        #             'service-name': service['name'],
-        #             'cluster-name': service['cluster']
-        #         }
-        #         self.environ = {}
-        #         if 'env_file' in service:
-        #             self.load_env_file(service['env_file'])
-        #         if self.env_file:
-        #             self.load_env_file(self.env_file)
-        #         if self.import_env:
-        #             self.load_environ()
-        #         # else:
-        #         #     self.environ = os.environ
-        #
-        #         self.__do_dict(service, replacers)
-
-    def replace_terraform(self):
-        for service in self.__raw['services']:
-            replacers = {
-                'environment': service.get('environment', 'prod'),
-                'service-name': service['name'],
-                'cluster-name': service['cluster']
-            }
-            if 'workspace' in self.__raw['terraform']:
-                self.__raw['terraform']['workspace'] = self.__raw['terraform']['workspace'].format(**replacers)
-            else:
-                self.__raw['terraform']['statefile'] = self.__raw['terraform']['statefile'].format(**replacers)
 
     def __replace(self, raw, key, value, replacers):
         if isinstance(value, dict):

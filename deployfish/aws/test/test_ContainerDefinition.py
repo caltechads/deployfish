@@ -133,7 +133,7 @@ class TestContainerDefinition_render(unittest.TestCase):
         render = self.cd.render()['environment']
         self.assertTrue({'name': 'LDAPTLS_REQCERT', 'value': 'never'} in render)
         self.assertTrue({'name': 'ENVIRONMENT', 'value': 'prod'} in render)
-        self.assertTrue({'name': 'SECRETS_BUCKET_NAME', 'value': 'ac-config-store'} in render)
+        self.assertTrue({'name': 'SECRETS_BUCKET_NAME', 'value': 'config-store'} in render)
 
     def test_dockerLabels(self):
         compare(self.cd.render()['dockerLabels'], {'edu.caltech.imss-ads': 'foobar'})
@@ -220,7 +220,7 @@ class TestContainerDefinition_load_yaml_alternates(unittest.TestCase):
         compare(self.cd.environment, {
             'LDAPTLS_REQCERT': 'never',
             'ENVIRONMENT': 'prod',
-            'SECRETS_BUCKET_NAME': 'ac-config-store'
+            'SECRETS_BUCKET_NAME': 'config-store'
         })
 
     def test_dockerLabels(self):

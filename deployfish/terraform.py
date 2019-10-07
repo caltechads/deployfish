@@ -18,16 +18,13 @@ class Terraform(dict):
     This class allows us to retrieve values from our terraform state file.
     """
 
-    def __init__(self, yml=None):
+    def __init__(self, state_file_url, yml=None):
+        self.state_file_url = state_file_url
         self.load_yaml(yml)
 
-    def _get_state_file_from_s3(self, config):
-        state_file_url = config['statefile']
-        if 'profile' in config:
-            session = boto3.session.Session(
-                profile_name=config['profile'],
-                region_name=config.get('region', None),
-            )
+    def _get_state_file_from_s3(self, state_file_url, profile=None, region=None):
+        if profile:
+            session = boto3.session.Session(profile_name=profile, region_name=region)
         else:
             session = get_boto3_session()
         s3 = session.resource('s3')
@@ -39,13 +36,22 @@ class Terraform(dict):
             state_file = key.get()["Body"].read().decode('utf-8')
         except ClientError as ex:
             if ex.response['Error']['Code'] == 'NoSuchKey':
-                raise NoSuchStateFile("Could not find Terraform state file {}".format(state_file_url))
+                raise NoSuchStateFile("Could not find Terraform state file {}".format(self.state_file_url))
             else:
                 raise ex
         return json.loads(state_file)
 
-    def get_terraform_state(self, state_file_url):
-        tfstate = self._get_state_file_from_s3(state_file_url)
+    def get_terraform_state(self, yml):
+        if yml:
+            profile = yml.get('profile', None)
+            region = yml.get('region', None)
+        else:
+            profile = region = None
+        tfstate = self._get_state_file_from_s3(
+            self.state_file_url,
+            profile=profile,
+            region=region
+        )
         major, minor, patch = tfstate['terraform_version'].split('.')
         if int(minor) >= 12:
             for key, value in tfstate['outputs'].items():
@@ -66,7 +72,7 @@ class Terraform(dict):
 
 class TerraformE(dict):
 
-    def __init__(self, yml, api_token=None):
+    def __init__(self, workspace, organization, lookups, api_token=None):
         if api_token is None:
             if 'ATLAS_TOKEN' in os.environ:
                 self.api_token = os.getenv('ATLAS_TOKEN')
@@ -75,16 +81,10 @@ class TerraformE(dict):
         else:
             self.api_token = api_token
 
-        self.organization = ''
-        self.workspace = ''
+        self.organization = organization
+        self.workspace = workspace
+        self.lookups = lookups
         self.api_end_point = 'https://app.terraform.io/api/v2'
-
-        self.load_yaml(yml)
-
-    def load_yaml(self, yml):
-        self.workspace = yml['workspace']
-        self.organization = yml['organization']
-        self.lookups = yml['lookups']
         self.list_state_versions()
 
     def list_state_versions(self):

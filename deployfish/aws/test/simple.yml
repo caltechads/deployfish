@@ -1,12 +1,11 @@
 terraform:
   statefile: s3://asldfjksldfkjsldk
   lookups:
-    proxy_cluster_name: 'proxy-{environment}-cluster-name'
-    proxy_autoscalinggroup_name: 'proxy-{environment}-autoscalinggroup-name'
-    proxy_elb_id: 'proxy-{environment}-elb-id'
-    core_cluster_name: 'core-{environment}-cluster-name'
+    cluster_name: '{environment}-cluster-name'
+    autoscalinggroup_name: '{environment}-autoscalinggroup-name'
+    elb_id: '{environment}-elb-id'
     secrets_bucket_name: 's3-config-store-bucket'
-    cit_auth_iam_task_role: 'iam-role-cit-auth-{environment}-task'
+    iam_task_role: 'iam-role-{environment}-task'
 
 services:
   - name: foobar-prod
@@ -59,7 +58,7 @@ services:
         environment:
           - LDAPTLS_REQCERT=never
           - ENVIRONMENT=prod
-          - SECRETS_BUCKET_NAME=ac-config-store
+          - SECRETS_BUCKET_NAME=config-store
         labels:
           edu.caltech.imss-ads: "foobar"
         logging:
@@ -105,7 +104,7 @@ services:
         environment:
           LDAPTLS_REQCERT: never
           ENVIRONMENT: prod
-          SECRETS_BUCKET_NAME: ac-config-store
+          SECRETS_BUCKET_NAME: config-store
         links:
           - redis
           - db:database
@@ -139,7 +138,7 @@ services:
         environment:
           LDAPTLS_REQCERT: never
           ENVIRONMENT: prod
-          SECRETS_BUCKET_NAME: ac-config-store
+          SECRETS_BUCKET_NAME: config-store
         volumes:
           - storage_local:/container/path
           - storage_task:/container/path2
