@@ -4,8 +4,9 @@ VERSION = $(strip $(shell echo $(RAWVERSION)))
 PACKAGE = deployfish
 
 clean:
-	rm -rf *.tar.gz dist *.egg-info *.rpm
-	find . -name "*.pyc" -exec rm '{}' ';'
+	rm -rf *.tar.gz dist build *.egg-info *.rpm
+	find . -name "*.pyc" | xargs rm 
+	find . -name "__pycache__" | xargs rm -rf
 
 version:
 	@echo $(VERSION)
