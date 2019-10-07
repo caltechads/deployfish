@@ -14,7 +14,7 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
-            yml = yaml.load(f)
+            yml = yaml.load(f, Loader=yaml.FullLoader)
         # This should be the container named "example" in the "foobar-prod" service
         self.cd = ContainerDefinition(yml=yml['services'][0]['containers'][0])
 
@@ -77,7 +77,7 @@ class TestContainerDefinition_render(unittest.TestCase):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
-            self.yml = yaml.load(f)
+            self.yml = yaml.load(f, Loader=yaml.FullLoader)
         self.cd = ContainerDefinition(yml=self.yml['services'][0]['containers'][0])
 
     def test_name(self):
@@ -192,7 +192,7 @@ class TestContainerDefinition_load_yaml_alternates(unittest.TestCase):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         fname = os.path.join(current_dir, 'simple.yml')
         with open(fname) as f:
-            yml = yaml.load(f)
+            yml = yaml.load(f, Loader=yaml.FullLoader)
         self.cd = ContainerDefinition(yml=yml['services'][1]['containers'][0])
 
     def test_cpu(self):

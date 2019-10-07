@@ -97,7 +97,7 @@ class Config(object):
         :rtype: dict
         """
         with open(filename) as f:
-            return yaml.load(f)
+            return yaml.load(f, Loader=yaml.FullLoader)
 
     def load_env_file(self, env_file):
         if env_file and os.path.isfile(env_file):
