@@ -1,0 +1,7 @@
+# Requirements just to build the docs
+# --------------------------------------------------------------------------------------------
+click==6.7                                    # https://github.com/pallets/click
+Sphinx                                        # https://github.com/sphinx-doc/sphinx
+sphinx-autobuild                              # https://github.com/GaretJax/sphinx-autobuild
+sphinx-click                                  # https://github.com/click-contrib/sphinx-click
+sphinx_rtd_theme                              # https://github.com/readthedocs/sphinx_rtd_theme
