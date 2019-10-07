@@ -65,6 +65,7 @@ class TestTerraform_get_terraform_state_v12(unittest.TestCase):
     def test_lookup(self):
         self.assertTrue('prod-rds-address' in self.terraform)
 
+
 class TestTerraform_lookup(unittest.TestCase):
 
     def setUp(self):
