@@ -26,7 +26,7 @@ setup(name="deployfish",
           "boto3 >= 1.7.55",
           "botocore >= 1.10.55",
           "click >= 6.7",
-          "PyYAML == 3.12",
+          "PyYAML",
           "tzlocal >= 1.4",
           "requests >= 2.18.4"
       ],
