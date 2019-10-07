@@ -15,3 +15,4 @@ build
 /deployfish.yml
 real_tests
 
+.mypy_cache
