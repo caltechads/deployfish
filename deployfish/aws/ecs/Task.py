@@ -874,7 +874,7 @@ class Task(object):
             'subnets': yml['subnets'],
         }
         if 'security_groups' in yml:
-            self.vpc_configuration['security_groups'] = yml['security_groups']
+            self.vpc_configuration['securityGroups'] = yml['security_groups']
 
         if 'public_ip' in yml:
             self.vpc_configuration['assignPublicIp'] = yml['public_ip']

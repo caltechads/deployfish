@@ -558,9 +558,10 @@ def _entrypoint(ctx, section, section_name, cluster_name, parameter_prefix, comm
         try:
             section_yml = config.get_section_item(section, section_name)
         except KeyError:
-            click.echo("Our container's deployfish config file '{}' does not have section '{}'".format(
+            click.echo("Our container's deployfish config file '{}' does not have section '{}' in '{}'".format(
                 ctx.obj['CONFIG_FILE'] or 'deployfish.yml',
-                section_name
+                section_name,
+                section
             ))
             sys.exit(1)
         parameter_store = []
