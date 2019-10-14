@@ -737,7 +737,10 @@ def task_run(ctx, task_name, wait):
     any logs.
     """
     task = Task(task_name, config=ctx.obj['CONFIG'])
-    task.run(wait)
+    try:
+        task.run(wait)
+    except:
+        click.echo("There was an unspecified error running this task.")    
 
 
 @task.command('schedule', short_help="Schedule a task")

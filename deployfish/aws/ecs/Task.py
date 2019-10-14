@@ -91,6 +91,40 @@ class LogConfiguration(object):
         return r
 
 
+class Secret(object):
+    """
+    Simple class to render a parameter store secret in the container definition
+    """
+    
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+        
+    def render(self):
+        r = {}
+        r['name'] = self.name
+        r['valueFrom'] = self.value
+        return r
+
+
+class SecretsConverter(object):
+    """
+    Convert a parameter store to a list of Secret objects
+    """
+    
+    def __init__(self, parameter_store):
+        self.parameter_store = parameter_store
+        self.secrets = []
+        self.__comvert_to_secrets()
+        
+    def __comvert_to_secrets(self):
+        for parameter in self.parameter_store:
+            name = parameter.key
+            value = parameter.name
+            secret = Secret(name, value)
+            self.secrets.append(secret)
+
+
 class ContainerDefinition(VolumeMixin):
     """
     Manage one of the container definitions in a `TaskDefinition`.
@@ -131,6 +165,7 @@ class ContainerDefinition(VolumeMixin):
         self._environment = {}
         self._portMappings = []
         self.logConfiguration = None
+        self.secrets = []
 
         if 'logConfiguration' in aws:
             self.logConfiguration = LogConfiguration(aws['logConfiguration'])
@@ -370,6 +405,11 @@ class ContainerDefinition(VolumeMixin):
                     r['linuxParameters']['capabilities']['drop'] = self.cap_drop
             if self.tmpfs:
                 r['linuxParameters']['tmpfs'] = self.tmpfs
+        if self.secrets:
+            secrets = []
+            for secret in self.secrets:
+                secrets.append(secret.render())
+            r['secrets'] = secrets
         return r
 
     def update_task_labels(self, family_revisions):
@@ -503,6 +543,14 @@ class ContainerDefinition(VolumeMixin):
                 if 'mount_options' in tc and type(tc['mount_options']) == list:
                     tc_append['mountOptions'] = tc['mount_options']
                 self.tmpfs.append(tc_append)
+                
+    def set_parameter_store(self, parameter_store):
+        """
+        Add parameter store values to the 'secrets' list
+        """
+        converter = SecretsConverter(parameter_store)
+        if converter.secrets:
+            self.secrets = converter.secrets
 
     def __str__(self):
         """
@@ -830,6 +878,13 @@ class TaskDefinition(VolumeMixin):
                 return response['taskDefinitionArns'][0]
             else:
                 return None
+                
+    def set_parameter_store(self, parameter_store):
+        """
+        Add parameter store values to the containers 'secrets' list
+        """        
+        for container in self.containers:
+            container.set_parameter_store(parameter_store)
 
     def __str__(self):
         return json.dumps(self.__render(), indent=2, sort_keys=True)
@@ -993,13 +1048,21 @@ class Task(object):
         """
         self.parameter_store.save()
 
+    def __force_register_task_definition(self):
+        """
+        Prep the parameter store and register the task definition/
+        """
+        self.parameter_store.populate()
+        self.desired_task_definition.set_parameter_store(self.parameter_store)
+        self.desired_task_definition.create()
+        self.from_aws()
+
     def register_task_definition(self):
         """
         If our task definition has not been registered, do it here.
         """
         if not self.active_task_definition:
-            self.desired_task_definition.create()
-            self.from_aws()
+            self.__force_register_task_definition()
 
     def _get_cloudwatch_logs(self):
         """
@@ -1059,6 +1122,7 @@ class Task(object):
                     return
             else:
                 return
+        print("Timed out after 200 seconds...")
 
     def run(self, wait):
         """
@@ -1096,8 +1160,7 @@ class Task(object):
         """
         Update the task definition as appropriate.
         """
-        self.desired_task_definition.create()
-        self.from_aws()
+        self.__force_register_task_definition()
 
     def purge(self):
         pass

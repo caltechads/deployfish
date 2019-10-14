@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.29.8 (2019-10-14)
+~~~~~~~~~~~~~~~~~~~
+
+* Add parameter store values to task container secrets, so deploy entrypoint isn't needed
+
 0.29.0 (2019-05-30)
 ~~~~~~~~~~~~~~~~~~~
 
