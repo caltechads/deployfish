@@ -32,8 +32,8 @@ class TaskScheduler(object):
         if parms['LaunchType'] == 'FARGATE':
             conf = {}
             conf['Subnets'] = self.task.vpc_configuration['subnets']
-            if 'security_groups' in self.task.vpc_configuration:
-                conf['SecurityGroups'] = self.task.vpc_configuration['security_groups']
+            if 'securityGroups' in self.task.vpc_configuration:
+                conf['SecurityGroups'] = self.task.vpc_configuration['securityGroups']
             if 'assignPublicIp' in self.task.vpc_configuration:
                 conf['AssignPublicIp'] = self.task.vpc_configuration['assignPublicIp']
             parms['NetworkConfiguration'] = {
