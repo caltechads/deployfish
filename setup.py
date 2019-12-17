@@ -23,10 +23,10 @@ setup(name="deployfish",
       packages=find_packages(),
       include_package_data=True,
       install_requires=[
-          "boto3 >= 1.7.55",
-          "botocore >= 1.10.55",
+          "boto3 >= 1.10.40",
+          "botocore >= 1.13.40",
           "click >= 6.7",
-          "PyYAML",
+          "PyYAML >= 5",
           "tzlocal >= 1.4",
           "requests >= 2.18.4"
       ],
