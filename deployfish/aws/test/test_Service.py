@@ -34,6 +34,20 @@ class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
     def test_scheduling_strategy(self):
         self.assertEqual(self.service.schedulingStrategy, 'REPLICA')
 
+    def test_load_balancer_render(self):
+        r = self.service._render('foobar-prod:1')
+        self.assertTrue('loadBalancers' in r)
+        compare(
+            r['loadBalancers'],
+            [
+                {
+                    'loadBalancerName': 'foobar-prod',
+                    'containerName': 'example',
+                    'containerPort': 443
+                }
+            ]
+        )
+
 
 class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.TestCase):
 
@@ -158,12 +172,12 @@ class TestService_load_yaml_alternate(unittest.TestCase):
         self.assertEqual(self.service.minimumHealthyPercent, 50)
 
     def test_load_balancer(self):
-        compare(self.service.load_balancer, {
+        compare(self.service.load_balancer, [{
             'type': 'alb',
             'target_group_arn': 'my_target_group_arn',
             'container_name': 'example',
             'container_port': 443
-        })
+        }])
 
     def test_launchType(self):
         self.assertEqual(self.service.launchType, 'FARGATE')
@@ -175,6 +189,19 @@ class TestService_load_yaml_alternate(unittest.TestCase):
             'assignPublicIp': 'ENABLED'
         })
 
+    def test_vpc_configuration_render(self):
+        r = self.service._render('foobar-prod2:1')
+        self.assertTrue('networkConfiguration' in r)
+        self.assertTrue('awsvpcConfiguration' in r['networkConfiguration'])
+        compare(
+            r['networkConfiguration']['awsvpcConfiguration'],
+            {
+                'subnets': ['subnet-12345678', 'subnet-87654321'],
+                'securityGroups': ['sg-12345678'],
+                'assignPublicIp': 'ENABLED'
+            }
+        )
+
     def test_placements(self):
         compare(self.service.placementConstraints, [
             {'type': 'distinctInstance'},
@@ -184,3 +211,116 @@ class TestService_load_yaml_alternate(unittest.TestCase):
             {'type': 'random'},
             {'type': 'spread', 'field': 'attribute:ecs.availability-zone'}
         ])
+
+    def test_load_balancer_render(self):
+        r = self.service._render('foobar-prod2:1')
+        self.assertTrue('loadBalancers' in r)
+        compare(
+            r['loadBalancers'],
+            [
+                {
+                    'targetGroupArn': 'my_target_group_arn',
+                    'containerName': 'example',
+                    'containerPort': 443
+                }
+            ]
+        )
+
+
+class TestService_load_yaml_multiple_target_groups(unittest.TestCase):
+
+    def setUp(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        fname = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=fname, interpolate=False)
+        with Replacer() as r:
+            r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
+            self.service = Service('foobar-prod3', config=config)
+
+    def test_serviceName(self):
+        self.assertEqual(self.service.serviceName, 'foobar-prod3')
+
+    def test_clusterName(self):
+        self.assertEqual(self.service.clusterName, 'foobar-prod3')
+
+    def test_load_balancer(self):
+        compare(
+            self.service.load_balancer,
+            [
+                {
+                    'type': 'alb',
+                    'target_group_arn': 'my_target_group_arn_443',
+                    'container_name': 'example',
+                    'container_port': 443
+                },
+                {
+                    'type': 'alb',
+                    'target_group_arn': 'my_target_group_arn_80',
+                    'container_name': 'example',
+                    'container_port': 80
+                }
+            ]
+        )
+
+    def test_load_balancer_render(self):
+        r = self.service._render('foobar-prod3:1')
+        self.assertTrue('loadBalancers' in r)
+        compare(
+            r['loadBalancers'],
+            [
+                {
+                    'targetGroupArn': 'my_target_group_arn_443',
+                    'containerName': 'example',
+                    'containerPort': 443
+                },
+                {
+                    'targetGroupArn': 'my_target_group_arn_80',
+                    'containerName': 'example',
+                    'containerPort': 80
+                }
+            ]
+        )
+
+
+class TestService_load_yaml_multiple_target_groups_from_aws(unittest.TestCase):
+
+    def setUp(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        fname = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=fname, interpolate=False)
+        with Replacer() as r:
+            r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
+            self.service = Service('foobar-prod3', config=config)
+            self.service._Service__aws_service = {
+                'loadBalancers': [
+                    {
+                        'targetGroupArn': 'my_target_group_arn_8443',
+                        'containerName': 'example',
+                        'containerPort': 8443
+                    },
+                    {
+                        'targetGroupArn': 'my_target_group_arn_8080',
+                        'containerName': 'example',
+                        'containerPort': 8080
+                    }
+                ]
+            }
+
+    def test_load_balancer(self):
+        compare(
+            self.service.load_balancer,
+            [
+                {
+                    'type': 'alb',
+                    'target_group_arn': 'my_target_group_arn_8443',
+                    'container_name': 'example',
+                    'container_port': 8443
+                },
+                {
+                    'type': 'alb',
+                    'target_group_arn': 'my_target_group_arn_8080',
+                    'container_name': 'example',
+                    'container_port': 8080
+                }
+            ]
+        )

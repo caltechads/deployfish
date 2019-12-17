@@ -161,3 +161,43 @@ services:
           labels:
             key1: val1
             key2: val2
+
+  - name: foobar-prod3
+    cluster: foobar-prod3
+    family: foobar-prod3
+    network_mode: bridge
+    maximum_percent: 250
+    minimum_healthy_percent: 50
+    launch_type: REPLICA
+    execution_role: ecs_execution_role
+    cpu: 256
+    memory: 512
+    count: 2
+    service_role_arn: a_task_role_arn
+    load_balancer:
+      target_groups:
+        - target_group_arn: my_target_group_arn_443
+          container_name: example
+          container_port: 443
+        - target_group_arn: my_target_group_arn_80
+          container_name: example
+          container_port: 80
+    containers:
+      - name: example
+        image: example:1.2.3
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: config-store
+        links:
+          - redis
+          - db:database
+        labels:
+          - "edu.caltech.imss-ads=foobar"
+        volumes:
+          - /host/path:/container/path
+          - /host/path-ro:/container/path-ro:ro
+      - name: redis
+        image: redis:latest
+      - name: db
+        image: mysql:5.5.47

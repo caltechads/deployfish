@@ -2,19 +2,14 @@ from __future__ import print_function
 
 from datetime import datetime
 import json
-from copy import copy
 import os
 import os.path
 import random
-import re
-import shlex
 import string
 import subprocess
 from tempfile import NamedTemporaryFile
 import time
 import tzlocal
-
-import botocore
 
 from deployfish.aws import get_boto3_session
 from deployfish.aws.asg import ASG
@@ -24,6 +19,7 @@ from deployfish.aws.service_discovery import ServiceDiscovery
 
 from .Task import TaskDefinition
 from .Task import HelperTask
+
 
 class Service(object):
     """
@@ -82,7 +78,7 @@ class Service(object):
 
     def __defaults(self):
         self._roleArn = None
-        self.__load_balancer = {}
+        self.__load_balancer = None
         self.__vpc_configuration = {}
         self.__placement_constraints = []
         self.__placement_strategy = []
@@ -358,14 +354,18 @@ class Service(object):
                     self.__load_balancer = {
                         'type': 'elb',
                         'load_balancer_name': self.__aws_service['loadBalancers'][0]['loadBalancerName'],
+                        'container_name': self.__aws_service['loadBalancers'][0]['containerName'],
+                        'container_port': self.__aws_service['loadBalancers'][0]['containerPort']
                     }
                 else:
-                    self.__load_balancer = {
-                        'type': 'alb',
-                        'target_group_arn': self.__aws_service['loadBalancers'][0]['targetGroupArn'],
-                    }
-                self.__load_balancer['container_name'] = self.__aws_service['loadBalancers'][0]['containerName']
-                self.__load_balancer['container_port'] = self.__aws_service['loadBalancers'][0]['containerPort']
+                    self.__load_balancer = []
+                    for target_group in self.__aws_service['loadBalancers']:
+                        self.__load_balancer.append({
+                            'type': 'alb',
+                            'target_group_arn': target_group['targetGroupArn'],
+                            'container_name': target_group['containerName'],
+                            'container_port': target_group['containerPort']
+                        })
         return self.__load_balancer
 
     def set_elb(self, load_balancer_name, container_name, container_port):
@@ -376,13 +376,15 @@ class Service(object):
             'container_port': container_port
         }
 
-    def set_alb(self, target_group_arn, container_name, container_port):
-        self.__load_balancer = {
-            'type': 'alb',
-            'target_group_arn': target_group_arn,
-            'container_name': container_name,
-            'container_port': container_port
-        }
+    def set_alb(self, target_groups):
+        self.__load_balancer = []
+        for item in target_groups:
+            self.__load_balancer.append({
+                'type': 'alb',
+                'target_group_arn': item['target_group_arn'],
+                'container_name': item['container_name'],
+                'container_port': item['container_port']
+            })
 
     @property
     def vpc_configuration(self):
@@ -412,8 +414,14 @@ class Service(object):
     def version(self):
         if self.active_task_definition:
             if self.load_balancer:
+                if isinstance(self.load_balancer, dict):
+                    # This is an ELB
+                    item = self.load_balancer
+                else:
+                    # This is a list of target groups
+                    item = self.load_balancer[0]
                 for c in self.active_task_definition.containers:
-                    if c.name == self.load_balancer['container_name']:
+                    if c.name == item['container_name']:
                         return c.image.split(":")[1]
             else:
                 # Just give the first container's version?
@@ -465,7 +473,7 @@ class Service(object):
     def schedulingStrategy(self, schedulingStrategy):
         self.__schedulingStrategy = schedulingStrategy
 
-    def __render(self, task_definition_id):
+    def _render(self, task_definition_id):
         """
         Generate the dict we will pass to boto3's `create_service()`.
 
@@ -479,18 +487,21 @@ class Service(object):
             if self.launchType != 'FARGATE':
                 r['role'] = self.roleArn
             r['loadBalancers'] = []
-            if self.load_balancer['type'] == 'elb':
+            if isinstance(self.load_balancer, dict):
+                # An ELB
                 r['loadBalancers'].append({
                     'loadBalancerName': self.load_balancer['load_balancer_name'],
                     'containerName': self.load_balancer['container_name'],
                     'containerPort': self.load_balancer['container_port'],
                 })
             else:
-                r['loadBalancers'].append({
-                    'targetGroupArn': self.load_balancer['target_group_arn'],
-                    'containerName': self.load_balancer['container_name'],
-                    'containerPort': self.load_balancer['container_port'],
-                })
+                # a list of target groups
+                for target_group in self.load_balancer:
+                    r['loadBalancers'].append({
+                        'targetGroupArn': target_group['target_group_arn'],
+                        'containerName': target_group['container_name'],
+                        'containerPort': target_group['container_port'],
+                    })
         if self.launchType == 'FARGATE':
             r['networkConfiguration'] = {
                 'awsvpcConfiguration': self.vpc_configuration
@@ -533,6 +544,7 @@ class Service(object):
             self.minimumHealthyPercent = yml['minimum_healthy_percent']
         self.asg = ASG(yml=yml)
         if 'application_scaling' in yml:
+            # Application Autoscaling
             self.scaling = ApplicationAutoscaling(yml['name'], yml['cluster'], yml=yml['application_scaling'])
         if 'load_balancer' in yml:
             if 'service_role_arn' in yml:
@@ -540,18 +552,24 @@ class Service(object):
                 self.roleArn = yml['service_role_arn']
             else:
                 self.roleArn = yml['load_balancer']['service_role_arn']
-            if 'load_balancer_name' in yml['load_balancer']:
-                self.set_elb(
-                    yml['load_balancer']['load_balancer_name'],
-                    yml['load_balancer']['container_name'],
-                    yml['load_balancer']['container_port'],
-                )
-            elif 'target_group_arn' in yml['load_balancer']:
-                self.set_alb(
-                    yml['load_balancer']['target_group_arn'],
-                    yml['load_balancer']['container_name'],
-                    yml['load_balancer']['container_port'],
-                )
+            if 'target_groups' in yml['load_balancer']:
+                # If we want the service to register itself with multiple target groups,
+                # the "load_balancer" section will have a list entry named "target_groups".
+                # Each item in the target_group_list will be a dict with keys "target_group_arn",
+                # "container_name" and "container_port"
+                self.set_alb(yml['load_balancer']['target_groups'])
+            else:
+                # We either have just one target group, or we're using an ELB
+                if 'load_balancer_name' in yml['load_balancer']:
+                    # ELB
+                    self.set_elb(
+                        yml['load_balancer']['load_balancer_name'],
+                        yml['load_balancer']['container_name'],
+                        yml['load_balancer']['container_port'],
+                    )
+                elif 'target_group_arn' in yml['load_balancer']:
+                    # target group
+                    self.set_alb([yml['load_balancer']])
         if 'vpc_configuration' in yml:
             self.set_vpc_configuration(
                 yml['vpc_configuration']['subnets'],
@@ -646,7 +664,7 @@ class Service(object):
             else:
                 print("Service Discovery already exists with this name")
         self.__create_tasks_and_task_definition()
-        kwargs = self.__render(self.desired_task_definition.arn)
+        kwargs = self._render(self.desired_task_definition.arn)
         self.ecs.create_service(**kwargs)
         if self.scaling:
             self.scaling.create()
@@ -763,8 +781,11 @@ class Service(object):
             if index <= 5:
                 print(event['message'])
 
-        if self.load_balancer and 'type' in self.load_balancer:
-            lbtype = self.load_balancer['type']
+        if self.load_balancer:
+            if isinstance(self.load_balancer, dict):
+                lbtype = 'elb'
+            else:
+                lbtype = 'alb'
         else:
             lbtype = None
         if lbtype == 'elb':
@@ -780,18 +801,21 @@ class Service(object):
                     success = False
                 print(state['InstanceId'], state['State'], state['Description'])
         elif lbtype == 'alb':
-            print("")
-            print("Load Balancer")
-            alb = get_boto3_session().client('elbv2')
-            response = alb.describe_target_health(
-                TargetGroupArn=self.load_balancer['target_group_arn']
-            )
-            if len(response['TargetHealthDescriptions']) < desired_count:
-                success = False
-            for desc in response['TargetHealthDescriptions']:
-                if desc['TargetHealth']['State'] != 'healthy':
+            for target_group in self.load_balancer:
+                print("")
+                print("Target Group: {}".format(target_group['target_group_arn']))
+                alb = get_boto3_session().client('elbv2')
+                response = alb.describe_target_health(TargetGroupArn=target_group['target_group_arn'])
+                if len(response['TargetHealthDescriptions']) < desired_count:
                     success = False
-                print(desc['Target']['Id'], desc['TargetHealth']['State'], desc['TargetHealth'].get('Description', ''))
+                for desc in response['TargetHealthDescriptions']:
+                    if desc['TargetHealth']['State'] != 'healthy':
+                        success = False
+                    print(
+                        desc['Target']['Id'],
+                        desc['TargetHealth']['State'],
+                        desc['TargetHealth'].get('Description', '')
+                    )
         return success
 
     def wait_until_stable(self):
@@ -812,8 +836,6 @@ class Service(object):
 
         print('Deployment failed...')
 
-        # waiter = self.ecs.get_waiter('services_stable')
-        # waiter.wait(cluster=self.clusterName, services=[self.serviceName])
         return False
 
     def run_task(self, command):
@@ -1121,7 +1143,12 @@ class Service(object):
                 verbose_flag = "-vv"
             else:
                 verbose_flag = "-q"
-            cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(verbose_flag, self.bastion, verbose_flag, self.host_ip)
+            cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(
+                verbose_flag,
+                self.bastion,
+                verbose_flag,
+                self.host_ip
+            )
             if command:
                 cmd = "{} {}".format(cmd, command)
 
@@ -1155,8 +1182,16 @@ class Service(object):
         ecs_host = hosts[list(hosts.keys())[0]]
         host_ip, bastion = self._get_host_bastion(ecs_host)
 
-        cmd = 'ssh -L {}:localhost:{} ec2-user@{} ssh -L {}:{}:{}  {}'.format(local_port, interim_port, bastion, interim_port, host, host_port, host_ip)
+        cmd = 'ssh -L {}:localhost:{} ec2-user@{} ssh -L {}:{}:{}  {}'.format(
+            local_port,
+            interim_port,
+            bastion,
+            interim_port,
+            host,
+            host_port,
+            host_ip
+        )
         subprocess.call(cmd, shell=True)
 
     def __str__(self):
-        return json.dumps(self.__render("to-be-created"), indent=2, sort_keys=True)
+        return json.dumps(self._render("to-be-created"), indent=2, sort_keys=True)

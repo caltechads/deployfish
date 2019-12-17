@@ -336,6 +336,31 @@ See `Using Data Volumes in Tasks <https://docs.aws.amazon.com/AmazonECS/latest/d
   You are responsible for installing and confuring any 3rd party docker volume drivers on your ECS container machines.
   The `volumes` section just allows you to use that driver once you've properly set it up and configured it.
 
+service_role_arn
+----------------
+
+(Optional)
+
+The name or full Amazon Resource Name (ARN) of the IAM role that allows Amazon ECS to make calls to your load balancer
+on your behalf. This parameter is only permitted if you are using a load balancer with your service and your task
+definition does not use the `awsvpc` network mode. If you specify the role parameter, you must also specify a load
+balancer object with the ``load_balancer`` parameter, below.
+
+Example::
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
+        load_balancer:
+          load_balancer_name: foobar-prod-elb
+          container_name: foobar-prod
+          container_port: 80
+
+
+See: `Using Service-Linked ROles for Amazon ECS <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using-service-linked-roles.html>`_
+
 load_balancer
 -------------
 
@@ -346,13 +371,13 @@ If you're going to use an ELB or an ALB with your service, configure it with a `
 The load balancer info for the service can't be changed after the service has been created.  To change any part of the
 load balancer info, you'll need to destroy and recreate the service.
 
+See: `Service Load Balancing <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html>`_.
+
 ELB
 ^^^
 
 To specify that the the service is to use an ELB, you'll need to specify
 
-* ``service_role_arn``: (string) The name or full ARN of the IAM role that allows
-  ECS to make calls to your load balancer on your behalf.
 * ``load_balancer_name``: (string) The name of the ELB.
 * ``container_name``: (string) the name of the container to associate with the
   load balancer
@@ -366,23 +391,21 @@ Example::
       - name: foobar-prod
         cluster: foobar-cluster
         count: 2
+        service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
         load_balancer:
-          service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
           load_balancer_name: foobar-prod-elb
           container_name: foobar-prod
           container_port: 80
 
-deployfish won't create the load balancer for you --
-you'll need to create it before running ``deploy create <service_name>``.
+deployfish won't create the load balancer for you -- you'll need to create it before running ``deploy create
+<service_name>``.
 
 
-ALB
-^^^
+ALB or NLB
+^^^^^^^^^^
 
-To specify that the the service is to use an ALB, you'll need to specify
+To specify that the the service is to use an ALB or NLB, you'll need to specify:
 
-* ``service_role_arn``: (string) The name or full ARN of the IAM role that allows
-  ECS to make calls to your load balancer on your behalf.
 * ``target_group_arn``: (string) The full ARN of the target group to use for this service.
 * ``container_name``: (string) the name of the container to associate with the
   load balancer
@@ -399,11 +422,31 @@ Example::
       - name: foobar-prod
         cluster: foobar-cluster
         count: 2
+        service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
         load_balancer:
-          service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
-          target_group_arn: foobar-prod-elb
+          target_group_arn: my-target-group-arn
           container_name: foobar-prod
           container_port: 80
+
+You can specify multiple target groups for your service, also, by placing them in a list named
+``target_groups``::
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
+        load_balancer:
+          target_groups:
+          - target_group_arn: my-target-group-arn-80
+            container_name: foobar-prod
+            container_port: 80
+          - target_group_arn: my-target-group-arn-443
+            container_name: foobar-prod
+            container_port: 443
+             
+
+
 
 service_discovery
 -----------------
@@ -1620,8 +1663,8 @@ correct task revision. ::
         environment: prod
         cluster: foobar-prod-cluster
         count: 2
+        service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
         load_balancer:
-          service_role_arn: arn:aws:iam::123142123547:role/ecsServiceRole
           load_balancer_name: foobar-prod-elb
           container_name: foobar
           container_port: 80
@@ -1800,8 +1843,8 @@ replace that with a terraform lookup, like so::
         cluster: ${terraform.cluster_name}
         environment: prod
         count: 2
+        service_role_arn: ${terraform.ecs_service_role}
         load_balancer:
-          service_role_arn: ${terraform.ecs_service_role}
           load_balancer_name: ${terraform.elb_name}
           container_name: my-service
           container_port: 80
