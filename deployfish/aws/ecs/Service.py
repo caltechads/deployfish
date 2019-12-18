@@ -388,7 +388,7 @@ class Service(object):
 
     @property
     def vpc_configuration(self):
-        if self.__aws_service and self.__aws_service['networkConfiguration'] and not self.__vpc_configuration:
+        if self.__aws_service and 'networkConfiguration' in self.__aws_service and not self.__vpc_configuration:
             self.__vpc_configuration = self.__aws_service['networkConfiguration']['awsvpcConfiguration']
         return self.__vpc_configuration
 
@@ -751,6 +751,7 @@ class Service(object):
                     ps['base'] = p['base']
                 cps.append(ps)
             r['capacityProviderStrategy'] = cps
+        return r
 
     def update_service(self):
         """
