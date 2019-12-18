@@ -737,20 +737,29 @@ class Service(object):
             'minimumHealthyPercent': self.minimumHealthyPercent
         }
         if self.vpc_configuration:
-            r['networkConfiguration'] = {
-                'awsvpcConfiguration': self.vpc_configuration
-            }
-        if self.capacity_provider_strategy:
-            cps = []
-            for p in self.capacity_provider_strategy:
-                ps = {
-                    'capacityProvider': p['provider'],
-                    'weight': p['weight']
-                }
-                if 'base' in p:
-                    ps['base'] = p['base']
-                cps.append(ps)
-            r['capacityProviderStrategy'] = cps
+            r['networkConfiguration'] = {'awsvpcConfiguration': self.vpc_configuration}
+
+        # The boto3 docs say we can pass capacityProviderStrategy in boto3>=1.10.41, but
+        # when I actually try to use it with 1.10.41, I get:
+        #
+        #  Unknown parameter in input: "capacityProviderStrategy", must be one of: cluster, service, desiredCount,
+        #    taskDefinition, deploymentConfiguration, networkConfiguration, platformVersion, forceNewDeployment,
+        #    healthCheckGracePeriodSeconds
+        #
+        # Commenting this out until it is actually allowed.
+        # -- CPM 2019-12-18
+
+#         if self.capacity_provider_strategy:
+#            cps = []
+#            for p in self.capacity_provider_strategy:
+#                ps = {
+#                    'capacityProvider': p['provider'],
+#                    'weight': p['weight']
+#                }
+#                if 'base' in p:
+#                    ps['base'] = p['base']
+#                cps.append(ps)
+#            r['capacityProviderStrategy'] = cps
         return r
 
     def update_service(self):
