@@ -1,3 +1,9 @@
+## 0.30.1 (2019-12-17)
+
+BUG FIXES:
+  
+  * cli: properly handle multiple target groups when describing a service
+
 ## 0.30.0 (2019-12-17)
 
 ENHANCEMENTS:

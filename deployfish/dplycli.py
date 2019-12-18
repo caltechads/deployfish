@@ -31,6 +31,7 @@ class FriendlyService(Service):
             config.info()
             sys.exit(1)
 
+
 def print_service_info(service):
     click.secho('    service_name        : {}'.format(service.serviceName), fg="cyan")
     click.secho('    cluster_name        : {}'.format(service.clusterName), fg="cyan")
@@ -44,13 +45,19 @@ def print_service_info(service):
     if service.load_balancer:
         click.secho('    load_balancer:', fg="cyan")
         click.secho('      service_role_arn  : {}'.format(service.roleArn), fg="cyan")
-        click.secho('      type              : {}'.format(service.load_balancer['type']), fg="cyan")
-        if service.load_balancer['type'] == 'elb':
-            click.secho('      load_balancer_id  : {}'.format(service.load_balancer['load_balancer_name']), fg="cyan")
+        lb = service.load_balancer
+        if isinstance(lb, dict):
+            if service.load_balancer['type'] == 'elb':
+                click.secho('      load_balancer_id  : {}'.format(lb['load_balancer_name']), fg="cyan")
+            else:
+                click.secho('      target_group_arn  : {}'.format(lb['target_group_arn']), fg="cyan")
+            click.secho('      container_name    : {}'.format(lb['container_name']), fg="cyan")
+            click.secho('      container_port    : {}'.format(lb['container_port']), fg="cyan")
         else:
-            click.secho('      target_group_arn  : {}'.format(service.load_balancer['target_group_arn']), fg="cyan")
-        click.secho('      container_name    : {}'.format(service.load_balancer['container_name']), fg="cyan")
-        click.secho('      container_port    : {}'.format(service.load_balancer['container_port']), fg="cyan")
+            for tg in lb:
+                click.secho('      target_group_arn  : {}'.format(tg['target_group_arn']), fg="cyan")
+                click.secho('        container_name    : {}'.format(tg['container_name']), fg="cyan")
+                click.secho('        container_port    : {}'.format(tg['container_port']), fg="cyan")
     if service.scaling:
         click.secho('    application_scaling:', fg="cyan")
         click.secho('      min_capacity      : {}'.format(service.scaling.MinCapacity), fg="cyan")
