@@ -16,7 +16,7 @@ from deployfish.aws.systems_manager import ParameterStore, UnboundParameterFacto
 from deployfish.cli import cli
 
 
-class FriendlyServiceFactory.newFactory(Service):
+class FriendlyServiceFactory:
     """
     This is a wrapper for ``Service`` that prints a friendly message when we're given a service or environment name that
     doesn't exist.
