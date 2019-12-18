@@ -758,7 +758,7 @@ class Service(object):
         """
         self.__create_tasks_and_task_definition()
         self.ecs.update_service(
-            **self._render_update(self.desired_task_definition_arn)
+            **self._render_update(self.desired_task_definition.arn)
         )
         self.__defaults()
         self.from_aws()
