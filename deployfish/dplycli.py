@@ -22,7 +22,7 @@ class FriendlyServiceFactory:
     doesn't exist.
     """
 
-    @classmethod
+    @staticmethod
     def new(service_name, config=None):
         try:
             return Service(service_name, config=config)
