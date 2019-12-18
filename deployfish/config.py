@@ -271,3 +271,17 @@ class Config(object):
                 if item['name'] == item_name:
                     return item
         raise KeyError
+
+    def info(self):
+        print("Available services:")
+        print("-------------------")
+        for service in self.__raw['services']:
+            print(service['name'])
+        print()
+        print()
+        print("Available environments:")
+        print("-----------------------")
+        for service in self.__raw['services']:
+            if 'environment' in service:
+                print(service['environment'])
+

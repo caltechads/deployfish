@@ -55,7 +55,6 @@ class Service(object):
     def __init__(self, service_name, config=None):
         yml = config.get_service(service_name)
         self.ecs = get_boto3_session().client('ecs')
-
         self.__aws_service = None
 
         self.asg = None

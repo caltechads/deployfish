@@ -16,6 +16,21 @@ from deployfish.aws.systems_manager import ParameterStore, UnboundParameterFacto
 from deployfish.cli import cli
 
 
+class FriendlyService(Service):
+    """
+    This is a wrapper for ``Service`` that prints a friendly message when we're given a service or environment name that
+    doesn't exist.
+    """
+
+    def __init__(self, service_name, config=None):
+        try:
+            super().__init__(service_name, config=config)
+        except KeyError:
+            click.secho('No service or environment named "{}"'.format(service_name), fg='red')
+            print()
+            config.info()
+            sys.exit(1)
+
 def print_service_info(service):
     click.secho('    service_name        : {}'.format(service.serviceName), fg="cyan")
     click.secho('    cluster_name        : {}'.format(service.clusterName), fg="cyan")
@@ -178,7 +193,7 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
     """
     Create a new ECS service named SERVICE_NAME.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     print()
     if service.exists():
         click.secho('Service "{}" already exists!'.format(service.serviceName), fg='red')
@@ -205,7 +220,9 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
             click.secho('\nService has config parameters defined: SKIPPING', fg='red')
             if dry_run:
                 click.secho(
-                    '    Either run create with the --update-configs flag or do "deploy config write {}"'.format(service_name)
+                    '    Either run create with the --update-configs flag or do "deploy config write {}"'.format(
+                        service_name
+                    )
                 )
             else:
                 click.secho('    To update them in AWS, do "deploy config write {}"'.format(service_name))
@@ -229,7 +246,7 @@ def info(ctx, service_name):
     """
     Show current AWS information about this service and its task definition
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     print()
     if service.exists():
         click.secho('"{}" service live info:'.format(service.serviceName), fg="white")
@@ -252,7 +269,7 @@ def info(ctx, service_name):
 @needs_config
 def version(ctx, service_name):
     """Print the tag of the image in the first container on the service"""
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     print(service.version())
 
 
@@ -283,7 +300,7 @@ def update(ctx, service_name, dry_run, wait):
 
     If you want to update the desiredCount on the service, use "deploy scale".
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     print()
     click.secho('Updating "{}" service:'.format(service.serviceName), fg="white")
     click.secho('  Current task definition:', fg="yellow")
@@ -319,7 +336,7 @@ def restart(ctx, service_name, hard):
     one.  Kill each task and wait for it to be replaced before killing the next
     one off.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     print()
     click.secho('Restarting tasks in "{}" service in cluster "{}"'.format(
         service.serviceName,
@@ -345,7 +362,7 @@ def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
     """
     Set the desired count for service SERVICE_NAME to COUNT.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     print()
     manage_asg_count(service, count, asg, force_asg)
     click.secho('Updating desiredCount on "{}" service in cluster "{}" to {}.'.format(
@@ -373,7 +390,7 @@ def delete(ctx, service_name, dry_run):
     """
     Delete the service SERVICE_NAME from AWS.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     print()
     click.secho('Deleting service "{}":'.format(service.serviceName), fg="white")
     click.secho('  Service info:', fg="green")
@@ -404,7 +421,7 @@ def run_task(ctx, service_name, command):
     """
     Run the one-off task COMMAND on SERVICE_NAME.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     response = service.run_task(command)
     if response:
         print(response)
@@ -424,7 +441,7 @@ def cluster_info(ctx, service_name):
     Show information about the individual EC2 systems in the ECS cluster running
     SERVICE_NAME.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     instances = service.get_instance_data()
     for index, reservation in enumerate(instances):
         click.echo(click.style("Instance {}".format(index + 1), bold=True))
@@ -446,7 +463,7 @@ def cluster_run(ctx, service_name):
     SERVICE_NAME.
     """
     command = click.prompt('Command to run')
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     responses = service.cluster_run([command])
     for index, response in enumerate(responses):
         click.echo(click.style("Instance {}".format(index + 1), bold=True))
@@ -462,7 +479,7 @@ def cluster_ssh(ctx, service_name):
     """
     SSH to the specified EC2 system in the ECS cluster running SERVICE_NAME.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     ips = service.get_host_ips()
     for index, ip in enumerate(ips):
         click.echo("Instance {}: {}".format(index + 1, ip))
@@ -491,7 +508,7 @@ def show_config(ctx, service_name, diff, to_env_file):
     If the service SERVICE_NAME has a "config:" section defined, print a list of
     all parameters for the service and the values they currently have in AWS.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     if not to_env_file:
         if diff:
             click.secho('Diff between local and AWS parameters for service "{}":'.format(service_name), fg='white')
@@ -526,7 +543,7 @@ def write_config(ctx, service_name, dry_run):
     If the service SERVICE_NAME has a "config:" section defined, write
     all of the parameters for the service to AWS Parameter Store.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     parameters = service.get_config()
     if len(parameters) == 0:
         click.secho('No parameters found for service "{}":'.format(service_name), fg='white')
@@ -654,7 +671,7 @@ def ssh(ctx, service_name, verbose):
     If the service SERVICE_NAME has no running tasks, randomly choose one of
     the container instances in the cluster on which the service is defined.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     service.ssh(verbose=verbose)
 
 
@@ -668,7 +685,7 @@ def docker_exec(ctx, service_name, verbose):
     SSH to an EC2 instance in the cluster defined in the service named SERVICE_NAME, then
     run docker exec on the appropriate container.
     """
-    service = Service(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyService(service_name, config=ctx.obj['CONFIG'])
     service.docker_exec(verbose=verbose)
 
 
@@ -711,7 +728,7 @@ def tunnel(ctx, tunnel_name):
     yml = config.get_section_item('tunnels', tunnel_name)
     service_name = yml['service']
 
-    service = Service(service_name, config=config)
+    service = FriendlyService(service_name, config=config)
     host = _interpolate_tunnel_info(yml['host'], service)
     port = int(_interpolate_tunnel_info(yml['port'], service))
     local_port = int(_interpolate_tunnel_info(yml['local_port'], service))
@@ -740,7 +757,7 @@ def task_run(ctx, task_name, wait):
     try:
         task.run(wait)
     except:
-        click.echo("There was an unspecified error running this task.")    
+        click.echo("There was an unspecified error running this task.")
 
 
 @task.command('schedule', short_help="Schedule a task")
