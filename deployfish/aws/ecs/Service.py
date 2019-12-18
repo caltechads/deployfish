@@ -83,6 +83,7 @@ class Service(object):
         self.__placement_constraints = []
         self.__placement_strategy = []
         self.__schedulingStrategy = "REPLICA"
+        self.__capacity_provider_strategy = []
 
     def __get_service(self):
         """
@@ -411,6 +412,26 @@ class Service(object):
     def service_discovery(self, arn):
         self.__service_discovery = [{'registryArn': arn}]
 
+    @property
+    def capacity_provider_strategy(self):
+        """
+        Returns the load balancer, either elb or alb, if it exists.
+
+        :return: dict
+        """
+        if self.__aws_service:
+            if 'capacityProviderStrategy' in self.__aws_service:
+                self.__capacity_provider_strategy = []
+                for provider in self.__aws_service['capacityProviderStrategy']:
+                    p = {
+                        'provider': provider['capacityProvider'],
+                        'weight': provider['weight']
+                    }
+                    if 'base' in provider:
+                        p['base'] = provider['base']
+                    self.__capacity_provider_strategy.append(p)
+        return self.__capacity_provider_strategy
+
     def version(self):
         if self.active_task_definition:
             if self.load_balancer:
@@ -482,7 +503,9 @@ class Service(object):
         r = {}
         r['cluster'] = self.clusterName
         r['serviceName'] = self.serviceName
-        r['launchType'] = self.launchType
+        if not self.capacity_provider_strategy:
+            # capacity_provider_strategy and launch_type are mutually exclusive
+            r['launchType'] = self.launchType
         if self.load_balancer:
             if self.launchType != 'FARGATE':
                 r['role'] = self.roleArn
@@ -502,7 +525,7 @@ class Service(object):
                         'containerName': target_group['container_name'],
                         'containerPort': target_group['container_port'],
                     })
-        if self.launchType == 'FARGATE':
+        if self.vpc_configuration:
             r['networkConfiguration'] = {
                 'awsvpcConfiguration': self.vpc_configuration
             }
@@ -522,6 +545,17 @@ class Service(object):
             r['placementStrategy'] = self.placementStrategy
         if self.schedulingStrategy:
             r['schedulingStrategy'] = self.schedulingStrategy
+        if self.capacity_provider_strategy:
+            cps = []
+            for p in self.capacity_provider_strategy:
+                ps = {
+                    'capacityProvider': p['provider'],
+                    'weight': p['weight']
+                }
+                if 'base' in p:
+                    ps['base'] = p['base']
+                cps.append(ps)
+            r['capacityProviderStrategy'] = cps
         return r
 
     def from_yaml(self, yml):
@@ -592,6 +626,8 @@ class Service(object):
         else:
             self._count = yml['count']
             self._desired_count = self._count
+        if 'capacity_provider_strategy' in yml:
+            self.__capacity_provider_strategy = yml['capacity_provider_strategy']
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
             "DEPLOYFISH_SERVICE_NAME": yml['name'],
@@ -687,19 +723,43 @@ class Service(object):
         self.update_service()
         self.update_scaling()
 
+    def _render_update(self, task_definition_arn):
+        """
+        Generate the dict we will pass to boto3's `update_service()`.
+
+        :rtype: dict
+        """
+        r = {}
+        r['cluster'] = self.clusterName
+        r['service'] = self.serviceName
+        r['taskDefinition'] = task_definition_arn
+        r['deploymentConfiguration'] = {
+            'maximumPercent': self.maximumPercent,
+            'minimumHealthyPercent': self.minimumHealthyPercent
+        }
+        if self.vpc_configuration:
+            r['networkConfiguration'] = {
+                'awsvpcConfiguration': self.vpc_configuration
+            }
+        if self.capacity_provider_strategy:
+            cps = []
+            for p in self.capacity_provider_strategy:
+                ps = {
+                    'capacityProvider': p['provider'],
+                    'weight': p['weight']
+                }
+                if 'base' in p:
+                    ps['base'] = p['base']
+                cps.append(ps)
+            r['capacityProviderStrategy'] = cps
+
     def update_service(self):
         """
         Update the taskDefinition and deploymentConfiguration on the service.
         """
         self.__create_tasks_and_task_definition()
         self.ecs.update_service(
-            cluster=self.clusterName,
-            service=self.serviceName,
-            taskDefinition=self.desired_task_definition.arn,
-            deploymentConfiguration={
-                'maximumPercent': self.maximumPercent,
-                'minimumHealthyPercent': self.minimumHealthyPercent
-            }
+            **self._render_update(self.desired_task_definition_arn)
         )
         self.__defaults()
         self.from_aws()
@@ -722,6 +782,8 @@ class Service(object):
         :param count: set # of containers on our service to this
         :type count: integer
         """
+        # TBD: if our schedulingStrategy is DAEMON, this should do nothing
+        #      except print a message
         self.ecs.update_service(
             cluster=self.clusterName,
             service=self.serviceName,

@@ -226,6 +226,26 @@ class TestService_load_yaml_alternate(unittest.TestCase):
             ]
         )
 
+    def test_capacity_provider_strategy(self):
+        compare(
+            self.service.capacity_provider_strategy,
+            [
+                {'provider': 'foobar-cap-provider', 'weight': 1, 'base': 1},
+                {'provider': 'foobar-cap-provider2', 'weight': 2}
+            ]
+        )
+
+    def test_capacity_provider_strategy_render(self):
+        r = self.service._render('foobar-prod2:1')
+        self.assertTrue('capacityProviderStrategy' in r)
+        compare(
+            r['capacityProviderStrategy'],
+            [
+                {'capacityProvider': 'foobar-cap-provider', 'weight': 1, 'base': 1},
+                {'capacityProvider': 'foobar-cap-provider2', 'weight': 2}
+            ]
+        )
+
 
 class TestService_load_yaml_multiple_target_groups(unittest.TestCase):
 
@@ -322,5 +342,33 @@ class TestService_load_yaml_multiple_target_groups_from_aws(unittest.TestCase):
                     'container_name': 'example',
                     'container_port': 8080
                 }
+            ]
+        )
+
+
+class TestService_load_yaml_capacity_provider_strategy_from_aws(unittest.TestCase):
+
+    def setUp(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        fname = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=fname, interpolate=False)
+        with Replacer() as r:
+            r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
+            self.service = Service('foobar-prod2', config=config)
+            self.service._Service__aws_service = {
+                'capacityProviderStrategy': [
+                    {
+                        'capacityProvider': 'foobar-cap-1',
+                        'weight': 1,
+                        'base': 1
+                    }
+                ]
+            }
+
+    def test_capacity_provider_strategy(self):
+        compare(
+            self.service.capacity_provider_strategy,
+            [
+                {'provider': 'foobar-cap-1', 'weight': 1, 'base': 1}
             ]
         )

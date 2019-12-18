@@ -98,6 +98,12 @@ services:
       container_name: example
       container_port: 443
       service_role_arn: a_task_role_arn
+    capacity_provider_strategy:
+      - provider: foobar-cap-provider
+        weight: 1
+        base: 1
+      - provider: foobar-cap-provider2
+        weight: 2
     containers:
       - name: example
         image: example:1.2.3

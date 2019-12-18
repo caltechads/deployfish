@@ -92,6 +92,8 @@ so::
       - name: foobar-test
         ...
 
+Unless otherwise specified, see `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html>`_
+for help on thee options.
 
 name
 ----
@@ -111,8 +113,7 @@ cluster
 -------
 
 (String, Required) The name of the actual ECS cluster in which we'll create our service. ``cluster``
-is required. This has to exist in AWS before running ``deploy create
-<service-name>``. ::
+is required. This has to exist in AWS before running ``deploy create <service-name>``. ::
 
     services:
       - name: foobar-prod
@@ -138,49 +139,49 @@ scheduling_strategy
         clsuter: foodbar-cluster
         scheduling_strategy: DAEMON
 
+See: 
+
 count
 -----
 
-(Integer, Required for REPLICA) When we create the ECS service, configure the service to run this many tasks. ::
+(Integer, Required for REPLICA scheduling strategy) When we create the ECS service, configure the service to run this
+many tasks. ::
 
     services:
       - name: foobar-prod
         cluster: foobar-cluster
         count: 2
 
-``count`` is only meaningful at service creation time.  To change the count in an
-already created service, use ``deploy scale <service_name> <count>``
+``count`` is only meaningful at service creation time.  To change the count in an already created service, use ``deploy
+scale <service_name> <count>``
 
 maximum_percent
 ---------------
 
-(Integer, Optional) This is the upper limit on the number of tasks
-that are allowed in the RUNNING or PENDING state during a deployment, as a percentage of the ``count``.
-This must be configured along with ``minimum_healthy_percent``. If not provided will default to 200. If schdeuling strategy is set to DAMEON, it will be fixd at 100 ::
+(Integer, Optional) During a deployment, this is the upper limit on the number of tasks that are allowed in the RUNNING
+or PENDING state, as a percentage of the ``count``.  This must be configured along with ``minimum_healthy_percent``.  If
+not provided will default to 200. If schdeuling strategy is set to DAMEON, it will be fixd at 100 ::
 
     services:
       - name: foobar-prod
         maximum_percent: 200
 
-See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
-
 minimum_healthy_percent
 -----------------------
 
-(Integer, Optional) ECS service, this is the lower limit on the number of tasks
-that must remain in the RUNNING state during a deployment, as a percentage of the ``count``. This must be configured
-along with ``maximum_percent``. If not provided will default to 0. ::
+(Integer, Optional) During a deployment,this is the lower limit on the number of tasks that must remain in the RUNNING
+state, as a percentage of the ``count``. This must be configured along with ``maximum_percent``. If not provided will
+default to 0. ::
 
     services:
       - name: foobar-prod
         minimum_healthy_percent: 50
 
-See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
-
 placement_constraints
 ---------------------
 
-(Optional) An array of placement constraint objects to use for tasks in your service. You can specify a maximum of 10 constraints per task (this limit includes constraints in the task definition and those specified at run time). ::
+(Optional) An array of placement constraint objects to use for tasks in your service. You can specify a maximum of 10
+constraints per task (this limit includes constraints in the task definition and those specified at run time). ::
 
     services:
          - name: foobar-prod
@@ -189,12 +190,11 @@ placement_constraints
             - type: memberOf
               expression: 'attribute:ecs.instance-type =~ t2.*'
 
-See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
-
 placement_strategy
 ------------------
 
-(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy rules per service. ::
+(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy
+rules per service. ::
 
     services:
          - name: foobar-prod
@@ -208,16 +208,10 @@ See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest
 launch_type
 -----------
 
-(Required for Fargate tasks)
+The launch type on which to run your service. Accepted values are ``FARGATE`` or ``EC2``. If a launch type is not
+specified, ``EC2`` is used by default.
 
-If you are configuring a Fargate task you must specify the launch type as ``FARGATE``, otherwise
-the default value of ``EC2`` is used.
-
-The Fargate launch type allows you to run your containerized applications without the need to
-provision and manage the backend infrastructure. Just register your task definition and Fargate
-launches the container for you.
-
-If you use the Fargate launch type, the following task parameters are not valid:
+If you use the Fargate launch type, these task parameters are not valid:
 
 * ``dockerSecurityOptions``
 * ``links``
@@ -236,20 +230,19 @@ See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/devel
 vpc_configuration
 -----------------
 
-(Required for Fargate tasks)
+If you are configuring a ``FARGATE`` task or you have tasks with the ``awsvpc`` network mode, you must specify your vpc
+configuration at the task level.
 
-If you are configuring a Fargate task, you have to specify your vpc configuration at the task level.
-
-deployfish won't create the vpc, subnets or security groups for you --
-you'll need to create it before you can use ``deploy create <service_name>``
+deployfish won't create the VPC, subnets or security groups for you -- you'll need to create it before you can use
+``deploy create <service_name>``
 
 You'll need to specify
 
-* ``subnets``: (array) The subnets in the VPC that the task scheduler should consider for placement.
-  Only private subnets are supported at this time. The VPC will be determined by the subnets you
-  specify, so if you specify multiple subnets they must be in the same VPC.
-* ``security_groups``: (array) The ID of the security group to associate with the service.
-* ``public_ip``: (string) Whether to enabled or disable public IPs. Valid Values are ``ENABLED`` or ``DISABLED``
+* ``subnets``: (list of strings) The subnets in the VPC that the task scheduler should consider for placement.  Only private
+  subnets are supported at this time. The VPC will be determined by the subnets you specify, so if you specify multiple
+  subnets they must be in the same VPC.
+* ``security_groups``: (list of strings) The ID of the security group to associate with the service.
+* ``public_ip``: (string) Whether to enabled or disable public IPs. Valid values are ``ENABLED`` or ``DISABLED``
 
 Example::
 
@@ -263,7 +256,7 @@ Example::
             - subnet-87654321
           security_groups:
             - sg-12345678
-          public_ip: ENABLED
+          public_ip: DISABLED
 
 
 autoscalinggroup_name
@@ -271,7 +264,7 @@ autoscalinggroup_name
 
 (Optional)
 
-If you have a dedicated Autoscaling Group for your service, you can declare it with the ``autoscalinggroup_name``
+If you have a dedicated EC2 AutoScaling Group for your service, you can declare it with the ``autoscalinggroup_name``
 option.  This will allow you to scale the ASG up and down when you scale the service up and down with ``deploy scale
 <service-name> <count>``.
 
@@ -283,6 +276,9 @@ deployfish won't create the autoscaling group for you -- you'll need to create i
         cluster: foobar-cluster
         count: 2
         autoscalinggroup_name: foobar-asg
+
+Alternatively, you can specify an AutoScaling Group Capacity Provider for this service, and the scaling will be
+taken care of automatically.
 
 volumes
 -------
@@ -343,7 +339,7 @@ service_role_arn
 
 The name or full Amazon Resource Name (ARN) of the IAM role that allows Amazon ECS to make calls to your load balancer
 on your behalf. This parameter is only permitted if you are using a load balancer with your service and your task
-definition does not use the `awsvpc` network mode. If you specify the role parameter, you must also specify a load
+definition does not use the ``awsvpc`` network mode. If you specify the role parameter, you must also specify a load
 balancer object with the ``load_balancer`` parameter, below.
 
 Example::
@@ -407,14 +403,19 @@ ALB or NLB
 To specify that the the service is to use an ALB or NLB, you'll need to specify:
 
 * ``target_group_arn``: (string) The full ARN of the target group to use for this service.
-* ``container_name``: (string) the name of the container to associate with the
-  load balancer
-* ``container_port``: (string) the port on the container to associate with the
-  load balancer.  This port must correspond to a container port on container
-  ``container_name`` in your service's task definition
+* ``container_name``: (string) the name of the container to associate with the load balancer
+* ``container_port``: (string) the port on the container to associate with the load balancer.  This port must correspond
+  to a container port on container ``container_name`` in your service's task definition
 
-deployfish won't create the target group for you == you'll need to create it
-before running ``deploy create <service_name>``.
+.. note::
+
+  If you set ``network_mode`` to ``awsvpc`` or you've set ``launch_type`` to ``FARGATE``, you need to configure your
+  ALB to target IP addresses, not EC2 instances. This is because tasks that use the awsvpc network mode are associated
+  with an elastic network interface, not an Amazon EC2 instance.  
+
+  See: `Service Load Balancing <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html>`_
+
+deployfish won't create the target group for you == you'll need to create it before running ``deploy create <service_name>``.
 
 Example::
 
@@ -428,8 +429,7 @@ Example::
           container_name: foobar-prod
           container_port: 80
 
-You can specify multiple target groups for your service, also, by placing them in a list named
-``target_groups``::
+You can specify multiple target groups for your service, by placing them in a list named ``target_groups``::
 
     services:
       - name: foobar-prod
@@ -444,9 +444,42 @@ You can specify multiple target groups for your service, also, by placing them i
           - target_group_arn: my-target-group-arn-443
             container_name: foobar-prod
             container_port: 443
-             
+
+See: `Registering Multiple Target Groups with a Service <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/register-multiple-targetgroups.html>`_
+
+capacity_provider_strategy
+--------------------------
+
+(Optional)
+
+Define a list of one or more capacity providers with weights for this service.  Capacity providers allow the service to
+control the underlying Fargate cluster or AutoScaling Group to allocate more container machines when necessary to
+support your service requirements.  Any capacity provider you name in your strategies must already be associated with
+the cluster.
+
+.. note::
+
+  ``capacity_provider_strategy`` and ``launch_type`` are mutually exclusive.  Define one or the other.  To
+  use Fargate with `capacity_provider_strategy`, choose either the ``FARGATE`` or ``FARGATE_SPOT`` pre-defined
+  providers.
 
 
+Example ::
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        capacity_provider_strategy:
+        - provider: foobar-cap-provider
+          weight: 1
+          base 1
+        - provider: foobar-cap-provider-spot
+          weight: 2
+
+
+See the description of the ``capacityProviderStrategy`` parameter in the 
+`boto3 ECS create_service() documentation <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ecs.html#ECS.Client.create_service>`_.
 
 service_discovery
 -----------------
@@ -492,8 +525,7 @@ application_scaling
 
 (Optional)
 
-If you want your service so scale up and down with service CPU, configure it
-with an ``application_scaling`` block.
+If you want your service so scale up and down with service CPU, configure it with an ``application_scaling`` block.
 
 Example::
 
@@ -520,36 +552,31 @@ Example::
 
 This block says that, for this service:
 
-* There should be a minimum of 2 tasks and a maximum of 4 tasks
-* ``arn:aws:iam::123445678901:role/ApplicationAutoscalingECSRole`` grants permission to start
-  new containers for our service
-* Scale our service up by one task if ECS Service Average CPU is greater
-  than 60 percent for 300 seconds.  Don't scale up more than once every 60
-  seconds.
-* Scale our service down by one task if ECS Service Average CPU is less
-  than or equal to 30 percent for 1800 seconds.  Don't scale down more than
-  once every 60 seconds.
+* There should be a minimum of 2 tasks and a maximum of 4 tasks *
+  ``arn:aws:iam::123445678901:role/ApplicationAutoscalingECSRole`` grants permission to start new containers for our
+  service
+* Scale our service up by one task if ECS Service Average CPU is greater than 60 percent for 300 seconds.  Don't scale
+  up more than once every 60 seconds.
+* Scale our service down by one task if ECS Service Average CPU is less than or equal to 30 percent for 1800 seconds.
+  Don't scale down more than once every 60 seconds.
 
 
 min_capacity
 ^^^^^^^^^^^^
 
-(Integer, Required) The minimum number of tasks that should be running in
-our service.
+(Integer, Required) The minimum number of tasks that should be running in our service.
 
 max_capacity
 ^^^^^^^^^^^^
 
-(Integer, Required) The maximum number of tasks that should be running in
-our service.  Note that you should ensure that you have enough resources in
-your cluster to actually run this many of your tasks.
+(Integer, Required) The maximum number of tasks that should be running in our service.  Note that you should ensure that
+you have enough resources in your cluster to actually run this many of your tasks.
 
 role_arn
 ^^^^^^^^
 
-(String, Required) The name or full ARN of the IAM role that allows Application
-Autoscaling to muck with your service.  Your role definition should look like
-this::
+(String, Required) The name or full ARN of the IAM role that allows Application Autoscaling to muck with your service.
+Your role definition should look like this::
 
     {
       "Version": "2012-10-17",
@@ -564,8 +591,7 @@ this::
       ]
     }
 
-And it needs an appropriate policy attached.  The below policy allows the
-role to act on any service. ::
+And it needs an appropriate policy attached.  The below policy allows the role to act on any service. ::
 
     {
         "Version": "2012-10-17",
@@ -599,17 +625,16 @@ See `Amazon ECS Service Auto Scaling IAM Role <http://docs.aws.amazon.com/Amazon
 scale-up, scale-down
 ^^^^^^^^^^^^^^^^^^^^
 
-(Required) You should have exactly two scaling rules sections, and they should
-be named precisely ``scale-up`` and ``scale-down``.
+(Required) You should have exactly two scaling rules sections, and they should be named precisely ``scale-up`` and
+``scale-down``.
 
 cpu
 ^^^
 
-(String, Required) What CPU change causes this rule to be activated?  Valid
-operators are: ``<=``, ``<``, ``>``, ``>=``.  The CPU value itself is a float.
+(String, Required) What CPU change causes this rule to be activated?  Valid operators are: ``<=``, ``<``, ``>``, ``>=``.
+The CPU value itself is a float.
 
-You'll need to put quotes around your value of ``cpu``, else the YAML parser will
-freak out about the ``=`` sign.
+You'll need to put quotes around your value of ``cpu``, else the YAML parser will freak out about the ``=`` sign.
 
 check_every_seconds
 ^^^^^^^^^^^^^^^^^^^
@@ -619,21 +644,20 @@ check_every_seconds
 periods
 ^^^^^^^
 
-(Integer, Required) The ``cpu`` test must be true for ``check_every_seconds *
-periods`` seconds for scaling to actually happen.
+(Integer, Required) The ``cpu`` test must be true for ``check_every_seconds * periods`` seconds for scaling to actually
+happen.
 
 scale_by
 ^^^^^^^^
 
-(Integer, Required) When it's time to scale, scale by this number of tasks.  To
-scale up, make the number positive; to scale down, make it negative.
+(Integer, Required) When it's time to scale, scale by this number of tasks.  To scale up, make the number positive; to
+scale down, make it negative.
 
 cooldown
 ^^^^^^^^
 
-(Integer, Required) The amount of time, in seconds, after a scaling activity
-completes where previous trigger-related scaling activities can influence
-future scaling events.
+(Integer, Required) The amount of time, in seconds, after a scaling activity completes where previous trigger-related
+scaling activities can influence future scaling events.
 
 See "Cooldown" in AWS' `PutScalingPolicy <https://docs.aws.amazon.com/ApplicationAutoScaling/latest/APIReference/API_PutScalingPolicy.html>`_ documentation.
 
@@ -641,9 +665,8 @@ See "Cooldown" in AWS' `PutScalingPolicy <https://docs.aws.amazon.com/Applicatio
 family
 ------
 
-(String, Required) When we create task definitions for this service, put them
-in this family.  When you go to the "Task Definitions" page in the AWS web
-console, what is listed under "Task Definition" is the family name. ::
+(String, Required) When we create task definitions for this service, put them in this family.  When you go to the "Task
+Definitions" page in the AWS web console, what is listed under "Task Definition" is the family name. ::
 
     services:
       - name: foobar-prod
@@ -657,9 +680,8 @@ See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/de
 network_mode
 ------------
 
-(String, Optional) The Docker networking mode for the containers in our task.
-One of: ``bridge``, ``host``, ``awsvpc`` or ``none``. If this parameter is omitted, a service is assumed to
-use ``bridge`` mode. ::
+(String, Optional) The Docker networking mode for the containers in our task.  One of: ``bridge``, ``host``, ``awsvpc``
+or ``none``. If this parameter is omitted, a service is assumed to use ``bridge`` mode. ::
 
     services:
       - name: foobar-prod
@@ -670,6 +692,22 @@ use ``bridge`` mode. ::
 
 See the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#network_mode>`_ for
 what each of those modes are.
+
+In order to be able to specify ``awsvpc`` as your network mode, you also need to define ``vpc_configuration``::
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        family: foobar-prod-task-def
+        network_mode: awsvpc
+        vpc_configuration:
+          subnets:
+            - subnet-12345678
+            - subnet-87654321
+          security_groups:
+            - sg-12345678
+          public_ip: DISABLED
 
 task_role_arn
 -------------
@@ -693,7 +731,7 @@ See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/de
 `IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html>`_
 
 execution_role
-------------------
+--------------
 
 (String, Required for Fargate) A task exeuction role ARN for an IAM role that allows Fargate to pull container images and publish container logs
 to Amazon CloudWatch on your behalf.::
