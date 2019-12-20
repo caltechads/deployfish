@@ -21,6 +21,70 @@ from .Task import TaskDefinition
 from .Task import HelperTask
 
 
+class AWSServiceFactory(object):
+
+    def __init__(self):
+        self.ecs = get_boto3_session().client('ecs')
+
+    def __get_service(self, service_name, cluster_name):
+        """
+        If a service named ``service_name`` in a cluster named ``cluster_name`` exists, return its data, else return an
+        empty dict.
+
+        :rtype: dict
+        """
+        response = self.ecs.describe_services(
+            cluster=cluster_name,
+            services=[service_name]
+        )
+        if response['services'] and response['services'][0]['status'] != 'INACTIVE':
+            return response['services'][0]
+        else:
+            return {}
+
+    def __load_basics(self, service, aws):
+        service.serviceName = aws['serviceNname']
+        service.clusterName = aws['clusterName']
+        service.launchType = aws['launchType']
+        service.maximumPercent = aws['deploymentConfiguration']['maximumPercent']
+        service.minimumHealthyPercent = aws['deploymentConfiguration']['minimumHealthyPercent']
+
+    def __load_autoscaling_group(self, service, aws):
+        # Can't get autoscaling group from the describe_services call
+        pass
+
+    def __load_load_balancer(self, service, aws):
+        if 'roleArn' in aws:
+            service.roleArn = aws['roleArn']
+        if 'loadBalancers' in aws:
+            if 'loadBalancerName' in aws['loadBalancers'][0]:
+                service.set_elb(
+                    aws['loadBalancers'][0]['loadBalancerName'],
+                    aws['loadBalancers'][0]['containerName'],
+                    aws['loadBalancers'][0]['containerPort'],
+                )
+            else:
+                tgs = []
+                for lb in aws['loadBalancers']:
+                    tg = {
+                        'target_group_name': lb['targetGroupName'],
+                        'container_name': lb['containerName'],
+                        'container_port': lb['containerPort']
+                    }
+                    tgs.append(tg)
+                service.set_alb(tgs)
+
+    def new(self, service_name, cluster_name):
+        aws = self.__get_service(service_name, cluster_name)
+        if not aws:
+            raise KeyError
+        service = Service()
+        self.__load_basics(service, aws)
+        self.__load_autoscaling_group(service, aws)
+        #self.__load_application_scaling(service, aws)
+        self.__load_load_balancer(service, aws)
+
+
 class YamlServiceFactory(object):
 
     def __load_basics(self, service, yml):
