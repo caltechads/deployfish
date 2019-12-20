@@ -21,6 +21,154 @@ from .Task import TaskDefinition
 from .Task import HelperTask
 
 
+class YamlServiceFactory(object):
+
+    def __load_basics(self, service, yml):
+        service.serviceName = yml['name']
+        service.clusterName = yml['cluster']
+        if 'launch_type' in yml:
+            service.launchType = yml['launch_type']
+        service.environment = yml.get('environment', 'undefined')
+        if 'maximum_percent' in yml:
+            service.maximumPercent = yml['maximum_percent']
+            service.minimumHealthyPercent = yml['minimum_healthy_percent']
+
+    def __load_autoscaling_group(self, service, yml):
+        if 'autoscalinggroup_name' in yml:
+            service.asg = ASG(group_name=yml['autoscalinggroup_name'])
+
+    def __load_application_scaling(self, service, yml):
+        if 'application_scaling' in yml:
+            # Application Autoscaling
+            service.scaling = ApplicationAutoscaling(
+                yml['name'],
+                yml['cluster'],
+                yml=yml['application_scaling']
+            )
+
+    def __load_load_balancer(self, service, yml):
+        if 'load_balancer' in yml:
+            if 'service_role_arn' in yml:
+                # backwards compatibility for deployfish.yml < 0.3.6
+                service.roleArn = yml['service_role_arn']
+            else:
+                service.roleArn = yml['load_balancer']['service_role_arn']
+            if 'target_groups' in yml['load_balancer']:
+                # the "load_balancer" section will have a list entry named "target_groups".
+                # Each item in the target_group_list will be a dict with keys "target_group_arn",
+                # "container_name" and "container_port"
+                service.set_alb(yml['load_balancer']['target_groups'])
+            else:
+                # We either have just one target group, or we're using an ELB
+                if 'load_balancer_name' in yml['load_balancer']:
+                    # ELB
+                    service.set_elb(
+                        yml['load_balancer']['load_balancer_name'],
+                        yml['load_balancer']['container_name'],
+                        yml['load_balancer']['container_port'],
+                    )
+                elif 'target_group_arn' in yml['load_balancer']:
+                    # target group
+                    service.set_alb([yml['load_balancer']])
+
+    def __load_vpc_configuration(self, service, yml):
+        if 'vpc_configuration' in yml:
+            service.set_vpc_configuration(
+                yml['vpc_configuration']['subnets'],
+                yml['vpc_configuration']['security_groups'],
+                yml['vpc_configuration']['public_ip'],
+            )
+
+    def __load_service_discovery(self, service, yml):
+        if 'service_discovery' in yml:
+            if yml.get('network_mode', 'bridge') == 'awsvpc':
+                service.serviceDiscovery = ServiceDiscovery(None, yml=yml['service_discovery'])
+            else:
+                print("Ignoring service discovery config since network mode is not awsvpc")
+
+    def __load_placement_constraints(self, service, yml):
+        if 'placement_constraints' in yml:
+            service.placementConstraints = yml['placement_constraints']
+
+    def __load_placement_strategy(self, service, yml):
+        if 'placement_strategy' in yml:
+            service.placementStrategy = yml['placement_strategy']
+
+    def __load_scheduling_strategy(self, service, yml):
+        if 'scheduling_strategy' in yml and yml['scheduling_strategy'] == 'DAEMON':
+            service.schedulingStrategy = yml['scheduling_strategy']
+            service._count = 'automatically'
+            service.maximumPercent = 100
+        else:
+            service._count = yml['count']
+            service._desired_count = service._count
+
+    def __load_capacity_provider_strategy(self, service, yml):
+        if 'capacity_provider_strategy' in yml:
+            service._capacity_provider_strategy = yml['capacity_provider_strategy']
+
+    def __load_task_definition(self, service, yml):
+        service.family = yml['family']
+        service.desired_task_definition = TaskDefinition(yml=yml)
+        deployfish_environment = {
+            "DEPLOYFISH_SERVICE_NAME": yml['name'],
+            "DEPLOYFISH_ENVIRONMENT": yml.get('environment', 'undefined'),
+            "DEPLOYFISH_CLUSTER_NAME": yml['cluster']
+        }
+        service.desired_task_definition.inject_environment(deployfish_environment)
+
+    def __load_service_tasks(self, service, yml):
+        if 'tasks' in yml:
+            service.tasks = {}
+            for task in yml['tasks']:
+                t = HelperTask(yml['cluster'], yml=task)
+                service.tasks[t.family] = t
+
+    def __load_parameter_store(self, service, yml):
+        if 'config' in yml:
+            parameters = yml['config']
+            self.parameter_store = ParameterStore(
+                yml['service'],
+                yml['cluster'],
+                yml=parameters
+            )
+
+    def __load(self, yml):
+        """
+        Load our service information from the parsed yaml.  ``yml`` should be
+        a service level entry from the ``deployfish.yml`` file.
+
+        :param yml: a service level entry from the ``deployfish.yml`` file
+        :type yml: dict
+        """
+        service = Service()
+        self.__load_basics(service, yml)
+        self.__load_autoscaling_group(service, yml)
+        self.__load_application_scaling(service, yml)
+        self.__load_load_balancer(service, yml)
+        self.__load_vpc_configuration(service, yml)
+        self.__load_service_discovery(service, yml)
+        self.__load_placement_constraints(service, yml)
+        self.__load_placement_strategy(service, yml)
+        self.__load_scheduling_strategy(service, yml)
+        self.__load_capacity_provider_strategy(service, yml)
+
+        self.__load_task_definition(service, yml)
+        self.__load_service_tasks(service, yml)
+
+        self.__load_parameter_store(service, yml)
+
+        service.from_aws()
+        return service
+
+    def new_from_yml(self, yml):
+        return self.__load(yml)
+
+    def new_from_config(self, service_name, config):
+        yml = config.get_service(service_name)
+        return self.__load(yml)
+
+
 class Service(object):
     """
     An object representing an ECS service.
@@ -52,8 +200,7 @@ class Service(object):
             service
         )
 
-    def __init__(self, service_name, config=None):
-        yml = config.get_service(service_name)
+    def __init__(self):
         self.ecs = get_boto3_session().client('ecs')
         self.__aws_service = None
 
@@ -70,19 +217,17 @@ class Service(object):
         self._minimumHealthyPercent = None
         self._maximumPercent = None
         self._launchType = 'EC2'
-        self.__service_discovery = []
+        self._service_discovery = []
         self.__defaults()
-        self.from_yaml(yml)
-        self.from_aws()
 
     def __defaults(self):
         self._roleArn = None
-        self.__load_balancer = None
-        self.__vpc_configuration = {}
-        self.__placement_constraints = []
-        self.__placement_strategy = []
+        self._load_balancer = None
+        self._vpc_configuration = {}
+        self._placement_constraints = []
+        self._placement_strategy = []
         self.__schedulingStrategy = "REPLICA"
-        self.__capacity_provider_strategy = []
+        self._capacity_provider_strategy = []
 
     def __get_service(self):
         """
@@ -351,25 +496,25 @@ class Service(object):
         if self.__aws_service:
             if self.__aws_service['loadBalancers']:
                 if 'loadBalancerName' in self.__aws_service['loadBalancers'][0]:
-                    self.__load_balancer = {
+                    self._load_balancer = {
                         'type': 'elb',
                         'load_balancer_name': self.__aws_service['loadBalancers'][0]['loadBalancerName'],
                         'container_name': self.__aws_service['loadBalancers'][0]['containerName'],
                         'container_port': self.__aws_service['loadBalancers'][0]['containerPort']
                     }
                 else:
-                    self.__load_balancer = []
+                    self._load_balancer = []
                     for target_group in self.__aws_service['loadBalancers']:
-                        self.__load_balancer.append({
+                        self._load_balancer.append({
                             'type': 'alb',
                             'target_group_arn': target_group['targetGroupArn'],
                             'container_name': target_group['containerName'],
                             'container_port': target_group['containerPort']
                         })
-        return self.__load_balancer
+        return self._load_balancer
 
     def set_elb(self, load_balancer_name, container_name, container_port):
-        self.__load_balancer = {
+        self._load_balancer = {
             'type': 'elb',
             'load_balancer_name': load_balancer_name,
             'container_name': container_name,
@@ -377,9 +522,9 @@ class Service(object):
         }
 
     def set_alb(self, target_groups):
-        self.__load_balancer = []
+        self._load_balancer = []
         for item in target_groups:
-            self.__load_balancer.append({
+            self._load_balancer.append({
                 'type': 'alb',
                 'target_group_arn': item['target_group_arn'],
                 'container_name': item['container_name'],
@@ -388,12 +533,12 @@ class Service(object):
 
     @property
     def vpc_configuration(self):
-        if self.__aws_service and 'networkConfiguration' in self.__aws_service and not self.__vpc_configuration:
-            self.__vpc_configuration = self.__aws_service['networkConfiguration']['awsvpcConfiguration']
-        return self.__vpc_configuration
+        if self.__aws_service and 'networkConfiguration' in self.__aws_service and not self._vpc_configuration:
+            self._vpc_configuration = self.__aws_service['networkConfiguration']['awsvpcConfiguration']
+        return self._vpc_configuration
 
     def set_vpc_configuration(self, subnets, security_groups, public_ip):
-        self.__vpc_configuration = {
+        self._vpc_configuration = {
             'subnets': subnets,
             'securityGroups': security_groups,
             'assignPublicIp': public_ip
@@ -404,12 +549,12 @@ class Service(object):
         if self.__aws_service:
             if self.__aws_service['serviceRegistries']:
                 if 'registryArn' in self.__aws_service['serviceRegistries'][0]:
-                    self.__service_discovery = self.__aws_service['serviceRegistries']
-        return self.__service_discovery
+                    self._service_discovery = self.__aws_service['serviceRegistries']
+        return self._service_discovery
 
     @service_discovery.setter
     def service_discovery(self, arn):
-        self.__service_discovery = [{'registryArn': arn}]
+        self._service_discovery = [{'registryArn': arn}]
 
     @property
     def capacity_provider_strategy(self):
@@ -420,7 +565,7 @@ class Service(object):
         """
         if self.__aws_service:
             if 'capacityProviderStrategy' in self.__aws_service:
-                self.__capacity_provider_strategy = []
+                self._capacity_provider_strategy = []
                 for provider in self.__aws_service['capacityProviderStrategy']:
                     p = {
                         'provider': provider['capacityProvider'],
@@ -428,8 +573,8 @@ class Service(object):
                     }
                     if 'base' in provider:
                         p['base'] = provider['base']
-                    self.__capacity_provider_strategy.append(p)
-        return self.__capacity_provider_strategy
+                    self._capacity_provider_strategy.append(p)
+        return self._capacity_provider_strategy
 
     def version(self):
         if self.active_task_definition:
@@ -452,35 +597,35 @@ class Service(object):
     def placementConstraints(self):
         if self.__aws_service:
             if self.__aws_service['placementConstraints']:
-                self.__placement_constraints = self.__aws_service['placementConstraints']
-        return self.__placement_constraints
+                self._placement_constraints = self.__aws_service['placementConstraints']
+        return self._placement_constraints
 
     @placementConstraints.setter
     def placementConstraints(self, placementConstraints):
         if isinstance(placementConstraints, list):
-            self.__placement_constraints = []
+            self._placement_constraints = []
             for placement in placementConstraints:
                 configDict = {'type': placement['type']}
                 if 'expression' in placement:
                     configDict['expression'] = placement['expression']
-                self.__placement_constraints.append(configDict)
+                self._placement_constraints.append(configDict)
 
     @property
     def placementStrategy(self):
         if self.__aws_service:
             if self.__aws_service['placementStrategy']:
-                self.__placement_strategy = self.__aws_service['placementStrategy']
-        return self.__placement_strategy
+                self._placement_strategy = self.__aws_service['placementStrategy']
+        return self._placement_strategy
 
     @placementStrategy.setter
     def placementStrategy(self, placementStrategy):
         if isinstance(placementStrategy, list):
-            self.__placement_strategy = []
+            self._placement_strategy = []
             for placement in placementStrategy:
                 configDict = {'type': placement['type']}
                 if 'field' in placement:
                     configDict['field'] = placement['field']
-                self.__placement_strategy.append(configDict)
+                self._placement_strategy.append(configDict)
 
     @property
     def schedulingStrategy(self):
@@ -532,8 +677,8 @@ class Service(object):
         if self.schedulingStrategy != "DAEMON":
             r['desiredCount'] = self.count
         r['clientToken'] = self.client_token
-        if self.__service_discovery:
-            r['serviceRegistries'] = self.__service_discovery
+        if self._service_discovery:
+            r['serviceRegistries'] = self._service_discovery
         r['deploymentConfiguration'] = {
             'maximumPercent': self.maximumPercent,
             'minimumHealthyPercent': self.minimumHealthyPercent
@@ -556,93 +701,6 @@ class Service(object):
                 cps.append(ps)
             r['capacityProviderStrategy'] = cps
         return r
-
-    def from_yaml(self, yml):
-        """
-        Load our service information from the parsed yaml.  ``yml`` should be
-        a service level entry from the ``deployfish.yml`` file.
-
-        :param yml: a service level entry from the ``deployfish.yml`` file
-        :type yml: dict
-        """
-        self.serviceName = yml['name']
-        self.clusterName = yml['cluster']
-        if 'launch_type' in yml:
-            self.launchType = yml['launch_type']
-        self.environment = yml.get('environment', 'undefined')
-        self.family = yml['family']
-        # backwards compatibility for deployfish.yml < 0.16.0
-        if 'maximum_percent' in yml:
-            self.maximumPercent = yml['maximum_percent']
-            self.minimumHealthyPercent = yml['minimum_healthy_percent']
-        self.asg = ASG(yml=yml)
-        if 'application_scaling' in yml:
-            # Application Autoscaling
-            self.scaling = ApplicationAutoscaling(yml['name'], yml['cluster'], yml=yml['application_scaling'])
-        if 'load_balancer' in yml:
-            if 'service_role_arn' in yml:
-                # backwards compatibility for deployfish.yml < 0.3.6
-                self.roleArn = yml['service_role_arn']
-            else:
-                self.roleArn = yml['load_balancer']['service_role_arn']
-            if 'target_groups' in yml['load_balancer']:
-                # If we want the service to register itself with multiple target groups,
-                # the "load_balancer" section will have a list entry named "target_groups".
-                # Each item in the target_group_list will be a dict with keys "target_group_arn",
-                # "container_name" and "container_port"
-                self.set_alb(yml['load_balancer']['target_groups'])
-            else:
-                # We either have just one target group, or we're using an ELB
-                if 'load_balancer_name' in yml['load_balancer']:
-                    # ELB
-                    self.set_elb(
-                        yml['load_balancer']['load_balancer_name'],
-                        yml['load_balancer']['container_name'],
-                        yml['load_balancer']['container_port'],
-                    )
-                elif 'target_group_arn' in yml['load_balancer']:
-                    # target group
-                    self.set_alb([yml['load_balancer']])
-        if 'vpc_configuration' in yml:
-            self.set_vpc_configuration(
-                yml['vpc_configuration']['subnets'],
-                yml['vpc_configuration']['security_groups'],
-                yml['vpc_configuration']['public_ip'],
-            )
-        if 'network_mode' in yml:
-            if yml['network_mode'] == 'awsvpc' and 'service_discovery' in yml:
-                self.serviceDiscovery = ServiceDiscovery(None, yml=yml['service_discovery'])
-            elif 'service_discovery' in yml:
-                print("Ignoring service discovery config since network mode is not awsvpc")
-        if 'placement_constraints' in yml:
-            self.placementConstraints = yml['placement_constraints']
-        if 'placement_strategy' in yml:
-            self.placementStrategy = yml['placement_strategy']
-        if 'scheduling_strategy' in yml and yml['scheduling_strategy'] == 'DAEMON':
-            self.schedulingStrategy = yml['scheduling_strategy']
-            self._count = 'automatically'
-            self.maximumPercent = 100
-        else:
-            self._count = yml['count']
-            self._desired_count = self._count
-        if 'capacity_provider_strategy' in yml:
-            self.__capacity_provider_strategy = yml['capacity_provider_strategy']
-        self.desired_task_definition = TaskDefinition(yml=yml)
-        deployfish_environment = {
-            "DEPLOYFISH_SERVICE_NAME": yml['name'],
-            "DEPLOYFISH_ENVIRONMENT": yml.get('environment', 'undefined'),
-            "DEPLOYFISH_CLUSTER_NAME": yml['cluster']
-        }
-        self.desired_task_definition.inject_environment(deployfish_environment)
-        self.tasks = {}
-        if 'tasks' in yml:
-            for task in yml['tasks']:
-                t = HelperTask(yml['cluster'], yml=task)
-                self.tasks[t.family] = t
-        parameters = []
-        if 'config' in yml:
-            parameters = yml['config']
-        self.parameter_store = ParameterStore(self._serviceName, self._clusterName, yml=parameters)
 
     def from_aws(self):
         """

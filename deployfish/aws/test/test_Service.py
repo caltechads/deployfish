@@ -6,7 +6,7 @@ from testfixtures import Replacer
 import os
 
 from deployfish.config import Config
-from deployfish.aws.ecs import Service
+from deployfish.aws.ecs import YamlServiceFactory
 
 
 class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
         del config.raw['services'][0]['minimum_healthy_percent']
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service('foobar-prod', config=config)
+            self.service = YamlServiceFactory().new_from_config('foobar-prod', config)
 
     def test_maximum_percent(self):
         self.assertEqual(self.service.maximumPercent, 200)
@@ -59,7 +59,7 @@ class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.Te
         del config.raw['services'][0]['minimum_healthy_percent']
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service('foobar-prod', config=config)
+            self.service = YamlServiceFactory().new_from_config('foobar-prod', config)
             # This is ugly, but it was the only way I could figure out to
             # simulate the AWS load
             self.service._Service__aws_service = {
@@ -114,7 +114,7 @@ class TestService_load_yaml(unittest.TestCase):
         config = Config(filename=fname, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service('foobar-prod', config=config)
+            self.service = YamlServiceFactory().new_from_config('foobar-prod', config)
 
     def test_serviceName(self):
         self.assertEqual(self.service.serviceName, 'foobar-prod')
@@ -151,7 +151,7 @@ class TestService_load_yaml_alternate(unittest.TestCase):
         config = Config(filename=fname, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service('foobar-prod2', config=config)
+            self.service = YamlServiceFactory().new_from_config('foobar-prod2', config)
 
     def test_serviceName(self):
         self.assertEqual(self.service.serviceName, 'foobar-prod2')
@@ -255,7 +255,7 @@ class TestService_load_yaml_multiple_target_groups(unittest.TestCase):
         config = Config(filename=fname, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service('foobar-prod3', config=config)
+            self.service = YamlServiceFactory().new_from_config('foobar-prod3', config)
 
     def test_serviceName(self):
         self.assertEqual(self.service.serviceName, 'foobar-prod3')
@@ -310,7 +310,7 @@ class TestService_load_yaml_multiple_target_groups_from_aws(unittest.TestCase):
         config = Config(filename=fname, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service('foobar-prod3', config=config)
+            self.service = YamlServiceFactory().new_from_config('foobar-prod3', config)
             self.service._Service__aws_service = {
                 'loadBalancers': [
                     {
@@ -354,7 +354,7 @@ class TestService_load_yaml_capacity_provider_strategy_from_aws(unittest.TestCas
         config = Config(filename=fname, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
-            self.service = Service('foobar-prod2', config=config)
+            self.service = YamlServiceFactory().new_from_config('foobar-prod2', config)
             self.service._Service__aws_service = {
                 'capacityProviderStrategy': [
                     {

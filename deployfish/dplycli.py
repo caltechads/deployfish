@@ -11,7 +11,7 @@ import sys
 import click
 
 from deployfish.config import Config, needs_config
-from deployfish.aws.ecs import Service, Task
+from deployfish.aws.ecs import YamlServiceFactory, Task
 from deployfish.aws.systems_manager import ParameterStore, UnboundParameterFactory, WILDCARD_RE
 from deployfish.cli import cli
 
@@ -25,7 +25,7 @@ class FriendlyServiceFactory:
     @staticmethod
     def new(service_name, config=None):
         try:
-            return Service(service_name, config=config)
+            return YamlServiceFactory().new(service_name, config=config)
         except KeyError:
             click.secho('No service or environment named "{}"'.format(service_name), fg='red')
             print()

@@ -1,4 +1,4 @@
-from .Service import Service
+from .Service import Service, YamlServiceFactory
 from .Task import Task
 from .Task import TaskDefinition
 from .Task import ContainerDefinition
