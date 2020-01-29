@@ -1627,7 +1627,19 @@ Loading config: variables into your container environment
 ---------------------------------------------------------
 
 So now that we have all of these values loaded into the AWS Parameter Store,
-how do we use them? We've included a subcommand in ``deployfish`` called
+how do we use them? You have two choices. 
+
+Method 1 - Execution Role
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you provide an execution_role that has permission to get the parameter store values, 
+then your task or service will automatically have the parameter store values inserted 
+into the environment.
+
+Method 1 - Entrypoint
+~~~~~~~~~~~~~~~~~~~~~
+
+If you don't have an execution_role defined, we've included a subcommand in ``deployfish`` called
 ``entrypoint``. Define this as your ``ENTRYPOINT`` in your ``Dockerfile``.
 
 For a service, use::

@@ -683,7 +683,9 @@ class Service(object):
         task definition.
         """
         family_revisions = []
+        self.parameter_store.populate()
         for task in self.tasks.values():
+            task.set_parameter_store(self.parameter_store)
             task.create()
             family_revisions.append(task.family_revision)
         self.desired_task_definition.update_task_labels(family_revisions)

@@ -881,8 +881,12 @@ class TaskDefinition(VolumeMixin):
                 
     def set_parameter_store(self, parameter_store):
         """
-        Add parameter store values to the containers 'secrets' list
-        """        
+        Add parameter store values to the containers 'secrets' list. The task will fail if we try 
+        to do this and we don't have an execution role, so we don't pass the secrets if it doesn't
+        have an execution role
+        """
+        if not self.executionRoleArn:
+            return
         for container in self.containers:
             container.set_parameter_store(parameter_store)
 
