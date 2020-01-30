@@ -7,6 +7,7 @@ import os
 
 from deployfish.config import Config
 from deployfish.aws.ecs import Service
+from deployfish.aws.systems_manager import Parameter
 
 
 class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
@@ -372,3 +373,41 @@ class TestService_load_yaml_capacity_provider_strategy_from_aws(unittest.TestCas
                 {'provider': 'foobar-cap-1', 'weight': 1, 'base': 1}
             ]
         )
+
+
+class TestService_embedded_config(unittest.TestCase):
+
+    def setUp(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        fname = os.path.join(current_dir, 'simple.yml')
+        self.config = Config(filename=fname, interpolate=False)
+        with Replacer() as r:
+            r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
+            self.service = Service('foobar-prod2', config=self.config)
+            p = Parameter('foobar-service', 'foobar-cluster', yml='KEY=VALUE')
+            self.service.parameter_store.append(p)
+            self.service.desired_task_definition.set_parameter_store(self.service.parameter_store)
+
+
+    def test_config_with_execution_role(self):
+        # r = self.service._render('foobar-prod2:1')
+        self.assertFalse(False)
+        self.assertEqual(len(self.service.desired_task_definition.containers[0].secrets), 1)
+
+
+class TestService_no_embedded_config(unittest.TestCase):
+
+    def setUp(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        fname = os.path.join(current_dir, 'simple.yml')
+        self.config = Config(filename=fname, interpolate=False)
+        with Replacer() as r:
+            r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
+            self.service = Service('foobar-prod', config=self.config)
+            p = Parameter('foobar-service', 'foobar-cluster', yml='KEY=VALUE')
+            self.service.parameter_store.append(p)
+            self.service.desired_task_definition.set_parameter_store(self.service.parameter_store)
+
+
+    def test_ignore_config_when_no_execution_role(self):
+        self.assertEqual(len(self.service.desired_task_definition.containers[0].secrets), 0)
