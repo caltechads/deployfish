@@ -14,6 +14,7 @@ from deployfish.config import Config, needs_config
 from deployfish.aws.ecs import Service, Task
 from deployfish.aws.systems_manager import ParameterStore, UnboundParameterFactory, WILDCARD_RE
 from deployfish.cli import cli
+from deployfish.ssh import SSHConfig
 
 
 class FriendlyServiceFactory:
@@ -680,7 +681,8 @@ def ssh(ctx, service_name, verbose):
     the container instances in the cluster on which the service is defined.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
-    service.ssh(verbose=verbose)
+    ssh = SSHConfig(service, config=ctx.obj['CONFIG']).get_ssh()
+    ssh.ssh(verbose=verbose)
 
 
 @cli.command('exec', short_help="Connect to a running container")
@@ -694,7 +696,8 @@ def docker_exec(ctx, service_name, verbose):
     run docker exec on the appropriate container.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
-    service.docker_exec(verbose=verbose)
+    ssh = SSHConfig(service, config=ctx.obj['CONFIG']).get_ssh()
+    ssh.docker_exec(verbose=verbose)
 
 
 def _interpolate_tunnel_info(value, service):

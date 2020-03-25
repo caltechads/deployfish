@@ -16,6 +16,7 @@ from deployfish.aws.asg import ASG
 from deployfish.aws.appscaling import ApplicationAutoscaling
 from deployfish.aws.systems_manager import ParameterStore
 from deployfish.aws.service_discovery import ServiceDiscovery
+from deployfish.ssh import SSHConfig
 
 from .Task import TaskDefinition
 from .Task import HelperTask
@@ -53,7 +54,7 @@ class Service(object):
         )
 
     def __init__(self, service_name, config=None):
-        yml = config.get_service(service_name)
+        self.yml = config.get_service(service_name)
         self.ecs = get_boto3_session().client('ecs')
         self.__aws_service = None
 
@@ -72,8 +73,11 @@ class Service(object):
         self._launchType = 'EC2'
         self.__service_discovery = []
         self.__defaults()
-        self.from_yaml(yml)
+        self.from_yaml(self.yml)
         self.from_aws()
+
+        # self.sshobj = SSHConfig(self, yml, config).get_ssh()
+        # print(type(self.sshobj.provider))
 
     def __defaults(self):
         self._roleArn = None
@@ -1197,6 +1201,8 @@ class Service(object):
             for k, host in hosts.items():
                 break
 
+        self.host_instance = host
+
         self.hosts = hosts
         self.host_ip, self.bastion = self._get_host_bastion(host)
 
@@ -1206,6 +1212,8 @@ class Service(object):
                            actually running in the cluster
         :type is_running: boolean
         """
+        self.sshobj.ssh(command, is_running, with_output, input_data, verbose)
+        return
         self._search_hosts()
 
         if is_running and not self.is_running:
@@ -1238,6 +1246,8 @@ class Service(object):
         """
         Exec into a running Docker container.
         """
+        self.sshobj.docker_exec(verbose)
+        return
         command = "\"/usr/bin/docker exec -it '\$(/usr/bin/docker ps --filter \"name=ecs-{}*\" -q)' bash\""
         command = command.format(self.family)
         self.ssh(command, is_running=True, verbose=verbose)

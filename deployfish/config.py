@@ -285,3 +285,8 @@ class Config(object):
             if 'environment' in service:
                 print(service['environment'])
 
+    def get_global_config(self, section):
+        if 'deployfish' in self.__raw:
+            if section in self.__raw['deployfish']:
+                return self.__raw['deployfish'][section]
+        return None
