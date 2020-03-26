@@ -6,14 +6,19 @@ class SSMProvider():
 
     def __init__(self, service):
         self.service = service
+        self.host_instance = self.service.host_instance
 
     def ok_to_run(self):
         if self.service.host_instance:
             return True
         return False
 
-    def get_ssh_command(self, verbose_flag):
-        cmd = 'ssh -t {} ec2-user@{}'.format(verbose_flag, self.service.host_instance)
+    def get_ssh_command(self, verbose_flag, host=None, host_ip=None):        
+        if host:
+            host_instance = host
+        else:
+            host_instance = self.host_instance
+        cmd = 'ssh -t {} ec2-user@{}'.format(verbose_flag, host_instance)
         return cmd
 
     def get_docker_exec_sub_command(self):
@@ -35,8 +40,12 @@ class BastionProvider():
             return True
         return False
 
-    def get_ssh_command(self, verbose_flag):
-        cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(verbose_flag, self.service.bastion, verbose_flag, self.service.host_ip)
+    def get_ssh_command(self, verbose_flag, host=None, host_ip=None):
+        if host_ip:
+            ssh_host_ip = host_ip
+        else:
+            ssh_host_ip = self.service.host_ip
+        cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(verbose_flag, self.service.bastion, verbose_flag, ssh_host_ip)
         return cmd
 
     def get_docker_exec_sub_command(self):
@@ -54,6 +63,8 @@ class SSH():
 
     def __init__(self, service, ssm=False):
         self.service = service
+        self.service._search_hosts()
+
         if ssm:
             self.provider = SSMProvider(service)
         else:
@@ -106,13 +117,12 @@ class SSH():
 
         return success, output
 
-    def ssh(self, command=None, is_running=False, with_output=False, input_data=None, verbose=False):
+    def ssh(self, command=None, is_running=False, with_output=False, input_data=None, verbose=False, host=None, host_ip=None):
         """
         :param is_running: only complete the ssh if a task from our service is
                            actually running in the cluster
         :type is_running: boolean
         """
-        self.service._search_hosts()
 
         if is_running and not self.service.is_running:
             return
@@ -122,7 +132,7 @@ class SSH():
                 verbose_flag = "-vv"
             else:
                 verbose_flag = "-q"
-            cmd = self.provider.get_ssh_command(verbose_flag)
+            cmd = self.provider.get_ssh_command(verbose_flag, host, host_ip)
             if command:
                 cmd = "{} {}".format(cmd, command)
             print(cmd)

@@ -489,16 +489,26 @@ def cluster_ssh(ctx, service_name):
     SSH to the specified EC2 system in the ECS cluster running SERVICE_NAME.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
-    ips = service.get_host_ips()
-    for index, ip in enumerate(ips):
-        click.echo("Instance {}: {}".format(index + 1, ip))
+    instance_data = service.get_instance_data()
+    instances = []
+    for index, reservation in enumerate(instance_data):
+        instances.append(reservation['Instances'][0])
+
+    for index, instance in enumerate(instances):
+        name = ''
+        for tag in instance['Tags']:
+            if tag['Key'] == 'Name':
+                name = tag['Value']
+        click.echo("Instance {}: {} ({})".format(index + 1, name, instance['InstanceId']))
 
     instance = click.prompt("Which instance to ssh to?", type=int)
-    if instance > len(ips):
+    if instance > len(instances) or instance < 1:
         click.echo("That is not a valid instance.")
         return
-    instance_ip = ips[instance - 1]
-    service.cluster_ssh(instance_ip)
+    host_instance = instances[instance-1]['InstanceId']
+    host_ip = instances[instance-1]['PrivateIpAddress']
+    ssh = SSHConfig(service, config=ctx.obj['CONFIG']).get_ssh()
+    ssh.ssh(host=host_instance, host_ip=host_ip)
 
 
 @cli.group(short_help="Manage AWS Parameter Store values")
@@ -744,9 +754,9 @@ def tunnel(ctx, tunnel_name):
     port = int(_interpolate_tunnel_info(yml['port'], service))
     local_port = int(_interpolate_tunnel_info(yml['local_port'], service))
 
-    interim_port = random.randrange(10000, 64000, 1)
+    ssh = SSHConfig(service, config=config).get_ssh()
 
-    service.tunnel(host, local_port, interim_port, port)
+    ssh.tunnel(host, local_port, port)
 
 
 @cli.group(short_help="Manage tasks.")

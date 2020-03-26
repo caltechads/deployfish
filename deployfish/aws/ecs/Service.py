@@ -1021,6 +1021,7 @@ class Service(object):
         self.host_ips = []
         for reservation in instances:
             instance = reservation['Instances'][0]
+            # print(instance)
             self.host_ips.append(instance['PrivateIpAddress'])
         return self.host_ips
 
@@ -1241,40 +1242,6 @@ class Service(object):
                 return self._run_command_with_io(cmd, output_file=output_file, input_data=input_data)
 
             subprocess.call(cmd, shell=True)
-
-    def docker_exec(self, verbose=False):
-        """
-        Exec into a running Docker container.
-        """
-        self.sshobj.docker_exec(verbose)
-        return
-        command = "\"/usr/bin/docker exec -it '\$(/usr/bin/docker ps --filter \"name=ecs-{}*\" -q)' bash\""
-        command = command.format(self.family)
-        self.ssh(command, is_running=True, verbose=verbose)
-
-    def tunnel(self, host, local_port, interim_port, host_port):
-        """
-        Open tunnel to remote system.
-        :param host:
-        :param local_port:
-        :param interim_port:
-        :param host_port:
-        :return:
-        """
-        hosts = self._get_cluster_hosts()
-        ecs_host = hosts[list(hosts.keys())[0]]
-        host_ip, bastion = self._get_host_bastion(ecs_host)
-
-        cmd = 'ssh -L {}:localhost:{} ec2-user@{} ssh -L {}:{}:{}  {}'.format(
-            local_port,
-            interim_port,
-            bastion,
-            interim_port,
-            host,
-            host_port,
-            host_ip
-        )
-        subprocess.call(cmd, shell=True)
 
     def __str__(self):
         return json.dumps(self._render("to-be-created"), indent=2, sort_keys=True)
