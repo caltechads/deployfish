@@ -473,7 +473,8 @@ def cluster_run(ctx, service_name):
     """
     command = click.prompt('Command to run')
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
-    responses = service.cluster_run([command])
+    ssh = SSHConfig(service, config=ctx.obj['CONFIG']).get_ssh()
+    responses = ssh.cluster_run([command])
     for index, response in enumerate(responses):
         click.echo(click.style("Instance {}".format(index + 1), bold=True))
         click.echo("Success: {}".format(response[0]))
@@ -489,26 +490,39 @@ def cluster_ssh(ctx, service_name):
     SSH to the specified EC2 system in the ECS cluster running SERVICE_NAME.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
-    instance_data = service.get_instance_data()
-    instances = []
-    for index, reservation in enumerate(instance_data):
-        instances.append(reservation['Instances'][0])
-
+    instances = service.get_instances()
     for index, instance in enumerate(instances):
-        name = ''
-        for tag in instance['Tags']:
-            if tag['Key'] == 'Name':
-                name = tag['Value']
-        click.echo("Instance {}: {} ({})".format(index + 1, name, instance['InstanceId']))
+        click.echo("Instance {}: {} ({})".format(index + 1, instance.name, instance.id))
 
-    instance = click.prompt("Which instance to ssh to?", type=int)
-    if instance > len(instances) or instance < 1:
+    choice = click.prompt("Which instance to ssh to?", type=int)
+    if choice > len(instances) or choice < 1:
         click.echo("That is not a valid instance.")
         return
-    host_instance = instances[instance-1]['InstanceId']
-    host_ip = instances[instance-1]['PrivateIpAddress']
+
+    instance = instances[choice-1]
     ssh = SSHConfig(service, config=ctx.obj['CONFIG']).get_ssh()
-    ssh.ssh(host=host_instance, host_ip=host_ip)
+    ssh.ssh(instance=instance)
+
+    # instance_data = service.get_instance_data()
+    # instances = []
+    # for index, reservation in enumerate(instance_data):
+    #     instances.append(reservation['Instances'][0])
+
+    # for index, instance in enumerate(instances):
+    #     name = ''
+    #     for tag in instance['Tags']:
+    #         if tag['Key'] == 'Name':
+    #             name = tag['Value']
+    #     click.echo("Instance {}: {} ({})".format(index + 1, name, instance['InstanceId']))
+
+    # instance = click.prompt("Which instance to ssh to?", type=int)
+    # if instance > len(instances) or instance < 1:
+    #     click.echo("That is not a valid instance.")
+    #     return
+    # host_instance = instances[instance-1]['InstanceId']
+    # host_ip = instances[instance-1]['PrivateIpAddress']
+    # ssh = SSHConfig(service, config=ctx.obj['CONFIG']).get_ssh()
+    # ssh.ssh(host=host_instance, host_ip=host_ip)
 
 
 @cli.group(short_help="Manage AWS Parameter Store values")

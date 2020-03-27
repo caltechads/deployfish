@@ -1,5 +1,7 @@
 import random
+import string
 import subprocess
+from tempfile import NamedTemporaryFile
 
 
 class SSMProvider():
@@ -13,9 +15,9 @@ class SSMProvider():
             return True
         return False
 
-    def get_ssh_command(self, verbose_flag, host=None, host_ip=None):        
-        if host:
-            host_instance = host
+    def get_ssh_command(self, verbose_flag, instance=None):        
+        if instance:
+            host_instance = instance.id
         else:
             host_instance = self.host_instance
         cmd = 'ssh -t {} ec2-user@{}'.format(verbose_flag, host_instance)
@@ -40,9 +42,9 @@ class BastionProvider():
             return True
         return False
 
-    def get_ssh_command(self, verbose_flag, host=None, host_ip=None):
-        if host_ip:
-            ssh_host_ip = host_ip
+    def get_ssh_command(self, verbose_flag, instance=None):
+        if instance:
+            ssh_host_ip = instance.ip
         else:
             ssh_host_ip = self.service.host_ip
         cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(verbose_flag, self.service.bastion, verbose_flag, ssh_host_ip)
@@ -89,6 +91,46 @@ class SSH():
             from io import IOBase
             return isinstance(data, IOBase)
 
+    def push_remote_text_file(self, input_data=None, run=False, file_output=False, instance=None):
+        """
+        Push a text file to the current remote ECS cluster instance and optionally run it.
+
+        :param input_data: Input data to send. Either string or file.
+        :param run: Boolean that indicates if the text file should be run.
+        :param file_output: Boolean that indicates if the output should be saved.
+        :return: tuple - success, output
+        """
+        if self.__is_or_has_file(input_data):
+            path, name = os.path.split(input_data.name)
+        else:
+            name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+
+        if run:
+            cmd = '"cat \> {}\;bash {}\;rm {}"'.format(name, name, name)
+        else:
+            cmd = '"cat \> {}"'.format(name)
+
+        with_output = True
+        if file_output:
+            with_output = NamedTemporaryFile(delete=False)
+            output_filename = with_output.name
+
+        success, output = self.ssh(command=cmd, with_output=with_output, input_data=input_data, instance=instance)
+        if file_output:
+            output = output_filename
+        return success, output
+
+    def run_remote_script(self, lines, file_output=False, instance=None):
+        """
+        Run a script on the current remote ECS cluster instance.
+
+        :param lines: list of lines of the script.
+        :param file_output: Boolean that indicates if the output should be saved.
+        :return: tuple - success, output
+        """
+        data = '\n'.join(lines)
+        return self.push_remote_text_file(input_data=data, run=True, file_output=file_output, instance=instance)
+
     def _run_command_with_io(self, cmd, output_file=None, input_data=None):
         success = True
 
@@ -117,7 +159,23 @@ class SSH():
 
         return success, output
 
-    def ssh(self, command=None, is_running=False, with_output=False, input_data=None, verbose=False, host=None, host_ip=None):
+    def cluster_run(self, cmd):
+        """
+        Run a command on each of the ECS cluster machines.
+
+        :param cmd: Linux command to run.
+
+        :return: list of tuples
+        """
+        instances = self.service.get_instances()
+        responses = []
+        for instance in instances:
+            success, output = self.run_remote_script(cmd, instance=instance)
+            responses.append((success, output))
+        return responses
+
+
+    def ssh(self, command=None, is_running=False, with_output=False, input_data=None, verbose=False, instance=None):
         """
         :param is_running: only complete the ssh if a task from our service is
                            actually running in the cluster
@@ -132,7 +190,7 @@ class SSH():
                 verbose_flag = "-vv"
             else:
                 verbose_flag = "-q"
-            cmd = self.provider.get_ssh_command(verbose_flag, host, host_ip)
+            cmd = self.provider.get_ssh_command(verbose_flag, instance)
             if command:
                 cmd = "{} {}".format(cmd, command)
             print(cmd)
@@ -152,7 +210,6 @@ class SSH():
         """
         # command = '\'/usr/bin/docker exec -it `/usr/bin/docker ps --filter "name=ecs-{}*" -q` bash \''
         command = self.provider.get_docker_exec_sub_command()
-        print(command)
         command = command.format(self.service.family)
         self.ssh(command, is_running=True, verbose=verbose)
 

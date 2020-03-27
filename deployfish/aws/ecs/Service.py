@@ -22,6 +22,17 @@ from .Task import TaskDefinition
 from .Task import HelperTask
 
 
+class Instance():
+
+    def __init__(self, instance_data):
+        self.id = instance_data['InstanceId']
+        self.ip = instance_data['PrivateIpAddress']
+        self.name = ''
+        for tag in instance_data['Tags']:
+            if tag['Key'] == 'Name':
+                self.name = tag['Value']
+
+
 class Service(object):
     """
     An object representing an ECS service.
@@ -63,6 +74,7 @@ class Service(object):
         self.serviceDiscovery = None
         self.searched_hosts = False
         self.is_running = False
+        self.instances = []
         self.hosts = None
         self.host_ips = None
         self._serviceName = None
@@ -1007,6 +1019,20 @@ class Service(object):
             instances = response['Reservations']
             return instances
         return []
+
+    def get_instances(self):
+        if self.instances:
+            return self.instances
+
+        instance_data = self.get_instance_data()
+        instances = []
+        for index, reservation in enumerate(instance_data):
+            instances.append(reservation['Instances'][0])
+
+        for instance in instances:
+            self.instances.append(Instance(instance))
+
+        return self.instances
 
     def get_host_ips(self):
         """
