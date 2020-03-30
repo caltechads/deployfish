@@ -455,6 +455,7 @@ def cluster_info(ctx, service_name):
     for index, reservation in enumerate(instances):
         click.echo(click.style("Instance {}".format(index + 1), bold=True))
         instance = reservation['Instances'][0]
+        print("\tInstance: {}".format(instance['InstanceId']))
         print("\tIP: {}".format(instance['PrivateIpAddress']))
         print("\tType: {}".format(instance['InstanceType']))
         for tag in instance['Tags']:

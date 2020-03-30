@@ -31,6 +31,11 @@ class SSMProvider():
         cmd = 'ssh -N -L {}:{}:{} {}'.format(local_port, host, host_port, ecs_host)
         return cmd
 
+    def push_command(self, name, run=False):
+        if run:
+            return '"cat > {};bash {};rm {}"'.format(name, name, name)
+        return '"cat > {}"'.format(name)
+
 
 class BastionProvider():
 
@@ -59,6 +64,11 @@ class BastionProvider():
         host_ip, bastion = self.service._get_host_bastion(ecs_host)
         cmd = 'ssh -L {}:localhost:{} ec2-user@{} ssh -L {}:{}:{}  {}'.format(local_port, interim_port, bastion, interim_port, host, host_port, host_ip)
         return cmd
+
+    def push_command(self, name, run=False):
+        if run:
+            return '"cat \> {}\;bash {}\;rm {}"'.format(name, name, name)
+        return '"cat \> {}"'.format(name)
 
 
 class SSH():
@@ -105,10 +115,7 @@ class SSH():
         else:
             name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
-        if run:
-            cmd = '"cat \> {}\;bash {}\;rm {}"'.format(name, name, name)
-        else:
-            cmd = '"cat \> {}"'.format(name)
+        cmd = self.provider.push_command(name, run)
 
         with_output = True
         if file_output:
@@ -193,7 +200,6 @@ class SSH():
             cmd = self.provider.get_ssh_command(verbose_flag, instance)
             if command:
                 cmd = "{} {}".format(cmd, command)
-            print(cmd)
 
             if with_output:
                 if self.__is_or_has_file(with_output):
