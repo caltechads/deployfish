@@ -1051,35 +1051,6 @@ class Service(object):
             self.host_ips.append(instance['PrivateIpAddress'])
         return self.host_ips
 
-    def cluster_run(self, cmd):
-        """
-        Run a command on each of the ECS cluster machines.
-
-        :param cmd: Linux command to run.
-
-        :return: list of tuples
-        """
-        ips = self.get_host_ips()
-        host_ip = self.host_ip
-        responses = []
-        for ip in ips:
-            self.host_ip = ip
-            success, output = self.run_remote_script(cmd)
-            responses.append((success, output))
-        self.host_ip = host_ip
-        return responses
-
-    def cluster_ssh(self, ip):
-        """
-        SSH into the specified ECS cluster instance.
-
-        :param ip: ECS cluster instance IP address
-
-        :return: ``None``
-        """
-        self.host_ip = ip
-        self.ssh()
-
     def _get_host_bastion(self, instance_id):
         """
         Given an EC2 ``instance_id`` return the private IP address of
@@ -1122,93 +1093,6 @@ class Service(object):
                     bastion = instance['PublicDnsName']
         return ip, bastion
 
-    def __is_or_has_file(self, data):
-        '''
-        Figure out if we have been given a file-like object as one of the inputs to the function that called this.
-        Is a bit clunky because 'file' doesn't exist as a bare-word type check in Python 3 and built in file objects
-        are not instances of io.<anything> in Python 2
-
-        https://stackoverflow.com/questions/1661262/check-if-object-is-file-like-in-python
-        Returns:
-            Boolean - True if we have a file-like object
-        '''
-        if (hasattr(data, 'file')):
-            data = data.file
-
-        try:
-            return isinstance(data, file)
-        except NameError:
-            from io import IOBase
-            return isinstance(data, IOBase)
-
-    def push_remote_text_file(self, input_data=None, run=False, file_output=False):
-        """
-        Push a text file to the current remote ECS cluster instance and optionally run it.
-
-        :param input_data: Input data to send. Either string or file.
-        :param run: Boolean that indicates if the text file should be run.
-        :param file_output: Boolean that indicates if the output should be saved.
-        :return: tuple - success, output
-        """
-        if self.__is_or_has_file(input_data):
-            path, name = os.path.split(input_data.name)
-        else:
-            name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-
-        if run:
-            cmd = '"cat \> {}\;bash {}\;rm {}"'.format(name, name, name)
-        else:
-            cmd = '"cat \> {}"'.format(name)
-
-        with_output = True
-        if file_output:
-            with_output = NamedTemporaryFile(delete=False)
-            output_filename = with_output.name
-
-        success, output = self.ssh(command=cmd, with_output=with_output, input_data=input_data)
-        if file_output:
-            output = output_filename
-        return success, output
-
-    def run_remote_script(self, lines, file_output=False):
-        """
-        Run a script on the current remote ECS cluster instance.
-
-        :param lines: list of lines of the script.
-        :param file_output: Boolean that indicates if the output should be saved.
-        :return: tuple - success, output
-        """
-        data = '\n'.join(lines)
-        return self.push_remote_text_file(input_data=data, run=True, file_output=file_output)
-
-    def _run_command_with_io(self, cmd, output_file=None, input_data=None):
-        success = True
-
-        if output_file:
-            stdout = output_file
-        else:
-            stdout = subprocess.PIPE
-
-        if input_data:
-            if self.__is_or_has_file(input_data):
-                stdin = input_data
-                input_string = None
-            else:
-                stdin = subprocess.PIPE
-                input_string = input_data
-        else:
-            stdin = None
-
-        try:
-            p = subprocess.Popen(cmd, stdout=stdout, stdin=stdin, shell=True, universal_newlines=True)
-            output, errors = p.communicate(input_string)
-        except subprocess.CalledProcessError as err:
-            success = False
-            output = "{}\n{}".format(err.cmd, err.output)
-            output = err.output
-
-        return success, output
-
     def _search_hosts(self):
         if self.searched_hosts:
             return
@@ -1232,42 +1116,6 @@ class Service(object):
 
         self.hosts = hosts
         self.host_ip, self.bastion = self._get_host_bastion(host)
-
-    def ssh(self, command=None, is_running=False, with_output=False, input_data=None, verbose=False):
-        """
-        :param is_running: only complete the ssh if a task from our service is
-                           actually running in the cluster
-        :type is_running: boolean
-        """
-        self.sshobj.ssh(command, is_running, with_output, input_data, verbose)
-        return
-        self._search_hosts()
-
-        if is_running and not self.is_running:
-            return
-
-        if self.host_ip and self.bastion:
-            if verbose:
-                verbose_flag = "-vv"
-            else:
-                verbose_flag = "-q"
-            cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(
-                verbose_flag,
-                self.bastion,
-                verbose_flag,
-                self.host_ip
-            )
-            if command:
-                cmd = "{} {}".format(cmd, command)
-
-            if with_output:
-                if self.__is_or_has_file(with_output):
-                    output_file = with_output
-                else:
-                    output_file = None
-                return self._run_command_with_io(cmd, output_file=output_file, input_data=input_data)
-
-            subprocess.call(cmd, shell=True)
 
     def __str__(self):
         return json.dumps(self._render("to-be-created"), indent=2, sort_keys=True)
