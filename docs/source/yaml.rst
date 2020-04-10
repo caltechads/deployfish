@@ -337,9 +337,15 @@ service_role_arn
 
 (Optional)
 
+.. note::
+
+    You should only specify ``service_role_arn`` if you do not have the ``AWSServiceRoleForECS``a service linked role in
+    your account and you are not using ``awsvpc`` network mode on your task definition.  If you do have that role, ECS
+    will use it automatically and will not allow you to create your service until you remove ``service_role_arn``.
+
 The name or full Amazon Resource Name (ARN) of the IAM role that allows Amazon ECS to make calls to your load balancer
 on your behalf. This parameter is only permitted if you are using a load balancer with your service and your task
-definition does not use the ``awsvpc`` network mode. If you specify the role parameter, you must also specify a load
+definition does not use the ``awsvpc`` network mode.  If you specify the role parameter, you must also specify a load
 balancer object with the ``load_balancer`` parameter, below.
 
 Example::

@@ -522,7 +522,7 @@ class Service(object):
             # capacity_provider_strategy and launch_type are mutually exclusive
             r['launchType'] = self.launchType
         if self.load_balancer:
-            if self.launchType != 'FARGATE':
+            if self.launchType != 'FARGATE' and self.roleArn:
                 r['role'] = self.roleArn
             r['loadBalancers'] = []
             if isinstance(self.load_balancer, dict):
@@ -599,7 +599,7 @@ class Service(object):
             if 'service_role_arn' in yml:
                 # backwards compatibility for deployfish.yml < 0.3.6
                 self.roleArn = yml['service_role_arn']
-            else:
+            elif 'load_balancer' in yml and 'service_role_arn' in yml['load_balancer']:
                 self.roleArn = yml['load_balancer']['service_role_arn']
             if 'target_groups' in yml['load_balancer']:
                 # If we want the service to register itself with multiple target groups,
