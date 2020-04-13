@@ -95,11 +95,11 @@ class Secret(object):
     """
     Simple class to render a parameter store secret in the container definition
     """
-    
+
     def __init__(self, name, value):
         self.name = name
         self.value = value
-        
+
     def render(self):
         r = {}
         r['name'] = self.name
@@ -111,12 +111,12 @@ class SecretsConverter(object):
     """
     Convert a parameter store to a list of Secret objects
     """
-    
+
     def __init__(self, parameter_store):
         self.parameter_store = parameter_store
         self.secrets = []
         self.__comvert_to_secrets()
-        
+
     def __comvert_to_secrets(self):
         for parameter in self.parameter_store:
             name = parameter.key
@@ -543,7 +543,7 @@ class ContainerDefinition(VolumeMixin):
                 if 'mount_options' in tc and type(tc['mount_options']) == list:
                     tc_append['mountOptions'] = tc['mount_options']
                 self.tmpfs.append(tc_append)
-                
+
     def set_parameter_store(self, parameter_store):
         """
         Add parameter store values to the 'secrets' list
@@ -867,6 +867,8 @@ class TaskDefinition(VolumeMixin):
         if 'launch_type' in yml and yml['launch_type'] == 'FARGATE':
             self.executionRoleArn = yml['execution_role']
             self.requiresCompatibilities = ['FARGATE']
+        else:
+            self.executionRoleArn = yml.get('execution_role', None)
 
     def get_latest_revision(self):
         try:
@@ -878,10 +880,10 @@ class TaskDefinition(VolumeMixin):
                 return response['taskDefinitionArns'][0]
             else:
                 return None
-                
+
     def set_parameter_store(self, parameter_store):
         """
-        Add parameter store values to the containers 'secrets' list. The task will fail if we try 
+        Add parameter store values to the containers 'secrets' list. The task will fail if we try
         to do this and we don't have an execution role, so we don't pass the secrets if it doesn't
         have an execution role
         """
@@ -1083,12 +1085,11 @@ class Task(object):
 
         logclient = get_boto3_session().client('logs')
 
-
         nextToken = None
         kwargs = {
-            'logGroupName':group,
-            'logStreamName':stream,
-            'startFromHead':True
+            'logGroupName': group,
+            'logStreamName': stream,
+            'startFromHead': True
         }
 
         print("Waiting for logs...\n")
@@ -1147,7 +1148,8 @@ class Task(object):
 
     def schedule(self):
         """
-        If a schedule expression is defined in the yml file, schedule the task accordingly via the `TaskScheduler` object.
+        If a schedule expression is defined in the yml file, schedule the task accordingly via the `TaskScheduler`
+        object.
         """
         if not self.schedule_expression:
             return
@@ -1168,6 +1170,7 @@ class Task(object):
 
     def purge(self):
         pass
+
 
 class HelperTask(object):
     """
