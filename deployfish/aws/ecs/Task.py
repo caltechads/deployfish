@@ -738,7 +738,15 @@ class TaskDefinition(VolumeMixin):
                 raise AttributeError
 
     def __setattr__(self, attr, value):
-        if attr in ['family', 'networkMode', 'taskRoleArn', 'requiresCompatibilities', 'executionRoleArn', 'cpu', 'memory']:
+        if attr in [
+            'family',
+            'networkMode',
+            'taskRoleArn',
+            'requiresCompatibilities',
+            'executionRoleArn',
+            'cpu',
+            'memory'
+        ]:
             setattr(self, "_" + attr, value)
         else:
             super(TaskDefinition, self).__setattr__(attr, value)

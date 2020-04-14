@@ -4,10 +4,6 @@ from datetime import datetime
 import json
 import os
 import os.path
-import random
-import string
-import subprocess
-from tempfile import NamedTemporaryFile
 import time
 import tzlocal
 
@@ -16,7 +12,6 @@ from deployfish.aws.asg import ASG
 from deployfish.aws.appscaling import ApplicationAutoscaling
 from deployfish.aws.systems_manager import ParameterStore
 from deployfish.aws.service_discovery import ServiceDiscovery
-from deployfish.ssh import SSHConfig
 
 from .Task import TaskDefinition
 from .Task import HelperTask
@@ -701,9 +696,10 @@ class Service(object):
         family_revisions = []
         self.parameter_store.populate()
         for task in self.tasks.values():
-            task.set_parameter_store(self.parameter_store)
+            task.desired_task_definition.set_parameter_store(self.parameter_store)
             task.create()
             family_revisions.append(task.family_revision)
+        self.desired_task_definition.set_parameter_store(self.parameter_store)
         self.desired_task_definition.update_task_labels(family_revisions)
         self.desired_task_definition.create()
 

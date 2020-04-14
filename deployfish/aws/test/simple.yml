@@ -207,3 +207,26 @@ services:
         image: redis:latest
       - name: db
         image: mysql:5.5.47
+
+  - name: foobar-secrets-ec2
+    cluster: foobar-secrets-ec2
+    family: foobar-secrets-ec2
+    execution_role: ecs_execution_role
+    count: 2
+    load_balancer:
+      target_group_arn: my_target_group_arn
+      container_name: example
+      container_port: 443
+    containers:
+      - name: example
+        image: example:1.2.3
+        cpu: 256
+        memory: 512
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: config-store
+    config:
+      - VAR1=my-value-1
+      - VAR2=my-value-2
+      - SECURE_VAR:secure:${terraform.kms_key_arn}=my-secure-value
