@@ -436,4 +436,31 @@ class TestService_ec2_secrets_in_task_definition(unittest.TestCase):
         self.assertEqual(len(self.service.desired_task_definition.containers[0].secrets), 3)
         self.assertEqual(self.service.desired_task_definition.containers[0].secrets[0].name, 'VAR1')
         self.assertEqual(self.service.desired_task_definition.containers[0].secrets[1].name, 'VAR2')
-        self.assertEqual(self.service.desired_task_definition.containers[0].secrets[2].name, 'SECURE_VAR')
+
+
+class TestService_no_ec2_secrets_in_task_definition_if_no_execution_role(unittest.TestCase):
+
+    def setUp(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        fname = os.path.join(current_dir, 'simple.yml')
+        self.config = Config(filename=fname, interpolate=False)
+        del self.config.raw['services'][4]['execution_role']
+        client_mock = Mock()
+        client_mock.get_parameters.return_value = {'Parameters': []}
+        client_mock.describe_parameters.return_value = {'Parameters': []}
+        session_mock = Mock(client=Mock(return_value=client_mock))
+        with Replacer() as r:
+            r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
+            r.replace('deployfish.aws.ecs.TaskDefinition.create', Mock())
+            r.replace('deployfish.aws.boto3_session', session_mock)
+            self.service = Service('foobar-secrets-ec2', config=self.config)
+            self.service.create()
+
+    def test_sanity_check_name(self):
+        self.assertEqual(self.service.serviceName, 'foobar-secrets-ec2')
+
+    def test_sanity_check_config(self):
+        self.assertEqual(len(self.config.get_service('foobar-secrets-ec2')['config']), 3)
+
+    def test_config_with_execution_role(self):
+        self.assertEqual(len(self.service.desired_task_definition.containers[0].secrets), 0)

@@ -694,12 +694,15 @@ class Service(object):
         task definition.
         """
         family_revisions = []
-        self.parameter_store.populate()
+        if self.desired_task_definition.executionRoleArn:
+            self.parameter_store.populate()
         for task in self.tasks.values():
-            task.desired_task_definition.set_parameter_store(self.parameter_store)
+            if self.desired_task_definition.executionRoleArn:
+                task.desired_task_definition.set_parameter_store(self.parameter_store)
             task.create()
             family_revisions.append(task.family_revision)
-        self.desired_task_definition.set_parameter_store(self.parameter_store)
+        if self.desired_task_definition.executionRoleArn:
+            self.desired_task_definition.set_parameter_store(self.parameter_store)
         self.desired_task_definition.update_task_labels(family_revisions)
         self.desired_task_definition.create()
 
