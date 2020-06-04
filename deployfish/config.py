@@ -22,7 +22,8 @@ def needs_config(func):
                 filename=args[0].obj['CONFIG_FILE'],
                 env_file=args[0].obj['ENV_FILE'],
                 import_env=args[0].obj['IMPORT_ENV'],
-                tfe_token=args[0].obj['TFE_TOKEN']
+                tfe_token=args[0].obj['TFE_TOKEN'],
+                use_aws_section=args[0].obj['USE_AWS_SECTION']
             )
         except NoSuchStateFile as e:
             click.echo(str(e))

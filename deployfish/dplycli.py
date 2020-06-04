@@ -28,6 +28,7 @@ class FriendlyServiceFactory:
         try:
             return Service(service_name, config=config)
         except KeyError:
+            print(config.raw)
             click.secho('No service or environment named "{}"'.format(service_name), fg='red')
             print()
             config.info()
