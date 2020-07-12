@@ -793,8 +793,9 @@ def task_run(ctx, task_name, wait):
     task = Task(task_name, config=ctx.obj['CONFIG'])
     try:
         task.run(wait)
-    except:
+    except Exception as e:
         click.echo("There was an unspecified error running this task.")
+        click.echo(str(e))
 
 
 @task.command('schedule', short_help="Schedule a task")
@@ -830,7 +831,12 @@ def task_update(ctx, task_name):
     Update the task definition for the specified task.
     """
     task = Task(task_name, config=ctx.obj['CONFIG'])
-    task.update()
+    try:
+        task.update()
+    except Exception as e:
+        click.echo('Task update failed: {}'.format(str(e)))
+    else:
+        click.echo("Task updated.")
 
 
 @task.group("config", short_help="Manage AWS Parameter Store values")

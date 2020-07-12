@@ -1132,9 +1132,18 @@ class Task(object):
                 print("\tCurrent status: {}".format(status))
                 if status == "STOPPED":
                     print("")
-                    return
+                    stopCode = response['tasks'][0]['stopCode']
+                    if stopCode == 'TaskFailedToStart':
+                        print('Task failed to start.')
+                        print("")
+                        print(response['tasks'][0]['stoppedReason'])
+                        success = False
+                    else:
+                        success = True
+
+                    return success
             else:
-                return
+                return False
         print("Timed out after 200 seconds...")
 
     def run(self, wait):
@@ -1151,8 +1160,9 @@ class Task(object):
         self.response = self.ecs.run_task(**kwargs)
         # print(self.response)
         if wait:
-            self._wait_until_stopped()
-            self._get_cloudwatch_logs()
+            success = self._wait_until_stopped()
+            if success:
+                self._get_cloudwatch_logs()
 
     def schedule(self):
         """
