@@ -82,6 +82,14 @@ class Config(object):
     def raw(self):
         return self.__raw
 
+    @property
+    def tasks(self):
+        return self.__raw['tasks']
+
+    @property
+    def services(self):
+        return self.__raw['services']
+
     def load_config(self, filename):
         """
         Read our deployfish.yml file from disk and return it as parsed YAML.

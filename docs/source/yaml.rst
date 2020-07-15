@@ -826,6 +826,16 @@ allowed.
     tasks:
       - name: foobar-prod
 
+service
+-------
+
+(String, Option) Use the ``service`` option to associate this task with a particular service. 
+This is used when running ``deploy service tasks <service_name>``.
+
+    tasks:
+      - name: foobar-prod
+        service: foobar-service-prod
+
 cluster
 -------
 

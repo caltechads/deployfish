@@ -273,6 +273,20 @@ def info(ctx, service_name):
         click.secho('"{}" service is not in AWS yet.'.format(service.serviceName), fg="white")
 
 
+@cli.command('related-tasks', short_help="List the one-off tasks associated with this service")
+@click.pass_context
+@click.argument('service_name')
+@needs_config
+def related_tasks(ctx, service_name):
+    """
+    List any one off tasks associated with the ECS service identified by SERVICE_NAME.
+    """
+    service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
+    for task in ctx.obj['CONFIG'].tasks:
+        if 'service' in task and task['service'] == service.serviceName:
+            print(task['name'])
+
+
 @cli.command('version', short_help='Print image tag of live service')
 @click.pass_context
 @click.argument('service_name')
