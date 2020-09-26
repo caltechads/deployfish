@@ -996,6 +996,9 @@ class Task(object):
         self.taskName = yml['name']
         if 'launch_type' in yml:
             self.launchType = yml['launch_type']
+            if self.launchType == 'FARGATE':
+                if 'platform_version' in yml:
+                    self.platform_version = yml['platform_version']
         self.environment = yml.get('environment', 'undefined')
         self.family = yml['family']
         if 'cluster' in yml:
@@ -1014,8 +1017,6 @@ class Task(object):
             self.placementStrategy = yml['placement_strategy']
         if 'count' in yml:
             self.desired_count = yml['count']
-        if 'platform_version' in yml:
-            self.platform_version = yml['platform_version']
         self.desired_task_definition = TaskDefinition(yml=yml)
         deployfish_environment = {
             "DEPLOYFISH_TASK_NAME": yml['name'],
