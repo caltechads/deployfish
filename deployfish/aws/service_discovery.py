@@ -137,7 +137,6 @@ class ServiceDiscovery(object):
 
 
     def __render_create(self):
-
         r = {}
         r['Name'] = self._name
         r['DnsConfig'] = {

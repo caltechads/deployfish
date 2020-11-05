@@ -755,8 +755,9 @@ def _interpolate_tunnel_info(value, service):
 @cli.command('tunnel', short_help="Tunnel through an ECS cluster machine to the remote host")
 @click.pass_context
 @click.argument('tunnel_name')
+@click.option('--verbose/--no-verbose', '-v', default=False, help="Show all SSH output.")
 @needs_config
-def tunnel(ctx, tunnel_name):
+def tunnel(ctx, tunnel_name, verbose):
     """
     Tunnel through an EC2 instance in the ECS cluster.
 
@@ -786,7 +787,7 @@ def tunnel(ctx, tunnel_name):
 
     ssh = SSHConfig(service, config=config).get_ssh()
 
-    ssh.tunnel(host, local_port, port)
+    ssh.tunnel(host, local_port, port, verbose=verbose)
 
 
 @cli.group(short_help="Manage tasks.")

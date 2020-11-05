@@ -16,7 +16,7 @@ class SSMProvider():
             return True
         return False
 
-    def get_ssh_command(self, verbose_flag, instance=None):        
+    def get_ssh_command(self, verbose_flag, instance=None):
         if instance:
             host_instance = instance.id
         else:
@@ -28,8 +28,12 @@ class SSMProvider():
         cmd = '\'/usr/bin/docker exec -it `/usr/bin/docker ps --filter "name=ecs-{}*" -q` bash \''
         return cmd
 
-    def get_tunnel_command(self, host, local_port, host_port, ecs_host):
-        cmd = 'ssh -N -L {}:{}:{} {}'.format(local_port, host, host_port, ecs_host)
+    def get_tunnel_command(self, host, local_port, host_port, ecs_host, verbose=False):
+        if verbose:
+            verbose_flag = '-vv'
+        else:
+            verbose_flag = ''
+        cmd = 'ssh {} -N -L {}:{}:{} {}'.format(verbose_flag, local_port, host, host_port, ecs_host)
         return cmd
 
     def push_command(self, name, run=False):
@@ -53,17 +57,35 @@ class BastionProvider():
             ssh_host_ip = instance.ip
         else:
             ssh_host_ip = self.service.host_ip
-        cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(verbose_flag, self.service.bastion, verbose_flag, ssh_host_ip)
+        cmd = 'ssh {} -o StrictHostKeyChecking=no -A -t ec2-user@{} ssh {} -o StrictHostKeyChecking=no -A -t {}'.format(
+            verbose_flag,
+            self.service.bastion,
+            verbose_flag,
+            ssh_host_ip
+        )
         return cmd
 
     def get_docker_exec_sub_command(self):
         cmd = "\"/usr/bin/docker exec -it '\$(/usr/bin/docker ps --filter \"name=ecs-{}*\" -q)' bash\""
         return cmd
 
-    def get_tunnel_command(self, host, local_port, host_port, ecs_host):
+    def get_tunnel_command(self, host, local_port, host_port, ecs_host, verbose=False):
+        if verbose:
+            verbose_flag = '-vv'
+        else:
+            verbose_flag = ''
         interim_port = random.randrange(10000, 64000, 1)
         host_ip, bastion = self.service._get_host_bastion(ecs_host)
-        cmd = 'ssh -L {}:localhost:{} ec2-user@{} ssh -L {}:{}:{}  {}'.format(local_port, interim_port, bastion, interim_port, host, host_port, host_ip)
+        cmd = 'ssh {} -L {}:localhost:{} ec2-user@{} ssh -L {}:{}:{}  {}'.format(
+            verbose_flag,
+            local_port,
+            interim_port,
+            bastion,
+            interim_port,
+            host,
+            host_port,
+            host_ip
+        )
         return cmd
 
     def push_command(self, name, run=False):
@@ -182,7 +204,6 @@ class SSH():
             responses.append((success, output))
         return responses
 
-
     def ssh(self, command=None, is_running=False, with_output=False, input_data=None, verbose=False, instance=None):
         """
         :param is_running: only complete the ssh if a task from our service is
@@ -220,17 +241,24 @@ class SSH():
         command = command.format(self.service.family)
         self.ssh(command, is_running=True, verbose=verbose)
 
-    def tunnel(self, host, local_port, host_port):
+    def tunnel(self, host, local_port, host_port, verbose=False):
         """
         Open tunnel to remote system.
+
         :param host:
         :param local_port:
         :param host_port:
-        :return:
+
         """
         hosts = self.service._get_cluster_hosts()
         ecs_host = hosts[list(hosts.keys())[0]]
-        cmd = self.provider.get_tunnel_command(host, local_port, host_port, ecs_host)
+        cmd = self.provider.get_tunnel_command(
+            host,
+            local_port,
+            host_port,
+            ecs_host,
+            verbose=verbose
+        )
         subprocess.call(cmd, shell=True)
 
 
@@ -248,5 +276,5 @@ class SSHConfig():
                 self.proxy = service.yml['ssh']['proxy']
 
     def get_ssh(self):
-        ssh = SSH(self.service, self.proxy=='ssm')
+        ssh = SSH(self.service, self.proxy == 'ssm')
         return ssh
