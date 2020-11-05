@@ -39,7 +39,7 @@ class TaskScheduler(object):
             parms['NetworkConfiguration'] = {
                 'awsvpcConfiguration': conf
             }
-        parms['PlatformVersion'] = self.task.platform_version
+            parms['PlatformVersion'] = self.task.platform_version
         if self.task.group:
             parms['Group'] = self.task.group
         target['EcsParameters'] = parms
@@ -105,4 +105,3 @@ class TaskScheduler(object):
         Delete the AWS Cloudwatch event rule, with any existing targets.
         """
         self._delete_rule()
-
