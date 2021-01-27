@@ -4,7 +4,6 @@ from __future__ import print_function
 import importlib
 import pkg_resources
 import os
-import random
 import subprocess
 import sys
 
@@ -97,19 +96,19 @@ def print_sorted_parameters(parameters):  # NOQA
     creates = []
     updates = []
     deletes = []
-    nochanges = []
-    notexists = []
+    no_changes = []
+    not_exists = []
     for parameter in parameters:
         if parameter.should_exist:
             if not parameter.exists:
                 if not parameter.is_external:
                     creates.append(parameter)
                 else:
-                    notexists.append(parameter)
+                    not_exists.append(parameter)
             elif parameter.needs_update:
                 updates.append(parameter)
             else:
-                nochanges.append(parameter)
+                no_changes.append(parameter)
         else:
             deletes.append(parameter)
     if creates:
@@ -124,13 +123,13 @@ def print_sorted_parameters(parameters):  # NOQA
         click.echo('\n  Needs deleting:')
         for p in deletes:
             click.secho("    {}".format(str(p)), fg="red")
-    if nochanges:
+    if no_changes:
         click.echo('\n  Already correct in AWS:')
-        for p in nochanges:
+        for p in no_changes:
             click.secho("    {}".format(str(p)), fg="white")
-    if notexists:
+    if not_exists:
         click.echo('\n  External parameters that do not exist in AWS:')
-        for p in notexists:
+        for p in not_exists:
             click.secho("    {}".format(str(p)), fg="red")
 
 
@@ -297,7 +296,7 @@ def version(ctx, service_name):
     print(service.version())
 
 
-@cli.command('update', short_help='Update task defintion for a service')
+@cli.command('update', short_help='Update task definition for a service')
 @click.pass_context
 @click.argument('service_name')
 @click.option('--dry-run/--no-dry-run', default=False, help="Don't actually create a new task definition")
@@ -642,24 +641,26 @@ def _entrypoint(ctx, section, section_name, cluster_name, parameter_prefix, comm
                         os.environ[param.key] = param.aws_value
                     else:
                         print(
-                            "event='deploy.entrypoint.parameter.ignored.not_in_deployfish_yml' section='{}' parameter='{}'".format(
-                                section_name, param.name))
+                            "event='deploy.entrypoint.parameter.ignored.not_in_deployfish_yml' "
+                            "section='{}' parameter='{}'".format(section_name, param.name)
+                        )
                 else:
                     print("event='deploy.entrypoint.parameter.ignored.not_in_aws' section='{}' parameter='{}'".format(
-                        section_name, param.name))
+                        section_name, param.name
+                    ))
         else:
             exists = []
-            notexists = []
+            not_exists = []
             for param in parameter_store:
                 if param.exists:
                     exists.append(param)
                 else:
-                    notexists.append(param)
+                    not_exists.append(param)
             click.secho("Would have set these environment variables:", fg="cyan")
             for param in exists:
                 click.echo('  {}={}'.format(param.key, param.aws_value))
             click.secho("\nThese parameters are not in AWS:", fg="red")
-            for param in notexists:
+            for param in not_exists:
                 click.echo('  {}'.format(param.key))
     if dry_run:
         click.secho('\n\nCOMMAND: {}'.format(command))
@@ -691,7 +692,7 @@ def entrypoint(ctx, command, dry_run):
     * run COMMAND
 
     If either DEPLOYFISH_SERVICE_NAME or DEPLOYFISH_CLUSTER_NAME are not in
-    the environment, just run COMMMAND.
+    the environment, just run COMMAND.
 
     \b
     NOTE:
@@ -957,7 +958,7 @@ def task_entrypoint(ctx, command, dry_run):
     * run COMMAND
 
     If either DEPLOYFISH_TASK_NAME or DEPLOYFISH_CLUSTER_NAME are not in
-    the environment, just run COMMMAND.
+    the environment, just run COMMAND.
 
     \b
     NOTE:
@@ -1021,7 +1022,7 @@ def parameters_copy(ctx, from_name, to_name, new_kms_key, overwrite, dry_run):
         print('No parameters found that match "{}"'.format(from_name))
     else:
         parms.sort()
-        print("\FROM:")
+        print("\nFROM:")
         print("-----------------------------------------------------------------------")
         for parm in parms:
             print(parm)
