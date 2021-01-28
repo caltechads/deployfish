@@ -33,14 +33,11 @@ class Service(object):
     An object representing an ECS service.
     """
 
-    @classmethod
+    @staticmethod
     def url(cluster, service):
         """
         Return the AWS Web Console URL for service ``service`` in ECS cluster ``cluster``
         in region ``region`` as Markdown.  Suitable for inserting into a Slack message.
-
-        :param region: the name of a valid AWS region
-        :type region: string
 
         :param cluster: the name of an ECS cluster
         :type cluster: string
