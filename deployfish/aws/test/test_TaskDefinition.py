@@ -1,8 +1,7 @@
-import unittest
 import os
-
-from testfixtures import compare
+import unittest
 import yaml
+from testfixtures import compare
 
 from deployfish.aws.ecs import TaskDefinition
 
@@ -11,8 +10,8 @@ class TestTaskDefinition_load_yaml(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             yml = yaml.load(f, Loader=yaml.FullLoader)
             # This should be the foobar-prod service
             self.td = TaskDefinition(yml=yml['services'][0])
@@ -34,8 +33,8 @@ class TestTaskDefinition_load_yaml_ec2_execution_role(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             yml = yaml.load(f, Loader=yaml.FullLoader)
             yml['services'][0]['execution_role'] = 'ecs_execution_role'
             # This should be the foobar-prod service
@@ -49,8 +48,8 @@ class TestTaskDefinition_load_yaml_alternate(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             yml = yaml.load(f, Loader=yaml.FullLoader)
             # This should be the foobar-prod2 service
             self.td = TaskDefinition(yml=yml['services'][1])
@@ -78,8 +77,8 @@ class TestTaskDefinition_render(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             self.yml = yaml.load(f, Loader=yaml.FullLoader)
             # This should be the foobar-prod service
             self.td = TaskDefinition(yml=self.yml['services'][0])
@@ -121,8 +120,8 @@ class TestTaskDefinition_render_alternate(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             self.yml = yaml.load(f, Loader=yaml.FullLoader)
             # This should be the foobar-prod2 service
             self.td = TaskDefinition(yml=self.yml['services'][1])
@@ -147,8 +146,8 @@ class TestTaskDefinition_explicit_volumes(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             yml = yaml.load(f, Loader=yaml.FullLoader)
             # This should be the explicit-volumes service
             self.td = TaskDefinition(yml=yml['services'][2])

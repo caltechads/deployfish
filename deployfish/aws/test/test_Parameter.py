@@ -1,9 +1,6 @@
 import unittest
-import warnings
-
-from testfixtures import compare
-
 from deployfish.aws.systems_manager import Parameter
+from testfixtures import compare
 
 
 class TestParameter__parse(unittest.TestCase):
@@ -31,7 +28,11 @@ class TestParameter__parse(unittest.TestCase):
         self.assertEqual(p.kms_key_id, None)
 
     def test_external_secure_plus_kms_key(self):
-        p = Parameter('foobar-service', 'foobar-cluster', yml='KEY:external:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab')
+        p = Parameter(
+            'foobar-service',
+            'foobar-cluster',
+            yml='KEY:external:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+        )
         self.assertEqual(p.key, 'KEY')
         self.assertEqual(p.value, None)
         self.assertEqual(p.is_external, True)
@@ -47,7 +48,9 @@ class TestParameter__parse(unittest.TestCase):
         self.assertEqual(p.kms_key_id, None)
 
     def test_bare_key_dots_with_value(self):
-        p = Parameter('foobar-service', 'foobar-cluster', yml='cluster-name.service-name.KEY=lkjasdlfkj:a490jlaisfdj\ew')
+        p = Parameter(
+            'foobar-service', 'foobar-cluster', yml='cluster-name.service-name.KEY=lkjasdlfkj:a490jlaisfdj\ew'
+        )
         self.assertEqual(p.key, 'cluster-name.service-name.KEY')
         self.assertEqual(p.value, "lkjasdlfkj:a490jlaisfdj\ew")
         self.assertEqual(p.is_external, False)
@@ -63,7 +66,11 @@ class TestParameter__parse(unittest.TestCase):
         self.assertEqual(p.kms_key_id, None)
 
     def test_secure_with_value_plus_kms_key(self):
-        p = Parameter('foobar-service', 'foobar-cluster', yml='KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=lkjasdlfkj:a490jlaisfdj\ew')
+        p = Parameter(
+            'foobar-service',
+            'foobar-cluster',
+            yml='KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=lkjasdlfkj:a490jlaisfdj\ew'
+        )
         self.assertEqual(p.key, 'KEY')
         self.assertEqual(p.value, "lkjasdlfkj:a490jlaisfdj\ew")
         self.assertEqual(p.is_external, False)
@@ -75,12 +82,41 @@ class TestParameter__render_write(unittest.TestCase):
 
     def test_bare_key_with_value(self):
         p = Parameter('foobar-service', 'foobar-cluster', yml='KEY=lkjasdlfkj:a490jlaisfdj\ew',)
-        compare(p._render_write(), {'Name': 'foobar-cluster.foobar-service.KEY', 'Value': 'lkjasdlfkj:a490jlaisfdj\ew', 'Overwrite': True, 'Type': 'String'})
+        compare(
+            p._render_write(),
+            {
+                'Name': 'foobar-cluster.foobar-service.KEY',
+                'Value': 'lkjasdlfkj:a490jlaisfdj\ew',
+                'Overwrite': True,
+                'Type': 'String'
+            }
+        )
 
     def test_secure_with_value(self):
         p = Parameter('foobar-service', 'foobar-cluster', yml='KEY:secure=lkjasdlfkj:a490jlaisfdj\ew')
-        compare(p._render_write(), {'Name': 'foobar-cluster.foobar-service.KEY', 'Value': 'lkjasdlfkj:a490jlaisfdj\ew', 'Overwrite': True, 'Type': 'SecureString'})
+        compare(
+            p._render_write(),
+            {
+                'Name': 'foobar-cluster.foobar-service.KEY',
+                'Value': 'lkjasdlfkj:a490jlaisfdj\ew',
+                'Overwrite': True,
+                'Type': 'SecureString'
+            }
+        )
 
     def test_secure_with_value_plus_kms_key(self):
-        p = Parameter('foobar-service', 'foobar-cluster', yml='KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=lkjasdlfkj:a490jlaisfdj\ew')
-        compare(p._render_write(), {'Name': 'foobar-cluster.foobar-service.KEY', 'Value': 'lkjasdlfkj:a490jlaisfdj\ew', 'Overwrite': True, 'Type': 'SecureString', 'KeyId': 'arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'})
+        p = Parameter(
+            'foobar-service',
+            'foobar-cluster',
+            yml='KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=lkjasdlfkj:a490jlaisfdj\ew'
+        )
+        compare(
+            p._render_write(),
+            {
+                'Name': 'foobar-cluster.foobar-service.KEY',
+                'Value': 'lkjasdlfkj:a490jlaisfdj\ew',
+                'Overwrite': True,
+                'Type': 'SecureString',
+                'KeyId': 'arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+            }
+        )

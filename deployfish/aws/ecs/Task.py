@@ -1,27 +1,20 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-from datetime import datetime
+import botocore
 import json
-from copy import copy
 import os
 import os.path
-import random
 import re
 import shlex
-import string
-import subprocess
-from tempfile import NamedTemporaryFile
 import time
-import tzlocal
 
-import botocore
+from copy import copy
+
+from botocore.exceptions import ClientError
 
 from deployfish.aws import get_boto3_session
-from deployfish.aws.asg import ASG
-from deployfish.aws.appscaling import ApplicationAutoscaling
 from deployfish.aws.systems_manager import ParameterStore
-from deployfish.aws.service_discovery import ServiceDiscovery
 
 from .TaskScheduler import TaskScheduler
 
@@ -66,12 +59,12 @@ class LogConfiguration(object):
     Manage the logging configuration in a container definition.
     """
 
-    def __init__(self, aws={}, yml={}):
+    def __init__(self, aws=None, yml=None):
         if aws:
-            self.from_aws(aws)
+            self.from_aws(aws or {})
 
         if yml:
-            self.from_yaml(yml)
+            self.from_yaml(yml or {})
 
     def from_aws(self, aws):
         self.driver = aws['logDriver']
@@ -85,10 +78,7 @@ class LogConfiguration(object):
         return(self.__render())
 
     def __render(self):
-        r = {}
-        r['logDriver'] = self.driver
-        r['options'] = self.options
-        return r
+        return {'logDriver': self.driver, 'options': self.options}
 
 
 class Secret(object):
@@ -101,10 +91,7 @@ class Secret(object):
         self.value = value
 
     def render(self):
-        r = {}
-        r['name'] = self.name
-        r['valueFrom'] = self.value
-        return r
+        return {'name': self.name, 'valueFrom': self.value}
 
 
 class SecretsConverter(object):
@@ -115,9 +102,9 @@ class SecretsConverter(object):
     def __init__(self, parameter_store):
         self.parameter_store = parameter_store
         self.secrets = []
-        self.__comvert_to_secrets()
+        self.__convert_to_secrets()
 
-    def __comvert_to_secrets(self):
+    def __convert_to_secrets(self):
         for parameter in self.parameter_store:
             name = parameter.key
             value = parameter.name
@@ -130,7 +117,7 @@ class ContainerDefinition(VolumeMixin):
     Manage one of the container definitions in a `TaskDefinition`.
     """
 
-    def __init__(self, aws={}, yml={}):
+    def __init__(self, aws=None, yml=None):
         """
         :param aws: an entry from the `containerDefinitions` list in the
                            dictionary returned by `describe_task_definitions()`. If
@@ -167,7 +154,7 @@ class ContainerDefinition(VolumeMixin):
         self.logConfiguration = None
         self.secrets = []
 
-        if 'logConfiguration' in aws:
+        if aws and 'logConfiguration' in aws:
             self.logConfiguration = LogConfiguration(aws['logConfiguration'])
 
         if yml:
@@ -178,31 +165,39 @@ class ContainerDefinition(VolumeMixin):
             return self.__getattribute__(attr)
         except AttributeError:
             if attr in ['cpu', 'dockerLabels', 'essential', 'image', 'links', 'memory', 'memoryReservation', 'name']:
-                if (not getattr(self, '_' + attr) and self.__aws_container_definition and attr in self.__aws_container_definition):
+                if (not getattr(self, '_' + attr) and self.__aws_container_definition
+                        and attr in self.__aws_container_definition):
                     setattr(self, "_" + attr, self.__aws_container_definition[attr])
                 return getattr(self, '_' + attr)
             elif attr == 'environment':
-                if (not self._environment and self.__aws_container_definition and 'environment' in self.__aws_container_definition):
+                if (not self._environment and self.__aws_container_definition
+                        and 'environment' in self.__aws_container_definition):
                     environment = self.__aws_container_definition['environment']
                     for var in environment:
                         self._environment[var['name']] = var['value']
                 return self._environment
             elif attr == 'portMappings':
-                if (not self._portMappings and self.__aws_container_definition and 'portMappings' in self.__aws_container_definition):
+                if (not self._portMappings and self.__aws_container_definition
+                        and 'portMappings' in self.__aws_container_definition):
                     ports = self.__aws_container_definition['portMappings']
                     for mapping in ports:
-                        self._portMappings.append('{}:{}/{}'.format(mapping['hostPort'], mapping['containerPort'], mapping['protocol']))
+                        self._portMappings.append(
+                            '{}:{}/{}'.format(mapping['hostPort'], mapping['containerPort'], mapping['protocol'])
+                        )
                 return self._portMappings
             elif attr == 'command':
-                if (not self._command and self.__aws_container_definition and 'command' in self.__aws_container_definition):
+                if (not self._command and self.__aws_container_definition
+                        and 'command' in self.__aws_container_definition):
                     self._command = ' '.join(self.__aws_container_definition['command'])
                 return self._command
             elif attr == 'entryPoint':
-                if (not self._entryPoint and self.__aws_container_definition and 'entryPoint' in self.__aws_container_definition):
+                if (not self._entryPoint and self.__aws_container_definition
+                        and 'entryPoint' in self.__aws_container_definition):
                     self._entryPoint = ' '.join(self.__aws_container_definition['entryPoint'])
                 return self._entryPoint
             elif attr == 'ulimits':
-                if (not self._ulimits and self.__aws_container_definition and 'ulimits' in self.__aws_container_definition):
+                if (not self._ulimits and self.__aws_container_definition
+                        and 'ulimits' in self.__aws_container_definition):
                     for ulimit in self.__aws_container_definition['ulimits']:
                         self._ulimits.append({
                             'name': ulimit['name'],
@@ -268,7 +263,8 @@ class ContainerDefinition(VolumeMixin):
 
         :rtype: list of strings
         """
-        if (not self._extraHosts and self.__aws_container_definition and 'extraHosts' in self.__aws_container_definition):
+        if (not self._extraHosts and self.__aws_container_definition
+                and 'extraHosts' in self.__aws_container_definition):
             for eh in self.__aws_container_definition['extraHosts']:
                 self._extraHosts.append('{}:{}'.format(eh['hostname'], eh['ipAddress']))
         return self._extraHosts
@@ -324,10 +320,11 @@ class ContainerDefinition(VolumeMixin):
         parent `TaskDefinition` when generating the full set of arguments for
         `register_task_definition()`
         """
-        r = {}
-        r['name'] = self.name
-        r['image'] = self.image
-        r['cpu'] = self.cpu
+        r = {
+            'name': self.name,
+            'image': self.image,
+            'cpu': self.cpu
+        }
         if self.memory is not None:
             r['memory'] = self.memory
         if self.memoryReservation is not None:
@@ -344,6 +341,8 @@ class ContainerDefinition(VolumeMixin):
                     m['hostPort'] = int(fields[0])
                     m['containerPort'] = fields[1]
                     if '/' in m['containerPort']:
+                        # 2020-01-27: WTF PyCharm? dict absolutely does define __getitem__.
+                        # noinspection PyUnresolvedReferences
                         (port, protocol) = m['containerPort'].split('/')
                         m['containerPort'] = int(port)
                         m['protocol'] = protocol
@@ -368,10 +367,11 @@ class ContainerDefinition(VolumeMixin):
         if self.ulimits:
             r['ulimits'] = []
             for limit in self.ulimits:
-                lc = {}
-                lc['name'] = limit['name']
-                lc['softLimit'] = limit['soft']
-                lc['hardLimit'] = limit['hard']
+                lc = {
+                    'name': limit['name'],
+                    'softLimit': limit['soft'],
+                    'hardLimit': limit['hard']
+                }
                 r['ulimits'].append(lc)
         if self.dockerLabels:
             r['dockerLabels'] = self.dockerLabels
@@ -522,8 +522,8 @@ class ContainerDefinition(VolumeMixin):
             if type(yml['labels']) == dict:
                 self.dockerLabels = yml['labels']
             else:
-                for l in yml['labels']:
-                    key, value = l.split('=')
+                for label in yml['labels']:
+                    key, value = label.split('=')
                     self.dockerLabels[key] = value
         if 'volumes' in yml:
             self.volumes = yml['volumes']
@@ -537,9 +537,10 @@ class ContainerDefinition(VolumeMixin):
             self.cap_drop = yml['cap_drop']
         if 'tmpfs' in yml:
             for tc in yml['tmpfs']:
-                tc_append = {}
-                tc_append['containerPath'] = tc['container_path']
-                tc_append['size'] = tc['size']
+                tc_append = {
+                    'containerPath': tc['container_path'],
+                    'size': tc['size']
+                }
                 if 'mount_options' in tc and type(tc['mount_options']) == list:
                     tc_append['mountOptions'] = tc['mount_options']
                 self.tmpfs.append(tc_append)
@@ -562,17 +563,14 @@ class ContainerDefinition(VolumeMixin):
 
 class TaskDefinition(VolumeMixin):
     """
-    An object represting an ECS task definition.
+    An object representing an ECS task definition.
     """
 
     @staticmethod
     def url(task_def):
         """
-        Return the AWS Web Console URL for task defintion ``task_def`` as
+        Return the AWS Web Console URL for task definition ``task_def`` as
         Markdown.  Suitable for inserting into a Slack message.
-
-        :param region: the name of a valid AWS region
-        :type region: string
 
         :param task_def: a "``<family>:<revision>``" identifier for a task
                          definition.  E.g. ``access-caltech-admin:1``
@@ -588,7 +586,7 @@ class TaskDefinition(VolumeMixin):
             task_def
         )
 
-    def __init__(self, task_definition_id=None, yml={}):
+    def __init__(self, task_definition_id=None, yml=None):
         self.ecs = get_boto3_session().client('ecs')
 
         self.__defaults()
@@ -628,7 +626,7 @@ class TaskDefinition(VolumeMixin):
         if 'volumes' in self.__aws_task_definition and self.__aws_task_definition['volumes']:
             for v in self.__aws_task_definition['volumes']:
                 sourceVolumes[v['name']] = v
-                # v here looks like
+                # v here looks like the following:
                 #
                 # v = {
                 #       'name': 'string',
@@ -657,7 +655,7 @@ class TaskDefinition(VolumeMixin):
     @property
     def arn(self):
         """
-        If this task defitinion exists in AWS, return our ARN.
+        If this task definition exists in AWS, return our ARN.
         Else, return ``None``.
 
         :rtype: string or ``None``
@@ -685,7 +683,7 @@ class TaskDefinition(VolumeMixin):
     @property
     def family_revision(self):
         """
-        If this task defitinion exists in AWS, return our ``<family>:<revision>`` string.
+        If this task definition exists in AWS, return our ``<family>:<revision>`` string.
         Else, return ``None``.
 
         :rtype: string or ``None``
@@ -697,8 +695,7 @@ class TaskDefinition(VolumeMixin):
 
     def __load_volumes_from_aws(self):
         for v in self.__aws_task_definition['volumes']:
-            v_dict = {}
-            v_dict['name'] = v['name']
+            v_dict = {'name': v['name']}
             if 'host' in v:
                 v_dict['path'] = v['host']['sourcePath']
             elif 'dockerVolumeConfiguration' in v:
@@ -757,7 +754,7 @@ class TaskDefinition(VolumeMixin):
                 response = self.ecs.describe_task_definition(
                     taskDefinition=task_definition_id
                 )
-            except botocore.exceptions.ClientError:
+            except ClientError:
                 return {}
             else:
                 return response['taskDefinition']
@@ -791,8 +788,7 @@ class TaskDefinition(VolumeMixin):
             for v in self.volumes:
                 if v['name'] in volume_names:
                     continue
-                v_dict = {}
-                v_dict['name'] = v['name']
+                v_dict = {'name': v['name']}
                 if 'path' in v:
                     v_dict['host'] = {}
                     v_dict['host']['sourcePath'] = v['path']
@@ -803,8 +799,8 @@ class TaskDefinition(VolumeMixin):
 
         # Now see if there are any old-style definitions.  Before we allowed the "volumes:" section in the task
         # definition yml, you could define volumes on individual containers and the "volumes" list in the
-        # register_task_definition() AWS API call would be autoconstructed based on the host and container path.  So do
-        # that bit here.
+        # register_task_definition() AWS API call would be auto-constructed based on the host and container path.
+        # So do that bit here.
         for c in self.containers:
             for v in c.volumes:
                 host_path = v.split(':')[0]
@@ -823,9 +819,10 @@ class TaskDefinition(VolumeMixin):
 
         :rtype: dict
         """
-        r = {}
-        r['family'] = self.family
-        r['networkMode'] = self.networkMode
+        r = {
+            'family': self.family,
+            'networkMode': self.networkMode
+        }
         if self.cpu:
             r['cpu'] = str(self.cpu)
             r['memory'] = str(self.memory)
@@ -906,7 +903,7 @@ class TaskDefinition(VolumeMixin):
 
 class Task(object):
     """
-    An object represting an ECS task.
+    An object representing an ECS task.
     """
 
     def __init__(self, name, service=False, config=None):
@@ -1092,7 +1089,7 @@ class Task(object):
         task_id = self.taskarn.split(':')[-1][5:]
         stream = "{}/{}/{}".format(prefix, container, task_id)
 
-        logclient = get_boto3_session().client('logs')
+        log_client = get_boto3_session().client('logs')
 
         nextToken = None
         kwargs = {
@@ -1104,7 +1101,7 @@ class Task(object):
         print("Waiting for logs...\n")
         for i in range(40):
             time.sleep(5)
-            response = logclient.get_log_events(**kwargs)
+            response = log_client.get_log_events(**kwargs)
             for event in response['events']:
                 print(event['message'])
             token = response['nextForwardToken']
@@ -1121,37 +1118,36 @@ class Task(object):
             task = self.response['tasks'][0]
             cluster = task['clusterArn']
             self.taskarn = task['taskArn']
-        print("Waiting for task to complete...\n")
-        for i in range(40):
-            time.sleep(5)
-            response = self.ecs.describe_tasks(
-                cluster=cluster,
-                tasks=[self.taskarn]
-            )
-            if 'tasks' in response and len(response['tasks']) > 0:
-                status = response['tasks'][0]['lastStatus']
-                print("\tCurrent status: {}".format(status))
-                if status == "STOPPED":
-                    print("")
-                    stopCode = response['tasks'][0]['stopCode']
-                    if stopCode == 'TaskFailedToStart':
-                        print('Task failed to start.')
+            print("Waiting for task to complete...\n")
+            for i in range(40):
+                time.sleep(5)
+                response = self.ecs.describe_tasks(
+                    cluster=cluster,
+                    tasks=[self.taskarn]
+                )
+                if 'tasks' in response and len(response['tasks']) > 0:
+                    status = response['tasks'][0]['lastStatus']
+                    print("\tCurrent status: {}".format(status))
+                    if status == "STOPPED":
                         print("")
-                        print(response['tasks'][0]['stoppedReason'])
-                        success = False
-                    else:
-                        success = True
+                        stopCode = response['tasks'][0]['stopCode']
+                        if stopCode == 'TaskFailedToStart':
+                            print('Task failed to start.\n')
+                            print(response['tasks'][0]['stoppedReason'])
+                            success = False
+                        else:
+                            success = True
 
-                    return success
-            else:
-                return False
-        print("Timed out after 200 seconds...")
+                        return success
+                else:
+                    return False
+            print("Timed out after 200 seconds...")
 
     def run(self, wait):
         """
         Run the task. If wait is specified, show the status and logs from the task.
         :param wait: Should we wait for the task to finish and display any logs
-        :type waite: bool
+        :type wait: bool
         """
         self.register_task_definition()
         if not self.active_task_definition:
@@ -1197,11 +1193,11 @@ class HelperTask(object):
     for a short time and then dies.
 
     The reason this class exists is to enable us to run one-off or periodic
-    functions (migrate datbases, clear caches, update search indexes, do
+    functions (migrate databases, clear caches, update search indexes, do
     database backups or restores, etc.) for our services.
     """
 
-    def __init__(self, clusterName, yml={}):
+    def __init__(self, clusterName, yml=None):
         """
         :param clusterName: the name of the cluster in which we'll run our
                             helper tasks
@@ -1211,6 +1207,8 @@ class HelperTask(object):
                     deployfish.yml file
         :type yml: dict
         """
+        if not yml:
+            yml = {}
         self.clusterName = clusterName
         self.ecs = get_boto3_session().client('ecs')
         self.commands = {}

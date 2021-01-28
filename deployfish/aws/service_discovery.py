@@ -8,7 +8,7 @@ class ServiceDiscovery(object):
     Requires that a private dns namespace already exists.
     """
 
-    def __init__(self, registry_arn=None, yml={}):
+    def __init__(self, registry_arn=None, yml=None):
         """
         ``yml`` is dict parsed from the ``service_discovery`` section from
         ``deployfish.yml``.  Example:
@@ -23,10 +23,11 @@ class ServiceDiscovery(object):
                     }
                 ],
 
-
         :param yml: service discovery config from ``deployfish.yml`` as described above
         :type yml: dict
         """
+        if yml is None:
+            yml = {}
         self.sd = get_boto3_session().client('servicediscovery')
         self.__defaults()
         self._registry_arn = registry_arn
@@ -135,16 +136,15 @@ class ServiceDiscovery(object):
 
         return False
 
-
     def __render_create(self):
-        r = {}
-        r['Name'] = self._name
-        r['DnsConfig'] = {
-                'NamespaceId': self._namespace_id,
-                'RoutingPolicy': self._routing_policy,
-                'DnsRecords': self.dns_records
-                }
-        return r
+        return {
+            'Name': self._name,
+            'DnsConfig': {
+               'NamespaceId': self._namespace_id,
+               'RoutingPolicy': self._routing_policy,
+               'DnsRecords': self.dns_records
+            }
+        }
 
     def create(self):
         kwargs = self.__render_create()

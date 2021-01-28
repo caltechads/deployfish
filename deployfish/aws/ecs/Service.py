@@ -1,11 +1,9 @@
 from __future__ import print_function
 
-from datetime import datetime
 import json
 import os
 import os.path
 import time
-import tzlocal
 
 from deployfish.aws import get_boto3_session
 from deployfish.aws.asg import ASG
@@ -79,9 +77,6 @@ class Service(object):
         self.__defaults()
         self.from_yaml(self.yml)
         self.from_aws()
-
-        # self.sshobj = SSHConfig(self, yml, config).get_ssh()
-        # print(type(self.sshobj.provider))
 
     def __defaults(self):
         self._roleArn = None
@@ -200,7 +195,7 @@ class Service(object):
         effect if the service already exists.
 
         :param maximumPercent: Set the maximum percent of tasks this service is allowed to run
-        :type count: int
+        :type maximumPercent: int
         """
         self._maximumPercent = maximumPercent
 
@@ -232,8 +227,8 @@ class Service(object):
         RUNNING or PENDING state during a deployment.  Setting this has no
         effect if the service already exists.
 
-        :param maximumPercent: Set the minimum percent of tasks this service must maintain
-        :type count: int
+        :param minimumHealthyPercent: Set the minimum percent of tasks this service must maintain
+        :type minimumHealthyPercent: int
         """
         self._minimumHealthyPercent = minimumHealthyPercent
 
@@ -303,8 +298,8 @@ class Service(object):
     def active_deployment(self):
         for deployment in self.deployments:
             if deployment['taskDefinition'] == self.taskDefinition:
-                break
-        return deployment
+                return deployment
+        return None
 
     def kill_task(self, task_arn):
         """
@@ -507,9 +502,10 @@ class Service(object):
 
         :rtype: dict
         """
-        r = {}
-        r['cluster'] = self.clusterName
-        r['serviceName'] = self.serviceName
+        r = {
+            'cluster': self.clusterName,
+            'serviceName': self.serviceName
+        }
         if not self.capacity_provider_strategy:
             # capacity_provider_strategy and launch_type are mutually exclusive
             r['launchType'] = self.launchType
@@ -742,13 +738,14 @@ class Service(object):
 
         :rtype: dict
         """
-        r = {}
-        r['cluster'] = self.clusterName
-        r['service'] = self.serviceName
-        r['taskDefinition'] = task_definition_arn
-        r['deploymentConfiguration'] = {
-            'maximumPercent': self.maximumPercent,
-            'minimumHealthyPercent': self.minimumHealthyPercent
+        r = {
+            'cluster': self.clusterName,
+            'service': self.serviceName,
+            'taskDefinition': task_definition_arn,
+            'deploymentConfiguration': {
+                'maximumPercent': self.maximumPercent,
+                'minimumHealthyPercent': self.minimumHealthyPercent
+            }
         }
         if self.vpc_configuration:
             r['networkConfiguration'] = {'awsvpcConfiguration': self.vpc_configuration}
@@ -1108,9 +1105,8 @@ class Service(object):
         if running_host:
             host = running_host
         else:
-            # just grab one
-            for k, host in hosts.items():
-                break
+            # Grab an arbitrary host from the dict.
+            _, host = hosts.popitem()
 
         self.host_instance = host
 

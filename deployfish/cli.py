@@ -2,9 +2,7 @@ from __future__ import print_function
 
 import os
 import sys
-
 import click
-
 import deployfish
 
 DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'

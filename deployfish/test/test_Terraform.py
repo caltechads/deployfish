@@ -39,8 +39,8 @@ class TestTerraform_get_terraform_state(unittest.TestCase):
     def setUp(self):
         with Replacer() as r:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            fname = os.path.join(current_dir, 'terraform.tfstate')
-            with open(fname) as f:
+            filename = os.path.join(current_dir, 'terraform.tfstate')
+            with open(filename) as f:
                 tfstate = json.loads(f.read())
             get_mock = r('deployfish.terraform.Terraform._get_state_file_from_s3', Mock())
             get_mock.return_value = tfstate
@@ -55,8 +55,8 @@ class TestTerraform_get_terraform_state_v12(unittest.TestCase):
     def setUp(self):
         with Replacer() as r:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            fname = os.path.join(current_dir, 'terraform.tfstate.0.12')
-            with open(fname) as f:
+            filename = os.path.join(current_dir, 'terraform.tfstate.0.12')
+            with open(filename) as f:
                 tfstate = json.loads(f.read())
             get_mock = r('deployfish.terraform.Terraform._get_state_file_from_s3', Mock())
             get_mock.return_value = tfstate
@@ -71,8 +71,8 @@ class TestTerraform_lookup(unittest.TestCase):
     def setUp(self):
         with Replacer() as r:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            fname = os.path.join(current_dir, 'terraform.tfstate')
-            with open(fname) as f:
+            filename = os.path.join(current_dir, 'terraform.tfstate')
+            with open(filename) as f:
                 tfstate = json.loads(f.read())
             get_mock = r('deployfish.terraform.Terraform._get_state_file_from_s3', Mock())
             get_mock.return_value = tfstate

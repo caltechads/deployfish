@@ -23,11 +23,11 @@ class S3(object):
 
     def _build_s3_url(self, filename, prefix, bucket):
         if prefix:
-            fullpath = "s3://%s/%s/%s" % (bucket, prefix, filename)
+            full_path = "s3://%s/%s/%s" % (bucket, prefix, filename)
         else:
-            fullpath = "s3://%s/%s" % (bucket, filename)
+            full_path = "s3://%s/%s" % (bucket, filename)
 
-        return fullpath
+        return full_path
 
     def _transfer_file(self, source, destination):
         cmd = [

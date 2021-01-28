@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import boto3
-import botocore
-
+from botocore.exceptions import ClientError
 from deployfish.aws import get_boto3_session
 from deployfish.aws.cloudwatch import ECSServiceCPUAlarm
 
@@ -12,7 +10,7 @@ class ScalingPolicy(object):
     A class which allows us to manage Application AutoScaling ScalingPolicies.
     """
 
-    def __init__(self, serviceName, clusterName, yml={}, aws={}):
+    def __init__(self, serviceName, clusterName, yml=None, aws=None):
         """
         ``yml`` is dict parsed from one of the scaling policy subsection of the
         ``application-scaling`` section from ``deployfish.yml``.  Example:
@@ -29,10 +27,10 @@ class ScalingPolicy(object):
         ``boto3.client('application-autoscaling').describe_scaling_policies()`
 
         :param serviceName: the name of an ECS service in cluster ``clusterName``
-        :type service: string
+        :type serviceName: string
 
         :param clusterName: the name of an ECS cluster
-        :type cluster: string
+        :type clusterName: string
 
         :param yml: scaling policy from ``deployfish.yml`` as described above
         :type yml: dict
@@ -40,6 +38,10 @@ class ScalingPolicy(object):
         :param aws: scaling policy AWS dict as described above
         :type aws: dict
         """
+        if not yml:
+            yml = {}
+        if not aws:
+            aws = {}
         self.scaling = get_boto3_session().client('application-autoscaling')
         self.serviceName = serviceName
         self.clusterName = clusterName
@@ -86,7 +88,7 @@ class ScalingPolicy(object):
     def cpu(self):
         """
         We're keeping track of cpu here in the scaling policy so we can set the
-        StepAdustment ``MetricIntervalLowerBound`` and
+        StepAdjustment ``MetricIntervalLowerBound`` and
         ``MetricIntervalUpperBound`` parameters appropriately.
         """
         if not self._cpu:
@@ -136,7 +138,8 @@ class ScalingPolicy(object):
         # come before aws loads, so _scale_by should be set already by the
         # time we get here
         if not self._scale_by and self.exists():
-            self._scale_by = self.__aws_scaling_policy['StepScalingPolicyConfiguration']['StepAdjustments'][0]['ScalingAdjustment']
+            adjustment = self.__aws_scaling_policy['StepScalingPolicyConfiguration']['StepAdjustments'][0]
+            self._scale_by = adjustment['ScalingAdjustment']
         return self._scale_by
 
     @scale_by.setter
@@ -159,7 +162,7 @@ class ScalingPolicy(object):
     def cooldown(self, cooldown):
         self._cooldown = cooldown
 
-    def from_aws(self, aws={}):
+    def from_aws(self, aws=None):
         self.__aws_scaling_policy = {}
         if aws:
             self.__aws_scaling_policy = aws
@@ -204,17 +207,18 @@ class ScalingPolicy(object):
 
         :rtype: dict
         """
-        r = {}
-        r['PolicyName'] = self.name
-        r['ServiceNamespace'] = 'ecs'
-        r['ResourceId'] = 'service/{}/{}'.format(self.clusterName, self.serviceName)
-        r['ScalableDimension'] = 'ecs:service:DesiredCount'
-        r['PolicyType'] = 'StepScaling'
-        r['StepScalingPolicyConfiguration'] = {}
-        r['StepScalingPolicyConfiguration']['AdjustmentType'] = 'ChangeInCapacity'
-        r['StepScalingPolicyConfiguration']['StepAdjustments'] = []
-        adjustment = {}
-        adjustment['ScalingAdjustment'] = self.scale_by
+        r = {
+            'PolicyName': self.name,
+            'ServiceNamespace': 'ecs',
+            'ResourceId': 'service/{}/{}'.format(self.clusterName, self.serviceName),
+            'ScalableDimension': 'ecs:service:DesiredCount',
+            'PolicyType': 'StepScaling',
+            'StepScalingPolicyConfiguration': {
+                'AdjustmentType': 'ChangeInCapacity',
+                'StepAdjustments': []
+            }
+        }
+        adjustment = {'ScalingAdjustment': self.scale_by}
         if self.MetricIntervalLowerBound is not None:
             adjustment['MetricIntervalLowerBound'] = self.MetricIntervalLowerBound
         if self.MetricIntervalUpperBound is not None:
@@ -230,12 +234,12 @@ class ScalingPolicy(object):
 
         :rtype: dict
         """
-        r = {}
-        r['PolicyName'] = self.name
-        r['ServiceNamespace'] = 'ecs'
-        r['ResourceId'] = 'service/{}/{}'.format(self.clusterName, self.serviceName)
-        r['ScalableDimension'] = 'ecs:service:DesiredCount'
-        return r
+        return {
+            'PolicyName': self.name,
+            'ServiceNamespace': 'ecs',
+            'ResourceId': 'service/{}/{}'.format(self.clusterName, self.serviceName),
+            'ScalableDimension': 'ecs:service:DesiredCount'
+        }
 
     def __eq__(self, other):
         if (self.MetricIntervalLowerBound == other.MetricIntervalLowerBound and
@@ -243,7 +247,8 @@ class ScalingPolicy(object):
             self.cooldown == other.cooldown and
             self.scale_by == other.scale_by and
             self.clusterName == other.clusterName and
-            self.serviceName == other.serviceName):  # NOQA
+            self.serviceName == other.serviceName
+        ):
             return True
         return False
 
@@ -252,7 +257,7 @@ class ScalingPolicy(object):
 
     def create(self):
         """
-        Create the scaling policy and its associated CloudWhach alarm.
+        Create the scaling policy and its associated CloudWatch alarm.
         """
         self.scaling.put_scaling_policy(**self._render_create())
         self.from_aws()
@@ -261,12 +266,12 @@ class ScalingPolicy(object):
 
     def delete(self):
         """
-        Delete the scaling policy and its associated CloudWhach alarm.
+        Delete the scaling policy and its associated CloudWatch alarm.
         """
         if self.exists():
             try:
                 self.scaling.delete_scaling_policy(**self._render_delete())
-            except botocore.exceptions.ClientError:
+            except ClientError:
                 pass
             self.alarm.delete()
         self.__aws_scaling_policy = {}
@@ -308,12 +313,12 @@ class ApplicationAutoscaling(object):
 
         ApplicationAutoScaling()                     [AWS object: scalable target]
             ├── ScalingPolicy('scale-up')            [AWS object: scaling policy]
-            │   └── ECSServiceCPUAlarm('scale-up')   [AWS object: CloudWatch alarm]
+            │   └── ECSServiceCPUAlarm('scale-up')   [AWS object: CloudWatch alarm]
             └── ScalingPolicy('scale-down')          [AWS object: scaling policy]
                 └── ECSServiceCPUAlarm('scale-down') [AWS object: CloudWatch alarm]
     """
 
-    def __init__(self, serviceName, clusterName, yml={}, aws={}):
+    def __init__(self, serviceName, clusterName, yml=None, aws=None):
         """
         ``yml`` is dict parsed from the ``application-scaling`` section from
         ``deployfish.yml``.  Example:
@@ -342,10 +347,10 @@ class ApplicationAutoscaling(object):
         ``boto3.client('application-autoscaling').describe_scalable_targets()`
 
         :param serviceName: the name of an ECS service in cluster ``clusterName``
-        :type service: string
+        :type serviceName: string
 
         :param clusterName: the name of an ECS cluster
-        :type cluster: string
+        :type clusterName: string
 
         :param yml: scaling config from ``deployfish.yml`` as described above
         :type yml: dict
@@ -353,6 +358,10 @@ class ApplicationAutoscaling(object):
         :param aws: scalable target AWS dict as described above
         :type aws: dict
         """
+        if aws is None:
+            aws = {}
+        if yml is None:
+            yml = {}
         self.scaling = get_boto3_session().client('application-autoscaling')
         self.serviceName = serviceName
         self.clusterName = clusterName
@@ -388,7 +397,7 @@ class ApplicationAutoscaling(object):
     def resource_id(self):
         return "service/{}/{}".format(self.clusterName, self.serviceName)
 
-    def from_aws(self, aws={}):
+    def from_aws(self, aws=None):
         self.__aws_scalable_target = {}
         if aws:
             self.__aws_scalable_target = aws
@@ -445,14 +454,14 @@ class ApplicationAutoscaling(object):
         This method exists so we can write unittests for the args without having
         to mock the ``register_scalable_target`` method.
         """
-        r = {}
-        r['ServiceNamespace'] = 'ecs'
-        r['ResourceId'] = self.resource_id
-        r['ScalableDimension'] = 'ecs:service:DesiredCount'
-        r['MinCapacity'] = self.MinCapacity
-        r['MaxCapacity'] = self.MaxCapacity
-        r['RoleARN'] = self.RoleARN
-        return r
+        return {
+            'ServiceNamespace': 'ecs',
+            'ResourceId': self.resource_id,
+            'ScalableDimension': 'ecs:service:DesiredCount',
+            'MinCapacity': self.MinCapacity,
+            'MaxCapacity': self.MaxCapacity,
+            'RoleARN': self.RoleARN
+        }
 
     def _render_delete(self):
         """
@@ -461,11 +470,11 @@ class ApplicationAutoscaling(object):
         This method exists so we can write unittests for the args without having
         to mock the ``deregister_scalable_target`` method.
         """
-        r = {}
-        r['ServiceNamespace'] = 'ecs'
-        r['ResourceId'] = self.resource_id
-        r['ScalableDimension'] = 'ecs:service:DesiredCount'
-        return r
+        return {
+            'ServiceNamespace': 'ecs',
+            'ResourceId': self.resource_id,
+            'ScalableDimension': 'ecs:service:DesiredCount'
+        }
 
     def __eq__(self, other):
         if (self.resource_id == other.resource_id and

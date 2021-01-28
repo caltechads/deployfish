@@ -999,9 +999,8 @@ def parameters():
 
 
 @parameters.command('show', short_help="Print the values one or more parameters")
-@click.pass_context
 @click.argument('name')
-def show(ctx, name):
+def show(name):
     """
     Print out all parameters that match NAME.   If NAME ends with a '*', do a wildcard search on all parameters that
     begin with the prefix.
@@ -1016,7 +1015,6 @@ def show(ctx, name):
 
 
 @parameters.command('copy', short_help="Copy the values from one parameter or set of parameters to another")
-@click.pass_context
 @click.argument('from_name')
 @click.argument('to_name')
 @click.option('--new-kms-key', default=None, help="Encrypt the copy with the KMS Key whose alias or ARN is TEXT")
@@ -1030,7 +1028,7 @@ def show(ctx, name):
     default=False,
     help="Don't actually copy.  Default: --no-dry-run."
 )
-def parameters_copy(ctx, from_name, to_name, new_kms_key, overwrite, dry_run):
+def parameters_copy(from_name, to_name, new_kms_key, overwrite, dry_run):
     """
     If FROM_NAME does not end with a "*", copy a parameter named FROM_NAME to another named TO_NAME.
 
@@ -1070,7 +1068,6 @@ def parameters_copy(ctx, from_name, to_name, new_kms_key, overwrite, dry_run):
 
 
 @parameters.command('update', short_help="Update the value or KMS Key on one or more parameters")
-@click.pass_context
 @click.argument('name')
 @click.option('--new-kms-key', default=None, help="Re-encrypt with KMS Key whose alias or ARN matches TEXT")
 @click.option('--value', default=None, help="Update the value to TEXT")
@@ -1085,7 +1082,7 @@ def parameters_copy(ctx, from_name, to_name, new_kms_key, overwrite, dry_run):
     default=False,
     help="Don't actually copy.  Default: --no-dry-run."
 )
-def parameters_update(ctx, name, new_kms_key, value, force_multiple, dry_run):
+def parameters_update(name, new_kms_key, value, force_multiple, dry_run):
     """
     Update the parameter that matches NAME with either a new KMS Key ID, a new value, or both.
 

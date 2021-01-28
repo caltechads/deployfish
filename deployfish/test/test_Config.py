@@ -1,8 +1,8 @@
 import json
-from mock import Mock, call
 import os
-from testfixtures import Replacer
 import unittest
+from mock import Mock, call
+from testfixtures import Replacer
 
 from deployfish.config import Config
 
@@ -136,7 +136,7 @@ class TestContainerDefinition_load_yaml_no_interpolate(unittest.TestCase):
         )
 
 
-class TestTunnelParameters_load_yqml(unittest.TestCase):
+class TestTunnelParameters_load_yaml(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
