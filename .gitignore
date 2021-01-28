@@ -14,5 +14,6 @@ build
 .venv
 /deployfish.yml
 real_tests
+.python-version
 
 .mypy_cache

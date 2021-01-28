@@ -4,7 +4,6 @@ from __future__ import print_function
 import importlib
 import pkg_resources
 import os
-import random
 import subprocess
 import sys
 
@@ -97,19 +96,19 @@ def print_sorted_parameters(parameters):  # NOQA
     creates = []
     updates = []
     deletes = []
-    nochanges = []
-    notexists = []
+    no_changes = []
+    not_exists = []
     for parameter in parameters:
         if parameter.should_exist:
             if not parameter.exists:
                 if not parameter.is_external:
                     creates.append(parameter)
                 else:
-                    notexists.append(parameter)
+                    not_exists.append(parameter)
             elif parameter.needs_update:
                 updates.append(parameter)
             else:
-                nochanges.append(parameter)
+                no_changes.append(parameter)
         else:
             deletes.append(parameter)
     if creates:
@@ -124,13 +123,13 @@ def print_sorted_parameters(parameters):  # NOQA
         click.echo('\n  Needs deleting:')
         for p in deletes:
             click.secho("    {}".format(str(p)), fg="red")
-    if nochanges:
+    if no_changes:
         click.echo('\n  Already correct in AWS:')
-        for p in nochanges:
+        for p in no_changes:
             click.secho("    {}".format(str(p)), fg="white")
-    if notexists:
+    if not_exists:
         click.echo('\n  External parameters that do not exist in AWS:')
-        for p in notexists:
+        for p in not_exists:
             click.secho("    {}".format(str(p)), fg="red")
 
 
@@ -198,8 +197,13 @@ def manage_asg_count(service, count, asg, force_asg):
     default=False,
     help="Force your ASG to scale outside of its MinCount or MaxCount"
 )
+@click.option(
+    '--timeout',
+    default=600,
+    help="Retry the service stability check until this many seconds has passed. Default: 600."
+)
 @needs_config
-def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
+def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg, timeout):
     """
     Create a new ECS service named SERVICE_NAME.
     """
@@ -241,7 +245,7 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
         service.create()
         if wait:
             click.secho("\n  Waiting until the service is stable ...", fg='white')
-            if service.wait_until_stable():
+            if service.wait_until_stable(timeout):
                 click.secho("  Done.", fg='white')
             else:
                 click.secho("  FAILURE: the service failed to start.", fg='red')
@@ -297,7 +301,7 @@ def version(ctx, service_name):
     print(service.version())
 
 
-@cli.command('update', short_help='Update task defintion for a service')
+@cli.command('update', short_help='Update task definition for a service')
 @click.pass_context
 @click.argument('service_name')
 @click.option('--dry-run/--no-dry-run', default=False, help="Don't actually create a new task definition")
@@ -306,8 +310,13 @@ def version(ctx, service_name):
     default=True,
     help="Don't exit until all tasks are running the new task definition revision"
 )
+@click.option(
+    '--timeout',
+    default=600,
+    help="Retry the service stability check until this many seconds has passed. Default: 600."
+)
 @needs_config
-def update(ctx, service_name, dry_run, wait):
+def update(ctx, service_name, dry_run, wait, timeout):
     """
     Update the our ECS service from what is in deployfish.yml.  This means two things:
 
@@ -342,7 +351,7 @@ def update(ctx, service_name, dry_run, wait):
         service.update()
         if wait:
             click.secho("\n  Waiting until the service is stable with our new task def ...", fg='white')
-            if service.wait_until_stable():
+            if service.wait_until_stable(timeout):
                 click.secho("  Done.", fg='white')
             else:
                 click.secho("  FAILURE: the service failed to start.", fg='red')
@@ -381,8 +390,13 @@ def restart(ctx, service_name, hard):
     default=False,
     help="Force your ASG to scale outside of its MinCount or MaxCount"
 )
+@click.option(
+    '--timeout',
+    default=600,
+    help="Retry the service stability check until this many seconds has passed. Default: 600."
+)
 @needs_config
-def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
+def scale(ctx, service_name, count, dry_run, wait, asg, force_asg, timeout):
     """
     Set the desired count for service SERVICE_NAME to COUNT.
     """
@@ -398,7 +412,7 @@ def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
         service.scale(count)
         if wait:
             click.secho("  Waiting until the service is stable with our new count ...", fg='cyan')
-            if service.wait_until_stable():
+            if service.wait_until_stable(timeout):
                 click.secho("  Done.", fg='white')
             else:
                 click.secho("  FAILURE: the service failed to start.", fg='red')
@@ -409,8 +423,13 @@ def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
 @click.pass_context
 @click.argument('service_name')
 @click.option('--dry-run/--no-dry-run', default=False, help="Don't actually delete the service")
+@click.option(
+    '--timeout',
+    default=600,
+    help="Retry the service stability check until this many seconds has passed. Default: 600."
+)
 @needs_config
-def delete(ctx, service_name, dry_run):
+def delete(ctx, service_name, dry_run, timeout):
     """
     Delete the service SERVICE_NAME from AWS.
     """
@@ -428,7 +447,7 @@ def delete(ctx, service_name, dry_run):
         if value == service.serviceName:
             service.scale(0)
             print("  Waiting for our existing containers to die ...")
-            service.wait_until_stable()
+            service.wait_until_stable(timeout)
             print("  All containers dead.")
             service.delete()
             print("  Deleted service {} from cluster {}.".format(service.serviceName, service.clusterName))
@@ -642,24 +661,26 @@ def _entrypoint(ctx, section, section_name, cluster_name, parameter_prefix, comm
                         os.environ[param.key] = param.aws_value
                     else:
                         print(
-                            "event='deploy.entrypoint.parameter.ignored.not_in_deployfish_yml' section='{}' parameter='{}'".format(
-                                section_name, param.name))
+                            "event='deploy.entrypoint.parameter.ignored.not_in_deployfish_yml' "
+                            "section='{}' parameter='{}'".format(section_name, param.name)
+                        )
                 else:
                     print("event='deploy.entrypoint.parameter.ignored.not_in_aws' section='{}' parameter='{}'".format(
-                        section_name, param.name))
+                        section_name, param.name
+                    ))
         else:
             exists = []
-            notexists = []
+            not_exists = []
             for param in parameter_store:
                 if param.exists:
                     exists.append(param)
                 else:
-                    notexists.append(param)
+                    not_exists.append(param)
             click.secho("Would have set these environment variables:", fg="cyan")
             for param in exists:
                 click.echo('  {}={}'.format(param.key, param.aws_value))
             click.secho("\nThese parameters are not in AWS:", fg="red")
-            for param in notexists:
+            for param in not_exists:
                 click.echo('  {}'.format(param.key))
     if dry_run:
         click.secho('\n\nCOMMAND: {}'.format(command))
@@ -691,7 +712,7 @@ def entrypoint(ctx, command, dry_run):
     * run COMMAND
 
     If either DEPLOYFISH_SERVICE_NAME or DEPLOYFISH_CLUSTER_NAME are not in
-    the environment, just run COMMMAND.
+    the environment, just run COMMAND.
 
     \b
     NOTE:
@@ -957,7 +978,7 @@ def task_entrypoint(ctx, command, dry_run):
     * run COMMAND
 
     If either DEPLOYFISH_TASK_NAME or DEPLOYFISH_CLUSTER_NAME are not in
-    the environment, just run COMMMAND.
+    the environment, just run COMMAND.
 
     \b
     NOTE:
@@ -1021,7 +1042,7 @@ def parameters_copy(ctx, from_name, to_name, new_kms_key, overwrite, dry_run):
         print('No parameters found that match "{}"'.format(from_name))
     else:
         parms.sort()
-        print("\FROM:")
+        print("\nFROM:")
         print("-----------------------------------------------------------------------")
         for parm in parms:
             print(parm)

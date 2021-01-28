@@ -906,14 +906,16 @@ class Service(object):
                     )
         return success
 
-    def wait_until_stable(self):
+    def wait_until_stable(self, timeout=600):
         """
         Wait until AWS reports the service as "stable".
+        This function waits for 15 seconds between each stability check. By default, it will perform 40 retries before
+        giving up. Callers can specify a different timeout, after which the stability checks will cease, and a failure
+        will be reported.
         """
-        tz = tzlocal.get_localzone()
-        self.its_run_start_time = datetime.now(tz)
+        start_time = time.time()
 
-        for i in range(40):
+        while True:
             time.sleep(15)
             success = self._show_current_status()
             if success:
@@ -921,6 +923,8 @@ class Service(object):
                 return True
             else:
                 print("\nDeployment unready\n")
+            if time.time() >= start_time + timeout:
+                break
 
         print('Deployment failed...')
 
