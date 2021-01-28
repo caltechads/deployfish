@@ -197,8 +197,13 @@ def manage_asg_count(service, count, asg, force_asg):
     default=False,
     help="Force your ASG to scale outside of its MinCount or MaxCount"
 )
+@click.option(
+    '--timeout',
+    default=600,
+    help="Retry the service stability check until this many seconds has passed. Default: 600."
+)
 @needs_config
-def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
+def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg, timeout):
     """
     Create a new ECS service named SERVICE_NAME.
     """
@@ -240,7 +245,7 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg):
         service.create()
         if wait:
             click.secho("\n  Waiting until the service is stable ...", fg='white')
-            if service.wait_until_stable():
+            if service.wait_until_stable(timeout):
                 click.secho("  Done.", fg='white')
             else:
                 click.secho("  FAILURE: the service failed to start.", fg='red')
@@ -305,8 +310,13 @@ def version(ctx, service_name):
     default=True,
     help="Don't exit until all tasks are running the new task definition revision"
 )
+@click.option(
+    '--timeout',
+    default=600,
+    help="Retry the service stability check until this many seconds has passed. Default: 600."
+)
 @needs_config
-def update(ctx, service_name, dry_run, wait):
+def update(ctx, service_name, dry_run, wait, timeout):
     """
     Update the our ECS service from what is in deployfish.yml.  This means two things:
 
@@ -341,7 +351,7 @@ def update(ctx, service_name, dry_run, wait):
         service.update()
         if wait:
             click.secho("\n  Waiting until the service is stable with our new task def ...", fg='white')
-            if service.wait_until_stable():
+            if service.wait_until_stable(timeout):
                 click.secho("  Done.", fg='white')
             else:
                 click.secho("  FAILURE: the service failed to start.", fg='red')
@@ -380,8 +390,13 @@ def restart(ctx, service_name, hard):
     default=False,
     help="Force your ASG to scale outside of its MinCount or MaxCount"
 )
+@click.option(
+    '--timeout',
+    default=600,
+    help="Retry the service stability check until this many seconds has passed. Default: 600."
+)
 @needs_config
-def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
+def scale(ctx, service_name, count, dry_run, wait, asg, force_asg, timeout):
     """
     Set the desired count for service SERVICE_NAME to COUNT.
     """
@@ -397,7 +412,7 @@ def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
         service.scale(count)
         if wait:
             click.secho("  Waiting until the service is stable with our new count ...", fg='cyan')
-            if service.wait_until_stable():
+            if service.wait_until_stable(timeout):
                 click.secho("  Done.", fg='white')
             else:
                 click.secho("  FAILURE: the service failed to start.", fg='red')
@@ -408,8 +423,13 @@ def scale(ctx, service_name, count, dry_run, wait, asg, force_asg):
 @click.pass_context
 @click.argument('service_name')
 @click.option('--dry-run/--no-dry-run', default=False, help="Don't actually delete the service")
+@click.option(
+    '--timeout',
+    default=600,
+    help="Retry the service stability check until this many seconds has passed. Default: 600."
+)
 @needs_config
-def delete(ctx, service_name, dry_run):
+def delete(ctx, service_name, dry_run, timeout):
     """
     Delete the service SERVICE_NAME from AWS.
     """
@@ -427,7 +447,7 @@ def delete(ctx, service_name, dry_run):
         if value == service.serviceName:
             service.scale(0)
             print("  Waiting for our existing containers to die ...")
-            service.wait_until_stable()
+            service.wait_until_stable(timeout)
             print("  All containers dead.")
             service.delete()
             print("  Deleted service {} from cluster {}.".format(service.serviceName, service.clusterName))
