@@ -1,6 +1,5 @@
 import unittest
 from mock import Mock, call
-
 from testfixtures import compare, Replacer
 
 from deployfish.aws.systems_manager import UnboundParameter

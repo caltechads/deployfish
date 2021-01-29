@@ -1,14 +1,13 @@
-from functools import wraps
+import click
 import os
 import os.path
 import re
-import yaml
 import sys
-
-import click
+import yaml
 
 from deployfish.aws import build_boto3_session
 from deployfish.terraform import (NoSuchStateFile, Terraform, TerraformE)
+from functools import wraps
 
 
 def needs_config(func):
@@ -57,7 +56,7 @@ class Config(object):
     def __init__(self, filename='deployfish.yml', env_file=None, import_env=False,
                  interpolate=True, tfe_token=None, use_aws_section=True, raw_config=None,
                  boto3_session=None):
-        #Load a raw config if it was provided
+        # Load a raw config if it was provided
         if raw_config:
             self.__raw = raw_config
         else:
@@ -104,11 +103,11 @@ class Config(object):
 
     def load_env_file(self, env_file):
         if env_file and os.path.isfile(env_file):
-            lines = []
             with open(env_file) as f:
-                lines = f.readlines()
+                raw_lines = f.readlines()
                 # Strip the comments and empty lines
-                lines = [x.strip() for x in lines if x.strip() and not x.strip().startswith("#")]
+                lines = [x.strip() for x in raw_lines if x.strip() and not x.strip().startswith("#")]
+
             for line in lines:
                 # split on the first "="
                 parm = str.split(line, '=', 1)
@@ -205,7 +204,7 @@ class Config(object):
             # or just rejected.
             #
             # In each replacer, we should be replacing [.- ] with _ and then
-            # uppercasing the result.
+            # uppercase the result.
             raw[key] = self.ENVIRONMENT_RE.sub(self.__env_replace(m.group('key'), replacers), value)
 
     def __do_list(self, raw, replacers):
@@ -271,7 +270,8 @@ class Config(object):
         :param section: The name of the top level section to search
         :type section: string
 
-        :param item: The name of the instance of the section
+        :param item_name: The name of the instance of the section
+        :type item_name: string
 
         :rtype: dict
         """

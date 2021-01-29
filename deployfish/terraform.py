@@ -1,11 +1,10 @@
+import boto3
 import json
 import os
 import os.path
 import requests
 
-import boto3
 from botocore.exceptions import ClientError
-
 from deployfish.aws import get_boto3_session
 
 
@@ -19,6 +18,7 @@ class Terraform(dict):
     """
 
     def __init__(self, state_file_url, yml=None):
+        super(Terraform, self).__init__()
         self.state_file_url = state_file_url
         self.load_yaml(yml)
 
@@ -73,6 +73,7 @@ class Terraform(dict):
 class TerraformE(dict):
 
     def __init__(self, workspace, organization, lookups, api_token=None):
+        super(TerraformE, self).__init__()
         if api_token is None:
             if 'ATLAS_TOKEN' in os.environ:
                 self.api_token = os.getenv('ATLAS_TOKEN')

@@ -5,7 +5,7 @@ PACKAGE = deployfish
 
 clean:
 	rm -rf *.tar.gz dist build *.egg-info *.rpm
-	find . -name "*.pyc" | xargs rm 
+	find . -name "*.pyc" | xargs rm
 	find . -name "__pycache__" | xargs rm -rf
 
 version:
@@ -21,5 +21,5 @@ pypi: dist
 tox:
 	# create a tox pyenv virtualenv based on 2.7.x
 	# install tox and tox-pyenv in that ve
-	# actiave that ve before running this
+	# activate that ve before running this
 	@tox

@@ -1,9 +1,8 @@
+import unittest
 from copy import copy
 from datetime import datetime
-import unittest
 from mock import Mock
 from testfixtures import Replacer
-
 
 from deployfish.aws.appscaling import ScalingPolicy
 
@@ -227,19 +226,28 @@ class TestScalingPolicy_render_create_scale_up(unittest.TestCase):
         self.assertEqual(self.policy._render_create()['PolicyType'], 'StepScaling')
 
     def test_MetricIntervalLowerBound(self):
-        self.assertEqual(self.policy._render_create()['StepScalingPolicyConfiguration']['StepAdjustments'][0]['MetricIntervalLowerBound'], 0)
+        policy = self.policy._render_create()
+        self.assertEqual(policy['StepScalingPolicyConfiguration']['StepAdjustments'][0]['MetricIntervalLowerBound'], 0)
 
     def test_NotHasMetricIntervalUpperBound(self):
-        self.assertTrue('MetricIntervalUpperBound' not in self.policy._render_create()['StepScalingPolicyConfiguration']['StepAdjustments'][0])
+        policy = self.policy._render_create()
+        self.assertTrue(
+            'MetricIntervalUpperBound' not in policy['StepScalingPolicyConfiguration']['StepAdjustments'][0]
+        )
 
     def test_ScalingAdjustment(self):
-        self.assertEqual(self.policy._render_create()['StepScalingPolicyConfiguration']['StepAdjustments'][0]['ScalingAdjustment'], 1)
+        self.assertEqual(
+            self.policy._render_create()['StepScalingPolicyConfiguration']['StepAdjustments'][0]['ScalingAdjustment'],
+            1
+        )
 
     def test_Cooldown(self):
         self.assertEqual(self.policy._render_create()['StepScalingPolicyConfiguration']['Cooldown'], 60)
 
     def test_MetricAggregationType(self):
-        self.assertEqual(self.policy._render_create()['StepScalingPolicyConfiguration']['MetricAggregationType'], 'Average')
+        self.assertEqual(
+            self.policy._render_create()['StepScalingPolicyConfiguration']['MetricAggregationType'], 'Average'
+        )
 
 
 class TestScalingPolicy_render_create_scale_down(unittest.TestCase):
@@ -264,10 +272,15 @@ class TestScalingPolicy_render_create_scale_down(unittest.TestCase):
             self.policy = ScalingPolicy('my_service', 'my_cluster', yml)
 
     def test_NotHasMetricIntervalLowerBound(self):
-        self.assertTrue('MetricIntervalLowerBound' not in self.policy._render_create()['StepScalingPolicyConfiguration']['StepAdjustments'][0])
+        policy = self.policy._render_create()
+        self.assertTrue(
+            'MetricIntervalLowerBound' not in policy['StepScalingPolicyConfiguration']['StepAdjustments'][0]
+        )
 
     def test_MetricIntervalUpperBound(self):
-        self.assertEqual(self.policy._render_create()['StepScalingPolicyConfiguration']['StepAdjustments'][0]['MetricIntervalUpperBound'], 0)
+        policy = self.policy._render_create()
+        self.assertEqual(policy['StepScalingPolicyConfiguration']['StepAdjustments'][0]['MetricIntervalUpperBound'], 0)
 
     def test_ScalingAdjustment(self):
-        self.assertEqual(self.policy._render_create()['StepScalingPolicyConfiguration']['StepAdjustments'][0]['ScalingAdjustment'], -1)
+        policy = self.policy._render_create()
+        self.assertEqual(policy['StepScalingPolicyConfiguration']['StepAdjustments'][0]['ScalingAdjustment'], -1)

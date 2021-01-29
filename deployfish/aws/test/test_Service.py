@@ -1,21 +1,20 @@
+import os
 import unittest
 from mock import Mock
 from testfixtures import compare
 from testfixtures import Replacer
-
-import os
 
 from deployfish.config import Config
 from deployfish.aws.ecs import Service
 from deployfish.aws.systems_manager import Parameter
 
 
-class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
+class TestService_load_yaml_deploymentConfiguration_defaults(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=filename, interpolate=False)
         del config.raw['services'][0]['maximum_percent']
         del config.raw['services'][0]['minimum_healthy_percent']
         with Replacer() as r:
@@ -50,12 +49,12 @@ class TestService_load_yaml_deploymenConfiguration_defaults(unittest.TestCase):
         )
 
 
-class TestService_load_yaml_deploymenConfiguration_defaults_from_aws(unittest.TestCase):
+class TestService_load_yaml_deploymentConfiguration_defaults_from_aws(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=filename, interpolate=False)
         del config.raw['services'][0]['maximum_percent']
         del config.raw['services'][0]['minimum_healthy_percent']
         with Replacer() as r:
@@ -111,8 +110,8 @@ class TestService_load_yaml(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=filename, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service('foobar-prod', config=config)
@@ -148,8 +147,8 @@ class TestService_load_yaml_alternate(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=filename, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service('foobar-prod2', config=config)
@@ -252,8 +251,8 @@ class TestService_load_yaml_multiple_target_groups(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=filename, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service('foobar-prod3', config=config)
@@ -307,8 +306,8 @@ class TestService_load_yaml_multiple_target_groups_from_aws(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=filename, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service('foobar-prod3', config=config)
@@ -351,8 +350,8 @@ class TestService_load_yaml_capacity_provider_strategy_from_aws(unittest.TestCas
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        config = Config(filename=filename, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service('foobar-prod2', config=config)
@@ -379,8 +378,8 @@ class TestService_embedded_config(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        self.config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        self.config = Config(filename=filename, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service('foobar-prod2', config=self.config)
@@ -396,8 +395,8 @@ class TestService_no_embedded_config(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        self.config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        self.config = Config(filename=filename, interpolate=False)
         with Replacer() as r:
             r.replace('deployfish.aws.ecs.Service.from_aws', Mock())
             self.service = Service('foobar-prod', config=self.config)
@@ -413,8 +412,8 @@ class TestService_ec2_secrets_in_task_definition(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        self.config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        self.config = Config(filename=filename, interpolate=False)
         client_mock = Mock()
         client_mock.get_parameters.return_value = {'Parameters': []}
         client_mock.describe_parameters.return_value = {'Parameters': []}
@@ -442,8 +441,8 @@ class TestService_no_ec2_secrets_in_task_definition_if_no_execution_role(unittes
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        self.config = Config(filename=fname, interpolate=False)
+        filename = os.path.join(current_dir, 'simple.yml')
+        self.config = Config(filename=filename, interpolate=False)
         del self.config.raw['services'][4]['execution_role']
         client_mock = Mock()
         client_mock.get_parameters.return_value = {'Parameters': []}

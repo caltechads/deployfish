@@ -13,6 +13,9 @@ class BaseParameter(object):
     def __init__(self, name, kms_key_id=None):
         self.ssm = get_boto3_session().client('ssm')
         self._defaults(kms_key_id=kms_key_id)
+        self._key = None
+        # 2020-01-27 rrollins: This is weird, since name is a @property here. But I think it maybe works because of how
+        # we subclass this class?
         self.name = name
 
     def _defaults(self, kms_key_id=None):
@@ -94,10 +97,10 @@ class BaseParameter(object):
 
         :rtype: dict
         """
-        d = {}
-        d['Names'] = [self.name]
-        d['WithDecryption'] = True
-        return d
+        return {
+            'Names': [self.name],
+            'WithDecryption': True
+        }
 
     def _from_aws(self):
         """
@@ -116,10 +119,11 @@ class BaseParameter(object):
 
         :rtype: dict
         """
-        d = {}
-        d['Name'] = self.name
-        d['Value'] = self.value
-        d['Overwrite'] = True
+        d = {
+            'Name': self.name,
+            'Value': self.value,
+            'Overwrite': True
+        }
         if self.is_secure:
             d['Type'] = 'SecureString'
             if self.kms_key_id:
@@ -152,8 +156,10 @@ class BaseParameter(object):
     def __str__(self):
         return self.display(self.name, self.value)
 
+    # This is the python2 version of the below magic methods for comparison.
     def __cmp__(self, other):
-        return cmp(self.name, other.name)
+        # cmp is no longer defined in Python 3.
+        return cmp(self.name, other.name)  # noqa F821
 
     def __lt__(self, other):
         return self.name < other.name
@@ -228,6 +234,7 @@ class ClusterServicePrefixMixin(object):
 
     @property
     def prefix(self):
+        # noinspection PyUnresolvedReferences
         return "{}.{}.".format(self.cluster, self.service)
 
 
@@ -236,7 +243,10 @@ class Parameter(ClusterServicePrefixMixin, BaseParameter):
     This class represents a parameter in the AWS Systems Manager Parameter Store.
     """
 
-    def __init__(self, service, cluster, aws={}, yml=None):
+    # noinspection PyMissingConstructor
+    def __init__(self, service, cluster, aws=None, yml=None):
+        if aws is None:
+            aws = {}
         self.ssm = get_boto3_session().client('ssm')
         self.service = service
         self.cluster = cluster
@@ -245,8 +255,8 @@ class Parameter(ClusterServicePrefixMixin, BaseParameter):
         self.__from_yml(yml)
         self._from_aws(aws)
 
-    def _defaults(self):
-        super(Parameter, self)._defaults()
+    def _defaults(self, kms_key_id=None):
+        super(Parameter, self)._defaults(kms_key_id)
         self._key = None
 
     @property
@@ -405,7 +415,7 @@ class Parameter(ClusterServicePrefixMixin, BaseParameter):
         if not aws:
             super(Parameter, self)._from_aws()
 
-    def save(self):
+    def save(self, overwrite=False):
         """
         If the value still exists in the config, save it, otherwise remove the parameter
         from AWS
@@ -519,8 +529,10 @@ class ParameterStore(ClusterServicePrefixMixin, list):
     This class is the access point for parameters in the AWS System Manager Parameter Store.
     """
 
-    def __init__(self, service, cluster, yml=[]):
+    def __init__(self, service, cluster, yml=None):
         super(ParameterStore, self).__init__()
+        if yml is None:
+            yml = []
         self.service = service
         self.cluster = cluster
         self.yml = yml

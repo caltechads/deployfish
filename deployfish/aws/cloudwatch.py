@@ -8,7 +8,7 @@ class ECSServiceCPUAlarm(object):
     A Cloudwatch Metric Alarm on ECS Service CPU.
     """
 
-    def __init__(self, serviceName, clusterName, yml={}, aws={}, scaling_policy_arn=None):
+    def __init__(self, serviceName, clusterName, yml=None, aws=None, scaling_policy_arn=None):
         """
         `yml` should be a dict with two keys:
 
@@ -33,6 +33,10 @@ class ECSServiceCPUAlarm(object):
         :type scaling_policy_arn: string
 
         """
+        if aws is None:
+            aws = {}
+        if yml is None:
+            yml = {}
         self.cloudwatch = get_boto3_session().client('cloudwatch')
         self.serviceName = serviceName
         self.clusterName = clusterName
@@ -96,6 +100,8 @@ class ECSServiceCPUAlarm(object):
     @property
     def cpu(self):
         if not self._cpu and self.exists():
+            # == should never actually get used, here.
+            operator = '=='
             if self.__aws_alarm['ComparisonOperator'] == 'GreaterThanOrEqualToThreshold':
                 operator = ">="
             elif self.__aws_alarm['ComparisonOperator'] == 'GreaterThanThreshold':
@@ -141,7 +147,9 @@ class ECSServiceCPUAlarm(object):
     def periods(self, periods):
         self._periods = int(periods)
 
-    def from_aws(self, aws={}):
+    def from_aws(self, aws=None):
+        if aws is None:
+            aws = {}
         self.__aws_alarm = {}
         if aws:
             self.__aws_alarm = aws
@@ -173,18 +181,19 @@ class ECSServiceCPUAlarm(object):
 
         :rtype: dict
         """
-        r = {}
-        r['AlarmName'] = self.name
+        r = {'AlarmName': self.name}
         if '>' in self.cpu:
             direction = 'up'
         else:
             direction = 'down'
-        r['AlarmDescription'] = "Scale {} ECS service {} in cluster {} if service Average CPU is {} for {} seconds".format(
-            direction,
-            self.serviceName,
-            self.clusterName,
-            self.cpu,
-            (self.periods * self.check_every_seconds)
+        r['AlarmDescription'] = (
+            "Scale {} ECS service {} in cluster {} if service Average CPU is {} for {} seconds".format(
+                direction,
+                self.serviceName,
+                self.clusterName,
+                self.cpu,
+                (self.periods * self.check_every_seconds)
+            )
         )
         r['AlarmActions'] = [self.scaling_policy_arn]
         r['MetricName'] = 'CPUUtilization'
@@ -197,6 +206,7 @@ class ECSServiceCPUAlarm(object):
         r['Period'] = self.check_every_seconds
         r['Unit'] = self.unit
         r['EvaluationPeriods'] = self.periods
+        operator = '=='
         if '<=' in self.cpu:
             operator = "LessThanOrEqualToThreshold"
         elif '<' in self.cpu:
@@ -215,9 +225,7 @@ class ECSServiceCPUAlarm(object):
 
         :rtype: dict
         """
-        r = {}
-        r['AlarmNames'] = [self.name]
-        return r
+        return {'AlarmNames': [self.name]}
 
     def __eq__(self, other):
         if (self.name == other.name and
@@ -225,7 +233,8 @@ class ECSServiceCPUAlarm(object):
             self.check_every_seconds == other.check_every_seconds and
             self.periods == other.periods and
             self.scaling_policy_arn == other.scaling_policy_arn and
-            self.unit == other.unit):  # NOQA
+            self.unit == other.unit
+        ):
             return True
         return False
 

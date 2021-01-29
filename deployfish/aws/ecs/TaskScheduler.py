@@ -19,19 +19,21 @@ class TaskScheduler(object):
 
         :rtype: dict
         """
-        r = {}
-        r['Rule'] = self.name
-        target = {}
-        target['Id'] = self.target_name
-        target['Arn'] = self.task.cluster_arn
-        target['RoleArn'] = self.task.schedule_role
-        parms = {}
-        parms['TaskDefinitionArn'] = self.task.active_task_definition.arn
-        parms['TaskCount'] = self.task.desired_count
-        parms['LaunchType'] = self.task.launchType
+        r = {'Rule': self.name}
+        target = {
+            'Id': self.target_name,
+            'Arn': self.task.cluster_arn,
+            'RoleArn': self.task.schedule_role
+        }
+        parms = {
+            'TaskDefinitionArn': self.task.active_task_definition.arn,
+            'TaskCount': self.task.desired_count,
+            'LaunchType': self.task.launchType
+        }
         if parms['LaunchType'] == 'FARGATE':
-            conf = {}
-            conf['Subnets'] = self.task.vpc_configuration['subnets']
+            conf = {
+                'Subnets': self.task.vpc_configuration['subnets']
+            }
             if 'securityGroups' in self.task.vpc_configuration:
                 conf['SecurityGroups'] = self.task.vpc_configuration['securityGroups']
             if 'assignPublicIp' in self.task.vpc_configuration:
@@ -50,7 +52,7 @@ class TaskScheduler(object):
         """
         Create or update the cloudwatch rule
         """
-        response = self.client.put_rule(
+        self.client.put_rule(
             Name=self.name,
             ScheduleExpression=self.task.schedule_expression,
             State='ENABLED',
@@ -78,10 +80,7 @@ class TaskScheduler(object):
             for target in response['Targets']:
                 target_ids.append(target['Id'])
 
-            response = self.client.remove_targets(
-                Rule=self.name,
-                Ids=target_ids
-            )
+            self.client.remove_targets(Rule=self.name, Ids=target_ids)
         except:
             pass
 

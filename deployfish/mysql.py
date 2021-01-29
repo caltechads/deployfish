@@ -6,10 +6,11 @@ import tempfile
 class MySQLDatabaseManipulator(object):
 
     def __init__(self):
-        self.db_config = {}
-        self.db_config["name"] = os.environ.get('DB_NAME', '')
-        self.db_config["user"] = os.environ.get('DB_USER', '')
-        self.db_config["host"] = os.environ.get('DB_HOST', '')
+        self.db_config = {
+            "name": os.environ.get('DB_NAME', ''),
+            "user": os.environ.get('DB_USER', ''),
+            "host": os.environ.get('DB_HOST', ''),
+        }
         os.environ["MYSQL_PWD"] = os.environ.get('DB_PASSWORD', '')
 
     def dump_db(self):

@@ -1,5 +1,4 @@
-import botocore
-
+from botocore.exceptions import ClientError
 from deployfish.aws import get_boto3_session
 
 
@@ -10,7 +9,9 @@ class ASG(object):
     autoscaling group.  Not useful if this ASG runs a bunch of different services.
     """
 
-    def __init__(self, group_name=None, yml={}):
+    def __init__(self, group_name=None, yml=None):
+        if yml is None:
+            yml = {}
         self.asg = get_boto3_session().client('autoscaling')
         self.__groupName = group_name
         self.from_yaml(yml)
@@ -32,7 +33,7 @@ class ASG(object):
                 response = self.asg.describe_auto_scaling_groups(
                     AutoScalingGroupNames=[groupName]
                 )
-            except botocore.exceptions.ClientError:
+            except ClientError:
                 return {}
             else:
                 return response['AutoScalingGroups'][0]

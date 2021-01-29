@@ -1,10 +1,9 @@
-import unittest
-from testfixtures import compare
-import os
-
 import json
+import os
+import unittest
 import yaml
 
+from testfixtures import compare
 from deployfish.aws.ecs import ContainerDefinition
 
 
@@ -12,8 +11,8 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             yml = yaml.load(f, Loader=yaml.FullLoader)
         # This should be the container named "example" in the "foobar-prod" service
         self.cd = ContainerDefinition(yml=yml['services'][0]['containers'][0])
@@ -23,7 +22,6 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
 
     def test_cpu(self):
         self.assertEqual(self.cd.cpu, 1024)
-
 
     def test_memory(self):
         self.assertEqual(self.cd.memory, 4000)
@@ -75,8 +73,8 @@ class TestContainerDefinition_render(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             self.yml = yaml.load(f, Loader=yaml.FullLoader)
         self.cd = ContainerDefinition(yml=self.yml['services'][0]['containers'][0])
 
@@ -159,11 +157,11 @@ class TestContainerDefinition_render(unittest.TestCase):
 
     def test_logging(self):
         render = self.cd.render()
-        logconfig = render['logConfiguration']
-        self.assertIn('logDriver', logconfig)
-        self.assertEqual(logconfig['logDriver'], 'fluentd')
-        self.assertIn('options', logconfig)
-        options = logconfig['options']
+        log_config = render['logConfiguration']
+        self.assertIn('logDriver', log_config)
+        self.assertEqual(log_config['logDriver'], 'fluentd')
+        self.assertIn('options', log_config)
+        options = log_config['options']
         self.assertIn('fluentd-address', options)
         self.assertIn('tag', options)
         self.assertEqual(options['fluentd-address'], '127.0.0.1:24224')
@@ -190,8 +188,8 @@ class TestContainerDefinition_load_yaml_alternates(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'simple.yml')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'simple.yml')
+        with open(filename) as f:
             yml = yaml.load(f, Loader=yaml.FullLoader)
         self.cd = ContainerDefinition(yml=yml['services'][1]['containers'][0])
 
@@ -240,8 +238,8 @@ class TestContainerDefinition_load_aws(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'container_aws.json')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'container_aws.json')
+        with open(filename) as f:
             aws_container = json.loads(f.read())
         self.cd = ContainerDefinition(aws=aws_container)
 
@@ -303,8 +301,8 @@ class TestContainerDefinition_tasks(unittest.TestCase):
 
     def setUp(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        fname = os.path.join(current_dir, 'container_aws.json')
-        with open(fname) as f:
+        filename = os.path.join(current_dir, 'container_aws.json')
+        with open(filename) as f:
             aws_container = json.loads(f.read())
         self.cd = ContainerDefinition(aws_container)
 

@@ -1,7 +1,7 @@
 import unittest
+from datetime import datetime
 from mock import Mock
 from testfixtures import Replacer, compare
-from datetime import datetime
 
 
 from deployfish.aws.cloudwatch import ECSServiceCPUAlarm
@@ -49,7 +49,8 @@ class TestECSServiceCPUAlarm_load_aws(unittest.TestCase):
                 {
                     'AlarmName': 'my_cluster-my_service-high',
                     'AlarmArn': 'actual_aws_alarm_arn',
-                    'AlarmDescription': 'Scale up ECS service my_service in cluster my_cluster if Service Average CPU is >=60 for 300 seconds',
+                    'AlarmDescription': 'Scale up ECS service my_service in cluster my_cluster if Service Average CPU '
+                                        'is >=60 for 300 seconds',
                     'AlarmConfigurationUpdatedTimestamp': datetime(2015, 1, 1),
                     'ActionsEnabled': True,
                     'OKActions': [],
@@ -115,7 +116,8 @@ class TestECSServiceCPUAlarm_load_aws_obj(unittest.TestCase):
         aws_data = {
             'AlarmName': 'my_cluster-my_service-high',
             'AlarmArn': 'actual_aws_alarm_arn',
-            'AlarmDescription': 'Scale up ECS service my_service in cluster my_cluster if Service Average CPU is >=60 for 300 seconds',
+            'AlarmDescription': 'Scale up ECS service my_service in cluster my_cluster if Service Average CPU '
+                                'is >=60 for 300 seconds',
             'AlarmConfigurationUpdatedTimestamp': datetime(2015, 1, 1),
             'ActionsEnabled': True,
             'OKActions': [],
@@ -194,7 +196,10 @@ class TestECSServiceCPUAlarm__render_create(unittest.TestCase):
         compare(self.alarm._render_create()['AlarmActions'], ['my_arn'])
 
     def test_AlarmDescription(self):
-        self.assertEqual(self.alarm._render_create()['AlarmDescription'], 'Scale up ECS service my_service in cluster my_cluster if service Average CPU is >=60.5 for 300 seconds')
+        self.assertEqual(
+            self.alarm._render_create()['AlarmDescription'],
+            'Scale up ECS service my_service in cluster my_cluster if service Average CPU is >=60.5 for 300 seconds'
+        )
 
     def test_MetricName(self):
         self.assertEqual(self.alarm._render_create()['MetricName'], 'CPUUtilization')
@@ -206,7 +211,10 @@ class TestECSServiceCPUAlarm__render_create(unittest.TestCase):
         self.assertEqual(self.alarm._render_create()['Statistic'], 'Average')
 
     def test_Dimensions(self):
-        compare(self.alarm._render_create()['Dimensions'], [{'Name': 'ClusterName', 'Value': 'my_cluster'}, {'Name': 'ServiceName', 'Value': 'my_service'}])
+        compare(
+            self.alarm._render_create()['Dimensions'],
+            [{'Name': 'ClusterName', 'Value': 'my_cluster'}, {'Name': 'ServiceName', 'Value': 'my_service'}]
+        )
 
     def test_Period(self):
         self.assertEqual(self.alarm._render_create()['Period'], 60)

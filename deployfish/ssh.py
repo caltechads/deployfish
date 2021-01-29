@@ -106,7 +106,7 @@ class SSH():
             self.provider = BastionProvider(service)
 
     def __is_or_has_file(self, data):
-        '''
+        """
         Figure out if we have been given a file-like object as one of the inputs to the function that called this.
         Is a bit clunky because 'file' doesn't exist as a bare-word type check in Python 3 and built in file objects
         are not instances of io.<anything> in Python 2
@@ -114,11 +114,13 @@ class SSH():
         https://stackoverflow.com/questions/1661262/check-if-object-is-file-like-in-python
         Returns:
             Boolean - True if we have a file-like object
-        '''
+        """
         if (hasattr(data, 'file')):
             data = data.file
 
         try:
+            # This is an error in Python 3, but we catch that error and do the py3 equivalent.
+            # noinspection PyUnresolvedReferences
             return isinstance(data, file)
         except NameError:
             from io import IOBase
@@ -131,6 +133,7 @@ class SSH():
         :param input_data: Input data to send. Either string or file.
         :param run: Boolean that indicates if the text file should be run.
         :param file_output: Boolean that indicates if the output should be saved.
+        :param instance
         :return: tuple - success, output
         """
         if self.__is_or_has_file(input_data):
@@ -147,6 +150,8 @@ class SSH():
 
         success, output = self.ssh(command=cmd, with_output=with_output, input_data=input_data, instance=instance)
         if file_output:
+            # output_filename will always be bound, because we don't run this code until we bound it earlier.
+            # noinspection PyUnboundLocalVariable
             output = output_filename
         return success, output
 
@@ -156,6 +161,7 @@ class SSH():
 
         :param lines: list of lines of the script.
         :param file_output: Boolean that indicates if the output should be saved.
+        :param instance
         :return: tuple - success, output
         """
         data = '\n'.join(lines)
@@ -169,10 +175,10 @@ class SSH():
         else:
             stdout = subprocess.PIPE
 
+        input_string = None
         if input_data:
             if self.__is_or_has_file(input_data):
                 stdin = input_data
-                input_string = None
             else:
                 stdin = subprocess.PIPE
                 input_string = input_data
@@ -184,7 +190,7 @@ class SSH():
             output, errors = p.communicate(input_string)
         except subprocess.CalledProcessError as err:
             success = False
-            output = "{}\n{}".format(err.cmd, err.output)
+            # output = "{}\n{}".format(err.cmd, err.output)
             output = err.output
 
         return success, output
@@ -236,7 +242,6 @@ class SSH():
         """
         Exec into a running Docker container.
         """
-        # command = '\'/usr/bin/docker exec -it `/usr/bin/docker ps --filter "name=ecs-{}*" -q` bash \''
         command = self.provider.get_docker_exec_sub_command()
         command = command.format(self.service.family)
         self.ssh(command, is_running=True, verbose=verbose)
@@ -248,7 +253,7 @@ class SSH():
         :param host:
         :param local_port:
         :param host_port:
-
+        :param verbose:
         """
         hosts = self.service._get_cluster_hosts()
         ecs_host = hosts[list(hosts.keys())[0]]
