@@ -31,7 +31,7 @@ setup(name="deployfish",
           "requests >= 2.18.4"
       ],
       entry_points={'console_scripts': [
-          'deploy = deployfish.dplycli:main',
-          'dpy = deployfish.dplycli:main'
+          'deploy = deployfish.main:main',
+          'dpy = deployfish.main:main'
       ]}
       )

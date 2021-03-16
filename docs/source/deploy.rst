@@ -1,7 +1,7 @@
 Command-line reference
 ======================
 
-.. click:: deployfish.dplycli:cli
+.. click:: deployfish.cli:cli
    :prog: deploy
    :show-nested:
 

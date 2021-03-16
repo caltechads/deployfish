@@ -38,7 +38,7 @@ class MySQLDatabaseManipulator(object):
             "-u%(user)s" % self.db_config,
             "-h%(host)s" % self.db_config,
             "-e %s" % command
-            ]
+        ]
         if db:
             cmd.append("%(name)s" % self.db_config)
         subprocess.call(cmd)
