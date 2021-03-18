@@ -1,3 +1,9 @@
+"""
+Command group: `deploy parameters COMMAND`
+
+This file contains commands that acting on AWS ParameterStore parameters independently of an ECS Task or
+ECS service.  Use these commands to manipulate external parameters.
+"""
 import click
 
 from deployfish.aws.systems_manager import (

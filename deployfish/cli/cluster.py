@@ -1,4 +1,8 @@
+"""
+Command group: deploy cluster COMMAND
 
+This file contains the commands that act on an ECS cluster.
+"""
 import click
 
 from ..config import needs_config

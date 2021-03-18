@@ -1,10 +1,19 @@
+"""
+Command group: `deploy config COMMAND`
+
+This file contains the commands that act AWS Paramter Store parameters for an ECS service.
+
+.. note::
+
+    This is ONLY for ECS services.  ECS Task parameters are handled by `deploy task config`
+"""
 import click
 
 from ..config import needs_config
 from .cli import cli
 from .misc import (
     FriendlyServiceFactory,
-    print_sorted_parameters,
+    ClickServiceAdapter,
 )
 
 
@@ -25,28 +34,14 @@ def show_config(ctx, service_name, diff, to_env_file):
     all parameters for the service and the values they currently have in AWS.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
-    if not to_env_file:
-        if diff:
-            click.secho('Diff between local and AWS parameters for service "{}":'.format(service_name), fg='white')
-        else:
-            click.secho('Live values of parameters for service "{}":'.format(service_name), fg='white')
-    parameters = service.get_config()
-    if len(parameters) == 0:
-        click.secho("  No parameters found.")
+    adapter = ClickServiceAdapter(service)
+    if to_env_file:
+        click.secho(adapter.parameters.to_env_file())
+        return
+    if diff:
+        click.secho(adapter.parameters.diff())
     else:
-        if diff:
-            print_sorted_parameters(parameters)
-        else:
-            for p in parameters:
-                if p.exists:
-                    if p.should_exist:
-                        if to_env_file:
-                            print("{}={}".format(p.key, p.aws_value))
-                        else:
-                            click.secho("  {}".format(p.display(p.key, p.aws_value)))
-                else:
-                    if not to_env_file:
-                        click.secho("  {}".format(p.display(p.key, "[NOT IN AWS]")), fg="red")
+        click.secho(adapter.parameters.list())
 
 
 @config.command('write', short_help="Write the config parameters to AWS System Manager Parameter Store")
@@ -60,16 +55,5 @@ def write_config(ctx, service_name, dry_run):
     all of the parameters for the service to AWS Parameter Store.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
-    parameters = service.get_config()
-    if len(parameters) == 0:
-        click.secho('No parameters found for service "{}":'.format(service_name), fg='white')
-    else:
-        if not dry_run:
-            click.secho('Updating parameters for service "{}":'.format(service_name), fg='white')
-        else:
-            click.secho('Would update parameters for service "{}" like so:'.format(service_name), fg='white')
-    print_sorted_parameters(parameters)
-    if not dry_run:
-        service.write_config()
-    else:
-        click.echo('\nDRY RUN: not making changes in AWS')
+    adapter = ClickServiceAdapter(service)
+    click.secho(adapter.parameters.write(dry_run=dry_run))

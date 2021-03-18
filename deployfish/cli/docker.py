@@ -1,3 +1,13 @@
+"""
+Command group: No group; miscellaneous top level commands related to networking.
+
+This file contains commands that allow SSHing to individual ECS container instances, tunneling to resources in AWS (e.g.
+RDS servers, LDAP servers, etc.) and exec'ing into containers.
+
+.. note::
+
+    This is ONLY for ECS services that run on EC2, not on FARGATE.  You can't currently exec into FARGATE containers.
+"""
 import click
 
 from ..config import needs_config

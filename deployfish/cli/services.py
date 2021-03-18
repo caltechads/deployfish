@@ -1,4 +1,14 @@
-import os
+"""
+Command group: No group; miscellaneous top level commands related to ECS services.
+
+This file contains commands that act on ECS services (creating, examining, updating, etc.).
+
+.. note::
+
+    There's not command group for this (e.g. `deploy service COMMAND`) because deployfish originally only dealt with ECS
+    services and we did not think ahead to imagine all the ways we'd expand this tool.
+"""
+
 import sys
 
 import click
@@ -6,12 +16,9 @@ from ..config import needs_config
 
 from .cli import cli
 from .misc import (
+    ClickServiceAdapter,
+    ClickServiceEntrypoint,
     FriendlyServiceFactory,
-    manage_asg_count,
-    print_service_info,
-    print_sorted_parameters,
-    print_task_definition,
-    _entrypoint,
 )
 
 
@@ -42,25 +49,17 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg, tim
     Create a new ECS service named SERVICE_NAME.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
+    adapter = ClickServiceAdapter(service)
     print()
     if service.exists():
         click.secho('Service "{}" already exists!'.format(service.serviceName), fg='red')
         sys.exit(1)
-    click.secho('Creating service with these attributes:', fg='white')
-    click.secho('  Service info:', fg="green")
-    print_service_info(service)
-    click.secho('    Task Definition:', fg='green')
-    print_task_definition(service.desired_task_definition)
-    if service.tasks:
-        click.secho('\nCreating these helper tasks:', fg='white')
-        for key, value in service.tasks.items():
-            click.secho("  {}".format(key), fg='green')
-            print_task_definition(value.desired_task_definition)
+    click.secho(adapter.render(state='desired'))
     parameters = service.get_config()
     if update_configs:
         if len(parameters) > 0:
             click.secho('\nUpdating service config parameters like so:', fg='white')
-            print_sorted_parameters(parameters)
+            click.secho(adapter.parameters.diff())
         else:
             click.secho('\nService has no config parameters defined: SKIPPING', fg='white')
     else:
@@ -75,14 +74,18 @@ def create(ctx, service_name, update_configs, dry_run, wait, asg, force_asg, tim
             else:
                 click.secho('    To update them in AWS, do "deploy config write {}"'.format(service_name))
     if not dry_run:
-        manage_asg_count(service, service.count, asg, force_asg)
+        if asg:
+            try:
+                adapter.scale_asg(force=force_asg)
+            except adapter.ASGScaleException as e:
+                click.secho(str(e))
+                sys.exit(1)
         service.create()
         if wait:
-            click.secho("\n  Waiting until the service is stable ...", fg='white')
-            if service.wait_until_stable(timeout):
-                click.secho("  Done.", fg='white')
-            else:
-                click.secho("  FAILURE: the service failed to start.", fg='red')
+            try:
+                adapter.wait(timeout)
+            except adapter.TimeoutException as e:
+                click.secho(str(e))
                 sys.exit(1)
 
 
@@ -95,18 +98,10 @@ def info(ctx, service_name):
     Show current AWS information about this service and its task definition
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
+    adapter = ClickServiceAdapter(service)
     print()
     if service.exists():
-        click.secho('"{}" service live info:'.format(service.serviceName), fg="white")
-        click.secho('  Service info:', fg="green")
-        print_service_info(service)
-        click.secho('  Task Definition:', fg="green")
-        print_task_definition(service.active_task_definition)
-        if service.tasks:
-            click.secho('\n"{}" helper tasks:'.format(service.serviceName), fg='white')
-            for key, value in service.tasks.items():
-                click.secho("  {}".format(key), fg='green')
-                print_task_definition(value.active_task_definition)
+        click.secho(adapter.render())
     else:
         click.secho('"{}" service is not in AWS yet.'.format(service.serviceName), fg="white")
 
@@ -152,43 +147,43 @@ def version(ctx, service_name):
 @needs_config
 def update(ctx, service_name, dry_run, wait, timeout):
     """
-    Update the our ECS service from what is in deployfish.yml.  This means two things:
+    Update the our ECS service in AWS from what is in deployfish.yml.  This means these things:
 
     \b
         * Update the task definition
         * Update the scaling policies (if any)
+        * Update the helper tasks (if any)
 
     These things can only be changed by deleting and recreating the service:
 
     \b
         * service name
         * cluster name
-        * load balancer
+        * load balancer/target groups
 
     If you want to update the desiredCount on the service, use "deploy scale".
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
+    adapter = ClickServiceAdapter(service)
     print()
-    click.secho('Updating "{}" service:'.format(service.serviceName), fg="white")
-    click.secho('  Current task definition:', fg="yellow")
-    print_task_definition(service.active_task_definition)
-    click.secho('\n  New task definition:', fg="green")
-    print_task_definition(service.desired_task_definition)
-    if service.tasks:
-        click.secho('\nUpdating "{}" helper tasks to:'.format(service.serviceName), fg='white')
-        for key, value in service.tasks.items():
-            click.secho("  {}".format(key), fg='green')
-            print_task_definition(value.desired_task_definition)
+    title = 'Updating "{}" service:'.format(service.serviceName)
+    click.secho(title, fg="white")
+    click.secho('=' * len(title), fg="white")
+    click.secho('\nCurrent task definition:', fg="yellow")
+    click.secho(adapter.indent(adapter.active_task_definition.render()))
+    click.secho('\nNew task definition:', fg="yellow")
+    click.secho(adapter.indent(adapter.desired_task_definition.render()))
+    print()
+    click.secho(adapter.render_helper_tasks(state='desired'))
     if service.scaling and service.scaling.needs_update():
         click.secho('\nUpdating "{}" application scaling'.format(service.serviceName), fg='white')
     if not dry_run:
         service.update()
         if wait:
-            click.secho("\n  Waiting until the service is stable with our new task def ...", fg='white')
-            if service.wait_until_stable(timeout):
-                click.secho("  Done.", fg='white')
-            else:
-                click.secho("  FAILURE: the service failed to start.", fg='red')
+            try:
+                adapter.wait(timeout)
+            except adapter.TimeoutException as e:
+                click.secho(str(e))
                 sys.exit(1)
 
 
@@ -216,7 +211,6 @@ def restart(ctx, service_name, hard):
 @click.pass_context
 @click.argument('service_name')
 @click.argument('count', type=int)
-@click.option('--dry-run/--no-dry-run', default=False, help="Don't actually scale the service")
 @click.option('--wait/--no-wait', default=True, help="Don't exit until the service is stable with the new count")
 @click.option('--asg/--no-asg', default=True, help="Scale your ASG also")
 @click.option(
@@ -230,27 +224,21 @@ def restart(ctx, service_name, hard):
     help="Retry the service stability check until this many seconds has passed. Default: 600."
 )
 @needs_config
-def scale(ctx, service_name, count, dry_run, wait, asg, force_asg, timeout):
+def scale(ctx, service_name, count, wait, asg, force_asg, timeout):
     """
     Set the desired count for service SERVICE_NAME to COUNT.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
+    adapter = ClickServiceAdapter(service)
     print()
-    manage_asg_count(service, count, asg, force_asg)
-    click.secho('Updating desiredCount on "{}" service in cluster "{}" to {}.'.format(
-        service.serviceName,
-        service.clusterName,
-        count
-    ), fg="white")
-    if not dry_run:
-        service.scale(count)
-        if wait:
-            click.secho("  Waiting until the service is stable with our new count ...", fg='cyan')
-            if service.wait_until_stable(timeout):
-                click.secho("  Done.", fg='white')
-            else:
-                click.secho("  FAILURE: the service failed to start.", fg='red')
-                sys.exit(1)
+    adapter.scale_asg(count=count, force=force_asg)
+    service.scale(count)
+    if wait:
+        try:
+            adapter.wait(timeout)
+        except adapter.TimeoutException as e:
+            click.secho(str(e))
+            sys.exit(1)
 
 
 @cli.command('delete', short_help="Delete a service from AWS")
@@ -268,12 +256,13 @@ def delete(ctx, service_name, dry_run, timeout):
     Delete the service SERVICE_NAME from AWS.
     """
     service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
+    adapter = ClickServiceAdapter(service)
     print()
     click.secho('Deleting service "{}":'.format(service.serviceName), fg="white")
-    click.secho('  Service info:', fg="green")
-    print_service_info(service)
-    click.secho('  Task Definition info:', fg="green")
-    print_task_definition(service.active_task_definition)
+    if service.exists():
+        click.secho(adapter.render())
+    else:
+        click.secho('"{}" service is not in AWS yet.'.format(service.serviceName), fg="white")
     print()
     if not dry_run:
         click.echo("If you really want to do this, answer \"{}\" to the question below.\n".format(service.serviceName))
@@ -304,17 +293,17 @@ def run_task(ctx, service_name, command):
         print(response)
 
 
-@cli.command('entrypoint', short_help="Use for a Docker entrypoint", context_settings=dict(ignore_unknown_options=True))
+@cli.command(
+    'entrypoint',
+    short_help="Use for a Docker entrypoint for an ECS service",
+    context_settings=dict(ignore_unknown_options=True)
+)
 @click.pass_context
 @click.argument('command', nargs=-1)
-@click.option(
-    '--dry-run/--no-dry-run',
-    default=False,
-    help="Don't actually run the task, but print what we would have done"
-)
+@click.option('--dry-run/--no-dry-run', default=False, help="Just print what environment variables would be set")
 def entrypoint(ctx, command, dry_run):
     """
-    Use this as the entrypoint for your containers.
+    Use this as the entrypoint for your ECS service containers.
 
     It will look in the shell environment for the environment variables
     DEPLOYFISH_SERVICE_NAME and DEPLOYFISH_CLUSTER_NAME.  If found, it will
@@ -338,6 +327,9 @@ def entrypoint(ctx, command, dry_run):
         a container in your AWS service.  It should get its credentials
         from the container's IAM ECS Task Role.
     """
-    service_name = os.environ.get('DEPLOYFISH_SERVICE_NAME', None)
-    cluster_name = os.environ.get('DEPLOYFISH_CLUSTER_NAME', None)
-    _entrypoint(ctx, "services", service_name, cluster_name, "", command, dry_run)
+    entrypoint = ClickServiceEntrypoint(config_file=ctx.obj['CONFIG_FILE'])
+    try:
+        entrypoint.entrypoint(command, dry_run=dry_run)
+    except ClickServiceEntrypoint.DoesNotExist as e:
+        print(str(e))
+        sys.exit(1)
