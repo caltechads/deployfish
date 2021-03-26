@@ -11,7 +11,7 @@ from deployfish.aws.appscaling import ApplicationAutoscaling
 from deployfish.aws.systems_manager import ParameterStore
 from deployfish.aws.service_discovery import ServiceDiscovery
 
-from .Task import TaskDefinition
+from .task_definition import TaskDefinition
 from .Task import HelperTask
 
 

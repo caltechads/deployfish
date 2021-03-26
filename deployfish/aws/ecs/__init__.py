@@ -1,5 +1,4 @@
 from .Service import Service
 from .Task import Task
-from .Task import TaskDefinition
+from .task_definition import TaskDefinition, VolumeMixin
 from .Task import ContainerDefinition
-from .Task import VolumeMixin

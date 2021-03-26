@@ -350,6 +350,14 @@ class ClickTaskAdapter(AbstractClickAdapter):
             self.active_task_definition = None
 
     def _render_vpc_configuration(self):
+        """
+        Build the output for showing our task's vpc configuration, if any.
+
+        .. note::
+
+            Technically we should need this for services also, so at some point we need to refactor this into a base
+            class or mixin.
+        """
         lines = []
         if self.task.vpc_configuration:
             lines.append(self.section('vpc_configuration:'))
@@ -358,6 +366,11 @@ class ClickTaskAdapter(AbstractClickAdapter):
         return lines
 
     def render(self, state='live', join=True):
+        """
+        Return description of our task.
+
+        :rtype: Union[list(str), str)]
+        """
         assert state in ['live', 'desired']
         lines = []
         lines.append(self.title('Task [desired]:'.format(state)))

@@ -28,7 +28,8 @@ setup(name="deployfish",
           "click >= 6.7",
           "PyYAML >= 5",
           "tzlocal >= 1.4",
-          "requests >= 2.18.4"
+          "requests >= 2.18.4",
+          "jsondiff2 >= 1.2.3"
       ],
       entry_points={'console_scripts': [
           'deploy = deployfish.main:main',
