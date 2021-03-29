@@ -21,7 +21,7 @@ class AutoscalingGroupManager(Manager):
             raise AutoscalingGroup.DoesNotExist(
                 'No Autoscaling Group named "{}" exists in AWS'.format(pk)
             )
-        return AutoscalingGroup(response['AutoscalingGroups'][0])
+        return AutoscalingGroup(response['AutoScalingGroups'][0])
 
     def save(self, obj):
         self.asg.update_auto_scaling_group(**obj.render_for_update())
@@ -75,6 +75,10 @@ class AutoscalingGroup(Model):
     def pk(self):
         return self.data['AutoScalingGroupName']
 
+    @property
+    def name(self):
+        return self.data['AutoScalingGroupName']
+
     def scale(self, count, force=True):
         if self.objects.exists(self.pk):
             min_size = self.data['MinSize']
@@ -118,7 +122,7 @@ class Instance(SSHMixin, Model):
         if not hasattr(self, '_tags'):
             self._tags = {}
             for tag in self.data['Tags']:
-                self._tags[tag['Name']] = tag['Value']
+                self._tags[tag['Key']] = tag['Value']
         return self._tags[tag_name]
 
     @property
@@ -159,7 +163,7 @@ class Instance(SSHMixin, Model):
     def autoscaling_group(self):
         if 'autoscaling_group' not in self.cache:
             try:
-                autoscalinggroup_name = self.get_tag_value('AutoscalingGroup')
+                autoscalinggroup_name = self.get_tag_value('aws:autoscaling:groupName')
             except KeyError:
                 self.cache['autoscaling_group'] = None
             else:

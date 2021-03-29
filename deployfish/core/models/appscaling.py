@@ -71,7 +71,7 @@ class ScalableTargetManager(Manager):
         if 'ScalableTargets' in response and response['ScalableTargets']:
             data = response['ScalableTargets'][0]
         else:
-            raise ScalingPolicy.DoesNotExist('No ScalableTarget with name "{}" exists in AWS'.format(pk))
+            raise ScalableTarget.DoesNotExist('No ScalableTarget with name "{}" exists in AWS'.format(pk))
         policies = ScalingPolicy.objects.list(cluster, service)
         return ScalableTarget(data, policies=policies)
 
@@ -93,7 +93,6 @@ class ScalableTargetManager(Manager):
         self.client.register_scalable_target(**obj.render_for_create())
         for policy in obj.policies:
             policy.save()
-        return arn
 
     def delete(self, obj):
         for policy in obj.policies:
@@ -134,8 +133,10 @@ class ScalingPolicy(Model):
 
     def render_for_diff(self):
         data = self.render()
-        del data['PolicyARN']
-        del data['CreationTime']
+        if 'PolicyARN' in data:
+            del data['PolicyARN']
+            del data['CreationTime']
+            del data['Alarms']
         if self.alarm:
             data['alarm'] = self.alarm.render_for_diff()
         return data
@@ -143,10 +144,10 @@ class ScalingPolicy(Model):
 
 class ScalableTarget(Model):
 
-    objects = ScalingPolicyManager()
+    objects = ScalableTargetManager()
 
     def __init__(self, data, policies=None):
-        super(ScalingPolicy, self).__init__(data)
+        super(ScalableTarget, self).__init__(data)
         if not policies:
             policies = []
         self.policies = policies
@@ -161,5 +162,13 @@ class ScalableTarget(Model):
 
     def render_for_diff(self):
         data = self.render()
-        data['policies'] = [p.render_for_diff() for p in self.policies]
+        if 'CreationTime' in data:
+            del data['CreationTime']
+        else:
+            data['SuspendedState'] = {
+                'DynamicScalingInSuspended': False,
+                'DynamicScalingOutSuspended': False,
+                'ScheduledScalingSuspended': False
+            }
+        data['scaling_policies'] = [p.render_for_diff() for p in sorted(self.policies, key=lambda x: x.pk)]
         return data

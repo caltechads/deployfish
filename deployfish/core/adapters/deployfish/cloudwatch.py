@@ -69,8 +69,8 @@ class ECSServiceCPUAlarmAdapter(DeployfishYamlAdapter):
             {'Name': 'ClusterName', 'Value': self.cluster},
             {'Name': 'ServiceName', 'Value': self.service}
         ]
-        data['Period'] = int(self.check_every_seconds)
+        data['Period'] = int(self.data['check_every_seconds'])
         data['Unit'] = self.data.get('unit', 'Percent')
-        data['EvaluationPeriods'] = int(self.periods)
+        data['EvaluationPeriods'] = int(self.data['periods'])
         data['ComparisonOperator'] = self.get_ComparisonOperator()
         return data, {}

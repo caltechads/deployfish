@@ -1,9 +1,5 @@
 from copy import copy
 
-from jsondiff import diff
-
-from deployfish.aws import get_boto3_session
-
 from .abstract import Manager, Model
 
 

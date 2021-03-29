@@ -95,8 +95,8 @@ class TaskDefinitionAdapter(DeployfishYamlAdapter):
         """
         volume_names = set()
         volumes = []
-        volumes = self.data.get('volumes', [])
-        for v in self.volumes:
+        volumes_data = self.data.get('volumes', [])
+        for v in volumes_data:
             if v['name'] in volume_names:
                 continue
             v_dict = {'name': v['name']}
@@ -116,18 +116,22 @@ class TaskDefinitionAdapter(DeployfishYamlAdapter):
         data = {}
         data['family'] = self.data['family']
         data['networkMode'] = self.data.get('network_mode', 'bridge')
-        cpu = self.data.get('cpu', None)
-        data['cpu'] = int(cpu) if cpu else None
-        memory = self.data.get('memory', None)
-        data['cpu'] = int(memory) if memory else None
+        if 'cpu' in self.data:
+            data['cpu'] = int(self.data['cpu'])
+        if 'memory' in self.data:
+            data['memory'] = int(self.data['memory'])
         launch_type = self.data.get('launch_type', 'EC2')
-        data['requiresCompatibilities'] = ['FARGATE']
-        data['taskRoleArn'] = self.data.get('task_role_arn', None)
-        data['executionRoleArn'] = self.data.get('execution_role', None)
+        if launch_type == 'FARGATE':
+            data['requiresCompatibilities'] = ['FARGATE']
+        if 'task_role_arn' in self.data:
+            data['taskRoleArn'] = self.data['task_role_arn']
+        if 'execution_role' in self.data:
+            data['executionRoleArn'] = self.data['execution_role']
         if launch_type == 'FARGATE' and not data['executionRoleArn']:
             raise self.SchemaException(
                 'If your launch_type is "FARGATE", you must supply "execution_role"'
             )
+        data['volumes'] = self.get_volumes()
         containers_data = []
         for container_definition in self.data['containers']:
             containers_data.append(
@@ -136,7 +140,7 @@ class TaskDefinitionAdapter(DeployfishYamlAdapter):
                     data,
                     secrets=self.secrets,
                     extra_environment=self.extra_environment
-                )
+                ).convert()
             )
 
         return data, {'containers': containers_data}
@@ -169,7 +173,7 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
         to do this and we don't have an execution role, so we don't pass the secrets if it doesn't
         have an execution role
         """
-        self.data['secrets'] = [{'name': s.name, 'valueFrom': s.pk} for s in self.secrets]
+        return [{'name': s.name, 'valueFrom': s.pk} for s in self.secrets]
 
     def get_mountPoints(self):
         """
@@ -250,17 +254,17 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
         for mapping in self.data.get('ports', []):
             m = self.PORTS_RE.search(mapping)
             if m:
+                mapping = {}
                 if not m.group('containerPort'):
-                    containerPort = int(m.group('hostPort'))
+                    mapping['containerPort'] = int(m.group('hostPort'))
                 else:
-                    hostPort = int(m.group('hostPort'))
-                    containerPort = int(m.group('containerPort'))
+                    mapping['hostPort'] = int(m.group('hostPort'))
+                    mapping['containerPort'] = int(m.group('containerPort'))
                 protocol = m.group('protocol')
                 if not protocol:
                     protocol = 'tcp'
-                portMappings.append(
-                    {'containerPort': containerPort, 'hostPort': hostPort, 'protocol': protocol}
-                )
+                mapping['protocol'] = protocol
+                portMappings.append(mapping)
 
             else:
                 raise self.ContainerYamlSchemaException(
@@ -291,16 +295,17 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
 
         :rtype: list(dict(str, str))
         """
-        if isinstance(self.data['environment'], list):
-            source_environment = {}
-            for env in self.data['environment']:
-                parts = env.split('=')
-                k, v = parts[0], '='.join(parts[1:])
-                source_environment[k] = v
-        else:
-            source_environment = self.data['environment']
-        source_environment.update(self.extra_environment)
-        return [{'name': k, 'value': v} for k, v in source_environment.items()]
+        if 'environment' in self.data:
+            if isinstance(self.data['environment'], list):
+                source_environment = {}
+                for env in self.data['environment']:
+                    parts = env.split('=')
+                    k, v = parts[0], '='.join(parts[1:])
+                    source_environment[k] = v
+            else:
+                source_environment = self.data['environment']
+            source_environment.update(self.extra_environment)
+            return [{'name': k, 'value': v} for k, v in source_environment.items()]
 
     def get_dockerLabels(self):
         """
@@ -326,12 +331,13 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
         :rtype: dict(str, str)
         """
         dockerLabels = {}
-        if type(self.data['labels']) == dict:
-            dockerLabels = self.data['labels']
-        else:
-            for label in self.data['labels']:
-                key, value = label.split('=')
-                dockerLabels[key] = value
+        if 'labels' in self.data:
+            if type(self.data['labels']) == dict:
+                dockerLabels = self.data['labels']
+            else:
+                for label in self.data['labels']:
+                    key, value = label.split('=')
+                    dockerLabels[key] = value
         return dockerLabels
 
     def get_ulimits(self):
@@ -395,30 +401,52 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
         data = {}
         data['name'] = self.data['name']
         data['image'] = self.data['image']
-        data['cpu'] = int(self.data.get('cpu', 256))
-        data['memoryReservation'] = self.data.get('memoryReservation', None)
-        memory = self.data.get('memory', None)
-        memory = int(memory) if memory else None
-        if memory is None and data['memoryReservation'] is None:
+        data['essential'] = True
+        try:
+            data['cpu'] = int(self.data.get('cpu', 256))
+        except ValueError:
+            raise self.SchemaExeption('"cpu" must be an integer')
+        if 'memoryReservation' in self.data:
+            try:
+                data['memoryReservation'] = int(self.data['memoryReservation'])
+            except ValueError:
+                raise self.SchemaExeption('"memoryReservation" must be an integer')
+        if 'memory' in self.data:
+            try:
+                memory = int(self.data['memory'])
+            except ValueError:
+                raise self.SchemaExeption('"memory" must be an integer')
+        elif data['memoryReservation'] is None:
             memory = 512
         data['memory'] = memory
-        data['links'] = self.data.get('links', [])
-        data['portMappings'] = self.get_ports()
-        data['essential'] = True
-        command = self.data.get('command', None)
-        command = shlex.split(command) if command else None
-        data['command'] = command
-        entrypoint = self.data.get('entrypoint', None)
-        entrypoint = shlex.split(entrypoint) if entrypoint else None
-        data['entryPoint'] = entrypoint
-        data['ulimits'] = self.get_ulimits()
-        data['environment'] = self.get_environment()
-        data['mountPoints'] = self.get_mountPoints()
-        data['links'] = self.data.get('links', None)
-        data['dockerLabels'] = self.get_dockerLabels()
-        data['logConfiguration'] = self.get_logConfiguration()
-        data['extraHosts'] = self.get_extraHosts()
-        data['linuxCapabilities'] = self.get_linuxCapabilities()
+        if 'ports' in self.data:
+            data['portMappings'] = self.get_ports()
+        if 'command' in self.data:
+            command = self.data.get('command', None)
+            command = shlex.split(command) if command else None
+            data['command'] = command
+        if 'entrypoint' in self.data:
+            entrypoint = self.data.get('entrypoint', None)
+            entrypoint = shlex.split(entrypoint) if entrypoint else None
+            data['entryPoint'] = entrypoint
+        if 'ulimits' in self.data:
+            data['ulimits'] = self.get_ulimits()
+        if 'environment' in self.data:
+            data['environment'] = self.get_environment()
+        if 'volumes' in self.data:
+            data['mountPoints'] = self.get_mountPoints()
+        if 'links' in self.data:
+            data['links'] = self.data.get['links']
+        if 'dockerLabels' in self.data:
+            data['dockerLabels'] = self.get_dockerLabels()
+        if 'logging' in self.data:
+            data['logConfiguration'] = self.get_logConfiguration()
+        if 'extra_hosts' in self.data:
+            data['extraHosts'] = self.get_extraHosts()
+        if 'cap_add' in self.data or 'cap_drop' in self.data:
+            data['linuxCapabilities'] = self.get_linuxCapabilities()
+        if self.secrets:
+            data['secrets'] = self.get_secrets()
 
         return data
 
@@ -509,7 +537,8 @@ class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter)
                 loadBalancers.append(lb_data)
         else:
             # We either have just one target group, or we're using an ELB
-            if 'load_balancer_name' in self.data['load_balancer']:
+            group = self.data['load_balancer']
+            if 'load_balancer_name' in group:
                 # ELB
                 loadBalancers.append({
                     'loadBalancerName': group['load_balancer_name'],
@@ -534,7 +563,7 @@ class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter)
                 data['role'] = self.data['service_role_arn']
             elif 'load_balancer' in self.data and 'service_role_arn' in self.data['load_balancer']:
                 data['role'] = self.data['load_balancer']['service_role_arn']
-            data['loadBlaancers'] = self.get_loadBalancers()
+            data['loadBalancers'] = self.get_loadBalancers()
         if 'capacity_provider_strategy' in self.data:
             data['capacityProviderStrategy'] = self.data['capacity_provider_strategy']
         else:
@@ -584,7 +613,7 @@ class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter)
                 )
             else:
                 raise self.SchemaException(
-                    'Service(name="{}"): You must use network_mode of "awsvpc" to enable service discovery'.format(self.data['name'])
+                    'You must use network_mode of "awsvpc" to enable service discovery'.format(self.data['name'])
                 )
 
         return data, kwargs

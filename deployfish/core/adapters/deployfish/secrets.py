@@ -39,7 +39,10 @@ class SecretAdapter(DeployfishYamlAdapter):
         super(SecretAdapter, self).__init__(data, **kwargs)
         self.cluster = kwargs.pop('cluster', None)
         self.name = kwargs.pop('name', None)
-        self.prefix = kwargs.pop('prefix', '')
+        if 'prefix' in kwargs and kwargs['prefix']:
+            self.prefix = '{}-'.format(kwargs['prefix'])
+        else:
+            self.prefix = ''
 
     def is_external(self):
         if ':external' in self.data:
@@ -75,8 +78,8 @@ class SecretAdapter(DeployfishYamlAdapter):
         is_secure = False
         kms_key_id = None
 
-        identifier, value = copy(self.data)
-        while self.data is not None:
+        identifier, value = copy(self.data).split('=', 1)
+        while identifier is not None:
             segments = identifier.split(':', 1)
             segment = segments[0]
             if len(segments) > 1:
@@ -93,7 +96,8 @@ class SecretAdapter(DeployfishYamlAdapter):
             i += 1
         kwargs = {
             'Value': value,
-            'DataType': 'text'
+            'DataType': 'text',
+            'Tier': 'Standard'
         }
         if is_secure:
             kwargs['Type'] = 'SecureString'
@@ -110,7 +114,7 @@ class SecretAdapter(DeployfishYamlAdapter):
         key, kwargs = self.parse()
         data = {}
         if self.cluster and self.name:
-            data['Name'] = '{}-{}.{}.{}'.format(self.prefix, self.cluster, self.name, key)
+            data['Name'] = '{}{}.{}.{}'.format(self.prefix, self.cluster, self.name, key)
         else:
             data['Name'] = '{}{}'.format(self.prefix, key)
         data.update(kwargs)

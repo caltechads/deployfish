@@ -1,13 +1,13 @@
 from copy import copy
 
-import botocore
-
 from ..ssh import DockerMixin, SSHMixin
 
-from .abstract import Manager, Model
+from .abstract import Manager, Model, LazyAttributeMixin
 from .ec2 import Instance
 from .events import EventScheduleRule
-from .secrets import SecretsMixin
+from .secrets import SecretsMixin, Secret
+from .appscaling import ScalableTarget
+from .service_discovery import ServiceDiscoveryService
 
 
 # ----------------------------------------
@@ -20,20 +20,29 @@ class TaskDefinitionManager(Manager):
 
     def get(self, pk, **kwargs):
         try:
-            response = self.client.describe_task_definition(task_definition=pk)
-        except botocore.exceptions.ClientException:
+            response = self.client.describe_task_definition(taskDefinition=pk)
+        except self.client.exceptions.ClientException:
             raise TaskDefinition.DoesNotExist(
                 'No task definition matching "{}" exists in AWS'.format(pk)
             )
         data = response['taskDefinition']
-        arn = data.pop('taskDefinitionArn')
-        revision = data.pop('revision')
         containers = [ContainerDefinition(d) for d in data.pop('containerDefinitions')]
-        return TaskDefinition(data, containers, arn=arn, revision=revision)
+        return TaskDefinition(data, containers=containers)
+
+    def list(self, family):
+        paginator = self.client.get_paginator('list_task_definitions')
+        response_iterator = paginator.paginate(familyPrefix=family, sort='ASC')
+        task_definition_arns = []
+        for response in response_iterator:
+            task_definition_arns.extend(response['taskDefinitionArns'])
+        return [self.get(arn) for arn in task_definition_arns]
 
     def save(self, obj):
         response = self.client.register_task_definition(**obj.render())
         return response['taskDefinition']['taskDefinitionArn']
+
+    def delete(sef, obj):
+        raise TaskDefinition.ReadOnly('deployfish will not delete existing task definitions.')
 
 
 class StandaloneTaskManager(Manager):
@@ -98,81 +107,17 @@ class StandaloneTaskManager(Manager):
             )
 
 
-class ServiceManager(Manager):
-
-    service = 'ecs'
-
-    def __get_service_and_cluster_from_pk(self, pk):
-        if isinstance(pk, Service):
-            cluster, service = pk.pk.split(':')
-        else:
-            cluster, service = pk.split(':')
-        return service, cluster
-
-    def get(self, pk):
-        """
-        :param pk str: a string like "{cluster}:{serviceName}"
-        """
-        # Need these things out of AWS
-        #
-        #  * Most recent task definition: what will be run if we do `deploy task run`
-        #  * Any scheduled task.  Note this may have a different task definition
-        #  * TODO: a populated ParameterStore built out of the secrets in the first container's container definition
-        # This will give us the most recent versision of a task definition whose family is `name`
-        service, cluster = self.__get_service_and_cluster_from_pk(pk)
-        response = self.client.describe_services(cluster=cluster, services=[service])
-        if response['services'] and response['services'][0]['status'] != 'INACTIVE':
-            data = response['services'][0]
-        else:
-            raise Service.DoesNotExist(
-                'No service named "{}" in cluster "{}" exists in AWS'.format(service, cluster)
-            )
-        task_definition = TaskDefinition.objects.get(data['taskDefinition'])
-        return Service(data, task_definition=task_definition)
-
-    def exists(self, pk):
-        service, cluster = self.__get_service_and_cluster_from_pk(pk)
-        response = self.client.describe_services(cluster=cluster, services=[service])
-        if response['services'] and response['services'][0]['status'] != 'INACTIVE':
-            # FIXME: INACTIVE should not be considered the same as non-existant
-            return True
-        return False
-
-    def list(self, cluster):
-        try:
-            response = self.client.list_services(cluster=cluster)
-        except self.client.ClusterNotFoundException:
-            raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
-        return [self.get('{}:{}'.format(cluster, arn)) for arn in response['serviceArns']]
-
-    def save(self, obj):
-        if self.exists(obj):
-            self.update(obj)
-        else:
-            self.create(obj)
-
-    def create(self, obj):
-        self.client.create_service(**obj.render_for_create())
-
-    def update(self, obj):
-        self.client.update_service(**obj.render_for_update())
-
-    def delete(self, obj):
-        if self.exists(obj.pk):
-            service, cluster = self.__get_service_and_cluster_from_pk(obj.pk)
-            self.client.delete_service(cluster=cluster, service=service)
-
-
 class InvokedTaskManager(Manager):
+
+    """
+    Invoked tasks are tasks that either are currently running in ECS, or have
+    run and are now stopped.
+    """
 
     service = 'ecs'
 
     def __get_cluster_and_task_arn_from_pk(self, pk):
-        if isinstance(pk, Service):
-            cluster, task_arn = pk.pk.split(':')
-        else:
-            cluster, service = pk.split(':')
-        return service, task_arn
+        return pk.split(':', 1)
 
     def get(self, pk):
         """
@@ -181,7 +126,7 @@ class InvokedTaskManager(Manager):
         cluster, task_arn = self.__get_cluster_and_task_arn_from_pk(pk)
         try:
             response = self.client.describe_tasks(cluster=cluster, tasks=[task_arn])
-        except self.client.ClusterNotFoundException:
+        except self.client.exceptions.ClusterNotFoundException:
             raise Cluster.DoesNotExist('No cluster named "{}" exists in AWS'.format(cluster))
 
         # This will give us the most recent versision of a task definition whose family is `name`
@@ -201,9 +146,9 @@ class InvokedTaskManager(Manager):
             kwargs['containerInstance'] = container_instance
         try:
             response = self.client.list_tasks(**kwargs)
-        except self.client.ClusterNotFoundException:
+        except self.client.exceptions.ClusterNotFoundException:
             raise Cluster.DoesNotExist('No cluster named "{}" exists in AWS'.format(cluster))
-        except self.client.ServiceNotFoundException:
+        except self.client.exceptions.ServiceNotFoundException:
             raise Service.DoesNotExist('No service named "{}" exists in cluster "{}" in AWS'.format(service, cluster))
         return [self.get('{}:{}'.format(cluster, arn)) for arn in response['taskArns']]
 
@@ -215,11 +160,11 @@ class ContainerInstanceManager(Manager):
 
     service = 'ecs'
 
-    def __get_service_and_id_from_pk(self, pk):
+    def __get_cluster_and_id_from_pk(self, pk):
         if isinstance(pk, ContainerInstance):
-            cluster, container_instance_id = pk.pk.split(':')
+            cluster, container_instance_id = pk.pk.split(':', 1)
         else:
-            cluster, container_instance_id = pk.split(':')
+            cluster, container_instance_id = pk.split(':', 1)
         return cluster, container_instance_id
 
     def get(self, pk):
@@ -227,17 +172,17 @@ class ContainerInstanceManager(Manager):
         :param pk str: a string like "{cluster}:{container_instance_id}"
         """
         # This will give us the most recent versision of a task definition whose family is `name`
-        cluster, container_instance_id = self.__get_service_and_id_from_pk(pk)
+        cluster, container_instance_id = self.__get_cluster_and_id_from_pk(pk)
         try:
             response = self.client.describe_container_instances(
-                clusters=[cluster],
+                cluster=cluster,
                 containerInstances=[container_instance_id]
             )
-        except self.client.ClientException:
+        except self.client.exceptions.ClientException:
             raise ContainerInstance.DoesNotExist(
                 'No container instance with id "{}" exists in cluster "{}"'.format(container_instance_id, cluster)
             )
-        except self.client.ClusterNotFoundException:
+        except self.client.exceptions.ClusterNotFoundException:
             raise Cluster.DoesNotExist(
                 'No cluster named "{}" exists in AWS'.format(cluster)
             )
@@ -298,6 +243,85 @@ class ClusterManager(Manager):
         raise Cluster.ReadOnly('Clusters cannot be updated from deployfish')
 
 
+class ServiceManager(Manager):
+
+    service = 'ecs'
+
+    def __get_service_and_cluster_from_pk(self, pk):
+        if isinstance(pk, Service):
+            cluster, service = pk.pk.split(':')
+        else:
+            cluster, service = pk.split(':')
+        return service, cluster
+
+    def get(self, pk):
+        """
+        :param pk str: a string like "{cluster}:{serviceName}"
+        """
+        # Need these things out of AWS
+        #
+        #  * Most recent task definition: what will be run if we do `deploy task run`
+        #  * Any scheduled task.  Note this may have a different task definition
+        #  * TODO: a populated ParameterStore built out of the secrets in the first container's container definition
+        # This will give us the most recent versision of a task definition whose family is `name`
+        service, cluster = self.__get_service_and_cluster_from_pk(pk)
+        try:
+            response = self.client.describe_services(cluster=cluster, services=[service])
+        except self.client.exceptions.ClusterNotFoundException:
+            raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
+        if response['services'] and response['services'][0]['status'] != 'INACTIVE':
+            data = response['services'][0]
+        else:
+            raise Service.DoesNotExist(
+                'No service named "{}" in cluster "{}" exists in AWS'.format(service, cluster)
+            )
+        data['cluster'] = data['clusterArn'].split('/')[-1]
+        return Service(data)
+
+    def exists(self, pk):
+        service, cluster = self.__get_service_and_cluster_from_pk(pk)
+        try:
+            response = self.client.describe_services(cluster=cluster, services=[service])
+        except self.client.exceptions.ClusterNotFoundException:
+            raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
+        if response['services'] and response['services'][0]['status'] != 'INACTIVE':
+            # FIXME: INACTIVE should not be considered the same as non-existant
+            return True
+        return False
+
+    def list(self, cluster, launch_type=None):
+        try:
+            response = self.client.list_services(cluster=cluster)
+        except self.client.exceptions.ClusterNotFoundException:
+            raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
+        return [self.get('{}:{}'.format(cluster, arn)) for arn in response['serviceArns']]
+
+    def save(self, obj):
+        if self.exists(obj):
+            self.update(obj)
+        else:
+            self.create(obj)
+
+    def create(self, obj):
+        if not self.exists(obj.pk):
+            try:
+                self.client.create_service(**obj.render_for_create())
+            except self.client.exceptions.ClusterNotFoundException:
+                raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(obj.data['cluster']))
+
+    def update(self, obj):
+        if self.exists(obj.pk):
+            self.client.update_service(**obj.render_for_update())
+        else:
+            service, cluster = self.__get_service_and_cluster_from_pk(obj.pk)
+            raise Service.DoesNotExist('No service named "{}" exists in cluster "{}" in AWS'.format(service, cluster))
+
+    def delete(self, obj):
+        if self.exists(obj.pk):
+            service, cluster = self.__get_service_and_cluster_from_pk(obj.pk)
+            self.client.delete_service(cluster=cluster, service=service)
+
+
 # ----------------------------------------
 # Models
 # ----------------------------------------
@@ -329,6 +353,22 @@ class TaskDefinition(Model):
         else:
             return self.data['family']
 
+    @property
+    def name(self):
+        return self.pk
+
+    @property
+    def arn(self):
+        return self.data.get('taskDefinitionArn', None)
+
+    @property
+    def family(self):
+        return self.data['family']
+
+    @property
+    def secrets(self):
+        return self.containers[0].secrets
+
     def update_task_labels(self, family_revisions):
         self.containers[0].update_task_labels(family_revisions)
 
@@ -344,31 +384,49 @@ class TaskDefinition(Model):
             del data['registeredAt']
             del data['registeredBy']
             if 'compatibilities' in data:
+                data['requiresCompatibilities'] = data['compatibilities']
                 del data['compatibilities']
             if 'requiresAttributes' in data:
                 del data['requiresAttributes']
+        else:
+            if 'placementConstraints' not in data:
+                data['placementConstraints'] = []
+            if 'requiresCompatibilities' not in data:
+                data['requiresCompatibilities'] = ['EC2']
+
         return data
 
     def render(self):
         data = copy(self.data)
-        data['containerDefinitions'] = [c.data for c in sorted(self.containers, key=lambda x: x.name)]
+        data['containerDefinitions'] = [c.render_for_diff() for c in sorted(self.containers, key=lambda x: x.name)]
         return data
 
     def save(self):
-        # TODO: Before saving here, it would be nice to see if at least our ECR images exist
         return self.objects.create(self)
 
 
-class ContainerDefinition(object):
+class ContainerDefinition(SecretsMixin, LazyAttributeMixin):
 
     helper_task_prefix = 'edu.caltech.task'
 
     def __init__(self, data):
+        super(ContainerDefinition, self).__init__()
         self.data = data
 
     @property
     def name(self):
         return self.data.get('name', None)
+
+    @property
+    def secrets(self):
+        if 'secrets' not in self.cache:
+            if 'secrets' in self.data:
+                # FIXME: should we be splitting these into Secrets and ExternalSecrets so we can do comparisons
+                names = [s['valueFrom'] for s in self.data['secrets']]
+                self.cache['secrets'] = Secret.objects.get_many(names)
+            else:
+                self.cache['secrets'] = []
+        return self.cache['secrets']
 
     def update_task_labels(self, family_revisions):
         """)
@@ -420,6 +478,20 @@ class ContainerDefinition(object):
                 labels[value.split(':')[0]] = value
         return labels
 
+    def render_for_diff(self):
+        data = copy(self.data)
+        if 'environment' in data:
+            environment = {x['name']: x['value'] for x in data['environment']}
+            data['environment'] = environment
+        if 'secrets' in data:
+            secrets = {x['name']: x['valueFrom'] for x in data['secrets']}
+            data['secrets'] = secrets
+        if 'volumesFrom' not in data:
+            data['volumesFrom'] = []
+        if 'mountPoints' not in data:
+            data['mountPoints'] = []
+        return data
+
 
 class StandaloneTask(SecretsMixin, Model):
     """
@@ -463,14 +535,6 @@ class StandaloneTask(SecretsMixin, Model):
     def pk(self):
         return self.data['name']
 
-    def get_config(self):
-        if self.secrets:
-            self.secrets.populate()
-        return self.secrets
-
-    def write_config(self):
-        self.secrets.save()
-
     def run(self, wait=False, create=False):
         self.objects.run(self, wait=wait, create=create)
 
@@ -504,7 +568,7 @@ class InvokedTask(DockerMixin, Model):
         return self.get_cached(
             'container_machine',
             ContainerInstance.objects.get,
-            [self.data['containerInstanceArn']]
+            ['{}:{}'.format(self.cluster_name, self.data['containerInstanceArn'])]
         )
 
 
@@ -546,10 +610,16 @@ class ContainerInstance(SSHMixin, Model):
 
 
 class Cluster(SSHMixin, Model):
+    """
+    An ECS cluster.
+    """
 
     objects = ClusterManager()
 
     class NoAutoscalingGroup(Exception):
+        pass
+
+    class NoContainerInstances(Exception):
         pass
 
     @property
@@ -572,7 +642,7 @@ class Cluster(SSHMixin, Model):
             raise self.NoSSHTargetAvailable('Cluster "{}" has no container instances'.format(self.name))
 
     @property
-    def instances(self):
+    def container_instances(self):
         return self.get_cached('instances', ContainerInstance.objects.list, [self.pk])
 
     @property
@@ -581,7 +651,14 @@ class Cluster(SSHMixin, Model):
 
     @property
     def autoscaling_group(self):
-        return self.instances[0].autoscaling_group
+        if len(self.container_instances) > 0:
+            return self.container_instances[0].autoscaling_group
+        else:
+            # FIXME: if we have no container instances, should we can try to guess based on
+            # cluster.name == autoscalinggroup_name?
+            # We also could have no container instances because this is purely a Fargate cluster and we
+            # don't have visibility into those instances
+            raise self.NoContainerInstances('Cluster "{}" has no container instances'.format(self.name))
 
     def scale(self, count, force=True):
         if self.autoscaling_group:
@@ -596,15 +673,78 @@ class Service(DockerMixin, SecretsMixin, Model):
 
     objects = ServiceManager()
 
-    def __init__(self, data, **kwargs):
-        self.task_definition = kwargs.pop('task_definition', None)
-        self.appscaling = kwargs.pop('appscaling', None)
-        self.service_discovery = kwargs.pop('service_discovery', None)
-        super(Service, self).__init__(data, **kwargs)
+    @classmethod
+    def new(cls, obj, source, **kwargs):
+        data, kwargs = cls.adapt(obj, source, **kwargs)
+        instance = cls(data)
+        if 'task_definition' in kwargs:
+            instance.task_definition = kwargs['task_definition']
+        if 'appscaling' in kwargs:
+            instance.appscaling = kwargs['appscaling']
+        if 'service_discovery' in kwargs:
+            instance.service_discovery = kwargs['service_discovery']
+        return instance
+
+    @property
+    def secrets(self):
+        if 'secrets' not in self.cache:
+            self.cache['secrets'] = self.task_definition.secrets
+        return self.cache['secrets']
+
+    @property
+    def appscaling(self):
+        if 'appscaling' not in self.cache:
+            try:
+                self.cache['appscaling'] = ScalableTarget.objects.get('service/{}/{}'.format(
+                    self.data['cluster'],
+                    self.data['serviceName']
+                ))
+            except ScalableTarget.DoesNotExist:
+                self.cache['appscaling'] = None
+        return self.cache['appscaling']
+
+    @appscaling.setter
+    def appscaling(self, value):
+        self.cache['appscaling'] = value
+
+    @property
+    def service_discovery(self):
+        if 'service_discovery' not in self.cache:
+            if 'serviceRegistries' in self.data and self.data['serviceRegistries']:
+                pk = self.data['serviceRegistries'][0]['registryArn']
+                try:
+                    self.cache['service_discovery'] = ServiceDiscoveryService.objects.get(pk)
+                except ServiceDiscoveryService.DoesNotExist:
+                    self.cache['service_discovery'] = None
+            else:
+                self.cache['service_discovery'] = None
+        return self.cache['service_discovery']
+
+    @service_discovery.setter
+    def service_discovery(self, value):
+        """
+
+        .. note::
+
+            The ServiceDiscoveryService we get here may not be saved to AWS yet, so may not
+            have an ARN.  We therefore set the `serviceRegistries' key in self.data in self.save(), after
+            saving the ServiceDiscoveryService.
+        """
+        self.cache['service_discovery'] = value
+
+    @property
+    def task_definition(self):
+        if 'task_definition' not in self.cache:
+            self.cache['task_definition'] = TaskDefinition.objects.get(self.data['taskDefinition'])
+        return self.cache['task_definition']
+
+    @task_definition.setter
+    def task_definition(self, value):
+        self.cache['task_definition'] = value
 
     @property
     def pk(self):
-        return ':'.join(self.data['cluster'], self.data['serviceName'])
+        return ':'.join([self.data['cluster'], self.data['serviceName']])
 
     @property
     def name(self):
@@ -664,7 +804,7 @@ class Service(DockerMixin, SecretsMixin, Model):
             data['placementStrategy'] = self.data['placementStrategy']
         return data
 
-    def render_for_diff(self):
+    def render_for_create(self):
         data = self.render()
         if 'serviceArn' in data:
             del data['serviceArn']
@@ -677,7 +817,49 @@ class Service(DockerMixin, SecretsMixin, Model):
                 del data['deployments']
             if 'events' in data:
                 del data['events']
-        data['taskDefinition'] = self.task_defintion.render_for_diff()
+        return data
+
+    def render_for_diff(self):
+        data = self.render()
+        if 'desiredCount' in data:
+            del data['desiredCount']
+        if 'role' in data:
+            # We loaded this from deployfish.yml, so we need to define some default
+            # values that appear when you describe_services on an active service
+            data['roleArn'] = data['role']
+            del data['role']
+            data['status'] = 'ACTIVE'
+            data['propagateTags'] = 'NONE'
+            data['enableECSManagedTags'] = False
+            data['enableExecuteCommand'] = False
+            data['healthCheckGracePeriodSeconds'] = 0
+            if 'deploymentConfiguration' not in data:
+                data['deploymentConfiguration'] = {}
+                data['deploymentConfiguration']['maximumPercent'] = 200
+                data['deploymentConfiguration']['minimumHealthyPercent'] = 50
+            if 'placementConstraints' not in data:
+                data['placementConstraints'] = []
+            if 'placementStrategy' not in data:
+                data['placementStrategy'] = []
+        if 'clientToken' in data:
+            del data['clientToken']
+        if 'createdAt' in data:
+            del data['serviceArn']
+            del data['clusterArn']
+            del data['runningCount']
+            del data['pendingCount']
+            del data['createdAt']
+            if 'serviceRegistries' in data:
+                del data['serviceRegistries']
+            if 'createdBy' in data:
+                del data['createdBy']
+            if 'taskSets' in data:
+                del data['taskSets']
+            if 'deployments' in data:
+                del data['deployments']
+            if 'events' in data:
+                del data['events']
+        data['taskDefinition'] = self.task_definition.render_for_diff()
         if self.appscaling:
             data['appscaling'] = self.appscaling.render_for_diff()
         if self.service_discovery:

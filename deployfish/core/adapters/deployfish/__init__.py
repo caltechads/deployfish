@@ -35,7 +35,7 @@ registry.register('CloudwatchAlarm', 'deployfish', ECSServiceCPUAlarmAdapter)
 
 # appscaling
 registry.register('ScalingPolicy', 'deployfish', ECSServiceScalingPolicyAdapter)
-registry.register('ScalingTarget', 'deployfish', ECSServiceScalableTargetAdapter)
+registry.register('ScalableTarget', 'deployfish', ECSServiceScalableTargetAdapter)
 
 # secrets
 registry.register('Secret', 'deployfish', SecretAdapter)

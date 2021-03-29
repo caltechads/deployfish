@@ -1,3 +1,5 @@
+import re
+
 from .mixins import DeployfishYamlAdapter
 from deployfish.core.models import CloudwatchAlarm, ScalingPolicy
 
@@ -38,7 +40,7 @@ class ECSServiceScalingPolicyAdapter(DeployfishYamlAdapter):
         return None
 
     def get_MetricIntervalUpperBound(self):
-        if '>' in self.data['cpu']:
+        if '<' in self.data['cpu']:
             return 0.0
         return None
 
@@ -57,6 +59,7 @@ class ECSServiceScalingPolicyAdapter(DeployfishYamlAdapter):
         if upper_bound is not None:
             adjustment['MetricIntervalUpperBound'] = upper_bound
         data['StepScalingPolicyConfiguration'] = {
+            'AdjustmentType': 'ChangeInCapacity',
             'StepAdjustments': [adjustment],
             'Cooldown': int(self.data['cooldown']),
             'MetricAggregationType': 'Average'
@@ -97,7 +100,7 @@ class ECSServiceScalableTargetAdapter(DeployfishYamlAdapter):
     def __init__(self, data, **kwargs):
         self.cluster = kwargs.pop('cluster', None)
         self.service = kwargs.pop('service', None)
-        super(ECSServiceScalingPolicyAdapter, self).__init__(data, **kwargs)
+        super(ECSServiceScalableTargetAdapter, self).__init__(data, **kwargs)
 
     def get_ResourceId(self):
         return 'service/{}/{}'.format(self.cluster, self.service)

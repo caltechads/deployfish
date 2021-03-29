@@ -1,7 +1,7 @@
 from datetime import datetime
 import time
 
-from deployfish.aws import get_boto3_session
+from deployfish.core.aws import get_boto3_session
 
 
 class CloudwatchLogsTailer(object):

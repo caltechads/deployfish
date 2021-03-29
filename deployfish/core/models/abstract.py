@@ -1,8 +1,10 @@
 from copy import copy
 
+from botocore import waiter, xform_name
 from jsondiff import diff
 
-from deployfish.aws import get_boto3_session
+from deployfish.core.aws import get_boto3_session
+from deployfish.core.waiters import create_hooked_waiter_with_client
 from deployfish.exceptions import (
     MultipleObjectsReturned,
     ObjectDoesNotExist,
@@ -10,7 +12,23 @@ from deployfish.exceptions import (
     ObjectReadOnly,
     OperationalError,
 )
-from deployfish.adapters import registry
+from deployfish.registry import registry
+
+
+class LazyAttributeMixin(object):
+
+    def __init__(self):
+        self.cache = {}
+        super(LazyAttributeMixin, self).__init__()
+
+    def get_cached(self, key, populator, args, kwargs=None):
+        kwargs = kwargs if kwargs else {}
+        if key not in self.cache:
+            self.cache[key] = populator(*args, **kwargs)
+        return self.cache[key]
+
+    def purge_cache(self):
+        self.cache = {}
 
 
 class Manager(object):
@@ -21,6 +39,9 @@ class Manager(object):
         self.client = get_boto3_session().client(self.service)
 
     def get(self, pk, **kwargs):
+        raise NotImplementedError
+
+    def get_many(self, pk, **kwargs):
         raise NotImplementedError
 
     def save(self, obj, **kwargs):
@@ -47,8 +68,20 @@ class Manager(object):
         aws_obj = self.get(obj.pk)
         return obj == aws_obj
 
+    def get_waiter(self, waiter_name):
+        config = self.client._get_waiter_config()
+        if not config:
+            raise ValueError("Waiter does not exist: %s" % waiter_name)
+        model = waiter.WaiterModel(config)
+        mapping = {}
+        for name in model.waiter_names:
+            mapping[xform_name(name)] = name
+        if waiter_name not in mapping:
+            raise ValueError("Waiter does not exist: %s" % waiter_name)
+        return create_hooked_waiter_with_client(mapping[waiter_name], model, self)
 
-class Model(object):
+
+class Model(LazyAttributeMixin):
 
     objects = None
     adapters = registry
@@ -71,7 +104,7 @@ class Model(object):
     @classmethod
     def adapt(cls, obj, source, **kwargs):
         adapter = cls.adapters.get(cls.__name__, source)(obj, **kwargs)
-        data, kwargs = adapter(obj, **kwargs).convert()
+        data, kwargs = adapter.convert()
         return data, kwargs
 
     @classmethod
@@ -79,9 +112,9 @@ class Model(object):
         data, kwargs = cls.adapt(obj, source, **kwargs)
         return cls(data, **kwargs)
 
-    def __init__(self, data, **kwargs):
+    def __init__(self, data):
+        super(Model, self).__init__()
         self.data = data
-        self.cache = {}
 
     @property
     def pk(self):
@@ -123,19 +156,15 @@ class Model(object):
             return False
         return self.render_for_diff() == other.render_for_diff()
 
-    def diff(self, other):
+    def diff(self, other=None):
+        if not other:
+            other = self.objects.get(self.pk)
         if self.__class__ != other.__class__:
-            raise ValueError('{} is not a {)'.format(str(other), self.__class__.__name__))
+            raise ValueError('{} is not a {}'.format(str(other), self.__class__.__name__))
         return diff(self.render_for_diff(), other.render_for_diff())
 
-    def get_cached(self, key, populator, args, kwargs=None):
-        kwargs = kwargs if kwargs else {}
-        if key not in self.cache:
-            self.cache[key] = populator(*args, **kwargs)
-        return self.cache[key]
-
     def reload_from_db(self):
-        self.cache = {}
+        self.purge_cache()
         new = self.objects.get(self.pk)
         self.data = new.data
 

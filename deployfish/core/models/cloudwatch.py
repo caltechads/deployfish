@@ -30,7 +30,7 @@ class CloudwatchAlarmManager(Manager):
     def delete(self, obj):
         try:
             self.client.delete_alarms(AlarmNames=[obj.pk])
-        except self.client.ResourceNotFound:
+        except self.client.exceptions.ResourceNotFound:
             pass
 
 
