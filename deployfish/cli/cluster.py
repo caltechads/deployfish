@@ -5,7 +5,7 @@ This file contains the commands that act on an ECS cluster.
 """
 import click
 
-from ..config import needs_config
+from ..config import get_config
 from ..ssh import SSHConfig
 
 from .cli import cli
@@ -13,20 +13,19 @@ from .misc import FriendlyServiceFactory
 
 
 @cli.group(short_help="Manage the AWS ECS cluster")
-def cluster():
-    pass
+@click.pass_context
+def cluster(ctx):
+    get_config(**ctx.obj)
 
 
 @cluster.command('info', short_help="Show info about the individual systems in the cluster")
-@click.pass_context
 @click.argument('service_name')
-@needs_config
-def cluster_info(ctx, service_name):
+def cluster_info(service_name):
     """
     Show information about the individual EC2 systems in the ECS cluster running
     SERVICE_NAME.
     """
-    service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyServiceFactory.new(service_name)
     instances = service.get_instance_data()
     for index, reservation in enumerate(instances):
         click.echo(click.style("Instance {}".format(index + 1), bold=True))
@@ -42,14 +41,13 @@ def cluster_info(ctx, service_name):
 @cluster.command('run', short_help="Run a command on the individual systems in the cluster")
 @click.pass_context
 @click.argument('service_name')
-@needs_config
 def cluster_run(ctx, service_name):
     """
     Run a command on each of the individual EC2 systems in the ECS cluster running
     SERVICE_NAME.
     """
     command = click.prompt('Command to run')
-    service = FriendlyServiceFactory.new(service_name, config=ctx.obj['CONFIG'])
+    service = FriendlyServiceFactory.new(service_name, config=get_config(**ctx.obj))
     ssh = SSHConfig(service, config=ctx.obj['CONFIG']).get_ssh()
     responses = ssh.cluster_run([command])
     for index, response in enumerate(responses):

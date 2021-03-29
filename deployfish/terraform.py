@@ -5,7 +5,7 @@ import os.path
 import requests
 
 from botocore.exceptions import ClientError
-from deployfish.aws import get_boto3_session
+from deployfish.core.aws import get_boto3_session
 
 
 class NoSuchStateFile(Exception):

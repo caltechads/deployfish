@@ -28,9 +28,9 @@ except ImportError:
         return ''.join(prefixed_lines())
 
 
-from deployfish.aws.ecs import Service, Task
+from deployfish.core.models import Service, Task
 from deployfish.aws.systems_manager import ParameterStore
-from deployfish.config import Config
+from deployfish.config import get_config
 
 
 class FriendlyServiceFactory:
@@ -40,9 +40,11 @@ class FriendlyServiceFactory:
     """
 
     @staticmethod
-    def new(service_name, config=None):
+    def new(service_name):
+        config = get_config()
         try:
-            return Service(service_name, config=config)
+            data = config.get_service(service_name)
+            return Service.new(data, 'deployfish')
         except KeyError:
             click.secho('No service or environment named "{}"\n'.format(service_name), fg='red')
             config.info()
@@ -100,63 +102,95 @@ class ClickTaskDefinitionAdapter(AbstractClickAdapter):
     def __init__(self, task_definition):
         self.task_definition = task_definition
 
+    def _render_portMappings(self, container):
+        lines = []
+        for portMapping in container.data['portMappings']:
+            if 'hostPort' in portMapping:
+                lines.append(self.key_value('port', '{hostPort}:{containerPort}/{protocol}'.format(**portMapping)))
+            else:
+                lines.append(self.key_value('port', '{containerPort}/{protocol}'.format(**portMapping)))
+        return lines
+
+    def _render_mountPoints(self, container):
+        lines = []
+        for mountPoint in container.data['mountPoints']:
+            name = mountPoint['sourceVolume']
+            volume = ": {}:{}".format(
+                container.task_definition['volumes'][name]['host']['sourcePath'],
+                mountPoint['containerPath']
+            )
+            if mountPoint['readOnly']:
+                volume += ":ro"
+            lines.append(self.key_value('volume', volume))
+        return lines
+
     def _render_containers(self, indent=0):
         lines = []
         lines.append(self.section('containers:'))
         for container in self.task_definition.containers:
             section = []
             section.append(self.section(container.name))
-            section.append(self.key_value('image', container.image))
-            section.append(self.key_value('cpu', container.cpu))
-            if container.memory:
-                section.append(self.key_value('memory', container.memory))
-            if container.memoryReservation:
-                section.append(self.key_value('memory_reservation', container.memoryReservation))
-            if container.portMappings:
+            section.append(self.key_value('image', container.data.get('image', None)))
+            cpu = container.data.get('cpu', None)
+            if cpu:
+                section.append(self.key_value('cpu', cpu))
+            memory = container.data.get('memory', None)
+            if memory:
+                section.append(self.key_value('memory', memory))
+            memoryReservation = container.data.get('memoryReservation', None)
+            if memoryReservation:
+                section.append(self.key_value('memory_reservation', memoryReservation))
+            if container.data.get('portMappings', None):
+                section.extend(self._render_portMappings(container))
+            if container.data.get('mountPoints', None):
+                section.extend(self._render_mountPoints(container))
+
                 for port in container.portMappings:
                     section.append(self.key_value('port', port))
-            if container.extraHosts:
-                for host in container.extraHosts:
+            if container.data.get('extraHosts', None):
+                for host in container['extraHosts']:
                     section.append(self.key_value('extra_host', host))
             lines.extend(self.indent(section))
         return lines
 
     def _render_volume(self, volume):
         lines = []
-        lines.append(self.section('{}: {}'.format(volume['name'], volume.get('path', 'NO-PATH'))))
-        if 'config' in volume:
-            lines.append(self.key_value('scope', volume['config'].get('scope', 'task')))
-            lines.append(self.key_value('autoprovision', volume['config'].get('autoprovision', 'True')))
-            lines.append(self.key_value('driver', volume['config']['driver']))
-            if 'driverOpts' in volume['config']:
+        if 'host' in volume:
+            path = volume['host']['path']
+        else:
+            path = 'NO-PATH'
+        lines.append(self.section('{}: {}'.format(volume['name'], path)))
+        if 'dockerVolumeConfiguration' in volume:
+            config = volume['dockerVolumeConfiguration']
+            lines.append(self.key_value('scope', config.get('scope', 'task')))
+            lines.append(self.key_value('autoprovision', config.get('autoprovision', 'True')))
+            lines.append(self.key_value('driver', config['driver']))
+            if 'driverOpts' in config:
                 lines.append(self.style('driverOpts:', 'item'))
-                for key, value in volume['config']['driverOpts'].items():
+                for key, value in config['driverOpts'].items():
                     lines.append(self.key_value(key, value, indent=4))
-            if 'labels' in volume['config']:
+            if 'labels' in config:
                 lines.append(self.style('labels:', 'item'))
-                for key, value in volume['config']['labels'].items():
+                for key, value in config['labels'].items():
                     lines.append(self.key_value(key, value, indent=4))
         return lines
 
     def render(self, join=False):
         lines = []
-        if self.task_definition.family_revision:
-            lines.append(self.title(self.task_definition.family_revision))
-        else:
-            lines.append(self.title('{}:TBD'.format(self.task_definition.family)))
-        lines.append(self.key_value('family', self.task_definition.family))
-        lines.append(self.key_value('network_mode', self.task_definition.networkMode))
-        if self.task_definition.taskRoleArn:
-            lines.append(self.key_value('task_role_arn', self.task_definition.taskRoleArn))
-        if self.task_definition.executionRoleArn:
-            lines.append(self.key_value('execution_role', self.task_definition.executionRoleArn))
-        if self.task_definition.cpu:
-            lines.append(self.key_value('cpu', self.task_definition.cpu))
-        if self.task_definition.memory:
-            lines.append(self.key_value('memory', self.task_definition.memory))
-        if self.task_definition.volumes:
+        lines.append(self.title(self.task_definition.pk))
+        lines.append(self.key_value('family', self.task_definition.data['family']))
+        lines.append(self.key_value('network_mode', self.task_definition.data['networkMode']))
+        if self.task_definition.data.get('taskRoleArn', None):
+            lines.append(self.key_value('task_role_arn', self.task_definition.data['taskRoleArn']))
+        if self.task_definition.data.get('executionRoleArn', None):
+            lines.append(self.key_value('execution_role', self.task_definition.data['executionRoleArn']))
+        if self.task_definition.data.get('cpu', None):
+            lines.append(self.key_value('cpu', self.task_definition.data['cpu']))
+        if self.task_definition.data.get('memory', None):
+            lines.append(self.key_value('memory', self.task_definition.data['memory']))
+        if self.task_definition.data.get('volumes', None):
             lines.append(self.section('volumes:'))
-            for volume in self.task_definition.volumes:
+            for volume in self.task_definition.data['volumes']:
                 lines.extend(self.indent(self._render_volume(volume)))
         lines.extend(self.indent(self._render_containers()))
         if join:

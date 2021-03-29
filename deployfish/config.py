@@ -5,31 +5,24 @@ import re
 import sys
 import yaml
 
-from deployfish.aws import build_boto3_session
+from deployfish.core.aws import build_boto3_session
 from deployfish.terraform import (NoSuchStateFile, Terraform, TerraformE)
-from functools import wraps
 
 
-def needs_config(func):
-    """
-    Add a fully configured Config() object to the ctx variable for our click function.
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
+config = None
+
+
+def get_config(**kwargs):
+    global config
+    if config is None:
+        assert kwargs is not {}, 'Config() has not been configured yet.'
+        kwargs = {k.lower(): v for k, v in kwargs.items()}
         try:
-            args[0].obj['CONFIG'] = Config(
-                filename=args[0].obj['CONFIG_FILE'],
-                env_file=args[0].obj['ENV_FILE'],
-                import_env=args[0].obj['IMPORT_ENV'],
-                tfe_token=args[0].obj['TFE_TOKEN'],
-                use_aws_section=args[0].obj['USE_AWS_SECTION']
-            )
+            config = Config(**kwargs)
         except NoSuchStateFile as e:
             click.echo(str(e))
             sys.exit(1)
-        else:
-            return func(*args, **kwargs)
-    return wrapper
+    return config
 
 
 class Config(object):
