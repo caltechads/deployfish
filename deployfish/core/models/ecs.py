@@ -224,6 +224,7 @@ class ClusterManager(Manager):
     service = 'ecs'
 
     def get(self, pk):
+        # hint: (str["{cluster_name}"])
         """
         :param pk str: cluster name
         """
@@ -383,22 +384,15 @@ class ServiceManager(Manager):
         # hint: (deployfish.core.models.Service)
         if self.exists(obj.pk):
             # first scale to 0
-            self.scale(obj.pk, 0)
+            self.scale(obj, 0)
             waiter = self.get_waiter('services_stable')
             service, cluster = self.__get_service_and_cluster_from_pk(obj.pk)
             waiter.wait(cluster=cluster, services=[service])
             # Then delete the service
             self.client.delete_service(cluster=cluster, service=service)
 
-    def scale(self, pk, count):
-        # hint: (int)
-        try:
-            obj = self.get(pk)
-        except Service.DoesNotExist:
-            service, cluster = self.__get_service_and_cluster_from_pk(pk)
-            raise Service.DoesNotExist('No service named "{}" exists in cluster "{}" in AWS'.format(service, cluster))
-        else:
-            self.client.update_service(**obj.render_for_scale(count))
+    def scale(self, obj, count):
+        self.client.update_service(**obj.render_for_scale(count))
 
 
 # ----------------------------------------
@@ -783,12 +777,6 @@ class Cluster(SSHMixin, Model):
 
     objects = ClusterManager()
 
-    class NoAutoscalingGroup(Exception):
-        pass
-
-    class NoContainerInstances(Exception):
-        pass
-
     @property
     def pk(self):
         return self.data['clusterName']
@@ -850,8 +838,8 @@ class Cluster(SSHMixin, Model):
         if self.autoscaling_group:
             self.autoscaling_group.scale(count, force=force)
         else:
-            raise self.NoAutoscalingGroup(
-                'Cluster "{}" does not have an autoscaling group; ignoring scaling request.'.format(self.pk)
+            raise self.OperationFailed(
+                'Could not find autoscaling group for Cluster(pk="{}"); ignoring scaling request.'.format(self.pk)
             )
 
 
@@ -887,6 +875,9 @@ class Service(DockerMixin, SecretsMixin, Model):
         return self.cache['secrets']
 
     def reload_secrets(self):
+        """
+        Reload our AWS SSM Paramter Store secrets from AWS.
+        """
         self.task_definition.reload_secrets()
 
     @property
@@ -986,6 +977,9 @@ class Service(DockerMixin, SecretsMixin, Model):
     @property
     def cluster(self):
         return self.get_cached('cluster', Cluster.objects.get, [self.data['cluster']])
+
+    def scale(self, count):
+        self.objects.scale(self, count)
 
     @property
     def autoscaling_group(self):

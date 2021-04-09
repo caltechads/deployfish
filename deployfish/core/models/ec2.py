@@ -28,7 +28,7 @@ class AutoscalingGroupManager(Manager):
         return [AutoscalingGroup(group) for group in response['AutoScalingGroups']]
 
     def save(self, obj):
-        self.asg.update_auto_scaling_group(**obj.render_for_update())
+        self.client.update_auto_scaling_group(**obj.render_for_update())
 
     def delete(self, pk):
         raise AutoscalingGroup.ReadOnly('Cannot delete Autoscaling Groups with deployfish')
@@ -129,6 +129,10 @@ class AutoscalingGroup(Model):
         return self.data['AutoScalingGroupName']
 
     @property
+    def autoscaling_group(self):
+        return self
+
+    @property
     def instances(self):
         return self.get_cached(
             'instances',
@@ -149,12 +153,12 @@ class AutoscalingGroup(Model):
                     max_size = count
             else:
                 if count < min_size:
-                    count = min_size
+                    raise self.OperationFailed('AutoscalingGroup.scale(): count "{}" is less than MinSize.')
                 if count > max_size:
-                    count = max_size
+                    raise self.OperationFailed('AutoscalingGroup.scale(): count "{}" is greater than than MaxSize.')
             self.data['MinSize'] = min_size
             self.data['MaxSize'] = max_size
-            self.data['DesiredCount'] = count
+            self.data['DesiredCapacity'] = count
             self.save()
         else:
             raise self.DoesNotExist('No Autoscaling Group named "{}" exists in AWS'.format(self.pk))

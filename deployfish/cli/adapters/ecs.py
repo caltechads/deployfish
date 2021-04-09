@@ -1,9 +1,10 @@
 from .abstract import ClickModelAdapter, ClickSecretsAdapter
+from .commands import ClickScaleServiceCommandMixin, ClickScaleInstancesCommandMixin
 from deployfish.core.models import Service, Cluster
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 
 
-class ClickServiceAdapter(ClickModelAdapter):
+class ClickServiceAdapter(ClickScaleServiceCommandMixin, ClickModelAdapter):
 
     model = Service
 
@@ -30,6 +31,12 @@ class ClickServiceAdapter(ClickModelAdapter):
         kwargs['cluster'] = obj.data['cluster']
         self.wait('services_stable', **kwargs)
 
+    def update_waiter(self, obj, **kwargs):
+        kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
+        kwargs['services'] = [obj.name]
+        kwargs['cluster'] = obj.data['cluster']
+        self.wait('services_stable', **kwargs)
+
     def delete_waiter(self, obj, **kwargs):
         kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
         kwargs['services'] = [obj.name]
@@ -42,7 +49,7 @@ class ClickServiceSecretsAdapter(ClickSecretsAdapter):
     model = Service
 
 
-class ClickClusterAdapter(ClickModelAdapter):
+class ClickClusterAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
 
     model = Cluster
 
