@@ -71,7 +71,7 @@ class ServiceDiscoveryServiceManager(Manager):
         pk looks like '{namespace_pk}:{service_name}'
         """
         # this is a namespace_pk:service_name
-        namespace_pk, service_name = pk.split(':')
+        namespace_pk, service_name = pk.split(':', 1)
         namespace = ServiceDiscoveryNamespace.objects.get(namespace_pk)
         services = self.list(namespace=namespace)
         for service in services:
@@ -131,8 +131,6 @@ class ServiceDiscoveryServiceManager(Manager):
         for response in response_iterator:
             service_defs.extend(response['Services'])
         services = [ServiceDiscoveryService(d) for d in service_defs]
-        for service in services:
-            print(service.data)
         if namespace:
             for service in services:
                 service.data['NamespaceId'] = namespace.pk
@@ -175,7 +173,7 @@ class ServiceDiscoveryServiceManager(Manager):
                 'No Service Discovery service with id="{}" exists in AWS.'.format(obj.pk)
             )
         except self.client.exceptions.ResourceInUse:
-            raise ServiceDiscoveryService.OperationalError(
+            raise ServiceDiscoveryService.OperationFailed(
                 'Service Discovery service with id="{}" cannot be deleted because it is in use.'.format(obj.pk)
             )
 

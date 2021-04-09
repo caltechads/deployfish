@@ -20,8 +20,6 @@ class SecretsMixin:
                     secrets.append(Secret.new(secret, 'deployfish', cluster=cluster, name=name, prefix=prefix))
                 except SecretAdapter.ExternalParameterException:
                     # handle globs
-                    if secret.endswith('*'):
-                        secret = secret[:-1]
                     secrets.extend(ExternalSecret.objects.list(secret))
         return secrets
 
@@ -45,7 +43,7 @@ class SecretAdapter(DeployfishYamlAdapter):
             self.prefix = ''
 
     def is_external(self):
-        if ':external' in self.data:
+        if ('=' not in self.data or ':external' in self.data):
             return True
         return False
 
@@ -66,18 +64,14 @@ class SecretAdapter(DeployfishYamlAdapter):
         """
         Parse an identifier from a deployfish.yml parameter definition that looks like one of the following:
 
-            KEY
-            KEY:secure
-            KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
-            KEY:external
-            KEY:external:secure
-            KEY:external:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
+            KEY=VALUE
+            KEY:secure=VALUE
+            KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
         """
         i = 0
         key = None
         is_secure = False
         kms_key_id = None
-
         identifier, value = copy(self.data).split('=', 1)
         while identifier is not None:
             segments = identifier.split(':', 1)
@@ -91,7 +85,7 @@ class SecretAdapter(DeployfishYamlAdapter):
             elif segment == 'secure':
                 is_secure = True
             elif segment == 'arn':
-                kms_key_id = 'arn:{}'.format(key)
+                kms_key_id = 'arn:{}'.format(segments[1])
                 break
             i += 1
         kwargs = {

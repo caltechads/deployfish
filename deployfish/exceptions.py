@@ -1,4 +1,3 @@
-
 class SchemaException(Exception):
     pass
 
@@ -19,5 +18,20 @@ class ObjectReadOnly(Exception):
     pass
 
 
-class OperationalError(Exception):
+class OperationFailed(Exception):
+    pass
+
+
+class RenderException(Exception):
+
+    def __init__(self, msg, exit_code=1):
+        self.msg = msg
+        self.exit_code = exit_code
+
+
+class NoSuchTerraformStateFile(Exception):
+    pass
+
+
+class ConfigProcessingFailed(Exception):
     pass

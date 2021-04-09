@@ -1,0 +1,112 @@
+{
+  "name": "my-container",
+  "image": "my-container:1.0.0",
+  "cpu": 256,
+  "memory": 512,
+  "memoryReservation": 123,
+  "links": [ "db" ],
+  "portMappings": [
+      {
+          "containerPort": 80,
+          "hostPort": 8003,
+          "protocol": "tcp"
+      }
+  ],
+  "essential": true,
+  "entryPoint": [
+      "/entrypoint.sh",
+      "arg1"
+  ],
+  "command": [
+      "/bin/bash",
+      "command1",
+      "arg1"
+  ],
+  "environment": [
+      {
+          "name": "AUTOPROXY_SERVER_NAME",
+          "value": "test1.autoproxy-test.caltech.edu"
+      },
+      {
+          "name": "ENVIRONMENT",
+          "value": "prod"
+      }
+  ],
+  "mountPoints": [
+      {
+          "sourceVolume": "_host_path",
+          "containerPath": "/container/path",
+          "readOnly": false
+      },
+      {
+          "sourceVolume": "_host_path-ro",
+          "containerPath": "/container/path-ro",
+          "readOnly": true
+      }
+  ],
+  "volumesFrom": [
+      {
+          "sourceContainer": "string",
+          "readOnly": false
+      }
+  ],
+  "hostname": "string",
+  "user": "string",
+  "workingDirectory": "string",
+  "disableNetworking": false,
+  "privileged": false,
+  "readonlyRootFilesystem": false,
+  "dnsServers": [
+      "string"
+  ],
+  "dnsSearchDomains": [
+      "string"
+  ],
+  "dockerSecurityOptions": [
+      "string"
+  ],
+  "dockerLabels": {
+      "edu.caltech.imss-ads": "foobar",
+      "edu.caltech.task.helper1.id": "foobar-helper:1"
+  },
+  "ulimits": [
+      {
+          "name": "nproc",
+          "softLimit": 65535,
+          "hardLimit": 65535
+      }
+  ],
+  "extraHosts": [
+      {
+          "hostname": "foobar",
+          "ipAddress": "127.0.0.1",
+          "hardLimit": 65535
+      },
+      {
+          "hostname": "foobaa",
+          "ipAddress": "127.0.0.2",
+          "hardLimit": 65535
+      }
+  ],
+  "logConfiguration": {
+      "logDriver": "fluentd",
+      "options": {
+          "fluentd-address": "127.0.0.1:24224",
+          "tag": "my-container"
+      }
+  },
+  "sourceVolumes": {
+    "_host_path": {
+      "name": "_host_path",
+      "host": {
+        "sourcePath": "/host/path"
+      }
+    },
+    "_host_path-ro": {
+      "name": "_host_path-ro",
+      "host": {
+        "sourcePath": "/host/path-ro"
+      }
+    }
+  }
+}

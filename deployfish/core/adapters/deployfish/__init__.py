@@ -1,4 +1,4 @@
-from deployfish.registry import registry
+from deployfish.registry import importer_registry as registry
 from .ecs import (
     ServiceAdapter,
     StandaloneTaskAdapter,
@@ -15,6 +15,7 @@ from .appscaling import (
 )
 from .secrets import SecretAdapter
 from .service_discovery import ServiceDiscoveryServiceAdapter
+from .ssh import SSHTunnelAdapter
 
 
 # -----------------------
@@ -42,3 +43,6 @@ registry.register('Secret', 'deployfish', SecretAdapter)
 
 # service_discovery
 registry.register('ServiceDiscoveryService', 'deployfish', ServiceDiscoveryServiceAdapter)
+
+# ssh tunnels
+registry.register('SSHTunnel', 'deployfish', SSHTunnelAdapter)

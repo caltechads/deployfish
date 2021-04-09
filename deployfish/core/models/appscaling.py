@@ -162,6 +162,8 @@ class ScalableTarget(Model):
 
     def render_for_diff(self):
         data = self.render()
+        # RoleARN gets set however AWS wants it instead of what we tell it, so ignore that for comparison
+        del data['RoleARN']
         if 'CreationTime' in data:
             del data['CreationTime']
         else:

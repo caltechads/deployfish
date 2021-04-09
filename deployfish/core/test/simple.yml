@@ -1,0 +1,232 @@
+terraform:
+  statefile: s3://asldfjksldfkjsldk
+  lookups:
+    cluster_name: '{environment}-cluster-name'
+    autoscalinggroup_name: '{environment}-autoscalinggroup-name'
+    elb_id: '{environment}-elb-id'
+    secrets_bucket_name: 's3-config-store-bucket'
+    iam_task_role: 'iam-role-{environment}-task'
+
+services:
+  - name: foobar-prod
+    environment: prod
+    cluster: foobar-prod
+    service_role_arn: a_task_role_arn
+    count: 2
+    maximum_percent: 250
+    minimum_healthy_percent: 50
+    load_balancer:
+      load_balancer_name: foobar-prod
+      container_name: example
+      container_port: 443
+    family: foobar-prod
+    network_mode: host
+    task_role_arn: a_task_role_arn
+    containers:
+      - name: example
+        image: example:1.2.3
+        cpu: 1024
+        memory: 4000
+        memoryReservation: 2000
+        command: /usr/bin/supervisord
+        entrypoint: /entrypoint.sh
+        extra_hosts:
+          - "foobar:127.0.0.1"
+          - "foobaz:127.0.0.2"
+        cap_add:
+          - SYS_ADMIN
+        cap_drop:
+          - SYS_RAWIO
+        tmpfs:
+          - container_path: /tmpfs
+            size: 256
+            mount_options:
+              - defaults
+              - noatime
+          - container_path: /tmpfs_another
+            size: 128
+        ports:
+          - "22"
+          - "80:80"
+          - "443:443"
+          - "8021:8021/udp"
+        ulimits:
+          nproc: 65535
+          nofile:
+            soft: 65535
+            hard: 65535
+        environment:
+          - LDAPTLS_REQCERT=never
+          - ENVIRONMENT=prod
+          - SECRETS_BUCKET_NAME=config-store
+        labels:
+          edu.caltech.imss-ads: "foobar"
+        logging:
+          driver: fluentd
+          options:
+            fluentd-address: 127.0.0.1:24224
+            tag: foobar
+
+  - name: foobar-prod2
+    cluster: foobar-prod2
+    family: foobar-prod2
+    network_mode: awsvpc
+    maximum_percent: 250
+    minimum_healthy_percent: 50
+    placement_constraints:
+      - type: distinctInstance
+      - type: memberOf
+        expression: 'attribute:ecs.instance-type =~ t2.*'
+    placement_strategy:
+      - type: random
+      - type: spread
+        field: 'attribute:ecs.availability-zone'
+    launch_type: FARGATE
+    execution_role: ecs_execution_role
+    cpu: 256
+    memory: 512
+    vpc_configuration:
+      subnets:
+        - subnet-12345678
+        - subnet-87654321
+      security_groups:
+        - sg-12345678
+      public_ip: ENABLED
+    count: 2
+    load_balancer:
+      target_group_arn: my_target_group_arn
+      container_name: example
+      container_port: 443
+      service_role_arn: a_task_role_arn
+    capacity_provider_strategy:
+      - provider: foobar-cap-provider
+        weight: 1
+        base: 1
+      - provider: foobar-cap-provider2
+        weight: 2
+    containers:
+      - name: example
+        image: example:1.2.3
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: config-store
+        links:
+          - redis
+          - db:database
+        labels:
+          - "edu.caltech.imss-ads=foobar"
+        volumes:
+          - /host/path:/container/path
+          - /host/path-ro:/container/path-ro:ro
+      - name: redis
+        image: redis:latest
+      - name: db
+        image: mysql:5.5.47
+
+  - name: explicit-volumes
+    cluster: explicit-volumes-prod
+    family: explicit-volumes
+    network_mode: bridge
+    maximum_percent: 250
+    minimum_healthy_percent: 50
+    cpu: 256
+    memory: 512
+    count: 2
+    load_balancer:
+      target_group_arn: my_target_group_arn
+      container_name: example
+      container_port: 443
+      service_role_arn: a_task_role_arn
+    containers:
+      - name: example
+        image: example:1.2.3
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: config-store
+        volumes:
+          - storage_local:/container/path
+          - storage_task:/container/path2
+          - storage_shared:/container/path3:ro
+    volumes:
+      - name: storage_local
+        path: /foo/bar
+      - name: storage_task
+        config:
+          scope: task
+          driver: my_vol_driver:latest
+          autoprovision: true
+      - name: storage_shared
+        config:
+          scope: shared
+          driver: my_vol_driver:latest
+          driverOpts:
+            opt1: value1
+            opt2: value2
+          labels:
+            key1: val1
+            key2: val2
+
+  - name: foobar-prod3
+    cluster: foobar-prod3
+    family: foobar-prod3
+    network_mode: bridge
+    maximum_percent: 250
+    minimum_healthy_percent: 50
+    launch_type: REPLICA
+    execution_role: ecs_execution_role
+    cpu: 256
+    memory: 512
+    count: 2
+    service_role_arn: a_task_role_arn
+    load_balancer:
+      target_groups:
+        - target_group_arn: my_target_group_arn_443
+          container_name: example
+          container_port: 443
+        - target_group_arn: my_target_group_arn_80
+          container_name: example
+          container_port: 80
+    containers:
+      - name: example
+        image: example:1.2.3
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: config-store
+        links:
+          - redis
+          - db:database
+        labels:
+          - "edu.caltech.imss-ads=foobar"
+        volumes:
+          - /host/path:/container/path
+          - /host/path-ro:/container/path-ro:ro
+      - name: redis
+        image: redis:latest
+      - name: db
+        image: mysql:5.5.47
+
+  - name: foobar-secrets-ec2
+    cluster: foobar-secrets-ec2
+    family: foobar-secrets-ec2
+    execution_role: ecs_execution_role
+    count: 2
+    load_balancer:
+      target_group_arn: my_target_group_arn
+      container_name: example
+      container_port: 443
+    containers:
+      - name: example
+        image: example:1.2.3
+        cpu: 256
+        memory: 512
+        environment:
+          LDAPTLS_REQCERT: never
+          ENVIRONMENT: prod
+          SECRETS_BUCKET_NAME: config-store
+    config:
+      - VAR1=my-value-1
+      - VAR2=my-value-2
+      - SECURE_VAR:secure:${terraform.kms_key_arn}=my-secure-value

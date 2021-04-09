@@ -23,6 +23,10 @@ class AutoscalingGroupManager(Manager):
             )
         return AutoscalingGroup(response['AutoScalingGroups'][0])
 
+    def list(self):
+        response = self.client.describe_auto_scaling_groups()
+        return [AutoscalingGroup(group) for group in response['AutoScalingGroups']]
+
     def save(self, obj):
         self.asg.update_auto_scaling_group(**obj.render_for_update())
 
@@ -34,33 +38,76 @@ class InstanceManager(Manager):
 
     service = 'ec2'
 
-    def get(self, pk, **kwargs):
-        kwargs = {}
-        if pk.startswith('Name:'):
-            kwargs['Filter'] = []
-            kwargs['Filter'].append({'Name': 'tag:Name', 'Values': [pk.split(':')[1]]})
-            if 'VpcId' in kwargs:
-                kwargs['Filter'].append({'Name': 'vpc-id', 'Values': [kwargs['VpcId']]})
-        else:
-            kwargs['InstanceIds'] = [pk]
-        try:
-            response = self.client.describe_instances(**kwargs)
-        except botocore.exceptions.ClientError:
-            if kwargs:
-                msg = 'No instance matching "{}" with filters {} exists in AWS'.format(
+    def get(self, pk, vpc_id=None):
+        # hint: (str["{Instance.id}", "Name:{instance name tag}"], str)
+        instances = self.get_many([pk], vpc_id=vpc_id)
+        if len(instances) > 1:
+            raise Instance.MultipleObjectsReturned(
+                "Got more than one instance when searching for pk={}, vpc_id={}: {}".format(
                     pk,
-                    ', '.join(["{}={}" for k, v in kwargs.items()])
+                    vpc_id,
+                    ", ".join([instance.pk for instance in instances])
                 )
+            )
+        return instances[0]
+
+    def get_many(self, pks, vpc_id=None):
+        # hint: (list[str["{Instance.id}", "Name:{instance name tag}"]], str)
+        ec2_kwargs = {}
+        names = []
+        for pk in pks:
+            if pk.startswith('Name:'):
+                names.append(pk.split(':')[1])
             else:
-                msg = 'No instance matching "{}" exists in AWS'.format(pk)
-            raise Instance.DoesNotExist(msg)
-        return Instance(response['Reservations'][0]['Instances'][0])
+                if 'InstanceIds' not in ec2_kwargs:
+                    ec2_kwargs['InstanceIds'] = []
+                ec2_kwargs['InstanceIds'].append(pk)
+        if names:
+            ec2_kwargs['Filters'] = []
+            ec2_kwargs['Filters'].append({'Name': 'tag:Name', 'Values': names})
+            if vpc_id:
+                ec2_kwargs['Filters'].append({'Name': 'vpc-id', 'Values': [vpc_id]})
+        paginator = self.client.get_paginator('describe_instances')
+        response_iterator = paginator.paginate(**ec2_kwargs)
+        instances = []
+        try:
+            for response in response_iterator:
+                for reservation in response['Reservations']:
+                    instances.extend(reservation['Instances'])
+        except botocore.exceptions.ClientError as e:
+            raise Instance.DoesNotExist(str(e))
+        return [Instance(instance) for instance in instances]
+
+    def list(self, vpc_ids=None, image_ids=None, instance_types=None, subnet_ids=None, tags=None):
+        # hint: (list[str], list[str], list[str], list[str], list[str["{tagName}:{tagValue}"])
+        ec2_kwargs = {}
+        if any(vpc_ids, image_ids, instance_types, subnet_ids, tags):
+            ec2_kwargs['Filters'] = []
+            if vpc_ids is not None:
+                ec2_kwargs['Filters'].append({'Name': 'vpc-id', 'Values': [vpc_ids]})
+            if image_ids is not None:
+                ec2_kwargs['Filters'].append({'Name': 'image-id', 'Values': [image_ids]})
+            if instance_types is not None:
+                ec2_kwargs['Filters'].append({'Name': 'instance-type', 'Values': [instance_types]})
+            if subnet_ids is not None:
+                ec2_kwargs['Filters'].append({'Name': 'subnet-ids', 'Values': [subnet_ids]})
+            if tags is not None:
+                for tag in tags:
+                    tag_name, tag_value = tag.split(':')
+                    ec2_kwargs['Filters'].append({'Name': 'tag:{}'.format(tag_name), 'Values': [tag_value]})
+        paginator = self.client.get_paginator('describe_instances')
+        response_iterator = paginator.paginate()
+        instances = []
+        for response in response_iterator:
+            for reservation in response['Reservations']:
+                instances.extend(reservation['Instances'])
+        return [Instance(instance) for instance in instances]
 
     def save(self, obj):
-        self.asg.update_auto_scaling_group(**obj.render_for_update())
+        raise InstanceManager.ReadOnly('Cannot modify EC2 Instances with deployfish')
 
     def delete(self, pk):
-        raise AutoscalingGroup.ReadOnly('Cannot delete Autoscaling Groups with deployfish')
+        raise InstanceManager.ReadOnly('Cannot modify EC2 Instances with deployfish')
 
 
 # ----------------------------------------
@@ -68,6 +115,8 @@ class InstanceManager(Manager):
 # ----------------------------------------
 
 class AutoscalingGroup(Model):
+
+    # FIXME: add SSHMixin, and enable sshing to this autoscaling group
 
     objects = AutoscalingGroupManager()
 
@@ -78,6 +127,14 @@ class AutoscalingGroup(Model):
     @property
     def name(self):
         return self.data['AutoScalingGroupName']
+
+    @property
+    def instances(self):
+        return self.get_cached(
+            'instances',
+            Instance.objects.get_many,
+            [instance['InstanceId'] for instance in self.data['Instances']]
+        )
 
     def scale(self, count, force=True):
         if self.objects.exists(self.pk):
@@ -118,24 +175,25 @@ class Instance(SSHMixin, Model):
 
     objects = InstanceManager()
 
-    def get_tag_value(self, tag_name):
-        if not hasattr(self, '_tags'):
-            self._tags = {}
-            for tag in self.data['Tags']:
-                self._tags[tag['Key']] = tag['Value']
-        return self._tags[tag_name]
-
     @property
     def pk(self):
         return self.data['InstanceId']
 
     @property
     def name(self):
-        return self.get_tag_value('Name')
+        return self.tags.get('Name', None)
 
     @property
     def ssh_target(self):
         return self
+
+    @property
+    def tags(self):
+        if 'tags' not in self.cache:
+            self.cache['tags'] = {}
+            for tag in self.data['Tags']:
+                self.cache['tags'][tag['Key']] = tag['Value']
+        return self.cache['tags']
 
     @property
     def hostname(self):
@@ -154,7 +212,7 @@ class Instance(SSHMixin, Model):
     @property
     def bastion(self):
         try:
-            return self.get_cached('bastion', self.objects.get, ['Name:bastion*'], {'VpcId': self.data['VpcId']})
+            return self.get_cached('bastion', self.objects.get, ['Name:bastion*'], {'vpc_id': self.data['VpcId']})
         except self.DoesNotExist:
             self.cache['bastion'] = None
             return None
@@ -163,7 +221,7 @@ class Instance(SSHMixin, Model):
     def autoscaling_group(self):
         if 'autoscaling_group' not in self.cache:
             try:
-                autoscalinggroup_name = self.get_tag_value('aws:autoscaling:groupName')
+                autoscalinggroup_name = self.tags['aws:autoscaling:groupName']
             except KeyError:
                 self.cache['autoscaling_group'] = None
             else:

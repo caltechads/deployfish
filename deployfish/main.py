@@ -1,6 +1,8 @@
 import importlib
 import pkg_resources
 
+import deployfish.core.adapters  # noqa:F401
+
 from .cli import cli
 
 

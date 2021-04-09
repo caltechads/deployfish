@@ -6,6 +6,8 @@ import sys
 import click
 
 import deployfish
+import deployfish.core.adapters
+
 
 DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
 
@@ -44,18 +46,9 @@ def cli(ctx, filename, env_file, import_env, version, tfe_token, use_aws_section
     if not filename:
         if 'DEPLOYFISH_CONFIG_FILE' in os.environ:
             filename = os.environ['DEPLOYFISH_CONFIG_FILE']
-        if not filename:
-            filename = DEFAULT_DEPLOYFISH_CONFIG_FILE
-    ctx.obj['CONFIG_FILE'] = filename
-    if not os.path.exists(ctx.obj['CONFIG_FILE']):
-        click.echo("ERROR: couldn't find deployfish config file '{}'".format(ctx.obj['CONFIG_FILE']))
-        sys.exit(1)
-    elif not os.access(ctx.obj['CONFIG_FILE'], os.R_OK):
-        click.echo("ERROR: deployfish config file '{}' exists but is not readable".format(ctx.obj['CONFIG_FILE']))
-    else:
-        if ctx.obj['CONFIG_FILE'] != DEFAULT_DEPLOYFISH_CONFIG_FILE:
-            click.echo("Using '{}' as our deployfish config file".format(ctx.obj['CONFIG_FILE']))
-
+    if filename is not None:
+        click.secho("Using '{}' as our deployfish config file".format(filename))
+    ctx.obj['FILENAME'] = filename
     ctx.obj['ENV_FILE'] = env_file
     ctx.obj['IMPORT_ENV'] = import_env
     ctx.obj['TFE_TOKEN'] = tfe_token

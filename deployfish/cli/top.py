@@ -1,0 +1,17 @@
+from .adapters import ClickSSHTunnelAdapter, ClickServiceAdapter, ClickServiceSecretsAdapter
+from .cli import cli
+
+
+tunnel_top = ClickSSHTunnelAdapter.add_tunnel_click_command(cli)
+
+service_create_top = ClickServiceAdapter.add_create_click_command(cli)
+service_update_top = ClickServiceAdapter.add_update_click_command(cli)
+service_info_top = ClickServiceAdapter.add_info_click_command(cli)
+service_delete_top = ClickServiceAdapter.add_delete_click_command(cli)
+service_ssh_top = ClickServiceAdapter.add_ssh_click_command(cli)
+service_exec_top = ClickServiceAdapter.add_exec_click_command(cli)
+
+service_secrets_group_top = ClickServiceSecretsAdapter.add_command_group(cli, 'config')
+service_secrets_diff_top = ClickServiceSecretsAdapter.add_diff_secrets_command(service_secrets_group_top)
+service_secrets_show_top = ClickServiceSecretsAdapter.add_show_secrets_command(service_secrets_group_top)
+service_secrets_write_top = ClickServiceSecretsAdapter.add_write_secrets_command(service_secrets_group_top)

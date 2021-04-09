@@ -1,0 +1,61 @@
+terraform:
+  statefile: s3://my-{environment}-statefile
+  lookups:
+    cluster_name: '{environment}-cluster-name'
+    autoscalinggroup_name: '{environment}-autoscalinggroup-name'
+    elb_id: '{environment}-elb-id'
+    iam_task_role: 'iam-role-{environment}-task'
+    security_group_list: 'security-group-list'
+    vpc_configuration: 'vpc-configuration'
+
+services:
+  - name: foobar-qa
+    environment: qa
+    cluster: ${terraform.cluster_name}
+    service_role_arn: a_task_role_arn
+    count: 2
+    load_balancer:
+      load_balancer_name: ${terraform.elb_id}
+      container_name: example
+      container_port: 443
+    family: foobar-qa
+    network_mode: host
+    task_role_arn: ${terraform.iam_task_role}
+    vpc_configuration:
+      security_groups: ${terraform.security_group_list}
+    containers:
+      - name: example
+        image: example:1.2.3
+        cpu: 1024
+        memory: 4000
+        command: /usr/bin/supervisord
+        entrypoint: /entrypoint.sh
+        ports:
+          - "80:80"
+          - "443:443"
+          - "8021:8021:udp"
+  - name: foobar-prod
+    environment: prod
+    cluster: ${terraform.cluster_name}
+    service_role_arn: a_task_role_arn
+    count: 2
+    load_balancer:
+      load_balancer_name: ${terraform.elb_id}
+      container_name: example
+      container_port: 443
+    family: foobar-prod
+    network_mode: host
+    task_role_arn: ${terraform.iam_task_role}
+    vpc_configuration:
+      security_groups: ${terraform.security_group_list}
+    containers:
+      - name: example
+        image: example:1.2.3
+        cpu: 1024
+        memory: 4000
+        command: /usr/bin/supervisord
+        entrypoint: /entrypoint.sh
+        ports:
+          - "80:80"
+          - "443:443"
+          - "8021:8021:udp"

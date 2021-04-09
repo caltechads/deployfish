@@ -1,0 +1,61 @@
+{
+    "version": 3,
+    "terraform_version": "0.7.13",
+    "serial": 116,
+    "lineage": "3a5655c3-1d1b-4494-ad10-79186f28354e",
+    "remote": {
+        "type": "s3",
+        "config": {
+            "bucket": "state-file-bucket",
+            "key": "remote-terraform-state",
+            "region": "us-west-2"
+        }
+    },
+    "modules": [
+        {
+            "path": [
+                "root"
+            ],
+            "outputs": {
+                "prod-elb-id": {
+                    "sensitive": false,
+                    "type": "string",
+                    "value": "foobar-prod-elb"
+                },
+                "iam-role-prod-task": {
+                    "sensitive": false,
+                    "type": "string",
+                    "value": "arn:aws:iam::324958023459:role/foobar-prod-task"
+                },
+                "prod-autoscalinggroup-name": {
+                    "sensitive": false,
+                    "type": "string",
+                    "value": "foobar-asg-prod"
+                },
+                "prod-cluster-name": {
+                    "sensitive": false,
+                    "type": "string",
+                    "value": "foobar-cluster-prod"
+                },
+                "security-group-list": {
+                    "sensitive": false,
+                    "type": "list",
+                    "value": [
+                        "sg-1234567",
+                        "sg-2345678",
+                        "sg-3456789"
+                    ]
+                },
+                "vpc-configuration": {
+                    "sensitive": false,
+                    "type": "map",
+                    "value": {
+                        "subnets": ["subnet-1234567"],
+                        "security_groups": ["sg-1234567"],
+                        "public_ip": "DISABLED"
+                    }
+                }
+            }
+        }
+    ]
+}

@@ -1,4 +1,5 @@
 from copy import copy
+import json
 
 from botocore import waiter, xform_name
 from jsondiff import diff
@@ -10,9 +11,9 @@ from deployfish.exceptions import (
     ObjectDoesNotExist,
     ObjectImproperlyConfigured,
     ObjectReadOnly,
-    OperationalError,
+    OperationFailed,
 )
-from deployfish.registry import registry
+from deployfish.registry import importer_registry
 
 
 class LazyAttributeMixin(object):
@@ -36,7 +37,10 @@ class Manager(object):
     service = None
 
     def __init__(self):
-        self.client = get_boto3_session().client(self.service)
+        if self.service:
+            self.client = get_boto3_session().client(self.service)
+        else:
+            self.client = None
 
     def get(self, pk, **kwargs):
         raise NotImplementedError
@@ -78,13 +82,14 @@ class Manager(object):
             mapping[xform_name(name)] = name
         if waiter_name not in mapping:
             raise ValueError("Waiter does not exist: %s" % waiter_name)
-        return create_hooked_waiter_with_client(mapping[waiter_name], model, self)
+        return create_hooked_waiter_with_client(mapping[waiter_name], model, self.client)
 
 
 class Model(LazyAttributeMixin):
 
     objects = None
-    adapters = registry
+    adapters = importer_registry
+    config_section = None
 
     class DoesNotExist(ObjectDoesNotExist):
         pass
@@ -98,14 +103,14 @@ class Model(LazyAttributeMixin):
     class ReadOnly(ObjectReadOnly):
         pass
 
-    class OperationalError(OperationalError):
+    class OperationFailed(OperationFailed):
         pass
 
     @classmethod
     def adapt(cls, obj, source, **kwargs):
         adapter = cls.adapters.get(cls.__name__, source)(obj, **kwargs)
-        data, kwargs = adapter.convert()
-        return data, kwargs
+        data, data_kwargs = adapter.convert()
+        return data, data_kwargs
 
     @classmethod
     def new(cls, obj, source, **kwargs):
@@ -132,6 +137,9 @@ class Model(LazyAttributeMixin):
     def exists(self):
         return self.objects.exists(self.pk)
 
+    def render_for_display(self):
+        return self.render()
+
     def render_for_diff(self):
         return self.render()
 
@@ -151,6 +159,9 @@ class Model(LazyAttributeMixin):
     def delete(self):
         self.objects.delete(self)
 
+    def copy(self):
+        return self.__class__(self.render_for_create())
+
     def __eq__(self, other):
         if self.__class__ != other.__class__:
             return False
@@ -161,7 +172,7 @@ class Model(LazyAttributeMixin):
             other = self.objects.get(self.pk)
         if self.__class__ != other.__class__:
             raise ValueError('{} is not a {}'.format(str(other), self.__class__.__name__))
-        return diff(self.render_for_diff(), other.render_for_diff())
+        return json.loads(diff(other.render_for_diff(), self.render_for_diff(), syntax='explicit', dump=True))
 
     def reload_from_db(self):
         self.purge_cache()

@@ -9,7 +9,7 @@ from deployfish.core.models import (
     TaskDefinition,
 )
 
-from .mixins import DeployfishYamlAdapter
+from .mixins import DeployfishYamlAdapter, SSHConfigMixin
 from .secrets import SecretsMixin
 
 
@@ -447,8 +447,9 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
             data['linuxCapabilities'] = self.get_linuxCapabilities()
         if self.secrets:
             data['secrets'] = self.get_secrets()
-
-        return data
+        kwargs = {}
+        kwargs['secrets'] = self.secrets
+        return data, kwargs
 
 
 class StandaloneTaskAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter):
@@ -495,7 +496,7 @@ class StandaloneTaskAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlA
         return data, kwargs
 
 
-class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter):
+class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter):
 
     """
     * Service itself             [x]
@@ -505,8 +506,13 @@ class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter)
     * Service Discovery          [x]
     * Helper Tasks               [ ]
     """
+
+    def __init__(self, data, **kwargs):
+        self.load_secrets = kwargs.pop('load_secrets', True)
+        super(ServiceAdapter, self).__init__(data, **kwargs)
+
     def get_clientToken(self):
-        return 'token-{}-{}'.format(self.data['name'], self.data['cluster'])
+        return 'token-{}-{}'.format(self.data['name'], self.data['cluster'])[:35]
 
     def get_task_definition(self, secrets=None):
         deployfish_environment = {
@@ -554,7 +560,7 @@ class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter)
         return loadBalancers
 
     def convert(self):
-        data = {}
+        data, kwargs = super(ServiceAdapter, self).convert()
         data['cluster'] = self.data['cluster']
         data['serviceName'] = self.data['name']
         if 'load_balancer' in self.data:
@@ -579,12 +585,11 @@ class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter)
             data['placementConstraints'] = self.data['placement_constraints']
         if 'placement_strategy' in self.data:
             data['placementStrategy'] = self.data['placement_strategy']
-        if 'maximum_percent' in self.data or 'minimum_healthy_percent' in self.data:
-            data['deploymentConfiguration'] = {}
-            data['deploymentConfiguration']['maximumPercent'] = int(self.data.get('maximum_percent', 200))
-            data['deploymentConfiguration']['minimumHealthyPercent'] = int(
-                self.data.get('minimum_healthy_percent', 100)
-            )
+        data['deploymentConfiguration'] = {}
+        data['deploymentConfiguration']['maximumPercent'] = int(self.data.get('maximum_percent', 200))
+        data['deploymentConfiguration']['minimumHealthyPercent'] = int(
+            self.data.get('minimum_healthy_percent', 50)
+        )
         data['schedulingStrategy'] = self.data.get('scheduling_strategy', 'REPLICA')
         if data['schedulingStrategy'] == 'DAEMON':
             data['desiredCount'] = 'automatically'
@@ -595,8 +600,9 @@ class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter)
             data['desiredCount'] = self.data['count']
         data['clientToken'] = self.get_clientToken()
 
-        kwargs = {}
-        kwargs['secrets'] = self.get_secrets(self.data['cluster'], self.data['name'])
+        kwargs['secrets'] = []
+        if self.load_secrets:
+            kwargs['secrets'] = self.get_secrets(self.data['cluster'], self.data['name'])
         kwargs['task_definition'] = self.get_task_definition(secrets=kwargs['secrets'])
         if 'application_scaling' in self.data:
             kwargs['appscaling'] = ScalableTarget.new(
@@ -615,5 +621,6 @@ class ServiceAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter)
                 raise self.SchemaException(
                     'You must use network_mode of "awsvpc" to enable service discovery'.format(self.data['name'])
                 )
-
+        if 'autoscalinggroup_name' in self.data:
+            kwargs['autoscalinggroup_name'] = self.data['autoscalinggroup_name']
         return data, kwargs

@@ -1,5 +1,3 @@
-
-
 class AdapterRegistry(object):
 
     def __init__(self):
@@ -14,4 +12,5 @@ class AdapterRegistry(object):
         return self.adapters[model_name][source]
 
 
-registry = AdapterRegistry()
+importer_registry = AdapterRegistry()
+click_registry = AdapterRegistry()
