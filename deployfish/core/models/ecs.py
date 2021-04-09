@@ -165,6 +165,13 @@ class InvokedTaskManager(Manager):
     def save(self, obj):
         raise InvokedTask.ReadOnly('InvokedTasks are not modifiable')
 
+    def delete(self, obj):
+        self.client.stop_task(
+            cluster=obj.cluster.name,
+            task=obj.arn
+        )
+
+
 
 class ContainerInstanceManager(Manager):
 
@@ -978,9 +985,6 @@ class Service(DockerMixin, SecretsMixin, Model):
     def cluster(self):
         return self.get_cached('cluster', Cluster.objects.get, [self.data['cluster']])
 
-    def scale(self, count):
-        self.objects.scale(self, count)
-
     @property
     def autoscaling_group(self):
         if 'autoscaling_group' in self.cache:
@@ -1023,6 +1027,51 @@ class Service(DockerMixin, SecretsMixin, Model):
                 task.container_instance for task in self.running_tasks
             ]
         return self.cache['container_instances']
+
+    # Custom actions
+
+    def scale(self, count):
+        """
+        Set the desiredCount for our service to `count`.
+
+        .. warning::
+
+            This only touches the Service itself.  If you need to scale the cluster also, use self.cluster.scale()
+            first.
+
+        :param count int: set the Service's desired count to this.
+        """
+        self.objects.scale(self, count)
+
+    def restart(self, hard=False, waiter_hooks=None):
+        """
+        Restart the running tasks for a service.  What this really means is kill off each task in the service and let
+        ECS start new ones in their places.
+
+        :param hard bool: if `True`, kill all tasks immediately; if `False`, wait for the service to stabilize after
+                          killing each task
+        :param waiter_hooks list(AbstractWaiterHook): a list of waiter hooks to use when invoking the 'services_stable'
+                          waiter
+        """
+        if not waiter_hooks:
+            waiter_hooks = []
+        waiter = self.objects.get_waiter('services_stable')
+        for task in self.running_tasks:
+            task.delete()
+            if not hard:
+                waiter.wait(
+                    cluster=self.data['cluster'],
+                    services=[self.name],
+                    WaiterHooks=waiter_hooks
+                )
+        if hard:
+            waiter.wait(
+                cluster=self.data['cluster'],
+                services=[self.name],
+                WaiterHooks=waiter_hooks
+            )
+
+    # Renders
 
     def render_for_update(self):
         data = {}

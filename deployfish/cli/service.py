@@ -12,6 +12,7 @@ service_ssh = ClickServiceAdapter.add_ssh_click_command(service_group)
 service_exec = ClickServiceAdapter.add_exec_click_command(service_group)
 service_tunnel = ClickServiceAdapter.add_tunnel_click_command(service_group)
 service_scale = ClickServiceAdapter.add_scale_service_click_command(service_group)
+service_restart = ClickServiceAdapter.add_restart_service_click_command(service_group)
 
 service_secrets_group = ClickServiceSecretsAdapter.add_command_group(service_group, 'config')
 service_secrets_diff = ClickServiceSecretsAdapter.add_diff_secrets_command(service_secrets_group)

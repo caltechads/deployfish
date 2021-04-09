@@ -1,10 +1,18 @@
 from .abstract import ClickModelAdapter, ClickSecretsAdapter
-from .commands import ClickScaleServiceCommandMixin, ClickScaleInstancesCommandMixin
+from .commands import (
+    ClickRestartServiceCommandMixin,
+    ClickScaleInstancesCommandMixin,
+    ClickScaleServiceCommandMixin,
+)
 from deployfish.core.models import Service, Cluster
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 
 
-class ClickServiceAdapter(ClickScaleServiceCommandMixin, ClickModelAdapter):
+class ClickServiceAdapter(
+    ClickScaleServiceCommandMixin,
+    ClickRestartServiceCommandMixin,
+    ClickModelAdapter
+):
 
     model = Service
 

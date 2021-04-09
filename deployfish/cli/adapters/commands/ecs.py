@@ -180,3 +180,60 @@ COUNT is an integer.
         obj.scale(count)
         self.scale_services_waiter(obj)
         return click.style('\n\nScaled {}("{}") to {} tasks.'.format(self.model.__name__, obj.pk, count), fg='green')
+
+
+class ClickRestartServiceCommandMixin(ClickScaleInstancesCommandMixin):
+
+    @classmethod
+    def add_restart_service_click_command(cls, command_group):
+        """
+        Build a fully specified click command for restarting the tasks in ECS services, and add it to the click command
+        group `command_group`.  Return the properly wrapped function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def restart_service(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed as e:
+                    ctx.obj['config'] = e
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].restart_service(kwargs['identifier'], kwargs['hard']))
+
+        pk_description = cls.get_pk_description()
+        restart_service.__doc__ = """
+Restart the running tasks for a Service in AWS.
+
+{pk_description}
+""".format(pk_description=pk_description)
+
+        function = print_render_exception(restart_service)
+        function = click.pass_context(function)
+        function = click.option(
+            '--hard/--no-hard',
+            default=False,
+            help='Force the AutoscalingGroup to scale outside its MinCount or MaxCount'
+        )(function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'restart',
+            short_help='Restart the running tasks for a Service in AWS.'.format(
+                object_name=cls.model.__name__
+            )
+        )(function)
+        return function
+
+    def scale_services_waiter(self, obj, **kwargs):
+        kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
+        kwargs['services'] = [obj.name]
+        kwargs['cluster'] = obj.data['cluster']
+        self.wait('services_stable', **kwargs)
+
+    @handle_model_exceptions
+    def restart_service(self, identifier, hard):
+        obj = self.get_object(identifier, needs_config=False)
+        obj.restart(hard=hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
+        return click.style('\n\nRestarted tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
