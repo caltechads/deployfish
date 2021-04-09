@@ -252,6 +252,8 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
         """
         portMappings = []
         for mapping in self.data.get('ports', []):
+            if isinstance(mapping, int):
+                mapping = str(mapping)
             m = self.PORTS_RE.search(mapping)
             if m:
                 mapping = {}

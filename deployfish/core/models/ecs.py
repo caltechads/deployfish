@@ -380,8 +380,8 @@ class ServiceManager(Manager):
         if self.exists(obj.pk):
             try:
                 self.client.update_service(**obj.render_for_update())
-            except self.client.ServiceNotActiveException:
-                raise Service.DoesNotExist(
+            except self.client.exceptions.ServiceNotActiveException:
+                raise Service.OperationFailed(
                     'Service named "{}" in cluster "{}" in AWS cannot be updated: not ACTIVE'.format(service, cluster)
                 )
         else:
@@ -1082,7 +1082,8 @@ class Service(DockerMixin, SecretsMixin, Model):
         if 'capacityProviderStrategy' in self.data:
             data['capacityProviderStrategy'] = self.data['capacityProviderStrategy']
         else:
-            data['platformVersion'] = self.data.get('platformVersion', 'LATEST')
+            if 'launchType' in self.data and self.data['launchType'] == 'FARGATE':
+                data['platformVersion'] = self.data.get('platformVersion', 'LATEST')
         if 'deploymentConfiguration' in self.data:
             data['deploymentConfiguration'] = self.data['deploymentConfiguration']
         if 'networkConfiguration' in self.data:

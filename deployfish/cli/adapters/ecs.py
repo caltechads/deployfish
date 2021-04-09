@@ -32,24 +32,17 @@ class ClickServiceAdapter(
         'Desired count': 'desiredCount',
         'Running count': 'runningCount'
     }
+    update_template = 'service--detail:short.tpl'
 
-    def create_waiter(self, obj, **kwargs):
+    def service_waiter(self, obj, **kwargs):
         kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
         kwargs['services'] = [obj.name]
         kwargs['cluster'] = obj.data['cluster']
         self.wait('services_stable', **kwargs)
 
-    def update_waiter(self, obj, **kwargs):
-        kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
-        kwargs['services'] = [obj.name]
-        kwargs['cluster'] = obj.data['cluster']
-        self.wait('services_stable', **kwargs)
-
-    def delete_waiter(self, obj, **kwargs):
-        kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
-        kwargs['services'] = [obj.name]
-        kwargs['cluster'] = obj.data['cluster']
-        self.wait('services_inactive', **kwargs)
+    create_waiter = service_waiter
+    update_waiter = service_waiter
+    delete_waiter = service_waiter
 
 
 class ClickServiceSecretsAdapter(ClickSecretsAdapter):

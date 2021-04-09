@@ -1,4 +1,6 @@
 import datetime
+from six import string_types
+from textwrap import wrap
 
 from tabulate import tabulate
 
@@ -71,7 +73,7 @@ class TableRenderer(AbstractRenderer):
                 except KeyError:
                     pass
         raise RenderException(
-            '{our_name}: {object_class}.render_for_display() has no key called "{key}", nor does the attribute {object_class}.{key} exist'.format(
+            '{our_name}: {object_class}.render_for_display() has no key called "{key}", nor does the attribute {object_class}.{key} exist'.format(  # noqa:E501
                 our_name=self.__class__.__name__,
                 object_class=obj.__class__.__name__,
                 key=column
@@ -116,6 +118,8 @@ class TableRenderer(AbstractRenderer):
                     value = value.strftime(self.date_format)
                 elif isinstance(value, float):
                     value = self.float_format.format(value)
+                else:
+                    value = str(value)
         return value
 
     def render(self, data):
@@ -123,7 +127,10 @@ class TableRenderer(AbstractRenderer):
         for obj in data:
             row = []
             for column in self.columns:
-                row.append(self.render_column(obj, column))
+                value = self.render_column(obj, column)
+                if len(value) > 72:
+                    value = '\n'.join(wrap(value, 72))
+                row.append(value)
             table.append(row)
         if self.ordering:
             reverse = False

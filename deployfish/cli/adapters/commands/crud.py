@@ -294,6 +294,8 @@ class ClickCreateObjectCommandMixin(object):
 
 class ClickUpdateObjectCommandMixin(object):
 
+    update_template = None
+
     @classmethod
     def add_update_click_command(cls, command_group):
         """
@@ -331,10 +333,17 @@ Update attributes of an existing a new {object_name} object in AWS from what we 
         )(function)
         return function
 
+    def update_waiter(self, obj, **kwargs):
+        pass
+
     @handle_model_exceptions
     def update(self, identifier, **kwargs):
         obj = self.get_object(identifier, factory_kwargs=self.factory_kwargs.get('update', {}))
+        renderer = TemplateRenderer()
+        click.secho('\n\nUpdating {}("{}") to this:\n\n'.format(self.model.__name__, obj.pk), fg='yellow')
+        click.secho(renderer.render(obj, template=self.update_template))
         obj.save()
+        self.update_waiter(obj)
         return click.style('Updated {}("{}"):'.format(self.model.__name__, obj.pk), fg='cyan')
 
 

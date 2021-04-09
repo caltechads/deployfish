@@ -4,6 +4,7 @@ from .cli import cli
 
 service_group = ClickServiceAdapter.add_command_group(cli, 'service')
 service_create = ClickServiceAdapter.add_create_click_command(service_group)
+service_update = ClickServiceAdapter.add_update_click_command(service_group)
 service_list = ClickServiceAdapter.add_list_click_command(service_group)
 service_info = ClickServiceAdapter.add_info_click_command(service_group)
 service_exists = ClickServiceAdapter.add_exists_click_command(service_group)

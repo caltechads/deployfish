@@ -12,6 +12,7 @@ class AbstractConfigProcessor(object):
     REPLACEMENTS = [
         '{name}',
         '{environment}',
+        '{service-name}'
         '{cluster-name}'
     ]
 
@@ -25,6 +26,7 @@ class AbstractConfigProcessor(object):
             for item in section:
                 self.deployfish_lookups[section_name][item['name']] = {}
                 self.deployfish_lookups[section_name][item['name']]['{name}'] = item['name']
+                self.deployfish_lookups[section_name][item['name']]['{service-name}'] = item['name']
                 self.deployfish_lookups[section_name][item['name']]['{environment}'] = item.get('environment', 'prod')
                 if 'cluster' in item:
                     self.deployfish_lookups[section_name][item['name']]['{cluster-name}'] = item['cluster']
