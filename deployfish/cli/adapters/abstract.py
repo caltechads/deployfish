@@ -179,46 +179,23 @@ class ClickBaseModelAdapter(object):
                 self.__class__.__name__
             )
 
-    def get_object(self, identifier, aws_only=False, needs_config=True, failure_message=None, factory_kwargs=None):
-        """
-        Load an object:
+    def dereference_identifier(self, identifier):
+        return identifier
 
-            * If aws_only is True, and needs_config is True load only from AWS, but possibly dereference the bare
-              identifier by looking it up in deployfish.yml.  We need to do this for Services, for instance, because
-              we would like people to be able to just use``service_name`` or ``environment`` to name their service, when
-              the AWS calls need both ``cluster_name`` and ``service_name``.
-            * If aws_only is False, and needs_config is True, load only from deployfish.yml
-            * If aws_only is False, and needs_config is False, try to load from deployfish.yml and if that fails, fall
-              through to loading from AWS.
+    def get_object_from_aws(self, identifier):
+        if self.model.config_section is not None:
+            identifier = self.dereference_identifier(identifier)
+        try:
+            obj = self.model.objects.get(identifier)
+        except self.model.DoesNotExist as e:
+            raise RenderException(str(e))
+        return obj
 
-        .. note::
-
-            This method seems overly complicated -- maybe split this into several different methods based on
-            we need deployfish.yml, and if so, whether we need it to just look up the cluster for a bare service name,
-            or whether we need to load a full object out of deployfish.yml to work with.
-        """
-        if not failure_message:
-            failure_message = '{object_name}.name and {object_name}.environment identifiers cannot be used.'.format(
-                object_name=self.model.__name__
-            )
-        obj = None
+    def get_object_from_deployfish(self, identifier, factory_kwargs=None):
         if self.model.config_section is not None:
             try:
                 obj = self.factory(identifier, factory_kwargs)
             except ConfigProcessingFailed as e:
-                if needs_config:
-                    raise RenderException(str(e))
-                else:
-                    lines = []
-                    lines.append(click.style('WARNING: {}'.format(str(e)), fg='yellow'))
-                    lines.append(click.style(failure_message, fg='yellow'))
-                    click.secho('\n'.join(lines))
-            else:
-                identifier = obj.pk
-        if not obj or aws_only:
-            try:
-                obj = self.model.objects.get(identifier)
-            except self.model.DoesNotExist as e:
                 raise RenderException(str(e))
         return obj
 

@@ -110,7 +110,7 @@ COUNT is an integer.
 
     @handle_model_exceptions
     def scale_instances(self, identifier, count, force):
-        obj = self.get_object(identifier, needs_config=False)
+        obj = self.get_object_from_aws(identifier)
         return self._scale_instances(obj, count, force)
 
 
@@ -179,7 +179,7 @@ COUNT is an integer.
 
     @handle_model_exceptions
     def scale_service(self, identifier, count, asg, force):
-        obj = self.get_object(identifier, needs_config=False)
+        obj = self.get_object_from_aws(identifier)
         click.secho('Updating desiredCount to "{}" on Service(pk="{}")'.format(count, obj.pk))
         if asg:
             self._scale_instances(obj.cluster, count, force=force)
@@ -240,7 +240,7 @@ Restart the running tasks for a Service in AWS.
 
     @handle_model_exceptions
     def restart_service(self, identifier, hard):
-        obj = self.get_object(identifier, needs_config=False)
+        obj = self.get_object_from_aws(identifier)
         obj.restart(hard=hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
         return click.style('\n\nRestarted tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
 
@@ -321,7 +321,7 @@ List the helper tasks associated with a Service in AWS.
                 self.__class__.__name__,
                 display
             )
-        obj = self.get_object(identifier, no_config=True)
+        obj = self.get_object_from_aws(identifier)
         results = obj.helper_tasks
         if not results:
             return('No results.')

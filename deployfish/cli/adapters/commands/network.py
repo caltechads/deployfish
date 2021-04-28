@@ -127,11 +127,7 @@ SSH to an existing {object_name} in AWS.
 
     @handle_model_exceptions
     def ssh(self, identifier, choose, verbose):
-        obj = self.get_object(
-            identifier,
-            needs_config=False,
-            factory_kwargs=self.factory_kwargs.get('ssh', {})
-        )
+        obj = self.get_object_from_aws(identifier)
         target = self.get_ssh_target(obj, choose=choose)
         target.ssh_interactive(verbose=verbose)
 
@@ -186,11 +182,7 @@ Exec into a container in a {object_name} in AWS.
 
     @handle_model_exceptions
     def exec(self, identifier, choose, verbose):
-        obj = self.get_object(
-            identifier,
-            needs_config=False,
-            factory_kwargs=self.factory_kwargs.get('exec', {})
-        )
+        obj = self.get_object_from_aws(identifier)
         target, container_name = self.get_exec_target(obj, choose=choose)
         obj.docker_exec(ssh_target=target, container_name=container_name, verbose=verbose)
 
@@ -311,11 +303,7 @@ Create an SSH tunnel through an instance related to a {object_name}.
             if identifier:
                 object_name = identifier[0]
                 tunnel_name = None
-                obj = self.get_object(
-                    object_name,
-                    needs_config=False,
-                    factory_kwargs=self.factory_kwargs.get('tunnel', {})
-                )
+                obj = self.get_object_from_deployfish(object_name)
                 if len(identifier) > 1:
                     tunnel_name = identifier[1]
                     try:
@@ -335,11 +323,7 @@ Create an SSH tunnel through an instance related to a {object_name}.
                         raise RenderException(
                             'Either supply the name of a tunnel associated with this {}, or use the --local-port, --host and --host-port flags.'.format(self.model.__name__)  # noqa:E501
                         )
-                    obj = self.get_object(
-                        object_name,
-                        needs_config=False,
-                        factory_kwargs=self.factory_kwargs.get('tunnel', {})
-                    )
+                    obj = self.get_object_from_aws(object_name)
                     tunnel = SSHTunnel({
                         'name': '{}-{}'.format(object_name, host),
                         'service': object_name,
@@ -351,10 +335,10 @@ Create an SSH tunnel through an instance related to a {object_name}.
                 raise RenderException('For tunneling, enter at least SERVICE_NAME as the command argument.')
         else:
             # We're a command under the `cli` command group.
-            tunnel = self.get_object(identifier)
+            tunnel = self.get_object_from_deployfish(identifier)
+            obj = tunnel
         if choose:
             target = self.choose_ssh_target(tunnel)
         else:
             target = obj.ssh_target
         target.tunnel(tunnel, verbose=verbose)
-

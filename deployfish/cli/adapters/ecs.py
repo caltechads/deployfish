@@ -45,6 +45,20 @@ class ClickServiceAdapter(
     update_waiter = service_waiter
     delete_waiter = service_waiter
 
+    def dereference_identifier(self, identifier):
+        failure_message = 'Service.name and Service.environment identifiers cannot be used.'
+        if ':' not in identifier:
+            try:
+                config = get_config()
+            except ConfigProcessingFailed as e:
+                lines = []
+                lines.append(click.style('{}'.format(str(e)), fg='yellow'))
+                lines.append(click.style(failure_message, fg='yellow'))
+                raise RenderException('\n'.join(lines))
+            item = config.get_section_item(self.model.config_section, identifier)
+            return '{}:{}'.format(item['cluster'], item['name'])
+        return identifier
+
 
 class ClickServiceTasksAdapter(
     ClickListHelperTasksCommandMixin,

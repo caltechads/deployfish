@@ -95,7 +95,7 @@ Show the AWS SSM Parameter Store secrets associated with a {object_name}.
                 self.__class__.__name__,
                 display
             )
-        obj = self.get_object(identifier, needs_config=False)
+        obj = self.get_object_from_aws(identifier)
         obj.reload_secrets()
         click.secho(
             'Live values for AWS SSM Parameter store secrets for {}(pk="{}"):'.format(
@@ -153,7 +153,7 @@ Write the AWS SSM Parameter Store secrets associated with a {object_name} to AWS
 
     @handle_model_exceptions
     def write_secrets(self, identifier):
-        obj = self.get_object(identifier)
+        obj = self.get_object_from_deployfish(identifier)
         click.secho(
             '\nWriting secrets for {}(pk="{}") to AWS Parameter Store ...'.format(self.model.__name__, obj.pk),
             nl=False
@@ -214,7 +214,7 @@ Diff the AWS SSM Parameter Store secrets vs their counterparts in deployfish.yml
         """
         Show the difference between the secrets we have in our deployfish.yml file and what is in AWS.
         """
-        obj = self.get_object(identifier)
+        obj = self.get_object_from_deployfish(identifier)
         other = Secret.objects.list(obj.secrets_prefix)
         title = '\nDiffing secrets for {}(pk="{}"):'.format(self.model.__name__, obj.pk)
         click.echo(title)

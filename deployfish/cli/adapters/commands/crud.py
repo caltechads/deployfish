@@ -183,9 +183,8 @@ Show info about a {object_name} object that exists in AWS.
                 self.__class__.__name__,
                 display
             )
-        obj = self.get_object(pk, needs_config=False, factory_kwargs=self.factory_kwargs.get('info', {}))
-        obj.reload_from_db()
         return '\n' + self.info_renderer_classes[display]().render(obj) + '\n'
+        obj = self.get_object_from_aws(pk)
 
 
 class ClickObjectExistsCommandMixin(object):
@@ -229,11 +228,12 @@ Show info about a {object_name} object that exists in AWS.
 
     @handle_model_exceptions
     def exists(self, pk,  **kwargs):
-        obj = self.get_object(pk, needs_config=False, factory_kwargs=self.factory_kwargs.get('info', {}))
-        if obj.exists:
-            return click.style('{}(pk="{}") exists in AWS.'.format(self.model.__name__, pk), fg='green')
+        try:
+            self.get_object_from_aws(pk)
+        except self.model.DoesNotExist:
+            return click.style('{}(pk="{}") does not exist in AWS.'.format(self.model.__name__, pk), fg='red')
         else:
-            return click.style('{}(pk="{}") does not exist in AWS.'.format(self.model.__name__, obj.pk), fg='red')
+            return click.style('{}(pk="{}") exists in AWS.'.format(self.model.__name__, pk), fg='green')
 
 
 class ClickCreateObjectCommandMixin(object):
@@ -281,7 +281,7 @@ class ClickCreateObjectCommandMixin(object):
 
     @handle_model_exceptions
     def create(self, name, **kwargs):
-        obj = self.get_object(name, factory_kwargs=self.factory_kwargs.get('create', {}))
+        obj = self.get_object_from_deployfish(name, factory_kwargs=self.factory_kwargs.get('create', {}))
         if obj.exists:
             raise RenderException('{}(pk={}) already exists in AWS!'.format(self.model.__name__, obj.pk))
         renderer = TemplateRenderer()
@@ -338,7 +338,7 @@ Update attributes of an existing a new {object_name} object in AWS from what we 
 
     @handle_model_exceptions
     def update(self, identifier, **kwargs):
-        obj = self.get_object(identifier, factory_kwargs=self.factory_kwargs.get('update', {}))
+        obj = self.get_object_from_deployfish(identifier, factory_kwargs=self.factory_kwargs.get('update', {}))
         renderer = TemplateRenderer()
         click.secho('\n\nUpdating {}("{}") to this:\n\n'.format(self.model.__name__, obj.pk), fg='yellow')
         click.secho(renderer.render(obj, template=self.update_template))
@@ -400,7 +400,9 @@ IDENTIFIER is a string that looks like one of:
 
     @handle_model_exceptions
     def delete(self, identifier):
-        obj = self.get_object(identifier, factory_kwargs=self.factory_kwargs.get('delete', {}))
+        # FIXME: should we just be doing get_object_from_aws here?  Or do we want the deployfish.yml file as
+        # an additional hurdle?
+        obj = self.get_object_from_deployfish(identifier, factory_kwargs=self.factory_kwargs.get('delete', {}))
         obj.reload_from_db()
         click.secho('\nDeleting {}("{}")\n'.format(self.model.__name__, identifier), fg='red')
         renderer = TemplateRenderer()
