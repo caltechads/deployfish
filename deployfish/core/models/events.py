@@ -28,7 +28,7 @@ class EventTargetManager(Manager):
         response = self.client.list_targets_by_rule(Rule=rule.pk)
         targets = []
         for target in response['Targets']:
-            targets.append(EventTarget(target, rule=rule.data))
+            targets.append(EventTarget(target, rule=rule))
         return targets
 
     def delete(self, obj):
@@ -57,9 +57,18 @@ class EventScheduleRuleManager(Manager):
             pass
         return EventScheduleRule(data)
 
+    def list(self):
+        paginator = self.client.get_paginator('list_rules')
+        response_iterator = paginator.paginate(NamePrefix="deployfish-")
+        rules = []
+        for response in response_iterator:
+            rules.extend([EventScheduleRule(data) for data in response['Rules']])
+        return rules
+
     def save(self, obj):
-        for target in EventTarget.objects.list(rule=obj):
-            EventTarget.objects.delete(target)
+        if self.exists(obj.pk):
+            for target in EventTarget.objects.list(rule=obj):
+                EventTarget.objects.delete(target)
         response = self.client.put_rule(**obj.render())
         if obj.target:
             obj.target.save()
@@ -82,7 +91,7 @@ class EventTarget(Model):
 
         {
             'Id': 'string',
-            'Arn': 'string',
+            'Arn': 'string',                    # Note: this is the CLUSTER Arn, not the Target arn
             'RoleArn': 'string',
             'Input': 'string',
             'InputPath': 'string',
@@ -122,6 +131,14 @@ class EventTarget(Model):
     def pk(self):
         return self.data['Id']
 
+    @property
+    def name(self):
+        return self.data['Id']
+
+    @property
+    def arn(self):
+        return self.data['Arn']
+
     def delete(self):
         if not self.rule:
             raise self.ImproperlyConfigured(
@@ -139,7 +156,7 @@ class EventTarget(Model):
             raise self.ImproperlyConfigured(
                 'EventTarget({}) has no EventScheduleRule associated with it.  Assign one with target.rule = rule'
             )
-        self.client.put_targets(Rule=self.rule['NamYe'], Targets=[self.data])
+        super(EventTarget, self).save()
 
     def set_task_definition_arn(self, arn):
         self.data['EcsParameters']['TaskDefinitionArn'] = arn
@@ -147,6 +164,8 @@ class EventTarget(Model):
 
 class EventScheduleRule(Model):
     """
+    An EventScheduleRule is an AWS cron job.  We use them to run ECS tasks periodically.
+
     If the task has a schedule defined, manage an ECS cloudwatch event with the corresponding
     schedule, with the task as an event target.
     """
@@ -156,16 +175,26 @@ class EventScheduleRule(Model):
     @classmethod
     def new(cls, obj, source):
         rule = super(EventScheduleRule, cls).new(obj, source)
-        rule.target = EventTarget.new(obj, source, rule=rule.data)
+        rule.target = EventTarget.new(obj, source, rule=rule)
         return rule
 
     def __init__(self, data):
-        super(EventScheduleRule, self).__init__(self, data)
+        super(EventScheduleRule, self).__init__(data)
+        if not self.data['Name'].startswith('deployfish-'):
+            self.data['Name'] = 'deployfish-' + self.data['Name']
         self.target = None
 
     @property
     def pk(self):
         return self.data['Name']
+
+    @property
+    def name(self):
+        return self.data['Name']
+
+    @property
+    def arn(self):
+        return self.data['Arn']
 
     def set_task_definition_arn(self, arn):
         self.target.set_task_definition_arn(arn)

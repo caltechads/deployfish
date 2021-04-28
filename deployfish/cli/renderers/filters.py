@@ -52,7 +52,7 @@ def tabular(data, **kwargs):
     columns = {
         k.replace('_', ' '): kwargs_copy.pop(k)
         for k in kwargs.keys()
-        if k not in ['ordering', 'date_format', 'datetime_format', 'float_precision']
+        if k not in ['ordering', 'date_format', 'datetime_format', 'float_precision', 'tablefmt', 'show_headers']
     }
 
     renderer = TableRenderer(columns, **kwargs_copy)

@@ -1,13 +1,13 @@
 import re
 
-from .mixins import DeployfishYamlAdapter
+from ..abstract import Adapter
 
 
 # ------------------------
 # Adapters
 # ------------------------
 
-class ECSServiceCPUAlarmAdapter(DeployfishYamlAdapter):
+class ECSServiceCPUAlarmAdapter(Adapter):
     """
         {
             'cpu': '>=60',

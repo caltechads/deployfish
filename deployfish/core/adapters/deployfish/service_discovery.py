@@ -1,7 +1,7 @@
-from .mixins import DeployfishYamlAdapter
+from ..abstract import Adapter
 
 
-class ServiceDiscoveryServiceAdapter(DeployfishYamlAdapter):
+class ServiceDiscoveryServiceAdapter(Adapter):
     """
         {
             'namespace': 'local',

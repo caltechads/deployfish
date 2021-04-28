@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy
 import json
 
 from botocore import waiter, xform_name
@@ -150,11 +150,11 @@ class Model(LazyAttributeMixin):
         return self.render()
 
     def render(self):
-        data = copy(self.data)
+        data = deepcopy(self.data)
         return data
 
     def save(self):
-        self.objects.save(self)
+        return self.objects.save(self)
 
     def delete(self):
         self.objects.delete(self)

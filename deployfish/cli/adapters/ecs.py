@@ -1,10 +1,11 @@
-from .abstract import ClickModelAdapter, ClickSecretsAdapter
+from .abstract import ClickModelAdapter, ClickBaseModelAdapter, ClickSecretsAdapter
 from .commands import (
     ClickRestartServiceCommandMixin,
     ClickScaleInstancesCommandMixin,
     ClickScaleServiceCommandMixin,
+    ClickListHelperTasksCommandMixin,
 )
-from deployfish.core.models import Service, Cluster
+from deployfish.core.models import Service, Cluster, StandaloneTask
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 
 
@@ -45,6 +46,24 @@ class ClickServiceAdapter(
     delete_waiter = service_waiter
 
 
+class ClickServiceTasksAdapter(
+    ClickListHelperTasksCommandMixin,
+    ClickBaseModelAdapter
+):
+
+    model = Service
+
+    list_helper_tasks_ordering = 'Command'
+    list_helper_tasks_result_columns = {
+        'Service': 'serviceName',
+        'Name': 'command',
+        'Revision': 'family_revision',
+        'Version': 'version',
+        'Launch Type': 'launchType',
+        'Schedule': 'schedule_expression'
+    }
+
+
 class ClickServiceSecretsAdapter(ClickSecretsAdapter):
 
     model = Service
@@ -53,6 +72,20 @@ class ClickServiceSecretsAdapter(ClickSecretsAdapter):
 class ClickClusterAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
 
     model = Cluster
+
+    list_result_columns = {
+        'Name': 'clusterName',
+        'Status': 'status',
+        'Instances': 'registeredContainerInstancesCount',
+        'Services': 'activeServicesCount',
+        'Running Tasks': 'runningTasksCount',
+        'Pending Tasks': 'pendingTasksCount'
+    }
+
+
+class ClickStandaloneTaskAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
+
+    model = StandaloneTask
 
     list_result_columns = {
         'Name': 'clusterName',

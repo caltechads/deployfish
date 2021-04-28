@@ -6,6 +6,12 @@ from deployfish.core.models import Cluster, AutoscalingGroup
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
 
+from deployfish.cli.renderers import (
+    TableRenderer,
+    JSONRenderer,
+    TemplateRenderer
+)
+
 
 # Command mixins
 # ====================
@@ -237,3 +243,95 @@ Restart the running tasks for a Service in AWS.
         obj = self.get_object(identifier, needs_config=False)
         obj.restart(hard=hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
         return click.style('\n\nRestarted tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
+
+
+class ClickListHelperTasksCommandMixin(object):
+
+    list_helper_tasks_ordering = None
+    list_helper_tasks_result_columns = {}
+    list_helper_tasks_renderer_classes = {
+        'table': TableRenderer,
+        'detail': TemplateRenderer,
+        'json': JSONRenderer
+    }
+
+    @classmethod
+    def list_helper_tasks_display_option_kwargs(cls):
+        """
+        Return the appropriate kwargs for `click.option('--display', **kwargs)` for the renderer options we've defined
+        for the list endpoint.
+
+        :rtype: dict
+        """
+        render_types = list(cls.list_helper_tasks_renderer_classes.keys())
+        default = render_types[0]
+        kwargs = {
+            'type': click.Choice(render_types),
+            'default': default,
+            'help': "Render method for listing {} objects. Choices: {}.  Default: {}.".format(
+                cls.model.__name__,
+                ', '.join(render_types),
+                default
+            )
+        }
+        return kwargs
+
+    @classmethod
+    def add_list_helper_tasks_click_command(cls, command_group):
+        """
+        Build a fully specified click command for listing helper tasks for an ECS service, and add it to the click
+        command group `command_group`.  Return the properly wrapped function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def list_helper_tasks(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed as e:
+                    ctx.obj['config'] = e
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].list_helper_tasks(kwargs['identifier'], kwargs['display']))
+
+        pk_description = cls.get_pk_description()
+        list_helper_tasks.__doc__ = """
+List the helper tasks associated with a Service in AWS.
+
+{pk_description}
+""".format(pk_description=pk_description)
+
+        function = print_render_exception(list_helper_tasks)
+        function = click.pass_context(function)
+        function = click.option('--display', **cls.list_helper_tasks_display_option_kwargs())(function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'list',
+            short_help='List the helper tasks for a Service in AWS.'.format(
+                object_name=cls.model.__name__
+            )
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def list_helper_tasks(self, identifier, display):
+        assert display in self.list_helper_tasks_renderer_classes, \
+            'list helper tasks: "{}" is not a valid rendering option'.format(
+                self.__class__.__name__,
+                display
+            )
+        obj = self.get_object(identifier, no_config=True)
+        results = obj.helper_tasks
+        if not results:
+            return('No results.')
+        else:
+            if display == 'table':
+                results = self.list_helper_tasks_renderer_classes[display](
+                    self.list_helper_tasks_result_columns,
+                    ordering=self.list_helper_tasks_ordering
+                ).render(results)
+            else:
+                results = self.list_helper_tasks_renderer_classes[display]().render(results)
+            results = '\n' + results + '\n'
+            return results

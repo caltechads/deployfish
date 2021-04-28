@@ -10,7 +10,7 @@
 {% filter color(fg='cyan') %}  task counts{% endfilter %}
     desired           :     {{ obj.data['desiredCount'] }}
     {% filter color(fg='green') %}running{% endfilter %}           :     {{ obj.data['runningCount']|color(fg='green') }}
-    {% filter color(fg='yellow') %}pending{% endfilter %}           :     {{ obj.data['desiredCount']|color(fg='yellow') }}
+    {% filter color(fg='yellow') %}pending{% endfilter %}           :     {{ obj.data['pendingCount']|color(fg='yellow') }}
 {%- else -%}
   count               :      {{ obj.data['desiredCount'] }}
 {%- endif -%}

@@ -1,8 +1,8 @@
-from copy import copy
+from copy import deepcopy
 
 from deployfish.core.models import Secret, ExternalSecret
 
-from .mixins import DeployfishYamlAdapter
+from ..abstract import Adapter
 
 
 # ------------------------
@@ -28,7 +28,7 @@ class SecretsMixin:
 # Adapters
 # ------------------------
 
-class SecretAdapter(DeployfishYamlAdapter):
+class SecretAdapter(Adapter):
 
     class ExternalParameterException(Exception):
         pass
@@ -48,7 +48,7 @@ class SecretAdapter(DeployfishYamlAdapter):
         return False
 
     def split(self):
-        definition = copy(self.data)
+        definition = deepcopy(self.data)
         key = definition
         value = None
         delimiter_loc = definition.find('=')
@@ -72,7 +72,7 @@ class SecretAdapter(DeployfishYamlAdapter):
         key = None
         is_secure = False
         kms_key_id = None
-        identifier, value = copy(self.data).split('=', 1)
+        identifier, value = deepcopy(self.data).split('=', 1)
         while identifier is not None:
             segments = identifier.split(':', 1)
             segment = segments[0]

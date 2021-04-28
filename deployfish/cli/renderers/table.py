@@ -1,5 +1,4 @@
 import datetime
-from six import string_types
 from textwrap import wrap
 
 from tabulate import tabulate
@@ -22,7 +21,8 @@ class TableRenderer(AbstractRenderer):
     DEFAULT_DATE_FORMAT = "%b %d, %Y"
     DEFAULT_FLOAT_PRECISION = 2
 
-    def __init__(self, columns, datetime_format=None, date_format=None, float_precision=None, ordering=None):
+    def __init__(self, columns, datetime_format=None, date_format=None, float_precision=None, ordering=None,
+            tablefmt='simple', show_headers=True):
         """
         `columns` is a dict that determines the structure of the table, like so:
 
@@ -45,6 +45,7 @@ class TableRenderer(AbstractRenderer):
         :param date_format Union[str, None]: if specified, use this to render any `datetime.date` objects we get
         :param float_precision Union[int, None]: if specified, use this to determine the decimal precision
                                                  of any `float` objects we get
+        :param tablefmt str: provide this to tabulate() to determine the table format
 
         """
         assert isinstance(columns, dict), 'TableRenderer: `columns` parameter to __init__ should be a dict'
@@ -56,6 +57,8 @@ class TableRenderer(AbstractRenderer):
         self.float_precision = float_precision if float_precision else self.DEFAULT_FLOAT_PRECISION
         self.float_format = '{{:.{}f}}'.format(self.float_precision)
         self.ordering = ordering
+        self.tablefmt = tablefmt
+        self.show_headers = show_headers
 
     def get_value(self, obj, column):
         try:
@@ -143,4 +146,7 @@ class TableRenderer(AbstractRenderer):
             if reverse:
                 table.reverse()
 
-        return tabulate(table, headers=self.headers)
+        if self.show_headers:
+            return tabulate(table, headers=self.headers, tablefmt=self.tablefmt)
+        else:
+            return tabulate(table, tablefmt=self.tablefmt)

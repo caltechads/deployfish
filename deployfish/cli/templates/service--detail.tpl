@@ -1,4 +1,8 @@
+{% from 'macros/task-definition.tpl' import task_definition -%}
 {% include 'service--detail:short.tpl' %}
+
+{% filter section_title(fg='cyan', bold=True) %}Task Definition{% endfilter %}
+{{ task_definition(obj.task_definition)|indent }}
 {%- if obj.deployments %}
 
 {% filter section_title(fg='cyan', bold=True) %}Deployments{% endfilter %}

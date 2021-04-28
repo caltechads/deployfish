@@ -37,7 +37,9 @@ class ScalingPolicyManager(Manager):
         return policies
 
     def save(self, obj):
-        self.delete(obj)
+        # NOTE: even though the operation is called put_scaling_policy, it can be used for both create
+        # and update.  Thus we don't need to remove the existing ScalableTarget if we want to update it
+        # See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/application-autoscaling.html#ApplicationAutoScaling.Client.put_scaling_policy
         response = self.client.put_scaling_policy(**obj.render_for_create())
         arn = response['PolicyARN']
         self.alarm.set_policy_arn(arn)
@@ -88,8 +90,9 @@ class ScalableTargetManager(Manager):
         return targets
 
     def save(self, obj):
-        for policy in obj.policies:
-            policy.delete()
+        # NOTE: even though the operation is called register_scalable_target, it can be used for both create
+        # and update.  Thus we don't need to remove the existing ScalableTarget if we want to update it
+        # See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/application-autoscaling.html#ApplicationAutoScaling.Client.register_scalable_target
         self.client.register_scalable_target(**obj.render_for_create())
         for policy in obj.policies:
             policy.save()

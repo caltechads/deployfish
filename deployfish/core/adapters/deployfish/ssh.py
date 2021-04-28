@@ -1,11 +1,11 @@
-from copy import copy
+from copy import deepcopy
 
-from .mixins import DeployfishYamlAdapter
+from ..abstract import Adapter
 
 
-class SSHTunnelAdapter(DeployfishYamlAdapter):
+class SSHTunnelAdapter(Adapter):
 
     def convert(self):
-        data = copy(self.data)
+        data = deepcopy(self.data)
         kwargs = {}
         return data, kwargs

@@ -1,7 +1,8 @@
 import botocore
 
-from ..ssh import SSHMixin
+from deployfish.core.ssh import SSHMixin
 from .abstract import Manager, Model
+from .mixins import TagsManagerMixin, TagsMixin
 
 # ----------------------------------------
 # Managers
@@ -34,7 +35,7 @@ class AutoscalingGroupManager(Manager):
         raise AutoscalingGroup.ReadOnly('Cannot delete Autoscaling Groups with deployfish')
 
 
-class InstanceManager(Manager):
+class InstanceManager(TagsManagerMixin, Manager):
 
     service = 'ec2'
 
@@ -175,9 +176,13 @@ class AutoscalingGroup(Model):
         return self.render_for_update()
 
 
-class Instance(SSHMixin, Model):
+class Instance(TagsMixin, SSHMixin, Model):
 
     objects = InstanceManager()
+
+    def __init__(self, data):
+        super(Instance, self).__init__(data)
+        self.import_tags(data['Tags'])
 
     @property
     def pk(self):
@@ -190,14 +195,6 @@ class Instance(SSHMixin, Model):
     @property
     def ssh_target(self):
         return self
-
-    @property
-    def tags(self):
-        if 'tags' not in self.cache:
-            self.cache['tags'] = {}
-            for tag in self.data['Tags']:
-                self.cache['tags'][tag['Key']] = tag['Value']
-        return self.cache['tags']
 
     @property
     def hostname(self):

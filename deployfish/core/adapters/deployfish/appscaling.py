@@ -1,6 +1,6 @@
 import re
 
-from .mixins import DeployfishYamlAdapter
+from ..abstract import Adapter
 from deployfish.core.models import CloudwatchAlarm, ScalingPolicy
 
 
@@ -8,7 +8,7 @@ from deployfish.core.models import CloudwatchAlarm, ScalingPolicy
 # Adapters
 # ------------------------
 
-class ECSServiceScalingPolicyAdapter(DeployfishYamlAdapter):
+class ECSServiceScalingPolicyAdapter(Adapter):
     """
         {
             'cpu': '>=60',
@@ -74,7 +74,7 @@ class ECSServiceScalingPolicyAdapter(DeployfishYamlAdapter):
         return data, kwargs
 
 
-class ECSServiceScalableTargetAdapter(DeployfishYamlAdapter):
+class ECSServiceScalableTargetAdapter(Adapter):
     """
         {
             'min_capacity': 2,

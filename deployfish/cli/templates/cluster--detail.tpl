@@ -13,6 +13,11 @@
     {{ setting['name'] }}: {{ setting['value'] }}
 {%- endfor -%}
 {% endif -%}
+{%- if obj.tags -%}
+{% filter color(fg='cyan') %}  tags{% endfilter %}
+{% for key, value in obj.tags.items() %}    {{ key|color(fg='yellow') }}: {{ value }}
+{% endfor -%}
+{% endif -%}
 {% filter color(fg='cyan') %}  task counts{% endfilter %}
     {% filter color(fg='green') %}running{% endfilter %}           :     {{ obj.data['runningTasksCount']|color(fg='green') }}
     {% filter color(fg='yellow') %}pending{% endfilter %}           :     {{ obj.data['pendingTasksCount']|color(fg='yellow') }}

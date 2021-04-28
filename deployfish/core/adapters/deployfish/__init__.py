@@ -1,6 +1,7 @@
 from deployfish.registry import importer_registry as registry
 from .ecs import (
     ServiceAdapter,
+    ServiceHelperTaskAdapter,
     StandaloneTaskAdapter,
     TaskDefinitionAdapter,
 )
@@ -26,6 +27,7 @@ from .ssh import SSHTunnelAdapter
 registry.register('StandaloneTask', 'deployfish', StandaloneTaskAdapter)
 registry.register('TaskDefinition', 'deployfish', TaskDefinitionAdapter)
 registry.register('Service', 'deployfish', ServiceAdapter)
+registry.register('ServiceHelperTask', 'deployfish', ServiceHelperTaskAdapter)
 
 # events
 registry.register('EventTarget', 'deployfish', EventTargetAdapter)

@@ -8,8 +8,10 @@ from deployfish.core.models import (
     ServiceDiscoveryService,
     TaskDefinition,
 )
+from deployfish.core.models.mixins import TaskDefinitionFARGATEMixin
 
-from .mixins import DeployfishYamlAdapter, SSHConfigMixin
+from ..abstract import Adapter
+from .mixins import SSHConfigMixin
 from .secrets import SecretsMixin
 
 
@@ -19,9 +21,10 @@ from .secrets import SecretsMixin
 
 class VpcConfigurationMixin:
 
-    def get_vpc_configuration(self):
+    def get_vpc_configuration(self, source=None):
         data = {}
-        source = self.data.get('vpc_configuration', None)
+        if not source:
+            source = self.data.get('vpc_configuration', None)
         if source:
             data['subnets'] = source['subnets']
             if 'security_groups' in source:
@@ -36,17 +39,18 @@ class VpcConfigurationMixin:
 # ------------------------
 
 
-class TaskDefinitionAdapter(DeployfishYamlAdapter):
+class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
     """
     Convert our deployfish YAML definition of our task definition to the same format that
     boto3.client('ecs').describe_task_definition() returns, but translate all container info
     into ContainerDefinitions.
     """
 
-    def __init__(self, data, secrets=None, extra_environment=None):
+    def __init__(self, data, secrets=None, extra_environment=None, partial=False):
         super(TaskDefinitionAdapter, self).__init__(data)
         self.secrets = secrets if secrets else []
         self.extra_environment = extra_environment if extra_environment else {}
+        self.partial = partial
 
     def get_volumes(self):
         """
@@ -114,39 +118,44 @@ class TaskDefinitionAdapter(DeployfishYamlAdapter):
         :rtype: dict(str, *), list(ContainerDefinition), dict(str, *)
         """
         data = {}
-        data['family'] = self.data['family']
-        data['networkMode'] = self.data.get('network_mode', 'bridge')
-        if 'cpu' in self.data:
-            data['cpu'] = int(self.data['cpu'])
-        if 'memory' in self.data:
-            data['memory'] = int(self.data['memory'])
+        self.set(data, 'family')
+        self.set(data, 'network_mode', dest_key='networkMode', default='bridge')
         launch_type = self.data.get('launch_type', 'EC2')
         if launch_type == 'FARGATE':
             data['requiresCompatibilities'] = ['FARGATE']
-        if 'task_role_arn' in self.data:
-            data['taskRoleArn'] = self.data['task_role_arn']
-        if 'execution_role' in self.data:
-            data['executionRoleArn'] = self.data['execution_role']
-        if launch_type == 'FARGATE' and not data['executionRoleArn']:
+        self.set(data, 'task_role_arn', dest_key='taskRoleArn', optional=True)
+        self.set(data, 'execution_role', dest_key='executionRoleArn', optional=True)
+        if not self.partial and (launch_type == 'FARGATE' and not data['executionRoleArn']):
             raise self.SchemaException(
                 'If your launch_type is "FARGATE", you must supply "execution_role"'
             )
         data['volumes'] = self.get_volumes()
         containers_data = []
-        for container_definition in self.data['containers']:
+        if self.partial:
+            containers = self.data.get('containers', [])
+        else:
+            try:
+                containers = self.data['containers']
+            except KeyError:
+                raise self.SchemaViolation('You must define at least one container in your task definition')
+        for container_definition in containers:
             containers_data.append(
                 ContainerDefinitionAdapter(
                     container_definition,
                     data,
                     secrets=self.secrets,
-                    extra_environment=self.extra_environment
+                    extra_environment=self.extra_environment,
+                    partial=self.partial
                 ).convert()
             )
+        container_data = [c[0] for c in containers_data]
+        self.set_task_cpu(data, container_data)
+        self.set_task_memory(data, container_data)
 
         return data, {'containers': containers_data}
 
 
-class ContainerDefinitionAdapter(DeployfishYamlAdapter):
+class ContainerDefinitionAdapter(Adapter):
     """
     Convert our deployfish YAML definition of our containers to the same format that
     boto3.client('ecs').describe_task_definition() returns for container definitions.
@@ -155,7 +164,7 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
     PORTS_RE = re.compile(r'(?P<hostPort>\d+)(:(?P<containerPort>\d+)(/(?P<protocol>udp|tcp))?)?')
     MOUNT_RE = re.compile('[^A-Za-z0-9_-]')
 
-    def __init__(self, data, task_definition_data=None, secrets=None, extra_environment=None):
+    def __init__(self, data, task_definition_data=None, secrets=None, extra_environment=None, partial=False):
         """
         :param data dict(str, *): a deployfish.yml container definition stanza
         :param task_definition_data dict(str, *): TaskDefinition.data from the owning TaskDefinition
@@ -166,6 +175,7 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
         self.task_definition_data = task_definition_data
         self.secrets = secrets if secrets else []
         self.extra_environment = extra_environment if extra_environment else {}
+        self.partial = partial
 
     def get_secrets(self):
         """
@@ -401,46 +411,36 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
 
     def convert(self):
         data = {}
-        data['name'] = self.data['name']
-        data['image'] = self.data['image']
-        data['essential'] = True
+        self.set(data, 'name')
+        self.set(data, 'image')
+        self.set(data, 'essential', default=True)
         try:
-            data['cpu'] = int(self.data.get('cpu', 256))
+            self.set(data, 'cpu', default=256, convert=int)
         except ValueError:
             raise self.SchemaExeption('"cpu" must be an integer')
-        if 'memoryReservation' in self.data:
-            try:
-                data['memoryReservation'] = int(self.data['memoryReservation'])
-            except ValueError:
-                raise self.SchemaExeption('"memoryReservation" must be an integer')
-        if 'memory' in self.data:
-            try:
-                memory = int(self.data['memory'])
-            except ValueError:
-                raise self.SchemaExeption('"memory" must be an integer')
-        elif data['memoryReservation'] is None:
-            memory = 512
-        data['memory'] = memory
+        try:
+            self.set(data, 'memoryReservation', optional=True, convert=int)
+        except ValueError:
+            raise self.SchemaExeption('"memoryReservation" must be an integer')
+        try:
+            self.set(data, 'memory', optional=True, convert=int)
+        except ValueError:
+            raise self.SchemaExeption('"memory" must be an integer')
+        if data.get('memoryReservation', None) is None and data.get('memory', None) is None:
+            if not self.partial:
+                data['memory'] = 512
         if 'ports' in self.data:
             data['portMappings'] = self.get_ports()
-        if 'command' in self.data:
-            command = self.data.get('command', None)
-            command = shlex.split(command) if command else None
-            data['command'] = command
-        if 'entrypoint' in self.data:
-            entrypoint = self.data.get('entrypoint', None)
-            entrypoint = shlex.split(entrypoint) if entrypoint else None
-            data['entryPoint'] = entrypoint
+        self.set(data, 'command', optional=True, convert=shlex.split)
+        self.set(data, 'entrypoint', optional=True, convert=shlex.split)
         if 'ulimits' in self.data:
             data['ulimits'] = self.get_ulimits()
         if 'environment' in self.data:
             data['environment'] = self.get_environment()
         if 'volumes' in self.data:
             data['mountPoints'] = self.get_mountPoints()
-        if 'links' in self.data:
-            data['links'] = self.data.get['links']
-        if 'dockerLabels' in self.data:
-            data['dockerLabels'] = self.get_dockerLabels()
+        self.set(data, 'links', optional=True)
+        self.set(data, 'dockerLabels', optional=True)
         if 'logging' in self.data:
             data['logConfiguration'] = self.get_logConfiguration()
         if 'extra_hosts' in self.data:
@@ -454,7 +454,7 @@ class ContainerDefinitionAdapter(DeployfishYamlAdapter):
         return data, kwargs
 
 
-class StandaloneTaskAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter):
+class StandaloneTaskAdapter(SecretsMixin, VpcConfigurationMixin, Adapter):
 
     def get_task_definition(self, secrets=None):
         deployfish_environment = {
@@ -498,15 +498,334 @@ class StandaloneTaskAdapter(SecretsMixin, VpcConfigurationMixin, DeployfishYamlA
         return data, kwargs
 
 
-class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, DeployfishYamlAdapter):
+class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
+    """
+    The problem here is that, unlike all our other adapters, we need to create many objects out of this.
 
+    Helper tasks are defined in the `tasks` sub-section of the service.
+
+    * `tasks` is a list
+    * Each item in that list is comprised of
+      * A set of "command" overrides
+      * General settings that apply to each of those command overrides
+
+    .. note::
+
+        There's no way to remove a setting from the parent task definition:  you can add or change existing settings.
+        If people need to do that, they can use a standalone task.
+
+    deployfish.yml structure::
+
+            services:
+              - name: foobar
+                family: foobar
+                network_mode: host
+                task_role_arn: arn:aws:iam:23140983205498:role/task-role
+                containers:
+                  - name: foo
+                    image: foo:1.2.3
+                    cpu: 128
+                    memory: 256
+                    environment:
+                        - ENVVAR1=bar
+                        - ENVVAR2=baz
+                [...]
+
+                tasks:
+                    # General overrides/settings that apply to all sub-tasks of this entry
+                    # There can be multiple entries if you need separate sets of global settings
+                    - family: foobar-helper1
+                      network_mode: bridge
+                      task_role_arn: arn:aws:iam:23140983205498:role/task-role2
+                      launch_type: FARGATE
+                      schedule_role: arn:aws:...
+                      vpc_configuration:
+                        subnets:
+                          - subnet-1
+                          - subnet-2
+                        security_groups:
+                          - sg-1
+                          - sg-2
+                        public_ip: true
+                      containers:
+                        - name: foo
+                          cpu: 256
+                          memory: 512
+                          logging:
+                              driver: awslogs
+                      commands:
+                        - name: migrate
+                          command: manage.py migrate
+                        - name: update_index
+                          command: manage.py update_index
+                          schedule: cron(5 * * * ? *)
+
+
+    """
+
+    def __init__(self, data, service):
+        """
+        :param data dict(str, *): the tasks section from our service
+        :param service Service: the Service for which we are building helper tasks
+        """
+        self.data = data
+        self.service = service
+
+    def set(self, data, task, yml_key, data_key, source=None):
+        """
+        Set a `data[data_key]` on the dict `data` by looking at both `task` and `source`.
+
+        If `task[yml_key]` exists, set `data[data_key]` to that value.
+        Else if `source[yml_key]` exists, set `data[data_key]` to THAT value.
+        Else if `source[data_key]` exists, set `data[data_key]` to THAT value.
+        Else, do nothing.
+
+        If `source` is None, we set source to `self.data`.
+        """
+        if not source:
+            source = self.service.data
+        if yml_key in task:
+            data[data_key] = task[yml_key]
+        elif yml_key in source:
+            data[data_key] = source[yml_key]
+        elif data_key in source:
+            data[data_key] = source[data_key]
+
+    def get_data(self, data, task, source=None):
+        """
+        Construct `data` so that it can be used for constructing our Task parameters by combining data from an existing
+        TaskDefinition with configuration from deployfish.yml.
+
+        :param data dict(str, *): our output dict
+        :param task dict(str, *): configuration from deployfish.yml
+        :param source Union[dict(str, *), None]: (optional) if provided, the data from  the previous set of Task
+                                                 parameters.  If not provided, self.service.data.
+        """
+        if not source:
+            source = self.service.data
+        self.set(data, task, 'cluster', 'cluster', source=source)
+        if 'vpc_configuration' in task:
+            data['networkConfiguration'] = {}
+            data['networkConfiguration']['awsVpcConfiguration'] = self.get_vpc_configuration(
+                source=task['vpc_configuration']
+            )
+        elif 'networkConfiguration' in source:
+            data['networkConfiguration'] = {}
+            data['networkConfiguration']['awsVpcConfiguration'] = source['networkConfiguration']['awsVpcConfiguration']
+        self.set(data, task, 'launch_type', 'launchType', source=source)
+        if 'launchType' in data and data['launchType'] == 'FARGATE':
+            self.set(data, task, 'platform_version', 'platformVersion', source=source)
+            if 'platformVersion' not in data:
+                data['platformVersion'] = 'LATEST'
+        else:
+            # capacity_provider_strategy and launch_type are mutually exclusive
+            self.set(data, task, 'capacity_provider_strategy', 'capacityProviderStrategy', source=source)
+        self.set(data, task, 'placement_constraints', 'placementConstraints', source=source)
+        self.set(data, task, 'placement_strategy', 'placementStrategy', source=source)
+        self.set(data, task, 'group', 'group', source=source)
+        if 'count' in task:
+            data['count'] = task['count']
+        self.set(data, task, 'schedule', 'schedule', source=source)
+        self.set(data, task, 'schedule_role', 'schedule_role', source=source)
+
+    def get_schedule_data(self, data, task_definition):
+        """
+        Construct the dict that will be given as input for configuring an EventScheduleRule and EventTarget for our
+        helper task.
+
+        The EventScheduleRule.new() factory method expects this struct:
+
+           {
+              'name': the name for the schedule
+              'schedule': the schedule expression
+              'schedule_role': the ARN of the role EventBridge will use to execute our task definition
+              'cluster': the name of the cluster in which to run our tasks
+              'count': (optional) the number of tasks to run
+              'launch_type': (optional): "FARGATE" or "EC2"
+              'platform_version': (optional)
+              'group': (optional) task group
+              'vpc_configuration': { (optional)
+                'subnets': list of subnet ids
+                'security_groups': list of security group ids
+                'public_ip': bool: assign a public ip to our containers?
+              }
+        }
+
+
+        :param data dict(str, *): the output of self.get_data()
+        :param task_definition TaskDefinition:  the task definition to schedule
+
+        :rtype: dict(str, *): data appropriate for configuring an EventScheduleRule and Event Target
+        """
+        schedule_data = {}
+        schedule_data['name'] = task_definition.data['family']
+        schedule_data['schedule'] = data['schedule']
+        if 'schedule_role' in data:
+            schedule_data['schedule_role'] = data['schedule_role']
+        schedule_data['cluster'] = data['cluster']
+        if 'count' not in schedule_data:
+            schedule_data['count'] = 1
+        if 'launchType' in data:
+            schedule_data['launch_type'] = data['launchType']
+        if schedule_data.get('launch_type', 'EC2') == 'FARGATE':
+            if 'platformVersion' in data:
+                schedule_data['platform_version'] = data['platformVersion']
+        if 'group' in data:
+            schedule_data['group'] = data['group']
+        if 'networkConfiguration' in data:
+            vc = data['networkConfiguration']['awsVpcConfiguration']
+            schedule_data['vpc_configuration'] = {}
+            if 'subnets' in vc:
+                schedule_data['vpc_configuration']['subnets'] = vc['subnets']
+            if 'securityGroups' in vc:
+                schedule_data['vpc_configuration']['security_groups'] = vc['securityGroups']
+            if 'allowPublicIp' in vc:
+                schedule_data['vpc_configuration']['public_ip'] = vc['allowPublicIp'] == 'ENABLED'
+        return schedule_data
+
+    def update_container_environments(self, task_definition, extra_environment):
+        """
+        Update the deployfish-specific environment variables in the container environment for each
+        container in `task_definition`.
+
+        * Remove DEPLOYFISH_SERVICE_NAME
+        * Add DEPLOYFISH_TASK_NAME
+        * Update DEPLOYFISH_ENVIRONMENT and DEPLOYFISH_CLUSTER_NAME as necessary
+        """
+        for container in task_definition.containers:
+            environment = []
+            for i, var in enumerate(container.data['environment']):
+                if var['name'] == 'DEPLOYFISH_SERVICE_NAME':
+                    environment.append({
+                        'name': 'DEPLOYFISH_TASK_NAME',
+                        'value': extra_environment['DEPLOYFISH_TASK_NAME']
+                    })
+                else:
+                    if var['name'] in extra_environment:
+                        var['value'] = extra_environment[var['name']]
+                    environment.append(var)
+            container.data['environment'] = environment
+
+    def _get_base_task_data(self, task_data, service_td):
+        """
+        Build a dict that takes info from the service and overlays the generic (not command specific) task data to build
+        the parameters we'll need when running the task.  Also build a new TaskDefinition object that is the service's
+        TaskDefinition overlaid with the changes from the generic task data.
+
+        :param task_data dict(str, *): the generic helper task data
+        :param service_td TaskDefinition: the Service's TaskDefinition object
+
+        :rtype: tuple(dict(str, *), TaskDefinition)
+        """
+        data_base = {}
+        # first, extract whatever we can from self.service
+        self.get_data(data_base, task_data)
+        data_base['service'] = self.service.pk
+        base_td_overlay = TaskDefinition.new(task_data, 'deployfish', partial=True)
+        base_td = service_td + base_td_overlay
+        base_td.data['family'] = task_data.get('family', "{}-tasks".format(service_td.data['family']))
+        # Remove any portMappings fro our task definition -- we don't need them for ephemeral tasks
+        for container in base_td.containers:
+            if 'portMappings' in container.data:
+                del container.data['portMappings']
+        # Automatically set our networkMode
+        if 'networkConfiguration' in data_base:
+            # We need awsvpc network mode, because we have VPC configuration
+            base_td.data['networkMode'] = 'awsvpc'
+        else:
+            base_td.data['networkMode'] = 'bridge'
+        return data_base, base_td
+
+    def _get_command_specific_data(self, command, data_base, base_td):
+        """
+        Build a dict that takes info from the output of self._get_base_task_data() and overlays the command specific
+        task data to build the parameters we'll need when running the task.  Also build a new TaskDefinition object that
+        is the TaskDefinition returned by self._get_base_task_data() overlaid with the changes from the command specific
+        task data.
+
+        :param commmand dict(str, *): the command specific task data
+        :param data_base dict(str, *): the dict returned by self._get_base_task_data()
+        :param service_td TaskDefinition: the TaskDefinition object returned by self._get_base_task_data()
+
+        :rtype: tuple(dict(str, *), TaskDefinition)
+        """
+        data = {}
+        kwargs = {}
+        # Build our new Task data based on the general task overlay we got from self._get_base_task_data()
+        self.get_data(data, command, source=data_base)
+        data['service'] = self.service.pk
+        data['cluster'] = self.service.data['cluster']
+        try:
+            data['command'] = command['name']
+        except KeyError:
+            raise self.SchemaException(
+                'Service(pk="{}"): Each helper task must have a "name" assigned in the "commands" section'.format(
+                    self.service.pk
+                )
+            )
+        if 'family' not in command:
+            # Make the task definition family be named after our command
+            command['family'] = "{}-{}".format(base_td.data['family'], command['name'].replace('_', '-'))
+        # Generate our overlay task definition
+        command_td_overlay = TaskDefinition.new(command, 'deployfish', partial=True)
+        # Use that to make our actual task definition
+        command_td = base_td + command_td_overlay
+        # Update the deployfish specific environment variables in our task definition's containers
+        self.update_container_environments(
+            command_td,
+            {
+                'DEPLOYFISH_TASK_NAME': command['family'],
+                'DEPLOYFISH_CLUSTER_NAME': data['cluster'],
+                'DEPLOYFISH_ENVIRONMENT': self.service.deployfish_environment
+            }
+        )
+        kwargs['task_definition'] = command_td
+        # See if we need to schedule this command
+        if 'schedule' in command:
+            kwargs['schedule'] = EventScheduleRule.new(self.get_schedule_data(data, command_td), 'deployfish')
+        return data, kwargs
+
+    def convert(self):
+        data_list = []
+        kwargs_list = []
+        service_td = self.service.task_definition.copy()
+        if 'tasks' in self.data:
+            for task in self.data['tasks']:
+                data_base, base_td = self._get_base_task_data(task, service_td)
+                # Now iterate through each item in task -> commands
+                for command in task['commands']:
+                    command_data, command_kwargs = self._get_command_specific_data(command, data_base, base_td)
+                    data_list.append(command_data)
+                    kwargs_list.append(command_kwargs)
+        return data_list, kwargs_list
+
+
+class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapter):
     """
     * Service itself             [x]
     * Task definition            [x]
-    * Autoscaling Group          [x]  Ignore -- we can detect this automatically
+    * Autoscaling Group          [x]
     * Application Autoscaling    [x]
     * Service Discovery          [x]
-    * Helper Tasks               [ ]
+
+    Helper Tasks
+    ------------
+
+    Helper tasks are overlays for the service's task definition.  Each task listed under the `tasks` section of
+    the service consists of general overrides, and then a set of specific command overrides, possibly with schedules.
+
+        services:
+            - name: foobar-prod
+              ...
+
+              tasks:
+                  # general overrides
+                - network_mode: bridge
+                  task_role_arn: new task role
+                  containers:
+
+
+
     """
 
     def __init__(self, data, **kwargs):
@@ -516,7 +835,8 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Deploy
     def get_clientToken(self):
         return 'token-{}-{}'.format(self.data['name'], self.data['cluster'])[:35]
 
-    def get_task_definition(self, secrets=None):
+    def get_task_definition(self):
+        secrets = self.__build_Secrets()
         deployfish_environment = {
             "DEPLOYFISH_SERVICE_NAME": self.data['name'],
             "DEPLOYFISH_ENVIRONMENT": self.data.get('environment', 'undefined'),
@@ -561,8 +881,13 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Deploy
                 })
         return loadBalancers
 
-    def convert(self):
-        data, kwargs = super(ServiceAdapter, self).convert()
+    def __build_Service__data(self, data):
+        """
+        Update ``data`` with the configuration for the Service itself.  This will look like the
+        dict that ``boto3.client('ecs').create_service()`` needs.
+
+        :rtype: dict(str, *)
+        """
         data['cluster'] = self.data['cluster']
         data['serviceName'] = self.data['name']
         if 'load_balancer' in self.data:
@@ -602,10 +927,22 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Deploy
             data['desiredCount'] = self.data['count']
         data['clientToken'] = self.get_clientToken()
 
-        kwargs['secrets'] = []
+    def __build_Secrets(self):
+        """
+        Build a list of Secret and ExternalSecret objects from our Service's config: section.
+
+        :rtype: list(Union[Secret, ExternalSecret])
+        """
         if self.load_secrets:
-            kwargs['secrets'] = self.get_secrets(self.data['cluster'], self.data['name'])
-        kwargs['task_definition'] = self.get_task_definition(secrets=kwargs['secrets'])
+            secrets = self.get_secrets(self.data['cluster'], self.data['name'])
+        else:
+            secrets = []
+        return secrets
+
+    def __build_TaskDefinition(self, kwargs):
+        kwargs['task_definition'] = self.get_task_definition()
+
+    def __build_application_scaling_objects(self, kwargs):
         if 'application_scaling' in self.data:
             kwargs['appscaling'] = ScalableTarget.new(
                 self.data['application_scaling'],
@@ -613,6 +950,8 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Deploy
                 cluster=self.data['cluster'],
                 service=self.data['name']
             )
+
+    def __build_ServiceDiscoveryService(self, kwargs):
         if 'service_discovery' in self.data:
             if self.data.get('network_mode', 'bridge') == 'awsvpc':
                 kwargs['service_discovery'] = ServiceDiscoveryService.new(
@@ -623,6 +962,24 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Deploy
                 raise self.SchemaException(
                     'You must use network_mode of "awsvpc" to enable service discovery'.format(self.data['name'])
                 )
+
+    def __build_tags(self, kwargs):
+        tags = {}
+        tags['Environment'] = self.data.get('environment', 'test')
+        kwargs['tags'] = tags
+
+    def convert(self):
+        """
+        .. note::
+
+            ServiceHelperTasks are constructed in Service.new(), because
+        """
+        data, kwargs = super(ServiceAdapter, self).convert()
+        self.__build_Service__data(data)
+        self.__build_TaskDefinition(kwargs)
+        self.__build_application_scaling_objects(kwargs)
+        self.__build_ServiceDiscoveryService(kwargs)
+        self.__build_tags(kwargs)
         if 'autoscalinggroup_name' in self.data:
             kwargs['autoscalinggroup_name'] = self.data['autoscalinggroup_name']
         return data, kwargs
