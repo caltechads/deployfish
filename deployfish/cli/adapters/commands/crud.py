@@ -112,8 +112,10 @@ List {object_name} objects in AWS, possibly with filters.
 
 class ClickObjectInfoCommandMixin(object):
 
+    info_includes = []
+    info_excludes = []
     info_renderer_classes = {
-        'template': TemplateRenderer,
+        'detail': TemplateRenderer,
         'json': JSONRenderer,
     }
 
@@ -139,6 +141,30 @@ class ClickObjectInfoCommandMixin(object):
         return kwargs
 
     @classmethod
+    def info_include_option_kwargs(cls):
+        kwargs = {
+            'type': click.Choice(cls.info_includes),
+            'help': "Detail view only: Include optional information not normally shown. Choices: {}.".format(
+                ', '.join(cls.info_includes),
+            ),
+            'default': None,
+            'multiple': True
+        }
+        return kwargs
+
+    @classmethod
+    def info_exclude_option_kwargs(cls):
+        kwargs = {
+            'type': click.Choice(cls.info_excludes),
+            'help': "Detail view only: Exclude information normally shown. Choices: {}.".format(
+                ', '.join(cls.info_excludes),
+            ),
+            'default': None,
+            'multiple': True
+        }
+        return kwargs
+
+    @classmethod
     def add_info_click_command(cls, command_group):
         """
         Build a fully specified click command for retrieving single objects, and add it to the click command group
@@ -155,7 +181,12 @@ class ClickObjectInfoCommandMixin(object):
                 except ConfigProcessingFailed:
                     pass
             ctx.obj['adapter'] = cls()
-            click.secho(ctx.obj['adapter'].info(kwargs['identifier'], kwargs['display']))
+            click.secho(ctx.obj['adapter'].info(
+                kwargs['identifier'],
+                kwargs['display'],
+                kwargs.get('include', None),
+                kwargs.get('exclude', None)
+            ))
 
         args, kwargs = FunctionTypeCommentParser().parse(cls.model.objects.get)
         pk_description = cls.get_pk_description()
@@ -168,6 +199,10 @@ Show info about a {object_name} object that exists in AWS.
 
         function = print_render_exception(retrieve_object)
         function = click.pass_context(function)
+        if cls.info_includes:
+            function = click.option('--include', **cls.info_include_option_kwargs())(function)
+        if cls.info_excludes:
+            function = click.option('--exclude', **cls.info_exclude_option_kwargs())(function)
         function = click.option('--display', **cls.info_display_option_kwargs())(function)
         function = click.argument('identifier')(function)
         function = command_group.command(
@@ -177,14 +212,22 @@ Show info about a {object_name} object that exists in AWS.
         return function
 
     @handle_model_exceptions
-    def info(self, pk, display, **kwargs):
+    def info(self, pk, display, include, exclude, **kwargs):
+        if include is None:
+            include = []
+        if exclude is None:
+            exclude = []
         assert display in self.info_renderer_classes, \
             '{}.info(): "{}" is not a valid rendering option'.format(
                 self.__class__.__name__,
                 display
             )
-        return '\n' + self.info_renderer_classes[display]().render(obj) + '\n'
         obj = self.get_object_from_aws(pk)
+        context = {
+            'includes': include,
+            'excludes': exclude
+        }
+        return '\n' + self.info_renderer_classes[display]().render(obj, context=context) + '\n'
 
 
 class ClickObjectExistsCommandMixin(object):

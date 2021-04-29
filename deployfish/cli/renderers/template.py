@@ -24,7 +24,9 @@ class TemplateRenderer(AbstractRenderer):
 
     template_file = None
 
-    def render(self, data, style=None, template=None):
+    def render(self, data, style=None, template=None, context=None):
+        if context is None:
+            context = {}
         if not template:
             template = self.template_file
         if not style:
@@ -42,7 +44,6 @@ class TemplateRenderer(AbstractRenderer):
             template_file = '{}--{}{}.tpl'.format(name, operation, style)
         else:
             template_file = template
-        values = {}
-        values['obj'] = data
+        context['obj'] = data
         template = jinja_env.get_template(template_file)
-        return template.render(**values)
+        return template.render(**context)
