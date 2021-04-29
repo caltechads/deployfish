@@ -258,12 +258,45 @@ Create an SSH tunnel through an instance related to a {object_name}.
             )(function)
             function = click.argument('identifier', nargs=-1)(function)
         else:
-            function = click.argument('identifier')(function)
+            function = click.argument('identifier', required=False)(function)
         function = command_group.command(
             'tunnel',
             short_help='Create an SSH tunnel through an instance related to a {}'.format(cls.model.__name__)
         )(function)
         return function
+
+    def get_tunnel(self, obj=None):
+        """
+        If we didn't get a specific tunnel to use, present the user with a list of all available tunnels,
+        possibly limited by what ``obj`` has access to.
+
+        :param obj Any: an object that has a .ssh_tunnels attribute which returns a dict of tunnels where
+                        the key is tunnel name and the value is an SSHTunnel object
+
+        :rtype: SSHTunnel
+        """
+        tunnel = None
+        if obj:
+            tunnels = obj.ssh_tunnels
+        else:
+            tunnels = {t.name: t for t in SSHTunnel.objects.list()}
+        if tunnels:
+            rows = []
+            click.secho('\nAvailable tunnels:', fg='green')
+            click.secho('-------------------\n', fg='green')
+            for i, name in enumerate(tunnels):
+                tunnel = tunnels[name]
+                rows.append([
+                    i + 1,
+                    click.style(tunnel.name, fg='cyan'),
+                    tunnel.host,
+                    tunnel.host_port,
+                    tunnel.local_port
+                ])
+            click.secho(tabulate(rows, headers=['#', 'Name', 'Target', 'Target Port', 'Local Port']))
+            choice = click.prompt('\nEnter the number of the tunnel you want: ', type=int, default=1)
+            tunnel = tunnels[list(tunnels)[choice - 1]]
+        return tunnel
 
     @handle_model_exceptions
     def tunnel(self, identifier, choose, local_port, host, host_port, verbose):
@@ -299,7 +332,7 @@ Create an SSH tunnel through an instance related to a {object_name}.
         :param host_port int: (optional) the port on `host` on the other end of the tunnel
         """
         if isinstance(identifier, tuple):
-            # We're a command under the `service` command group.
+            # We're a command under the sub command group like service or cluster
             if identifier:
                 object_name = identifier[0]
                 tunnel_name = None
@@ -319,26 +352,44 @@ Create an SSH tunnel through an instance related to a {object_name}.
                     except ConfigProcessingFailed as e:
                         raise RenderException(str(e))
                 else:
-                    if (local_port is None or host is None or host_port is None):
-                        raise RenderException(
-                            'Either supply the name of a tunnel associated with this {}, or use the --local-port, --host and --host-port flags.'.format(self.model.__name__)  # noqa:E501
-                        )
                     obj = self.get_object_from_aws(object_name)
-                    tunnel = SSHTunnel({
-                        'name': '{}-{}'.format(object_name, host),
-                        'service': object_name,
-                        'local_port': local_port,
-                        'host': host,
-                        'port': host_port
-                    })
+                    if (local_port is None or host is None or host_port is None):
+                        tunnel = self.get_tunnel(obj)
+                    else:
+                        tunnel = SSHTunnel({
+                            'name': '{}-{}'.format(object_name, host),
+                            'service': object_name,
+                            'local_port': local_port,
+                            'host': host,
+                            'port': host_port
+                        })
             else:
                 raise RenderException('For tunneling, enter at least SERVICE_NAME as the command argument.')
         else:
-            # We're a command under the `cli` command group.
-            tunnel = self.get_object_from_deployfish(identifier)
+            if identifier:
+                # We're a command under the `cli` command group.
+                tunnel = self.get_object_from_deployfish(identifier)
+            else:
+                tunnel = self.get_tunnel()
             obj = tunnel
         if choose:
-            target = self.choose_ssh_target(tunnel)
+            target = self.get_ssh_target(tunnel)
         else:
             target = obj.ssh_target
+        click.secho('\nEstablishing tunnel: {}:{} -> localhost:{}'.format(
+            tunnel.host,
+            tunnel.host_port,
+            tunnel.local_port
+        ), fg='yellow')
+        if target.ssh_proxy_type == 'bastion':
+            bastion = target.bastion
+            click.secho('{}: {}'.format(
+                click.style('bastion host', fg='red', bold=True),
+                bastion.hostname,
+            ), fg='cyan')
+        click.secho('{}: {} ({})\n'.format(
+            click.style('intermediate host', fg='magenta', bold=True),
+            target.name,
+            target.ip_address,
+        ), fg='cyan')
         target.tunnel(tunnel, verbose=verbose)
