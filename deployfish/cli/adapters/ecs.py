@@ -25,6 +25,8 @@ class ClickServiceAdapter(
         'exec': {'load_secrets': False},
         'tunnel': {'load_secrets': False},
     }
+    info_includes = ['secrets', 'deployments']
+    info_excludes = ['events']
     list_ordering = 'Service'
     list_result_columns = {
         'Service': 'serviceName',
@@ -46,6 +48,14 @@ class ClickServiceAdapter(
     delete_waiter = service_waiter
 
     def dereference_identifier(self, identifier):
+        """
+        For Services, we want to allow the users to specify just Service.name or Service.environment and dereference
+        that into our usual "{cluster_name}:{service_name}" primary key for services.
+
+        :param identifier str: an identifier for a Service
+
+        :rtype: str
+        """
         failure_message = 'Service.name and Service.environment identifiers cannot be used.'
         if ':' not in identifier:
             try:

@@ -1,6 +1,8 @@
+{% from 'macros/service.tpl' import load_balancer %}
 {% filter color(fg='green') %}Service: {% endfilter %}{{ obj.name|color(fg='cyan', bold=True) }}
   pk                  :     {{ obj.pk }}
-  name                :     {{ obj.name }}
+  arn                 :     {{ obj.arn }}
+  status              :     {{ obj.data['status'] }}
   cluster             :     {{ obj.data['cluster'] }}
   launch type         :     {{ obj.data['launchType'] }}
 {% if obj.data['launchType'] == 'FARGATE' -%}
@@ -15,14 +17,5 @@
   count               :      {{ obj.data['desiredCount'] }}
 {%- endif -%}
 {%- if obj.data['loadBalancers'] %}
-  {% filter color(fg='cyan') %}load balancers{% endfilter %}
-  {%- for lb in obj.data['loadBalancers'] -%}
-    {%- if lb['targetGroupArn'] %}
-   -  target group ARN:     {{ lb['targetGroupArn'] }}
-    {%- else %}
-   -  load balancer   :     {{ lb['loadBalancerName'] }}
-    {%- endif %}
-      container name  :     {{ lb['containerName'] }}
-      container port  :     {{ lb['containerPort'] }}
-  {%- endfor -%}
+{%- for lb in obj.data['loadBalancers'] %}{{ load_balancer(lb)|indent(width=2) }}{% endfor -%}
 {%- endif %}
