@@ -2,6 +2,8 @@ from copy import deepcopy
 import re
 import textwrap
 
+import botocore
+
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.ssh import DockerMixin, SSHMixin
 
@@ -850,11 +852,23 @@ class ServiceManager(Manager):
     def delete(self, obj):
         # hint: (deployfish.core.models.Service)
         if self.exists(obj.pk):
+            if not obj.arn:
+                obj.reload_from_db()
+            # Delete any ScalingTargets
+            if obj.appscaling:
+                obj.appscaling.delete()
+            # Delete any ServiceDiscoveryService
+            if obj.service_discovery:
+                obj.service_discovery.delete()
+            # Unschedule any scheduled helper tasks
+            for task in obj.helper_tasks:
+                task.unschedule()
             # first scale to 0
-            self.scale(obj, 0)
-            waiter = self.get_waiter('services_stable')
-            service, cluster = self.__get_service_and_cluster_from_pk(obj.pk)
-            waiter.wait(cluster=cluster, services=[service])
+            if obj.data['desiredCount'] > 0:
+                self.scale(obj, 0)
+                waiter = self.get_waiter('services_stable')
+                service, cluster = self.__get_service_and_cluster_from_pk(obj.pk)
+                waiter.wait(cluster=cluster, services=[service])
             # Then delete the service
             self.client.delete_service(cluster=cluster, service=service)
 
