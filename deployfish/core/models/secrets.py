@@ -90,19 +90,16 @@ class SecretManager(Manager):
         # split names into sub lists of 10 of fewer names and iterate
         names_chunks = [names[i * 10:(i + 1) * 10] for i in range((len(names) + 9) // 10)]
         parameters = []
+        non_existant = []
         for chunk in names_chunks:
             try:
                 response = self.client.get_parameters(Names=chunk, WithDecryption=True)
             except self.client.exceptions.InvalidKeyId as e:
                 raise self.model.DecryptionFailed(str(e))
             if 'InvalidParameters' in response and response['InvalidParameters']:
-                raise self.model.DoesNotExist(
-                    'These SSM Parameter Store parameters do not exist in AWS: {}'.format(
-                        ', '.join(response['InvalidParameters'])
-                    )
-                )
+                non_existant.extend(response['InvalidParameters'])
             parameters.extend(response['Parameters'])
-        return {p['Name']: p for p in parameters}
+        return {p['Name']: p for p in parameters}, non_existant
 
     def convert(self, parameter_data):
         name = parameter_data['Name'].split('.')[-1]
@@ -112,7 +109,17 @@ class SecretManager(Manager):
         return self.get_many([pk])[0]
 
     def get_many(self, pks, **kwargs):
-        values = self._get_parameter_values(pks)
+        """
+
+        .. note::
+
+            What we want to return is data that contains both the encryption information (which is only
+            available from describe_paramters) and the actual parameter value (which is only available
+            from get_parameters).  So we do one call to describe_parameters and one to get_parameters for
+            each parameter (well, we bundle the calls as much as possible) and combine the results.
+        """
+        # Use get_parameter to get the parameter values
+        values, non_existant_parameters = self._get_parameter_values(pks)
         prefixes = set()
         for pk in pks:
             prefixes.add(pk.rsplit('.', 1)[0])
@@ -126,7 +133,15 @@ class SecretManager(Manager):
             if name in values:
                 data['ARN'] = values[name]['ARN']
                 data['Value'] = values[name]['Value']
-                secrets.append(self.convert(data))
+            secrets.append(self.convert(data))
+        # Fake the non-existant parameters
+        for param in non_existant_parameters:
+            data = {
+                'Name': param,
+                'Type': 'String',
+                'Tier': 'Standard'
+            }
+            secrets.append(self.convert(data))
         return secrets
 
     def list_names(self, prefix):
@@ -162,7 +177,7 @@ class SecretManager(Manager):
 
     def delete_many_by_name(self, pks):
         # hint: (list[str["{secret_pk}"]])
-        self.client.delete_parameters(Names=pk)
+        self.client.delete_parameters(Names=pks)
 
     def delete(self, obj):
         if self.readonly:
