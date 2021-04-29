@@ -93,7 +93,7 @@ class ClickServiceTasksAdapter(
 
     model = Service
 
-    list_helper_tasks_ordering = 'Command'
+    list_helper_tasks_ordering = 'Name'
     list_helper_tasks_result_columns = {
         'Service': 'serviceName',
         'Name': 'command',
