@@ -1,4 +1,6 @@
-{% filter color(fg='green') %}Cluster: {% endfilter %}{{ obj.name|color(fg='cyan', bold=True) }}
+{% from 'macros/utils.tpl' import heading, subsection, subobject, tags %}
+
+{{ subobject('Cluster', obj.name) }}
   pk                  :     {{ obj.pk }}
   name                :     {{ obj.name }}
   arn                 :     {{ obj.arn }}
@@ -13,19 +15,15 @@
     {{ setting['name'] }}: {{ setting['value'] }}
 {%- endfor -%}
 {% endif -%}
-{%- if obj.tags -%}
-{% filter color(fg='cyan') %}  tags{% endfilter %}
-{% for key, value in obj.tags.items() %}    {{ key|color(fg='yellow') }}: {{ value }}
-{% endfor -%}
-{% endif -%}
-{% filter color(fg='cyan') %}  task counts{% endfilter %}
-    {% filter color(fg='green') %}running{% endfilter %}           :     {{ obj.data['runningTasksCount']|color(fg='green') }}
-    {% filter color(fg='yellow') %}pending{% endfilter %}           :     {{ obj.data['pendingTasksCount']|color(fg='yellow') }}
+{{ subsection('  task counts')|indent(width=2) }}
+      {% filter color(fg='green') %}running{% endfilter %}           :     {{ obj.data['runningTasksCount']|color(fg='green') }}
+      {% filter color(fg='yellow') %}pending{% endfilter %}           :     {{ obj.data['pendingTasksCount']|color(fg='yellow') }}
+{%- if obj.tags %}{{ tags(obj.tags)|indent(width=2) }}{% endif %}
 
-{% filter section_title(fg='cyan', bold=True) %}Container instances{% endfilter %}
+{{ heading('Container instances') }}
 
 {{ obj.container_instances|tabular(Name='ec2_instance__tags__Name', Instance_Type='ec2_instance__InstanceType', IP_Address='ec2_instance__PrivateIpAddress', Free_CPU='free_cpu', Free_Memory='free_memory', ordering='Name') }}
 
-{% filter section_title(fg='cyan', bold=True) %}Services{% endfilter %}
+{{ heading('Services') }}
 
 {{ obj.services|tabular(Name='name', Version='version', Desired='desiredCount', Running='runningCount', Created='createdAt', ordering='Name') }}

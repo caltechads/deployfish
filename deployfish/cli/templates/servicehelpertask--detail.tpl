@@ -5,5 +5,8 @@
   launch type         :     {{ obj.data['launchType'] }}
 {%- if obj.data['launchType'] == 'FARGATE' %}
   platform version    :     {{ obj.data['platformVersion'] }}
-{% endif -%}
+{%- endif %}
   count               :      {{ obj.data['desiredCount'] }}
+
+{% filter section_title(fg='cyan', bold=True) %}Task Definition{% endfilter %}
+{{ task_definition(obj.task_definition)|indent }}
