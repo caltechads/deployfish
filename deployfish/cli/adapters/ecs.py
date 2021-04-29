@@ -1,3 +1,6 @@
+import botocore
+import click
+
 from .abstract import ClickModelAdapter, ClickBaseModelAdapter, ClickSecretsAdapter
 from .commands import (
     ClickRestartServiceCommandMixin,
@@ -5,6 +8,8 @@ from .commands import (
     ClickScaleServiceCommandMixin,
     ClickListHelperTasksCommandMixin,
 )
+from deployfish.config import get_config
+from deployfish.exceptions import RenderException, ConfigProcessingFailed
 from deployfish.core.models import Service, Cluster, StandaloneTask
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 
@@ -45,7 +50,18 @@ class ClickServiceAdapter(
 
     create_waiter = service_waiter
     update_waiter = service_waiter
-    delete_waiter = service_waiter
+
+    def delete_waiter(self, obj, **kwargs):
+        kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
+        kwargs['services'] = [obj.name]
+        kwargs['cluster'] = obj.data['cluster']
+        try:
+            self.wait('services_inactive', **kwargs)
+        except botocore.exceptions.WaiterError as e:
+            if "DRAINING" not in str(e):
+                # If we have tasks in "DRAINING" state, We have unstable containers -- perhaps the service is in
+                # trouble.   In this case, we ignore the error because the containers will die soon
+                raise
 
     def dereference_identifier(self, identifier):
         """
