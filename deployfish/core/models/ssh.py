@@ -1,6 +1,7 @@
 from deployfish.config import get_config
 
 from .abstract import Manager, Model
+from .secrets import Secret
 
 
 # ----------------------------------------
@@ -73,11 +74,16 @@ class SSHTunnel(Model):
     def local_port(self):
         return self.data['local_port']
 
-    @property
-    def secrets(self):
+    def secret(self, name):
         if 'secrets' not in self.cache:
-            self.cache['secrets'] = self.service.secrets
-        return self.cache['secrets']
+            self.cache['secrets'] = {}
+        if name not in self.cache['secrets']:
+            if "." not in name:
+                full_name = '{}{}'.format(self.service.secrets_prefix, name)
+            else:
+                full_name = name
+            self.cache['secrets'][name] = Secret.objects.get(full_name)
+        return self.cache['secrets'][name]
 
     def parse(self, key):
         """
@@ -89,8 +95,8 @@ class SSHTunnel(Model):
             if self.data[key].startswith('config.'):
                 _, key = self.data[key].split('.')
                 try:
-                    return self.secrets[key].value
-                except KeyError:
+                    value = self.secret(key).value
+                except Secret.DoesNotExist:
                     raise self.OperationFailed(
                         'SSHTunnel(pk="{}"): Service(pk="{}") has no secret named "{}"'.format(
                             self.name,
@@ -98,6 +104,7 @@ class SSHTunnel(Model):
                             key
                         )
                     )
+                return value
         return self.data[key]
 
     @property
