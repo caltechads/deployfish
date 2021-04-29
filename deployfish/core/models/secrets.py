@@ -73,11 +73,15 @@ class SecretManager(Manager):
         self.readonly = readonly
         super(SecretManager, self).__init__()
 
-    def _describe_parameters(self, prefix):
+    def _describe_parameters(self, key, option='prefix'):
+        if option == 'prefix':
+            option = 'BeginsWith'
+        else:
+            option = 'Equals'
         paginator = self.client.get_paginator('describe_parameters')
         response_iterator = paginator.paginate(
             ParameterFilters=[
-                {'Key': 'Name', 'Option': 'BeginsWith', 'Values': [prefix]}
+                {'Key': 'Name', 'Option': option, 'Values': [key]}
             ]
         )
         parameters = []
@@ -106,7 +110,14 @@ class SecretManager(Manager):
         return self.model(parameter_data, name=name)
 
     def get(self, pk, **kwargs):
-        return self.get_many([pk])[0]
+        values, non_existant_parameters = self._get_parameter_values([pk])
+        params = self._describe_parameters(pk, option='equals')
+        if non_existant_parameters:
+            raise Secret.DoesNotExist('No secret named {} exists in AWS'.format(pk))
+        data = params[0]
+        data['ARN'] = values[pk]['ARN']
+        data['Value'] = values[pk]['Value']
+        return self.convert(data)
 
     def get_many(self, pks, **kwargs):
         """
