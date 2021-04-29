@@ -22,7 +22,7 @@ class AbstractSSHProvider(object):
         return '{} {}'.format(self.ssh(), command)
 
     def docker_exec(self):
-        return '\'/usr/bin/docker exec -it `/usr/bin/docker ps --filter "name=ecs-{}*{}" -q` bash \''
+        return '\'/usr/bin/docker exec -it "`/usr/bin/docker ps --filter \"name=ecs-{}-[0-9]+-{}\" -q`" bash \''
 
     def tunnel(self):
         raise NotImplementedError
@@ -34,7 +34,7 @@ class AbstractSSHProvider(object):
 class SSMSSHProvider(AbstractSSHProvider):
 
     def ssh(self):
-        return 'ssh -t {} ec2-user@{}'.format(self.ssh_verbose_flag, self.instance.id)
+        return 'ssh -t {} ec2-user@{}'.format(self.ssh_verbose_flag, self.instance.pk)
 
     def tunnel(self, local_port, target_host, host_port):
         cmd = 'ssh {} -N -L {}:{}:{} {}'.format(
@@ -81,7 +81,7 @@ class BastionSSHProvider(AbstractSSHProvider):
         return cmd
 
     def docker_exec(self):
-        return "\"/usr/bin/docker exec -it '\$(/usr/bin/docker ps --filter \"name=ecs-{}*\" -q)' bash\""
+        return "\"/usr/bin/docker exec -it '\$(/usr/bin/docker ps --filter \"name=ecs-{}-[0-9]+-{}\" -q)' bash\""
 
     def push(self, filename, run=False):
         if run:

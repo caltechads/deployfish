@@ -143,4 +143,3 @@ class SSHTunnel(Model):
     @property
     def cluster(self):
         return self.service.cluster
-
