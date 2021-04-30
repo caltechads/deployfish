@@ -22,16 +22,7 @@ def handle_model_exceptions(func):
         except self.model.MultipleObjectsReturned as e:
             raise RenderException(click.style(str(e), fg='red'))
         except self.model.OperationFailed as e:
-            lines = []
-            lines.append(click.style(e.msg, fg='red'))
-            for k, v in e.errors.items():
-                lines.append(click.style(k + ':', fg='yellow'))
-                if isinstance(v, list):
-                    for error in v:
-                        lines.append(click.style('    ' + error, fg='white'))
-                else:
-                    lines.append(click.style('    ' + v, fg='white'))
-                raise RenderException('\n'.join(lines))
+            raise RenderException(click.style(str(e), fg='red'))
         except self.DeployfishObjectDoesNotExist as e:
             config = get_config()
             lines = []
