@@ -34,7 +34,8 @@ class SecretsMixin(object):
             aws_pks = Secret.objects.list_names(self.secrets_prefix)
             our_pks = [s.pk for s in self.secrets.values()]
             for_deletion = list(set(aws_pks) - set(our_pks))
-            Secret.objects.delete_many_by_name(for_deletion)
+            if for_deletion:
+                Secret.objects.delete_many_by_name(for_deletion)
 
     def reload_secrets(self):
         if 'secrets' in self.cache:
