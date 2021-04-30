@@ -454,5 +454,7 @@ IDENTIFIER is a string that looks like one of:
         value = click.prompt("What {} do you want to delete? ".format(self.model.__name__))
         if value == obj.name:
             obj.delete()
+        else:
+            return click.style('ABORTED: not deleting {}({}).'.format(self.model.__name__, obj.pk))
         self.delete_waiter(obj)
         return click.style('Deleted {}("{}")'.format(self.model.__name__, identifier), fg='cyan')
