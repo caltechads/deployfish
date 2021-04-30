@@ -1,8 +1,7 @@
 from copy import deepcopy
+import fnmatch
 import re
 import textwrap
-
-import botocore
 
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.ssh import DockerMixin, SSHMixin
@@ -815,8 +814,8 @@ class ServiceManager(Manager):
             return True
         return False
 
-    def list(self, cluster_name=None, launch_type=None, scheduling_strategy=None):
-        # hint: (str, str, str)
+    def list(self, cluster_name=None, service_name=None, launch_type=None, scheduling_strategy=None):
+        # hint: (str["{cluster_name:glob}"], str["{service_name:glob}"], str, str)
         if launch_type not in [None, 'EC2', 'FARGATE']:
             raise self.OperationFailed(
                 '{} is not a valid launch_type.  Valid types are: EC2, FARGATE.'.format(launch_type)
@@ -825,16 +824,15 @@ class ServiceManager(Manager):
             raise self.OperationFailed(
                 '{} is not a valid scheduling strategy.  Valid strategies are: DAEMON, REPLICA.'.format(launch_type)
             )
-        if not cluster_name:
-            paginator = self.client.get_paginator('list_clusters')
-            response_iterator = paginator.paginate()
-            cluster_arns = []
-            for response in response_iterator:
-                cluster_arns.extend(response['clusterArns'])
-            clusters = [arn.rsplit('/', 1)[1] for arn in cluster_arns]
-        else:
-            clusters = [cluster_name]
-        service_arns = []
+        paginator = self.client.get_paginator('list_clusters')
+        response_iterator = paginator.paginate()
+        cluster_arns = []
+        for response in response_iterator:
+            cluster_arns.extend(response['clusterArns'])
+        clusters = [arn.rsplit('/', 1)[1] for arn in cluster_arns]
+        if cluster_name and "*" in cluster_name:
+            clusters = fnmatch.filter(clusters, cluster_name)
+        services = []
         for cluster in clusters:
             kwargs = {'cluster': cluster}
             if launch_type:
@@ -845,10 +843,12 @@ class ServiceManager(Manager):
             response_iterator = paginator.paginate(**kwargs)
             try:
                 for response in response_iterator:
-                    service_arns.extend("{}:{}".format(cluster, arn) for arn in response['serviceArns'])
+                    services.extend("{}:{}".format(cluster, arn) for arn in response['serviceArns'])
             except self.client.exceptions.ClusterNotFoundException:
                 raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
-        return [self.get(identifier) for identifier in service_arns]
+        if service_name:
+            services = [arn for arn in services if fnmatch.fnmatch(arn.split('/')[1], service_name)]
+        return self.get_many(services)
 
     def save(self, obj):
         # hint: (deployfish.core.models.Service)
