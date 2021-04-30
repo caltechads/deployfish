@@ -34,7 +34,27 @@ class ServiceDereferenceMixin(object):
                 lines.append(click.style('{}'.format(str(e)), fg='yellow'))
                 lines.append(click.style(failure_message, fg='yellow'))
                 raise RenderException('\n'.join(lines))
-            item = config.get_section_item(self.model.config_section, identifier)
+            try:
+                item = config.get_section_item(self.model.config_section, identifier)
+            except KeyError:
+                lines = []
+                lines.append(click.style(
+                    '\nERROR: no service in your deployfish.yml matched "{}".'.format(identifier),
+                    fg='red'
+                ))
+                names = []
+                environments = []
+                for item in config.get_section(self.model.config_section):
+                    names.append(item['name'])
+                    if 'environment' in item:
+                        environments.append(item['environment'])
+                lines.append(click.style('\nAvailable {}s:\n'.format(self.model.__name__), fg='cyan'))
+                for name in names:
+                    lines.append('  {}'.format(name))
+                lines.append(click.style('\nAvailable environments:\n'.format(self.model.__name__), fg='cyan'))
+                for environment in environments:
+                    lines.append('  {}'.format(environment))
+                raise RenderException('\n'.join(lines))
             return '{}:{}'.format(item['cluster'], item['name'])
         return identifier
 
@@ -63,8 +83,10 @@ class ClickServiceAdapter(
         'Service': 'serviceName',
         'Cluster': 'cluster__name',
         'Version': 'version',
-        'Desired count': 'desiredCount',
-        'Running count': 'runningCount'
+        'D': 'desiredCount',
+        'R': 'runningCount',
+        'P': 'pendingCount',
+        'Created': 'createdAt',
     }
     update_template = 'service--detail:short.tpl'
 
