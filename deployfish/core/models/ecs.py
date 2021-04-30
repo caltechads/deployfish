@@ -715,12 +715,17 @@ class ClusterManager(Manager):
         )
         return sorted([Cluster(data) for data in response['clusters']], key=lambda x: x.name)
 
-    def list(self):
+    def list(self, cluster_name=None):
+        # hint: (str["{cluster_name:glob}"])
         paginator = self.client.get_paginator('list_clusters')
         response_iterator = paginator.paginate()
         cluster_arns = []
         for response in response_iterator:
             cluster_arns.extend(response['clusterArns'])
+        if cluster_name:
+            clusters = {arn.split('/')[1]: arn for arn in cluster_arns}
+            cluster_names = fnmatch.filter(list(clusters.keys()), cluster_name)
+            cluster_arns = [clusters[name] for name in cluster_names]
         return self.get_many(cluster_arns)
 
     def exists(self, pk):
@@ -830,7 +835,7 @@ class ServiceManager(Manager):
         for response in response_iterator:
             cluster_arns.extend(response['clusterArns'])
         clusters = [arn.rsplit('/', 1)[1] for arn in cluster_arns]
-        if cluster_name and "*" in cluster_name:
+        if cluster_name:
             clusters = fnmatch.filter(clusters, cluster_name)
         services = []
         for cluster in clusters:
