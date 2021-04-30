@@ -177,7 +177,7 @@ class SecretManager(Manager):
         # We have to do two loops here, because describe_parameters gives us the KeyId for our KMS key, but does not
         # give us Value or ARN, while get_parameters gives us Value and ARN but no KeyId
         names = [parameter['Name'] for parameter in parameters]
-        values = self._get_parameter_values(names)
+        values, _ = self._get_parameter_values(names)
         secrets = []
         for parameter in parameters:
             parameter['ARN'] = values[parameter['Name']]['ARN']
