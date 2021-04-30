@@ -24,6 +24,7 @@ class SecretsMixin(object):
         self.cache['secrets'] = value
 
     def write_secrets(self):
+        # Add and update secrets we do need
         for secret in self.secrets.values():
             try:
                 secret.save()
@@ -137,6 +138,9 @@ class SecretManager(Manager):
         # Use get_parameter to get the parameter values
         values, non_existant_parameters = self._get_parameter_values(pks)
         prefixes = set()
+        # FIXME: we're getting all parameters for a service even if we wanted just a few, and that takes a long time.
+        # Find the breakeven point below which it's faster to get parameters individually and above which is better to
+        # get all the paramters.
         for pk in pks:
             prefixes.add(pk.rsplit('.', 1)[0])
         descriptions = {}
