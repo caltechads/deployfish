@@ -14,7 +14,33 @@ from deployfish.core.models import Service, Cluster, StandaloneTask
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 
 
+class ServiceDereferenceMixin(object):
+
+    def dereference_identifier(self, identifier):
+        """
+        For Services, we want to allow the users to specify just Service.name or Service.environment and dereference
+        that into our usual "{cluster_name}:{service_name}" primary key for services.
+
+        :param identifier str: an identifier for a Service
+
+        :rtype: str
+        """
+        failure_message = 'Service.name and Service.environment identifiers cannot be used.'
+        if ':' not in identifier:
+            try:
+                config = get_config()
+            except ConfigProcessingFailed as e:
+                lines = []
+                lines.append(click.style('{}'.format(str(e)), fg='yellow'))
+                lines.append(click.style(failure_message, fg='yellow'))
+                raise RenderException('\n'.join(lines))
+            item = config.get_section_item(self.model.config_section, identifier)
+            return '{}:{}'.format(item['cluster'], item['name'])
+        return identifier
+
+
 class ClickServiceAdapter(
+    ServiceDereferenceMixin,
     ClickScaleServiceCommandMixin,
     ClickRestartServiceCommandMixin,
     ClickModelAdapter
@@ -63,30 +89,9 @@ class ClickServiceAdapter(
                 # trouble.   In this case, we ignore the error because the containers will die soon
                 raise
 
-    def dereference_identifier(self, identifier):
-        """
-        For Services, we want to allow the users to specify just Service.name or Service.environment and dereference
-        that into our usual "{cluster_name}:{service_name}" primary key for services.
-
-        :param identifier str: an identifier for a Service
-
-        :rtype: str
-        """
-        failure_message = 'Service.name and Service.environment identifiers cannot be used.'
-        if ':' not in identifier:
-            try:
-                config = get_config()
-            except ConfigProcessingFailed as e:
-                lines = []
-                lines.append(click.style('{}'.format(str(e)), fg='yellow'))
-                lines.append(click.style(failure_message, fg='yellow'))
-                raise RenderException('\n'.join(lines))
-            item = config.get_section_item(self.model.config_section, identifier)
-            return '{}:{}'.format(item['cluster'], item['name'])
-        return identifier
-
 
 class ClickServiceTasksAdapter(
+    ServiceDereferenceMixin,
     ClickListHelperTasksCommandMixin,
     ClickBaseModelAdapter
 ):
@@ -104,7 +109,10 @@ class ClickServiceTasksAdapter(
     }
 
 
-class ClickServiceSecretsAdapter(ClickSecretsAdapter):
+class ClickServiceSecretsAdapter(
+    ServiceDereferenceMixin,
+    ClickSecretsAdapter
+):
 
     model = Service
 
