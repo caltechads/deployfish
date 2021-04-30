@@ -143,7 +143,7 @@ class ClickBaseModelAdapter(object):
         return required_args
 
     @classmethod
-    def get_pk_description(cls):
+    def get_pk_description(cls, name='IDENTIFIER'):
         """
         For click commands that work on a single object, build a description of all the different ways the primary key
         can be constructed by looking at the type hints for the "get" method on the model's Manager.
@@ -160,7 +160,7 @@ class ClickBaseModelAdapter(object):
         """
         args, kwargs = FunctionTypeCommentParser().parse(cls.model.objects.get)
         pk_description = ''
-        pk_description = "IDENTIFIER is a string that looks like"
+        pk_description = "{} is a string that looks like".format(name)
         if 'specs' in args['pk']:
             if len(args['pk']['specs']) > 1 or cls.model.config_section:
                 pk_description += " one of:\n\n"

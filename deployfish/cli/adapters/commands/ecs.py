@@ -5,6 +5,7 @@ from deployfish.config import get_config
 from deployfish.core.models import Cluster, AutoscalingGroup
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
+from deployfish.typing import FunctionTypeCommentParser
 
 from deployfish.cli.renderers import (
     TableRenderer,
@@ -335,3 +336,147 @@ List the helper tasks associated with a Service in AWS.
                 results = self.list_helper_tasks_renderer_classes[display]().render(results)
             results = '\n' + results + '\n'
             return results
+
+
+class ClickHelperTaskInfoCommandMixin(object):
+
+    helper_task_info_includes = ['secrets']
+    helper_task_info_excludes = []
+    helper_task_info_renderer_classes = {
+        'detail': TemplateRenderer,
+        'json': JSONRenderer,
+    }
+
+    @classmethod
+    def helper_task_info_display_option_kwargs(cls):
+        """
+        Return the appropriate kwargs for `click.option('--display', **kwargs)` for the renderer options we've defined
+        for the retrieve endpoint.
+
+        :rtype: dict
+        """
+        render_types = list(cls.helper_task_info_renderer_classes.keys())
+        default = render_types[0]
+        kwargs = {
+            'type': click.Choice(render_types),
+            'default': default,
+            'help': "Choose how to display a single ServiceHelperTask object. Choices: {}.  Default: {}.".format(
+                ', '.join(render_types),
+                default
+            )
+        }
+        return kwargs
+
+    @classmethod
+    def helper_task_info_include_option_kwargs(cls):
+        kwargs = {
+            'type': click.Choice(cls.helper_task_info_includes),
+            'help': "Detail view only: Include optional information not normally shown. Choices: {}.".format(
+                ', '.join(cls.helper_task_info_includes),
+            ),
+            'default': None,
+            'multiple': True
+        }
+        return kwargs
+
+    @classmethod
+    def info_exclude_option_kwargs(cls):
+        kwargs = {
+            'type': click.Choice(cls.helper_task_info_excludes),
+            'help': "Detail view only: Exclude information normally shown. Choices: {}.".format(
+                ', '.join(cls.helper_task_info_excludes),
+            ),
+            'default': None,
+            'multiple': True
+        }
+        return kwargs
+
+    @classmethod
+    def add_helper_task_info_click_command(cls, command_group):
+        """
+        Build a fully specified click command for retrieving single objects, and add it to the click command group
+        `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def retrieve_helper_task(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].info(
+                kwargs['service_identifier'],
+                kwargs['helper_task_name'],
+                kwargs['display'],
+                kwargs.get('include', None),
+                kwargs.get('exclude', None)
+            ))
+
+        args, kwargs = FunctionTypeCommentParser().parse(cls.model.objects.get)
+        pk_description = cls.get_pk_description(name='SERVICE_IDENTIFIER')
+        retrieve_helper_task.__doc__ = """
+Show info about a ServiceHelperTask object associated with a Service that exists in AWS.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(retrieve_helper_task)
+        function = click.pass_context(function)
+        if cls.helper_task_info_includes:
+            function = click.option('--include', **cls.helper_task_info_include_option_kwargs())(function)
+        if cls.helper_task_info_excludes:
+            function = click.option('--exclude', **cls.helper_task_info_exclude_option_kwargs())(function)
+        function = click.option('--display', **cls.helper_task_info_display_option_kwargs())(function)
+        function = click.argument('helper_task_name')(function)
+        function = click.argument('service_identifier')(function)
+        function = command_group.command(
+            'info',
+            short_help='Show info for a single ServiceHelperTask object in AWS'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def info(self, service_pk, task_name, display, include, exclude, **kwargs):
+        if include is None:
+            include = []
+        if exclude is None:
+            exclude = []
+        assert display in self.helper_task_info_renderer_classes, \
+            'ServiceHelperTaskinfo(): "{}" is not a valid rendering option'.format(display)
+        obj = self.get_object_from_aws(service_pk)
+        task = None
+        for t in obj.helper_tasks:
+            if t.command == task_name:
+                task = t
+                break
+        if not task:
+            lines = []
+            lines.append(
+                click.style(
+                    'No ServiceHelperTask with name "{}" exists on Service("{}").\n'.format(task_name, service_pk),
+                    fg='red'
+                )
+            )
+            lines.append(click.style('Available helper tasks:\n', fg='cyan'))
+            lines.append(
+                TableRenderer({
+                    'Service': 'serviceName',
+                    'Name': 'command',
+                    'Revision': 'family_revision',
+                    'Version': 'version',
+                    'Launch Type': 'launchType',
+                    'Schedule': 'schedule_expression'
+                }, ordering='Name').render(obj.helper_tasks)
+            )
+            raise RenderException('\n'.join(lines))
+        context = {
+            'includes': include,
+            'excludes': exclude
+        }
+        print(task)
+        return '\n' + self.helper_task_info_renderer_classes[display]().render(task, context=context) + '\n'

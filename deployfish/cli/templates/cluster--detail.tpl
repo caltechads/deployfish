@@ -1,5 +1,4 @@
-{% from 'macros/utils.tpl' import heading, subsection, subobject, tags %}
-
+{% from 'macros/utils.tpl' import heading, subsection, subobject, tags -%}
 {{ subobject('Cluster', obj.name) }}
   pk                  :     {{ obj.pk }}
   name                :     {{ obj.name }}

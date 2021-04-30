@@ -7,6 +7,7 @@ from .commands import (
     ClickScaleInstancesCommandMixin,
     ClickScaleServiceCommandMixin,
     ClickListHelperTasksCommandMixin,
+    ClickHelperTaskInfoCommandMixin,
 )
 from deployfish.config import get_config
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
@@ -115,6 +116,7 @@ class ClickServiceAdapter(
 class ClickServiceTasksAdapter(
     ServiceDereferenceMixin,
     ClickListHelperTasksCommandMixin,
+    ClickHelperTaskInfoCommandMixin,
     ClickBaseModelAdapter
 ):
 
