@@ -762,7 +762,7 @@ class ServiceManager(Manager):
         # This will give us the most recent versision of a task definition whose family is `name`
         service, cluster = self.__get_service_and_cluster_from_pk(pk)
         try:
-            response = self.client.describe_services(cluster=cluster, services=[service])
+            response = self.client.describe_services(cluster=cluster, services=[service], include=['TAGS'])
         except self.client.exceptions.ClusterNotFoundException:
             raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
         if response['services'] and response['services'][0]['status'] != 'INACTIVE':
