@@ -60,7 +60,7 @@ class BastionSSHProvider(AbstractSSHProvider):
             '{}.instance has no bastion host'.format(self.__class__.__name__)
 
     def ssh(self):
-        cmd = 'ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{bastion} ssh {flags} -o StrictHostKeyChecking=no -A -t {instance}'.format(
+        cmd = 'ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{bastion} ssh {flags} -o StrictHostKeyChecking=no -A -t {instance}'.format(   # noqa:E501
             flags=self.ssh_verbose_flag,
             bastion=self.instance.bastion.hostname,
             instance=self.instance.ip_address
@@ -69,7 +69,7 @@ class BastionSSHProvider(AbstractSSHProvider):
 
     def tunnel(self, local_port, target_host, host_port):
         interim_port = random.randrange(10000, 64000, 1)
-        cmd = 'ssh {flags} -L {local_port}:localhost:{interim_port} ec2-user@{bastion} ssh -L {interim_port}:{target_host}:{host_port} {instance}'.format(
+        cmd = 'ssh {flags} -L {local_port}:localhost:{interim_port} ec2-user@{bastion} ssh -L {interim_port}:{target_host}:{host_port} {instance}'.format(  # noqa:E501
             flags=self.ssh_verbose_flag,
             local_port=local_port,
             interim_port=interim_port,
