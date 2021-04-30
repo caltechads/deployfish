@@ -22,7 +22,7 @@ class TableRenderer(AbstractRenderer):
     DEFAULT_FLOAT_PRECISION = 2
 
     def __init__(self, columns, datetime_format=None, date_format=None, float_precision=None, ordering=None,
-            tablefmt='simple', show_headers=True):
+                 tablefmt='simple', show_headers=True):
         """
         `columns` is a dict that determines the structure of the table, like so:
 

@@ -13,6 +13,24 @@ from deployfish.cli.renderers import (
 
 
 # ====================
+# Renderers
+# ====================
+
+class SecretsTableRenderer(TableRenderer):
+
+    def render(self, data):
+        found_secrets = [s for s in data if s.arn]
+        missing_secrets = [s for s in data if not s.arn]
+        table_lines = super(SecretsTableRenderer, self).render(found_secrets)
+        lines = []
+        lines.append("\n\nThese secrets are not present in AWS SSM Paramter Store:\n")
+        for s in missing_secrets:
+            lines.append(click.style("  {}".format(s.pk), fg='red'))
+        table_lines += '\n'.join(lines)
+        return table_lines
+
+
+# ====================
 # Command mixins
 # ====================
 
@@ -22,13 +40,13 @@ class ClickObjectSecretsShowCommandMixin(object):
     show_secrets_columns = {
         'Name': 'secret_name',
         'Value': 'value',
-        'Encrypted?': 'is_secure',
+        'Secure?': 'is_secure',
         'Modified': 'LastModifiedDate',
         'Modified By': 'modified_username'
     }
     show_secrets_renderer_classes = {
         'template': TemplateRenderer,
-        'table': TableRenderer,
+        'table': SecretsTableRenderer,
         'json': JSONRenderer,
     }
 
@@ -154,8 +172,18 @@ Write the AWS SSM Parameter Store secrets associated with a {object_name} to AWS
     @handle_model_exceptions
     def write_secrets(self, identifier):
         obj = self.get_object_from_deployfish(identifier)
+        other = Secret.objects.list(obj.secrets_prefix)
+        click.echo('\nChanges to be applied to secrets for {}("{}"):\n'.format(self.model.__name__, obj.pk))
+        click.echo(TemplateRenderer().render(obj.diff_secrets(other), template='secrets--diff.tpl'))
+        click.echo("\nIf you really want to do this, answer \"yes\" to the question below.\n".format(obj.name))
+        value = click.prompt("Apply the above changes to AWS?")
+        if value != 'yes':
+            return click.style(
+                '\nABORTED: not updating secrets for {}({}).'.format(self.model.__name__, obj.pk),
+                fg='green'
+            )
         click.secho(
-            '\nWriting secrets for {}(pk="{}") to AWS Parameter Store ...'.format(self.model.__name__, obj.pk),
+            '\nWriting secrets ...'.format(self.model.__name__, obj.pk),
             nl=False
         )
         obj.write_secrets()

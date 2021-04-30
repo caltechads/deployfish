@@ -10,3 +10,13 @@ These secrets referenced by the task definition do not exist in AWS SSM Paramete
 {%- endfor -%}
 {% endif -%}
 {% endmacro %}
+
+{% macro secrets_list(obj) %}
+{%- for name in obj.keys()|sort %}
+{% if obj[name].arn -%}
+{{ name|color(fg='yellow') }}: {{obj[name].value }} {% if obj[name].kms_key_id -%}{% filter color(fg='cyan') %}[SECURE:{{obj[name].kms_key_id}}]{% endfilter %}{% endif %}
+{%- else -%}
+{{ name|color(fg='yellow') }}: {% filter color(fg='red') %}NOT IN AWS{% endfilter %}
+{%- endif %}
+{%- endfor %}
+{% endmacro %}
