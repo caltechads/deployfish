@@ -173,8 +173,16 @@ Write the AWS SSM Parameter Store secrets associated with a {object_name} to AWS
     def write_secrets(self, identifier):
         obj = self.get_object_from_deployfish(identifier)
         other = Secret.objects.list(obj.secrets_prefix)
+        changes = obj.diff_secrets(other, ignore_external=True)
+        if not changes:
+            return click.style(
+                '\nABORTED: The AWS secrets for {}("{}") are up to date.\n'.format(self.model.__name__, obj.pk),
+                fg='green'
+            )
         click.echo('\nChanges to be applied to secrets for {}("{}"):\n'.format(self.model.__name__, obj.pk))
-        click.echo(TemplateRenderer().render(obj.diff_secrets(other), template='secrets--diff.tpl'))
+        click.echo(
+            TemplateRenderer().render(changes, template='secrets--diff.tpl')
+        )
         click.echo("\nIf you really want to do this, answer \"yes\" to the question below.\n".format(obj.name))
         value = click.prompt("Apply the above changes to AWS?")
         if value != 'yes':
@@ -247,4 +255,12 @@ Diff the AWS SSM Parameter Store secrets vs their counterparts in deployfish.yml
         title = '\nDiffing secrets for {}(pk="{}"):'.format(self.model.__name__, obj.pk)
         click.echo(title)
         click.echo("=" * len(title))
-        return TemplateRenderer().render(obj.diff_secrets(other), template='secrets--diff.tpl')
+        print()
+        changes = obj.diff_secrets(other, ignore_external=True)
+        if not changes:
+            return click.style(
+                'The AWS secrets for {}("{}") are up to date.\n'.format(self.model.__name__, obj.pk),
+                fg='green'
+            )
+        else:
+            return TemplateRenderer().render(changes, template='secrets--diff.tpl')

@@ -40,7 +40,7 @@ class SecretsMixin(object):
         if 'secrets' in self.cache:
             del self.cache['secrets']
 
-    def diff_secrets(self, other):
+    def diff_secrets(self, other, ignore_external=False):
         """
         Diff our list of Secrets against `other`.
 
@@ -51,8 +51,12 @@ class SecretsMixin(object):
         them = {}
         if isinstance(other, dict):
             other = other.values()
+        if ignore_external:
+            other = [s for s in other if not isinstance(s, ExternalSecret)]
         if self.secrets:
             our_secrets = sorted(self.secrets.values(), key=lambda x: x.name)
+            if ignore_external:
+                our_secrets = [s for s in our_secrets if not isinstance(s, ExternalSecret)]
             us = {s.name: s.render_for_diff() for s in our_secrets}
         if other:
             their_secrets = sorted(other, key=lambda x: x.name)
