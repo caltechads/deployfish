@@ -774,6 +774,35 @@ class ServiceManager(Manager):
         data['cluster'] = data['clusterArn'].split('/')[-1]
         return Service(data)
 
+    def get_many(self, pks):
+        # group pks by cluster
+        clusters = {}
+        for pk in pks:
+            service, cluster = self.__get_service_and_cluster_from_pk(pk)
+            if cluster not in clusters:
+                clusters[cluster] = []
+            clusters[cluster].append(service)
+        services = []
+        for cluster, service_names in clusters.items():
+            # describe_services only accepts 10 or fewer names in the services kwarg, so we have to
+            # split them into sub lists of 10 of fewer names and iterate
+            if len(service_names) > 10:
+                chunks = [service_names[i * 10:(i + 1) * 10] for i in range((len(service_names) + 9) // 10)]
+            else:
+                chunks = [service_names]
+            for chunk in chunks:
+                try:
+                    response = self.client.describe_services(cluster=cluster, services=chunk, include=['TAGS'])
+                except self.client.exceptions.ClusterNotFoundException:
+                    raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
+                if response['services']:
+                    services.extend([s for s in response['services'] if s['status'] != 'INACTIVE'])
+        obj = []
+        for data in services:
+            data['cluster'] = data['clusterArn'].split('/')[-1]
+            obj.append(Service(data))
+        return obj
+
     def exists(self, pk):
         # hint: (str["{cluster_name}:{service_name)"])
         service, cluster = self.__get_service_and_cluster_from_pk(pk)
