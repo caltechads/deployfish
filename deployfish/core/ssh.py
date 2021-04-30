@@ -42,7 +42,7 @@ class SSMSSHProvider(AbstractSSHProvider):
             local_port,
             target_host,
             host_port,
-            self.instance.ip_address,
+            self.instance.pk,
         )
         return cmd
 
@@ -193,11 +193,12 @@ class SSHMixin(object):
         :param verbose bool: if True, display verbose output from ssh
         """
         provider = self.providers[self.ssh_proxy_type](self.ssh_target, verbose=verbose)
-        subprocess.call(provider.tunnel(
+        cmd = provider.tunnel(
             tunnel.local_port,
             tunnel.host,
             tunnel.host_port
-        ), shell=True)
+        )
+        subprocess.call(cmd, shell=True)
 
 
 class DockerMixin(SSHMixin):
