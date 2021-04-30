@@ -139,7 +139,7 @@ command            :     {{ obj.data['command']|join('  ') }}
 {% if 'linuxParameters' in obj.data and 'capabilities' in obj.data['linuxParameters'] -%}
 {{ capabilities(obj.data['linuxParameters']['capabilities'])|indent }}
 {%- endif -%}
-{% if 'portMappings' in obj.data -%}
+{% if 'portMappings' in obj.data and obj.data['portMappings'] -%}
 {{ ports(obj.data['portMappings'])|indent }}
 {%- endif -%}
 {% if 'linuxParameters' in obj.data and 'tmpfs' in obj.data['linuxParameters'] -%}
@@ -188,7 +188,6 @@ task memory         :     {{ obj.data['memory'] }}
 {{- volume(volume_def)|indent(width=2) }}
 {%- endfor -%}
 {%- endif %}
-
 {% for container_obj in obj.containers -%}
 {{ subobject('Container', container_obj.name) }}
 {{- container(container_obj)|indent(width=2) }}

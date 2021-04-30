@@ -1,5 +1,5 @@
 {% from 'macros/task-definition.tpl' import task_definition -%}
-{% from 'macros/secrets.tpl' import secrets_table %}
+{% from 'macros/secrets.tpl' import secrets_table -%}
 {% include 'service--detail:short.tpl' %}
 
 {% filter section_title(fg='cyan', bold=True) %}Task Definition{% endfilter %}
