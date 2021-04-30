@@ -1,6 +1,7 @@
 import datetime
 from textwrap import wrap
 
+import click
 from tabulate import tabulate
 
 from deployfish.exceptions import RenderException
@@ -75,11 +76,12 @@ class TableRenderer(AbstractRenderer):
                     return obj[column]
                 except KeyError:
                     pass
+        from pprint import pprint
+        pprint(obj)
         raise RenderException(
-            '{our_name}: {object_class}.render_for_display() has no key called "{key}", nor does the attribute {object_class}.{key} exist'.format(  # noqa:E501
-                our_name=self.__class__.__name__,
-                object_class=obj.__class__.__name__,
-                key=column
+            click.style(
+                '\n\n{our_name}: Could not dereference "{key}"'.format(our_name=self.__class__.__name__, key=column),
+                fg='red'
             )
         )
 
