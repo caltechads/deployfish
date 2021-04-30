@@ -1,4 +1,3 @@
-
 {% if '$insert' in obj -%}
 {% filter color(fg='green', bold=True) %}These secrets would be created in AWS:{% endfilter %}
 {% for secret, changes in obj['$insert'].items() %}
