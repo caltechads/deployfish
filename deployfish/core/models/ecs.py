@@ -1008,6 +1008,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         return self.cache['secrets']
 
     def reload_secrets(self):
+        super(TaskDefinition, self).reload_secrets()
         for c in self.containers:
             c.reload_secrets()
 
@@ -1601,6 +1602,7 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
         """
         Reload our AWS SSM Paramter Store secrets from AWS.
         """
+        super(Service, self).reload_secrets()
         self.task_definition.reload_secrets()
 
     @property
