@@ -197,6 +197,8 @@ class TaskTagImporter(object):
                 self.data['service'] = value
             elif key == 'deployfish:type':
                 self.data['task_type'] = value
+            elif key == 'deployfish:desiredCount':
+                self.data['count'] = value
             elif key == 'deployfish:command':
                 self.data['command'] = value
             elif key == 'deployfish:cluster':
