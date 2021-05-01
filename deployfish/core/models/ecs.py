@@ -156,11 +156,11 @@ class TaskTagImporter(object):
                 'type': m.group('type')
             })
 
-    def __convert_awsVpcConfiguration(self, key, value):
+    def __convert_awsvpcConfiguration(self, key, value):
         if 'networkConfiguration' not in self.data:
             self.data['networkConfiguration'] = {}
-            self.data['networkConfiguration']['awsVpcConfiguration'] = {}
-        vpc = self.data['networkConfiguration']['awsVpcConfiguration']
+            self.data['networkConfiguration']['awsvpcConfiguration'] = {}
+        vpc = self.data['networkConfiguration']['awsvpcConfiguration']
         if 'subnet' in key:
             if 'subnets' not in vpc:
                 vpc['subnets'] = []
@@ -212,7 +212,7 @@ class TaskTagImporter(object):
             elif key.startswith('deployfish:placementStrategy'):
                 self.__convert_placementStrategy(key, value)
             elif key.startswith('deployfish:vpc'):
-                self.__convert_awsVpcConfiguration(key, value)
+                self.__convert_awsvpcConfiguration(key, value)
         return self.data
 
 
@@ -291,9 +291,9 @@ class TaskTagExporter(object):
                 strategy['type']
             )
 
-    def __convert_awsVpcConfiguration(self, value):
+    def __convert_awsvpcConfiguration(self, value):
         """
-        The awsVpcConfiguration struct looks like this::
+        The awsvpcConfiguration struct looks like this::
             'awsvpcConfiguration': {
                 'subnets': [
                     'string',
@@ -335,7 +335,7 @@ class TaskTagExporter(object):
         if 'placementStrategy' in data:
             self.__convert_placementStrategy(data['placementStrategy'])
         if 'networkConfiguration' in data:
-            self.__convert_awsVpcConfiguration(data['networkConfiguration']['awsVpcConfiguration'])
+            self.__convert_awsvpcConfiguration(data['networkConfiguration']['awsvpcConfiguration'])
         return self.tags
 
 
@@ -1228,7 +1228,7 @@ class StandaloneTask(TagsMixin, Model):
         desiredCount: how many tasks to actually run
         launchType: EC2 or FARGATE
         platformVersion: (optional) only used if launchType == FARGATE
-        networkConfiguration.awsVpcConfiguration: If the task definition's networkMode is 'awsvpc', this tells us
+        networkConfiguration.awsvpcConfiguration: If the task definition's networkMode is 'awsvpc', this tells us
             what subnets in which to run the tasks, and which security groups to assign to them
         capacityProviderStrategy: (optional) the capacity provider strategy to use, if any.  This is mutually exclusive with
             launchType
@@ -1254,7 +1254,7 @@ class StandaloneTask(TagsMixin, Model):
 
     Two sticking points:
 
-        awsVpcConfiguration:
+        awsvpcConfiguration:
 
             * You can have up to 16 subnets
             * You can have up to 5 security groups

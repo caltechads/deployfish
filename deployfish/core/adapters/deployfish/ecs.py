@@ -476,7 +476,7 @@ class StandaloneTaskAdapter(SecretsMixin, VpcConfigurationMixin, Adapter):
         vpc_configuration = self.get_vpc_configuration()
         if vpc_configuration:
             data['networkConfiguration'] = {}
-            data['networkConfiguration']['awsVpcConfiguration'] = vpc_configuration
+            data['networkConfiguration']['awsvpcConfiguration'] = vpc_configuration
         data['count'] = self.yaml.get('count', 1)
         data['launchType'] = self.data.get('launch_type', 'EC2')
         if data['launchType'] == 'FARGATE':
@@ -606,12 +606,12 @@ class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
         self.set(data, task, 'cluster', 'cluster', source=source)
         if 'vpc_configuration' in task:
             data['networkConfiguration'] = {}
-            data['networkConfiguration']['awsVpcConfiguration'] = self.get_vpc_configuration(
+            data['networkConfiguration']['awsvpcConfiguration'] = self.get_vpc_configuration(
                 source=task['vpc_configuration']
             )
         elif 'networkConfiguration' in source:
             data['networkConfiguration'] = {}
-            data['networkConfiguration']['awsVpcConfiguration'] = source['networkConfiguration']['awsVpcConfiguration']
+            data['networkConfiguration']['awsvpcConfiguration'] = source['networkConfiguration']['awsvpcConfiguration']
         self.set(data, task, 'launch_type', 'launchType', source=source)
         if 'launchType' in data and data['launchType'] == 'FARGATE':
             self.set(data, task, 'platform_version', 'platformVersion', source=source)
@@ -673,7 +673,7 @@ class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
         if 'group' in data:
             schedule_data['group'] = data['group']
         if 'networkConfiguration' in data:
-            vc = data['networkConfiguration']['awsVpcConfiguration']
+            vc = data['networkConfiguration']['awsvpcConfiguration']
             schedule_data['vpc_configuration'] = {}
             if 'subnets' in vc:
                 schedule_data['vpc_configuration']['subnets'] = vc['subnets']
@@ -907,7 +907,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         vpc_configuration = self.get_vpc_configuration()
         if vpc_configuration:
             data['networkConfiguration'] = {}
-            data['networkConfiguration']['awsVpcConfiguration'] = vpc_configuration
+            data['networkConfiguration']['awsvpcConfiguration'] = vpc_configuration
         if 'placement_constraints' in self.data:
             data['placementConstraints'] = self.data['placement_constraints']
         if 'placement_strategy' in self.data:

@@ -371,9 +371,9 @@ class TestServiceHelperTaskAdapter_FARGATE(BaseTestServiceHelperTaskAdapter_basi
         data_list, kwargs_list = self.adapter.convert()
         for data in data_list:
             self.assertTrue('networkConfiguration' in data)
-            self.assertTrue('awsVpcConfiguration' in data['networkConfiguration'])
+            self.assertTrue('awsvpcConfiguration' in data['networkConfiguration'])
             self.assertEqual(
-                data['networkConfiguration']['awsVpcConfiguration'],
+                data['networkConfiguration']['awsvpcConfiguration'],
                 {
                     'subnets': ['subnet-1', 'subnet-2'],
                     'securityGroups': ['sg-1', 'sg-2'],
@@ -393,9 +393,9 @@ class TestServiceHelperTaskAdapter_FARGATE(BaseTestServiceHelperTaskAdapter_basi
         self.assertEqual(data_list[0]['launchType'], 'FARGATE')
         self.assertEqual(data_list[0]['platformVersion'], 'LATEST')
         self.assertTrue('networkConfiguration' in data_list[0])
-        self.assertTrue('awsVpcConfiguration' in data_list[0]['networkConfiguration'])
+        self.assertTrue('awsvpcConfiguration' in data_list[0]['networkConfiguration'])
         self.assertEqual(
-            data_list[0]['networkConfiguration']['awsVpcConfiguration'],
+            data_list[0]['networkConfiguration']['awsvpcConfiguration'],
             {
                 'subnets': ['subnet-1', 'subnet-2'],
                 'securityGroups': ['sg-1', 'sg-2'],
@@ -572,6 +572,6 @@ class TestServiceHelperTaskAdapter_schedule_FARGATE(unittest.TestCase):
 
     def test_schedule_rule_NetworkConfiguration_is_set(self):
         self.assertTrue('NetworkConfiguration' in self.kwargs_list[0]['schedule'].target.data['EcsParameters'])
-        nc = self.kwargs_list[0]['schedule'].target.data['EcsParameters']['NetworkConfiguration']['awsVpcConfiguration']
+        nc = self.kwargs_list[0]['schedule'].target.data['EcsParameters']['NetworkConfiguration']['awsvpcConfiguration']
         self.assertEqual(nc['Subnets'], ['subnet-1', 'subnet-2'])
         self.assertEqual(nc['SecurityGroups'], ['sg-1', 'sg-2'])
