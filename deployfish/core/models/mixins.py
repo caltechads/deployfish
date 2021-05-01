@@ -15,8 +15,13 @@ class TagsMixin(object):
     def __init__(self, data, **kwargs):
         super(TagsMixin, self).__init__(data, **kwargs)
         self._tags = {}
+        key = None
         if 'tags' in self.data:
-            self.import_tags(self.data['tags'])
+            key = 'tags'
+        elif 'Tags' in self.data:
+            key = 'Tags'
+        if key:
+            self.import_tags(self.data[key])
 
     @property
     def tags(self):
