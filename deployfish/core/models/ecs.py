@@ -486,19 +486,10 @@ class AbstractTaskManager(Manager):
         if EventScheduleRule.objects.exists(obj.pk):
             EventScheduleRule.objects.delete(obj.pk)
 
-    def run(self, obj, wait=False, create=False):
-        # type: (TaskDefinition, bool, bool) -> None
-        if create:
-            self.save(obj)
+    def run(self, obj):
         obj.data['taskDefinition'] = obj.task_definition.pk
         response = self.client.run_task(**obj.render())
-        if wait:
-            waiter = self.client.get_waiter('tasks_stopped')
-            # poll every 6 seconds, maximum of 100 polls
-            waiter.wait(
-                cluster=obj.data['cluster'],
-                tasks=[t['taskArn'] for t in response['tasks']]
-            )
+        return [InvokedTask(data) for data in response['tasks']]
 
 
 class StandaloneTaskManager(AbstractTaskManager):
@@ -1356,6 +1347,16 @@ class StandaloneTask(TagsMixin, Model):
     def running_tasks(self):
         pass
 
+    def run(self):
+        return self.objects.run(self)
+
+    def render(self):
+        data = super(StandaloneTask, self).render()
+        del data['command']
+        del data['task_type']
+        del data['service']
+        return data
+
     def schedule(self):
         """
         Schedule the task.
@@ -1424,6 +1425,12 @@ class InvokedTask(DockerMixin, Model):
     @property
     def arn(self):
         return self.data['taskArn']
+
+    @property
+    def task_definition(self):
+        if 'task_definition' not in self.cache:
+            self.cache['task_definition'] = TaskDefinition.objects.get(self.data['taskDefinition'])
+        return self.cache['task_definition']
 
     @property
     def ssh_target(self):

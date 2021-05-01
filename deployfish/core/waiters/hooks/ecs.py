@@ -5,7 +5,7 @@ import click
 from tabulate import tabulate
 from tzlocal import get_localzone
 
-from deployfish.core.models import Service
+from deployfish.core.models import Service, InvokedTask
 
 from .abstract import AbstractWaiterHook
 
@@ -71,7 +71,7 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
             self.display_events(service.events)
             self.timestamp = self.our_timezone.localize(datetime.now())
             click.secho('\n')
-            click.secho('=' * 72, fg='white', bg='yellow')
+            click.secho('=' * 72, fg='yellow', bold=True)
         elif status == 'success':
             click.secho('\n\nService is stable!', fg='green')
         elif status == 'failure' or status == 'error':
@@ -81,3 +81,61 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
             click.secho(
                 'NOTE: this does not necessarily mean your deployment failed: check the AWS console to be sure.'
             )
+
+
+class ECSTaskStatusHook(AbstractWaiterHook):
+    """
+    This for the 'tasks_stopped'' waiters on ECS.
+    """
+
+    def __init__(self, obj):
+        super(ECSTaskStatusHook, self).__init__(obj)
+        self.our_timezone = get_localzone()
+        self.start = self.our_timezone.localize(datetime.now())
+        self.timestamp = self.start
+
+    def final_report(self, kwargs):
+        tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+        click.secho('\n\nTask status:', fg='cyan')
+        click.secho('------------\n', fg='cyan')
+        table = []
+        for i, task in enumerate(tasks):
+            row = [
+                i,
+                kwargs['cluster'],
+                task.arn.rsplit('/', 1)[1],
+                task.data['lastStatus'],
+                task.data['stopCode'],
+                task.data['stoppedAt'].strftime('%Y-%m-%d %H:%M:%S')
+            ]
+            table.append(row)
+        click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Stop Code', 'Stopped']))
+
+    def __call__(self, status, response, num_attempts, **kwargs):
+        if status == 'waiting':
+            tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+            click.secho('\n\nTask status:', fg='cyan')
+            click.secho('------------\n', fg='cyan')
+            table = []
+            for i, task in enumerate(tasks):
+                row = [
+                    i,
+                    kwargs['cluster'],
+                    task.arn.rsplit('/', 1)[1],
+                    task.data['lastStatus'],
+                    task.data['createdAt'].strftime('%Y-%m-%d %H:%M:%S'),
+                ]
+                if 'startedAt' in task.data:
+                    row.append(task.data['startedAt'].strftime('%Y-%m-%d %H:%M:%S'))
+                else:
+                    row.append('Not Started')
+                table.append(row)
+            click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Created', 'Started']))
+            click.secho('\n')
+            click.secho('=' * 72, fg='yellow', bold=True)
+        elif status == 'success':
+            self.final_report(kwargs)
+        elif status == 'failure' or status == 'error':
+            self.final_report(kwargs)
+        elif status == 'timeout':
+            click.secho('\n\nTimed out waiting for the tasks to finish!\n\n', fg='red')

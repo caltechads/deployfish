@@ -23,3 +23,4 @@ service_secrets_write = ClickServiceSecretsAdapter.add_write_secrets_command(ser
 service_tasks_group = ClickServiceTasksAdapter.add_command_group(service_group, 'tasks')
 service_tasks_list = ClickServiceTasksAdapter.add_list_helper_tasks_click_command(service_tasks_group)
 service_tasks_info = ClickServiceTasksAdapter.add_helper_task_info_click_command(service_tasks_group)
+service_tasks_run = ClickServiceTasksAdapter.add_run_helper_task_click_command(service_tasks_group)

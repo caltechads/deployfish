@@ -3,7 +3,7 @@ import click
 from deployfish.cli.adapters.utils import handle_model_exceptions, print_render_exception
 from deployfish.config import get_config
 from deployfish.core.models import Cluster, AutoscalingGroup
-from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
+from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook, ECSTaskStatusHook
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
 from deployfish.typing import FunctionTypeCommentParser
 
@@ -13,6 +13,37 @@ from deployfish.cli.renderers import (
     TemplateRenderer
 )
 
+
+class HelperTaskCommandMixin(object):
+
+    def get_task(self, service_pk, task_name):
+        obj = self.get_object_from_aws(service_pk)
+        task = None
+        for t in obj.helper_tasks:
+            if t.command == task_name:
+                task = t
+                break
+        if not task:
+            lines = []
+            lines.append(
+                click.style(
+                    'No ServiceHelperTask with name "{}" exists on Service("{}").\n'.format(task_name, service_pk),
+                    fg='red'
+                )
+            )
+            lines.append(click.style('Available helper tasks:\n', fg='cyan'))
+            lines.append(
+                TableRenderer({
+                    'Service': 'serviceName',
+                    'Name': 'command',
+                    'Revision': 'family_revision',
+                    'Version': 'version',
+                    'Launch Type': 'launchType',
+                    'Schedule': 'schedule_expression'
+                }, ordering='Name').render(obj.helper_tasks)
+            )
+            raise RenderException('\n'.join(lines))
+        return task
 
 # Command mixins
 # ====================
@@ -338,7 +369,7 @@ List the helper tasks associated with a Service in AWS.
             return results
 
 
-class ClickHelperTaskInfoCommandMixin(object):
+class ClickHelperTaskInfoCommandMixin(HelperTaskCommandMixin):
 
     helper_task_info_includes = ['secrets']
     helper_task_info_excludes = []
@@ -448,35 +479,69 @@ Show info about a ServiceHelperTask object associated with a Service that exists
             exclude = []
         assert display in self.helper_task_info_renderer_classes, \
             'ServiceHelperTaskinfo(): "{}" is not a valid rendering option'.format(display)
-        obj = self.get_object_from_aws(service_pk)
-        task = None
-        for t in obj.helper_tasks:
-            if t.command == task_name:
-                task = t
-                break
-        if not task:
-            lines = []
-            lines.append(
-                click.style(
-                    'No ServiceHelperTask with name "{}" exists on Service("{}").\n'.format(task_name, service_pk),
-                    fg='red'
-                )
-            )
-            lines.append(click.style('Available helper tasks:\n', fg='cyan'))
-            lines.append(
-                TableRenderer({
-                    'Service': 'serviceName',
-                    'Name': 'command',
-                    'Revision': 'family_revision',
-                    'Version': 'version',
-                    'Launch Type': 'launchType',
-                    'Schedule': 'schedule_expression'
-                }, ordering='Name').render(obj.helper_tasks)
-            )
-            raise RenderException('\n'.join(lines))
-        context = {
-            'includes': include,
-            'excludes': exclude
-        }
-        print(task)
+        task = self.get_task(service_pk, task_name)
+        context = {'includes': include, 'excludes': exclude}
         return '\n' + self.helper_task_info_renderer_classes[display]().render(task, context=context) + '\n'
+
+
+class ClickRunHelperTaskCommandMixin(HelperTaskCommandMixin):
+
+    def run_task_waiter(self, tasks, **kwargs):
+        kwargs['WaiterHooks'] = [ECSTaskStatusHook(tasks)]
+        kwargs['tasks'] = [t.arn for t in tasks]
+        kwargs['cluster'] = tasks[0].cluster_name
+        self.wait('tasks_stopped', **kwargs)
+
+    @classmethod
+    def add_run_helper_task_click_command(cls, command_group):
+        """
+        Build a fully specified click command for retrieving single objects, and add it to the click command group
+        `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def run_helper_task(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            ctx.obj['adapter'].run_helper_task(
+                kwargs['service_identifier'],
+                kwargs['helper_task_name'],
+                kwargs['wait']
+            )
+
+        args, kwargs = FunctionTypeCommentParser().parse(cls.model.objects.get)
+        pk_description = cls.get_pk_description(name='SERVICE_IDENTIFIER')
+        run_helper_task.__doc__ = """
+Run a ServiceHelperTask associated with a Service that exists in AWS.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(run_helper_task)
+        function = click.pass_context(function)
+        function = click.option('--wait/--no-wait', default=False, help='Wait until the command finishes.')(function)
+        function = click.argument('helper_task_name')(function)
+        function = click.argument('service_identifier')(function)
+        function = command_group.command(
+            'run',
+            short_help='Run info for a single ServiceHelperTask object in AWS'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def run_helper_task(self, service_pk, command_name, wait, **kwargs):
+        command = self.get_task(service_pk, command_name)
+        tasks = command.run()
+        lines = []
+        for task in tasks:
+            lines.append(click.style('\nStarted task: {}\n'.format(task.arn), fg='green'))
+        click.secho('\n'.join(lines))
+        if wait:
+            self.run_task_waiter(tasks)

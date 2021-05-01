@@ -1,1 +1,4 @@
-from .ecs import ECSDeploymentStatusWaiterHook  # noqa:F401
+from .ecs import (  # noqa:F401
+    ECSDeploymentStatusWaiterHook,
+    ECSTaskStatusHook
+)
