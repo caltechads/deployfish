@@ -8,6 +8,7 @@ from deployfish.core.models import (
     ServiceDiscoveryService,
     TaskDefinition,
 )
+from deployfish.core.aws import get_boto3_session
 from deployfish.core.models.mixins import TaskDefinitionFARGATEMixin
 
 from ..abstract import Adapter
@@ -591,6 +592,11 @@ class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
         elif data_key in source:
             data[data_key] = source[data_key]
 
+    def is_fargate(self, data):
+        if 'requiresCompatibilities' in self.data and self.data['requiresCompatibilities'] == ['FARGATE']:
+            return True
+        return False
+
     def get_data(self, data, task, source=None):
         """
         Construct `data` so that it can be used for constructing our Task parameters by combining data from an existing
@@ -682,6 +688,32 @@ class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
             if 'allowPublicIp' in vc:
                 schedule_data['vpc_configuration']['public_ip'] = vc['allowPublicIp'] == 'ENABLED'
         return schedule_data
+
+    def update_container_logging(self, data, task_definition):
+        """
+        FARGATE tasks can only use these logging drivers: awslogs, splunk, awsfirelens.   Examine each
+        container in our task definition and if (a) there is no logging stanza or (b) the logging driver
+        is not valid, replace the logging stanza with one that writes the logs to awslogs.
+        """
+        if task_definition.is_fargate():
+            for container in task_definition.containers:
+                if 'logConfiguration' in container.data:
+                    lc = container.data['logConfiguration']
+                    if lc['logDriver'] in ['awslogs', 'splunk', 'awsfirelens']:
+                        continue
+                # the log configuration needs to be fixed
+                lc = {
+                    'logDriver': 'awslogs',
+                    'options': {
+                        'awslogs-create-group': "true",
+                        'awslogs-region': get_boto3_session().region_name,
+                        'awslogs-group': '/{}/{}'.format(self.service.data['cluster'], self.service.name),
+                        'awslogs-stream-prefix': data['command']
+                    }
+
+                }
+                # FIXME: probably should log a warning to the user or something
+                container.data['logConfiguration'] = lc
 
     def update_container_environments(self, task_definition, extra_environment):
         """
@@ -795,6 +827,7 @@ class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
                 # Now iterate through each item in task -> commands
                 for command in task['commands']:
                     command_data, command_kwargs = self._get_command_specific_data(command, data_base, base_td)
+                    self.update_container_logging(command_data, command_kwargs['task_definition'])
                     data_list.append(command_data)
                     kwargs_list.append(command_kwargs)
         return data_list, kwargs_list
