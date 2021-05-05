@@ -599,7 +599,7 @@ class InvokedTaskManager(Manager):
         return InvokedTask(response['tasks'][0])
 
     def list(self, cluster, service=None, family=None, container_instance=None, status='RUNNING'):
-        # hint: (str, bool, bool, str, str)
+        # hint: (str["{cluster_name}"], bool, bool, str, str)
         kwargs = {}
         kwargs['cluster'] = cluster
         kwargs['desiredStatus'] = status
