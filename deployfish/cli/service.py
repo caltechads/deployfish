@@ -24,3 +24,12 @@ service_tasks_group = ClickServiceTasksAdapter.add_command_group(service_group, 
 service_tasks_list = ClickServiceTasksAdapter.add_list_helper_tasks_click_command(service_tasks_group)
 service_tasks_info = ClickServiceTasksAdapter.add_helper_task_info_click_command(service_tasks_group)
 service_tasks_run = ClickServiceTasksAdapter.add_run_helper_task_click_command(service_tasks_group)
+
+
+@service_tasks_group.group('logs', help='Describe service and task logs')
+def service_tasks_logs():
+    pass
+
+
+service_tasks_tail = ClickServiceTasksAdapter.add_tail_logs_click_command(service_tasks_logs)
+service_tasks_list = ClickServiceTasksAdapter.add_list_logs_click_command(service_tasks_logs)
