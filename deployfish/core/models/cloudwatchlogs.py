@@ -1,6 +1,5 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import time
-from tzlocal import get_localzone
 
 from deployfish.core.aws import get_boto3_session
 from .abstract import Manager, Model
