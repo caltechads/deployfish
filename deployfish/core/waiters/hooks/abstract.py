@@ -1,9 +1,57 @@
+import click
 
 
 class AbstractWaiterHook(object):
 
     def __init__(self, obj):
         self.obj = obj
+
+    def mark(self, status, response, num_attempts, **kwargs):
+        click.secho('=' * 72, fg='yellow', bold=True)
+
+    def setup(self, status, response, num_attempts, **kwargs):
+        """
+        Do any necessary setup on the waiter iteration before we've done our per-state processing.   This will get
+        called once per iteration.
+        """
+        pass
+
+    def waiting(self, status, response, num_attempts, **kwargs):
+        """
+        Do something when our waiter status is 'waiting'.
+        """
+        pass
+
+    def success(self, status, response, num_attempts, **kwargs):
+        """
+        Do something when our waiter status is 'success'.
+        """
+        pass
+
+    def failure(self, status, response, num_attempts, **kwargs):
+        """
+        Do something when our waiter status is 'failure'.
+        """
+        pass
+
+    def error(self, status, response, num_attempts, **kwargs):
+        """
+        Do something when our waiter status is 'error'.
+        """
+        pass
+
+    def timeout(self, status, response, num_attempts, **kwargs):
+        """
+        Do something when our waiter status is 'timeout'.
+        """
+        pass
+
+    def cleanup(self, status, response, num_attempts, **kwargs):
+        """
+        Do any necessary cleanup after the waiter iteration has completed and we've done our per-state processing.
+        This will get called once per iteration.
+        """
+        pass
 
     def __call__(self, status, response, num_attempts, **kwargs):
         """
@@ -22,4 +70,15 @@ class AbstractWaiterHook(object):
 
         Plus other waiter specific kwargs.  e.g. Bucket when doing a 'bucket_exists' waiter.
         """
-        raise NotImplementedError
+        self.setup(status, response, num_attempts, **kwargs)
+        if status == 'waiting':
+            self.waiting(status, response, num_attempts, **kwargs)
+        elif status == 'success':
+            self.success(status, response, num_attempts, **kwargs)
+        elif status == 'failure':
+            self.failure(status, response, num_attempts, **kwargs)
+        elif status == 'error':
+            self.failure(status, response, num_attempts, **kwargs)
+        elif status == 'timeout':
+            self.failure(status, response, num_attempts, **kwargs)
+        self.cleanup(status, response, num_attempts, **kwargs)

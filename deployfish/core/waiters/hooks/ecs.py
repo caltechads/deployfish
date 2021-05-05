@@ -58,34 +58,37 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
             ])
         click.secho(tabulate(rows, headers=['Timestamp', 'Message']))
 
-    def __call__(self, status, response, num_attempts, **kwargs):
+    def waiting(self, status, response, num_attempts, **kwargs):
         cluster = kwargs['cluster']
         service = kwargs['services'][0]
-        if status == 'waiting':
-            service = Service.objects.get('{}:{}'.format(cluster, service))
-            click.secho('\n\nDeployment status:', fg='cyan')
-            click.secho('------------------\n', fg='cyan')
-            self.display_deployments(service.deployments)
-            click.secho('\n\nService events:', fg='cyan')
-            click.secho('---------------\n', fg='cyan')
-            self.display_events(service.events)
-            self.timestamp = self.our_timezone.localize(datetime.now())
-            click.secho('\n')
-            click.secho('=' * 72, fg='yellow', bold=True)
-        elif status == 'success':
-            click.secho('\n\nService is stable!', fg='green')
-        elif status == 'failure' or status == 'error':
-            click.secho('\n\nService failed to stabilize!', fg='red')
-        elif status == 'timeout':
-            click.secho('\n\nTimed out waiting for the service to stablize!\n\n', fg='red')
-            click.secho(
-                'NOTE: this does not necessarily mean your deployment failed: check the AWS console to be sure.'
-            )
+        service = Service.objects.get('{}:{}'.format(cluster, service))
+        click.secho('\n\nDeployment status:', fg='cyan')
+        click.secho('------------------\n', fg='cyan')
+        self.display_deployments(service.deployments)
+        click.secho('\n\nService events:', fg='cyan')
+        click.secho('---------------\n', fg='cyan')
+        self.display_events(service.events)
+        self.timestamp = self.our_timezone.localize(datetime.now())
+        click.secho('\n')
+        self.mark(status, response, num_attempts, **kwargs)
+
+    def success(self, status, response, num_attempts, **kwargs):
+        click.secho('\n\nService is stable!', fg='green')
+
+    def failure(self, status, response, num_attempts, **kwargs):
+        click.secho('\n\nService failed to stabilize!', fg='red')
+    error = failure
+
+    def timeout(self, status, response, num_attempts, **kwargs):
+        click.secho('\n\nTimed out waiting for the service to stablize!\n\n', fg='red')
+        click.secho(
+            'NOTE: this does not necessarily mean your deployment failed: check the AWS console to be sure.'
+        )
 
 
 class ECSTaskStatusHook(AbstractWaiterHook):
     """
-    This for the 'tasks_stopped'' waiters on ECS.
+    This for the 'tasks_stopped'' waiters on ECS, and prints the status of our tasks on each iteration.
     """
 
     def __init__(self, obj):
@@ -94,7 +97,29 @@ class ECSTaskStatusHook(AbstractWaiterHook):
         self.start = self.our_timezone.localize(datetime.now())
         self.timestamp = self.start
 
-    def final_report(self, kwargs):
+    def waiting(self, status, response, num_attempts, **kwargs):
+        tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+        click.secho('\n\nTask status:', fg='cyan')
+        click.secho('------------\n', fg='cyan')
+        table = []
+        for i, task in enumerate(tasks):
+            row = [
+                i,
+                kwargs['cluster'],
+                task.arn.rsplit('/', 1)[1],
+                task.data['lastStatus'],
+                task.data['createdAt'].strftime('%Y-%m-%d %H:%M:%S'),
+            ]
+            if 'startedAt' in task.data:
+                row.append(task.data['startedAt'].strftime('%Y-%m-%d %H:%M:%S'))
+            else:
+                row.append('Not Started')
+            table.append(row)
+        click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Created', 'Started']))
+        click.secho('\n')
+        self.mark(status, response, num_attempts, **kwargs)
+
+    def success(self, status, response, num_attempts, **kwargs):
         tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
         click.secho('\n\nTask status:', fg='cyan')
         click.secho('------------\n', fg='cyan')
@@ -110,32 +135,64 @@ class ECSTaskStatusHook(AbstractWaiterHook):
             ]
             table.append(row)
         click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Stop Code', 'Stopped']))
+    failure = success
+    error = success
 
-    def __call__(self, status, response, num_attempts, **kwargs):
-        if status == 'waiting':
-            tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
-            click.secho('\n\nTask status:', fg='cyan')
-            click.secho('------------\n', fg='cyan')
-            table = []
-            for i, task in enumerate(tasks):
-                row = [
-                    i,
-                    kwargs['cluster'],
-                    task.arn.rsplit('/', 1)[1],
-                    task.data['lastStatus'],
-                    task.data['createdAt'].strftime('%Y-%m-%d %H:%M:%S'),
-                ]
-                if 'startedAt' in task.data:
-                    row.append(task.data['startedAt'].strftime('%Y-%m-%d %H:%M:%S'))
-                else:
-                    row.append('Not Started')
-                table.append(row)
-            click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Created', 'Started']))
-            click.secho('\n')
-            click.secho('=' * 72, fg='yellow', bold=True)
-        elif status == 'success':
-            self.final_report(kwargs)
-        elif status == 'failure' or status == 'error':
-            self.final_report(kwargs)
-        elif status == 'timeout':
-            click.secho('\n\nTimed out waiting for the tasks to finish!\n\n', fg='red')
+    def timeout(self, status, response, num_attempts, **kwargs):
+        click.secho('\n\nTimed out waiting for the tasks to finish!\n\n', fg='red')
+
+
+class ECSTaskLogsHook(AbstractWaiterHook):
+    """
+    This for the 'tasks_stopped'' waiters on ECS.
+    """
+
+    def __init__(self, obj):
+        super(ECSTaskStatusHook, self).__init__(obj)
+        self.our_timezone = get_localzone()
+        self.start = self.our_timezone.localize(datetime.now())
+        self.timestamp = self.start
+
+    def waiting(self, status, response, num_attempts, **kwargs):
+        tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+        click.secho('\n\nTask status:', fg='cyan')
+        click.secho('------------\n', fg='cyan')
+        table = []
+        for i, task in enumerate(tasks):
+            row = [
+                i,
+                kwargs['cluster'],
+                task.arn.rsplit('/', 1)[1],
+                task.data['lastStatus'],
+                task.data['createdAt'].strftime('%Y-%m-%d %H:%M:%S'),
+            ]
+            if 'startedAt' in task.data:
+                row.append(task.data['startedAt'].strftime('%Y-%m-%d %H:%M:%S'))
+            else:
+                row.append('Not Started')
+            table.append(row)
+        click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Created', 'Started']))
+        click.secho('\n')
+        self.mark(status, response, num_attempts, **kwargs)
+
+    def success(self, status, response, num_attempts, **kwargs):
+        tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+        click.secho('\n\nTask status:', fg='cyan')
+        click.secho('------------\n', fg='cyan')
+        table = []
+        for i, task in enumerate(tasks):
+            row = [
+                i,
+                kwargs['cluster'],
+                task.arn.rsplit('/', 1)[1],
+                task.data['lastStatus'],
+                task.data['stopCode'],
+                task.data['stoppedAt'].strftime('%Y-%m-%d %H:%M:%S')
+            ]
+            table.append(row)
+        click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Stop Code', 'Stopped']))
+    failure = success
+    error = success
+
+    def timeout(self, status, response, num_attempts, **kwargs):
+        click.secho('\n\nTimed out waiting for the tasks to finish!\n\n', fg='red')
