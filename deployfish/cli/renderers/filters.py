@@ -48,12 +48,29 @@ def tabular(data, **kwargs):
     :param float_precision Union[int, None]: if specified, use this to determine the decimal precision
                                              of any `float` objects we get
     """
-    kwargs_copy = copy(kwargs)
-    columns = {
-        k.replace('_', ' '): kwargs_copy.pop(k)
-        for k in kwargs.keys()
-        if k not in ['ordering', 'date_format', 'datetime_format', 'float_precision', 'tablefmt', 'show_headers']
-    }
+    renderer_kwargs = {}
+    columns = {}
+    for k, v in kwargs.items():
+        if k in ['ordering', 'date_format', 'datetime_format', 'float_precision', 'tablefmt', 'show_headers']:
+            renderer_kwargs[k] = v
+        elif k.endswith('_datatype'):
+            k = k.replace('_datatype', '')
+            k = k.replace('_', ' ')
+            if k not in columns:
+                columns[k] = {}
+            columns[k]['datatype'] = v
+        elif k.endswith('_default'):
+            k = k.replace('_default', '')
+            k = k.replace('_', ' ')
+            if k not in columns:
+                columns[k] = {}
+            columns[k]['default'] = v
+        else:
+            k = k.replace('_', ' ')
+            if k not in columns:
+                columns[k] = {}
+            columns[k]['key'] = v
 
-    renderer = TableRenderer(columns, **kwargs_copy)
+    print(columns)
+    renderer = TableRenderer(columns, *renderer_kwargs)
     return renderer.render(data)
