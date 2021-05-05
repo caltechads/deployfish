@@ -1,4 +1,5 @@
 from copy import copy
+from datetime import datetime
 
 import click
 
@@ -74,3 +75,14 @@ def tabular(data, **kwargs):
     print(columns)
     renderer = TableRenderer(columns, *renderer_kwargs)
     return renderer.render(data)
+
+
+def fromtimestamp(data, **kwargs):
+    """
+    Convert a unix epoch timestamp to a datetime in our local timezone.
+    """
+    try:
+        return datetime.fromtimestamp(data).strftime('%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        # This is an AWS timestamp with microseconds
+        return datetime.fromtimestamp(data / 1000.0).strftime('%Y-%m-%d %H:%M:%S')

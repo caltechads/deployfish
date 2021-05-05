@@ -2,7 +2,7 @@ from pathlib import Path
 
 from jinja2 import FileSystemLoader, Environment
 
-from .filters import color, tabular, section_title
+from .filters import color, tabular, section_title, fromtimestamp
 
 from .abstract import AbstractRenderer
 
@@ -11,6 +11,7 @@ jinja_env = Environment(loader=FileSystemLoader(str(templates_path)))
 jinja_env.filters['color'] = color
 jinja_env.filters['tabular'] = tabular
 jinja_env.filters['section_title'] = section_title
+jinja_env.filters['fromtimestamp'] = fromtimestamp
 
 
 # ========================
