@@ -1039,6 +1039,10 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         for c in self.containers:
             c.reload_secrets()
 
+    @property
+    def logging(self):
+        return self.containers[0].data.get('logConfiguration', None)
+
     def copy(self):
         data = deepcopy(self.data)
         if 'taskDefinitionArn' in data:

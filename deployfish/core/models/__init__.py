@@ -1,6 +1,7 @@
 from .abstract import *  # noqa:F403,F401
 from .appscaling import *  # noqa:F403,F401
 from .cloudwatch import *    # noqa:F403,F401
+from .cloudwatchlogs import *    # noqa:F403,F401
 from .ec2 import *    # noqa:F403,F401
 from .ecs import *    # noqa:F403,F401
 from .events import *    # noqa:F403,F401
