@@ -12,7 +12,7 @@ from .commands import (
 )
 from deployfish.config import get_config
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
-from deployfish.core.models import Service, Cluster, StandaloneTask
+from deployfish.core.models import Service, Cluster, StandaloneTask, InvokedTask
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 
 
@@ -160,7 +160,6 @@ class ClickClusterAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
 class ClickStandaloneTaskAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
 
     model = StandaloneTask
-
     list_result_columns = {
         'Name': 'clusterName',
         'Status': 'status',
@@ -168,4 +167,16 @@ class ClickStandaloneTaskAdapter(ClickScaleInstancesCommandMixin, ClickModelAdap
         'Services': 'activeServicesCount',
         'Running Tasks': 'runningTasksCount',
         'Pending Tasks': 'pendingTasksCount'
+    }
+
+
+class ClickInvokedTaskAdapter(ClickModelAdapter):
+
+    model = InvokedTask
+
+    list_ordering = 'Family'
+    list_result_columns = {
+        'Family': 'taskDefinition__family_revision',
+        'Status': 'lastStatus',
+        'pk': 'pk',
     }

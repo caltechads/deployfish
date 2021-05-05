@@ -1415,7 +1415,8 @@ ServiceHelperTaskManager.model = ServiceHelperTask  # noqa:E305
 
 class InvokedTask(DockerMixin, Model):
     """
-    A running StandaloneTask or task as part of a Service.
+    A record of a running AWS ECS Task, which means either a task running as part of a Service, a StandaloneTask or a
+    ServiceHelperTask.
     """
 
     objects = InvokedTaskManager()
@@ -1425,13 +1426,17 @@ class InvokedTask(DockerMixin, Model):
         return '{}:{}'.format(self.cluster_name, self.arn)
 
     @property
+    def name(self):
+        return self.arn.rsplit('/')[1]
+
+    @property
     def arn(self):
         return self.data['taskArn']
 
     @property
     def task_definition(self):
         if 'task_definition' not in self.cache:
-            self.cache['task_definition'] = TaskDefinition.objects.get(self.data['taskDefinition'])
+            self.cache['task_definition'] = TaskDefinition.objects.get(self.data['taskDefinitionArn'])
         return self.cache['task_definition']
 
     @property
@@ -1459,6 +1464,13 @@ class InvokedTask(DockerMixin, Model):
             ContainerInstance.objects.get,
             ['{}:{}'.format(self.cluster_name, self.data['containerInstanceArn'])]
         )
+
+    def render_for_display(self):
+        data = self.render()
+        data['version'] = self.task_definition.version
+        data['cluster'] = self.cluster_name
+        data['taskDefinition'] = self.task_definition.render_for_display()
+        return data
 
 
 class ContainerInstance(SSHMixin, Model):
@@ -1564,6 +1576,10 @@ class Cluster(TagsMixin, SSHMixin, Model):
             success, output = instance.ssh_command(cmd)
             responses.append((success, output))
         return responses
+
+    @property
+    def tasks(self):
+        return InvokedTask.objects.list
 
     @property
     def services(self):
