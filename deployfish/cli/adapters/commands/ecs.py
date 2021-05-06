@@ -35,7 +35,7 @@ class HelperTaskCommandMixin(object):
             lines.append(
                 TableRenderer({
                     'Service': 'serviceName',
-                    'Name': 'command',
+                    'Name': 'name',
                     'Revision': 'family_revision',
                     'Version': 'version',
                     'Launch Type': 'launchType',
@@ -49,6 +49,9 @@ class HelperTaskCommandMixin(object):
 # ====================
 # Command mixins
 # ====================
+
+# Service
+# ---------
 
 class ClickScaleInstancesCommandMixin(object):
 
@@ -278,6 +281,9 @@ Restart the running tasks for a Service in AWS.
         obj.restart(hard=hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
         return click.style('\n\nRestarted tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
 
+
+# ServiceHelperTasks
+# ------------------
 
 class ClickListHelperTasksCommandMixin(object):
 
@@ -543,7 +549,7 @@ Run a ServiceHelperTask associated with a Service that exists in AWS.
         tasks = command.run()
         lines = []
         for task in tasks:
-            lines.append(click.style('\nStarted task: {}\n'.format(task.arn), fg='green'))
+            lines.append(click.style('\nStarted task: {}:{}\n'.format(command.data['cluster'], task.arn), fg='green'))
         click.secho('\n'.join(lines))
         if wait:
             self.run_task_waiter(tasks)
@@ -681,6 +687,215 @@ If a ServiceHelperTask uses "awslogs" as its logDriver, list the available log s
     def list_task_logs(self, service_pk, command_name, limit, **kwargs):
         command = self.get_task(service_pk, command_name)
         lc = command.task_definition.logging
+        if lc['logDriver'] != 'awslogs':
+            raise RenderException(
+                'Task log driver is "{}"; we can only list "awslogs" log streams'.format(lc['logDriver'])
+            )
+        group = CloudWatchLogGroup.objects.get(lc['options']['awslogs-group'])
+        stream_prefix = lc['options']['awslogs-stream-prefix']
+        streams = group.log_streams(stream_prefix=stream_prefix, maxitems=limit)
+        columns = {
+            'Stream Name': 'logStreamName',
+            'Created': {'key': 'creationTime', 'datatype': 'timestamp'},
+            'Last Event': {'key': 'lastEventTimestamp', 'datatype': 'timestamp', 'default': ''},
+        }
+        return '\n' + TableRenderer(columns, ordering='-Created').render(streams) + '\n'
+
+
+# StandaloneTasks
+# ---------------
+
+class ClickRunStandaloneTaskCommandMixin(object):
+
+    def run_task_waiter(self, tasks, **kwargs):
+        kwargs['WaiterHooks'] = [ECSTaskStatusHook(tasks)]
+        kwargs['tasks'] = [t.arn for t in tasks]
+        kwargs['cluster'] = tasks[0].cluster_name
+        self.wait('tasks_stopped', **kwargs)
+
+    @classmethod
+    def add_run_task_click_command(cls, command_group):
+        """
+        Build a fully specified click command for retrieving single objects, and add it to the click command group
+        `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def run_task(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            ctx.obj['adapter'].run_task(
+                kwargs['identifier'],
+                kwargs['wait']
+            )
+
+        args, kwargs = FunctionTypeCommentParser().parse(cls.model.objects.get)
+        pk_description = cls.get_pk_description()
+        run_task.__doc__ = """
+Run a StandaloneTask that exists in AWS.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(run_task)
+        function = click.pass_context(function)
+        function = click.option('--wait/--no-wait', default=False, help='Wait until the command finishes.')(function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'run',
+            short_help='Run info for a single StandaloneTask object in AWS'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def run_task(self, pk, wait, **kwargs):
+        standalone_task = self.get_object_from_aws(pk)
+        tasks = standalone_task.run()
+        lines = []
+        for task in tasks:
+            lines.append(
+                click.style('\nStarted task: {}:{}\n'.format(standalone_task.data['cluster'], task.arn), fg='green')
+            )
+        click.secho('\n'.join(lines))
+        if wait:
+            self.run_task_waiter(tasks)
+
+
+class ClickTailStandaloneTaskLogsMixin(object):
+
+    @classmethod
+    def add_tail_logs_click_command(cls, command_group):
+        """
+        Build a fully specified click command for tailing the logs for a task, and add it to the click command group
+        `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def tail_task_log(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            ctx.obj['adapter'].tail_task_log(
+                kwargs['identifier'],
+                kwargs['sleep'],
+                kwargs['filter_pattern'],
+                kwargs['mark']
+            )
+
+        args, kwargs = FunctionTypeCommentParser().parse(CloudWatchLogGroup.get_event_tailer)
+        pk_description = cls.get_pk_description()
+        tail_task_log.__doc__ = """
+If a StandaloneTask uses "awslogs" as its logDriver, tail the logs for that StandaloneTask.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(tail_task_log)
+        function = click.pass_context(function)
+        function = click.option(
+            '--mark/--no-mark',
+            default=False,
+            help="Print out a line every --sleep seconds.  Use this to know that the log tailer isn't stuck.",
+        )(function)
+        for key, kwarg in kwargs.items():
+            if key != 'stream_prefix':
+                function = cls.add_option(key, kwarg, function)
+        for key, arg in args.items():
+            function = cls.add_argument(key, arg, function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'tail',
+            short_help='Tail logs for a StandaloneTask.'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def tail_task_log(self, pk, sleep, filter_pattern, mark, **kwargs):
+        standalone_task = self.get_object_from_aws(pk)
+        lc = standalone_task.task_definition.logging
+        if lc['logDriver'] != 'awslogs':
+            raise RenderException('Task log driver is "{}"; we can only tail "awslogs"'.format(lc['logDriver']))
+        group = CloudWatchLogGroup.objects.get(lc['options']['awslogs-group'])
+        stream_prefix = lc['options']['awslogs-stream-prefix']
+        tailer = group.get_event_tailer(stream_prefix=stream_prefix, sleep=sleep, filter_pattern=filter_pattern)
+        for page in tailer:
+            for event in page:
+                click.secho("{}  {}".format(
+                    click.style(event['timestamp'].strftime('%Y-%m-%d %H:%M:%S.%f'), fg='cyan'),
+                    event['message'].strip()
+                ))
+            if mark:
+                click.secho("==============================  mark  ===================================", fg="yellow")
+
+
+class ClickListStandaloneTaskLogsMixin(object):
+
+    @classmethod
+    def add_list_logs_click_command(cls, command_group):
+        """
+        Build a fully specified click command for listing the log streams for a task, and add it to the click command
+        group `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def list_task_logs(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            lines = ctx.obj['adapter'].list_task_logs(
+                kwargs['identifier'],
+                kwargs['limit'],
+            )
+            if lines.count('\n') > 40:
+                click.echo_via_pager(lines)
+            else:
+                click.echo(lines)
+
+        pk_description = cls.get_pk_description()
+        list_task_logs.__doc__ = """
+If a StandaloneTask uses "awslogs" as its logDriver, list the available log streams for that StandaloneTask.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(list_task_logs)
+        function = click.pass_context(function)
+        function = click.option(
+            '--limit',
+            default=None,
+            help="Limit the number of streams listed.",
+            type=int
+        )(function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'list',
+            short_help='List awslogs log streams for a ServiceStandaloneTask.'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def list_task_logs(self, pk, limit, **kwargs):
+        standalone_task = self.get_object_from_aws(pk)
+        lc = standalone_task.task_definition.logging
         if lc['logDriver'] != 'awslogs':
             raise RenderException(
                 'Task log driver is "{}"; we can only list "awslogs" log streams'.format(lc['logDriver'])

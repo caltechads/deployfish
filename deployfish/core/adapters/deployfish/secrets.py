@@ -11,13 +11,13 @@ from ..abstract import Adapter
 
 class SecretsMixin:
 
-    def get_secrets(self, cluster, name, prefix=''):
+    def get_secrets(self, cluster, name):
         secrets = None
         if 'config' in self.data:
             secrets = []
             for secret in self.data['config']:
                 try:
-                    secrets.append(Secret.new(secret, 'deployfish', cluster=cluster, name=name, prefix=prefix))
+                    secrets.append(Secret.new(secret, 'deployfish', cluster=cluster, name=name))
                 except SecretAdapter.ExternalParameterException:
                     # handle globs
                     secrets.extend(ExternalSecret.objects.list(secret))

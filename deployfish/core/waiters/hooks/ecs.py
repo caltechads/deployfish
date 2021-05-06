@@ -99,9 +99,8 @@ class ECSTaskStatusHook(AbstractWaiterHook):
 
     def waiting(self, status, response, num_attempts, **kwargs):
         tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
-        click.secho('\n\nTask status:', fg='cyan')
-        click.secho('------------\n', fg='cyan')
         table = []
+        print()
         for i, task in enumerate(tasks):
             row = [
                 i,
@@ -116,13 +115,12 @@ class ECSTaskStatusHook(AbstractWaiterHook):
                 row.append('Not Started')
             table.append(row)
         click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Created', 'Started']))
-        click.secho('\n')
         self.mark(status, response, num_attempts, **kwargs)
 
     def success(self, status, response, num_attempts, **kwargs):
         tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
-        click.secho('\n\nTask status:', fg='cyan')
-        click.secho('------------\n', fg='cyan')
+        click.secho('\n\nFinal Task status:', fg='cyan')
+        click.secho('-----------------\n', fg='cyan')
         table = []
         for i, task in enumerate(tasks):
             row = [
@@ -135,6 +133,7 @@ class ECSTaskStatusHook(AbstractWaiterHook):
             ]
             table.append(row)
         click.secho(tabulate(table, headers=['#', 'Cluster', 'ID', 'Status', 'Stop Code', 'Stopped']))
+        print()
     failure = success
     error = success
 

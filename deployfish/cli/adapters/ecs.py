@@ -11,6 +11,9 @@ from .commands import (
     ClickRunHelperTaskCommandMixin,
     ClickTailHelperTaskLogsMixin,
     ClickListHelperTaskLogsMixin,
+    ClickRunStandaloneTaskCommandMixin,
+    ClickTailStandaloneTaskLogsMixin,
+    ClickListStandaloneTaskLogsMixin,
 )
 from deployfish.config import get_config
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
@@ -116,6 +119,14 @@ class ClickServiceAdapter(
                 raise
 
 
+class ClickServiceSecretsAdapter(
+    ServiceDereferenceMixin,
+    ClickSecretsAdapter
+):
+
+    model = Service
+
+
 class ClickServiceTasksAdapter(
     ServiceDereferenceMixin,
     ClickListHelperTasksCommandMixin,
@@ -131,7 +142,7 @@ class ClickServiceTasksAdapter(
     list_helper_tasks_ordering = 'Name'
     list_helper_tasks_result_columns = {
         'Service': 'serviceName',
-        'Name': 'command',
+        'Name': 'name',
         'Revision': 'family_revision',
         'Version': 'version',
         'Launch Type': 'launchType',
@@ -139,31 +150,36 @@ class ClickServiceTasksAdapter(
     }
 
 
-class ClickServiceSecretsAdapter(
-    ServiceDereferenceMixin,
-    ClickSecretsAdapter
+class ClickStandaloneTaskAdapter(
+    ClickRunStandaloneTaskCommandMixin,
+    ClickTailStandaloneTaskLogsMixin,
+    ClickListStandaloneTaskLogsMixin,
+    ClickModelAdapter
 ):
 
-    model = Service
+    model = StandaloneTask
+
+    list_ordering = 'Name'
+    list_result_columns = {
+        'Name': 'name',
+        'Service': {'key': 'serviceName', 'default': ''},
+        'Cluster': 'cluster__name',
+        'Launch Type': 'launchType',
+        'Revision': 'family_revision',
+        'Version': 'version',
+        'Schedule': 'schedule_expression'
+    }
+
+
+class ClickStandaloneTaskSecretsAdapter(ClickSecretsAdapter):
+
+    model = StandaloneTask
 
 
 class ClickClusterAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
 
     model = Cluster
 
-    list_result_columns = {
-        'Name': 'clusterName',
-        'Status': 'status',
-        'Instances': 'registeredContainerInstancesCount',
-        'Services': 'activeServicesCount',
-        'Running Tasks': 'runningTasksCount',
-        'Pending Tasks': 'pendingTasksCount'
-    }
-
-
-class ClickStandaloneTaskAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
-
-    model = StandaloneTask
     list_result_columns = {
         'Name': 'clusterName',
         'Status': 'status',

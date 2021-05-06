@@ -1,4 +1,5 @@
 from copy import copy
+import os
 import re
 import shlex
 
@@ -8,6 +9,7 @@ from deployfish.core.models import (
     ServiceDiscoveryService,
     TaskDefinition,
 )
+from deployfish.config import get_config
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.models.mixins import TaskDefinitionFARGATEMixin
 
@@ -31,8 +33,109 @@ class VpcConfigurationMixin:
             if 'security_groups' in source:
                 data['securityGroups'] = source['security_groups']
             if 'public_ip' in source:
-                data['assignPublicIp'] = 'ENABLED' if source['public_ip'] else 'DISABLED'
+                data['assignPublicIp'] = source['public_ip']
         return data
+
+
+# ------------------------
+# Abstract Adapters
+# ------------------------
+
+class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
+
+    def is_fargate(self, data):
+        if 'requiresCompatibilities' in self.data and self.data['requiresCompatibilities'] == ['FARGATE']:
+            return True
+        return False
+
+    def get_schedule_data(self, data, task_definition):
+        """
+        Construct the dict that will be given as input for configuring an EventScheduleRule and EventTarget for our
+        helper task.
+
+        The EventScheduleRule.new() factory method expects this struct:
+
+           {
+              'name': the name for the schedule
+              'schedule': the schedule expression
+              'schedule_role': the ARN of the role EventBridge will use to execute our task definition
+              'cluster': the name of the cluster in which to run our tasks
+              'count': (optional) the number of tasks to run
+              'launch_type': (optional): "FARGATE" or "EC2"
+              'platform_version': (optional)
+              'group': (optional) task group
+              'vpc_configuration': { (optional)
+                'subnets': list of subnet ids
+                'security_groups': list of security group ids
+                'public_ip': bool: assign a public ip to our containers?
+              }
+        }
+
+
+        :param data dict(str, *): the output of self.get_data()
+        :param task_definition TaskDefinition:  the task definition to schedule
+
+        :rtype: dict(str, *): data appropriate for configuring an EventScheduleRule and Event Target
+        """
+        schedule_data = {}
+        schedule_data['name'] = task_definition.data['family']
+        schedule_data['schedule'] = data['schedule']
+        if 'schedule_role' in data:
+            schedule_data['schedule_role'] = data['schedule_role']
+        schedule_data['cluster'] = data['cluster']
+        if 'count' not in schedule_data:
+            schedule_data['count'] = 1
+        if 'launchType' in data:
+            schedule_data['launch_type'] = data['launchType']
+        if schedule_data.get('launch_type', 'EC2') == 'FARGATE':
+            if 'platformVersion' in data:
+                schedule_data['platform_version'] = data['platformVersion']
+        if 'group' in data:
+            schedule_data['group'] = data['group']
+        if 'networkConfiguration' in data:
+            vc = data['networkConfiguration']['awsvpcConfiguration']
+            schedule_data['vpc_configuration'] = {}
+            if 'subnets' in vc:
+                schedule_data['vpc_configuration']['subnets'] = vc['subnets']
+            if 'securityGroups' in vc:
+                schedule_data['vpc_configuration']['security_groups'] = vc['securityGroups']
+            if 'allowPublicIp' in vc:
+                schedule_data['vpc_configuration']['public_ip'] = vc['allowPublicIp'] == 'ENABLED'
+        return schedule_data
+
+    def update_container_logging(self, data, task_definition):
+        """
+        FARGATE tasks can only use these logging drivers: awslogs, splunk, awsfirelens.   Examine each
+        container in our task definition and if (a) there is no logging stanza or (b) the logging driver
+        is not valid, replace the logging stanza with one that writes the logs to awslogs.
+        """
+        if task_definition.is_fargate():
+            for container in task_definition.containers:
+                if 'logConfiguration' in container.data:
+                    lc = container.data['logConfiguration']
+                    if lc['logDriver'] in ['awslogs', 'splunk', 'awsfirelens']:
+                        continue
+                # the log configuration needs to be fixed
+                try:
+                    region_name = get_boto3_session().region_name
+                except AttributeError:
+                    region_name = os.environ.get('AWS_DEFAULT_REGION', 'us-west-2')
+                if 'service' in data:
+                    log_group = '/{}/{}'.format(*data['service'].split(':'))
+                else:
+                    log_group = '/{}/standalone-tasks'.format(data['cluster'])
+                lc = {
+                    'logDriver': 'awslogs',
+                    'options': {
+                        'awslogs-create-group': "true",
+                        'awslogs-region': region_name,
+                        'awslogs-group': log_group,
+                        'awslogs-stream-prefix': data['name']
+                    }
+
+                }
+                # FIXME: probably should log a warning to the user or something
+                container.data['logConfiguration'] = lc
 
 
 # ------------------------
@@ -455,7 +558,7 @@ class ContainerDefinitionAdapter(Adapter):
         return data, kwargs
 
 
-class StandaloneTaskAdapter(SecretsMixin, VpcConfigurationMixin, Adapter):
+class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
 
     def get_task_definition(self, secrets=None):
         deployfish_environment = {
@@ -473,33 +576,59 @@ class StandaloneTaskAdapter(SecretsMixin, VpcConfigurationMixin, Adapter):
     def convert(self):
         data = {}
         data['name'] = self.data['name']
+        if 'family' not in self.data:
+            self.data['family'] = data['name']
+        if 'service' in self.data:
+            # We actually want the Service.pk here, not just the bare service name, but in deployfish.yml
+            # we've allowed people to just name the bare service of things that are in the same deployfish.yml
+            data['service'] = self.data['service']
+            if ':' not in data['service']:
+                config = get_config()
+                # This is not a Service.pk
+                try:
+                    service_data = config.get_section_item('services', data['service'])
+                except KeyError:
+                    raise self.SchemaException('No service named "{}" exists in deployfish.yml'.format(data['service']))
+                data['service'] = '{}:{}'.format(service_data['cluster'], service_data['name'])
         data['cluster'] = self.data.get('cluster', 'default')
         vpc_configuration = self.get_vpc_configuration()
         if vpc_configuration:
             data['networkConfiguration'] = {}
             data['networkConfiguration']['awsvpcConfiguration'] = vpc_configuration
-        data['count'] = self.yaml.get('count', 1)
+        data['count'] = self.data.get('count', 1)
         data['launchType'] = self.data.get('launch_type', 'EC2')
         if data['launchType'] == 'FARGATE':
-            if 'platform_version' in self.data:
-                data['platformVersion'] = self.data['platform_version']
+            data['platformVersion'] = self.data.get('platform_version', 'LATEST')
+        elif 'capacity_provider_strategy' in self.data:
+            data['capacityProviderStrategy'] = self.data['capacity_provider_strategy']
         if 'placement_constraints' in self.data:
             data['placementConstraints'] = self.data['placement_constraints']
         if 'placement_strategy' in self.data:
             data['placementStrategy'] = self.data['placement_strategy']
         if 'group' in self.data:
             data['Group'] = self.data['group']
+        if 'count' in self.data:
+            data['count'] = self.data['count']
         kwargs = {}
-        secrets = self.get_secrets(data['cluster'], data['name'], prefix='task')
+        secrets = []
+        if 'config' in self.data:
+            secrets = self.get_secrets(data['cluster'], 'task-{}'.format(data['name']))
         kwargs['task_definition'] = self.get_task_definition(secrets=secrets)
+        self.update_container_logging(data, kwargs['task_definition'])
+        if 'networkConfiguration' in data and kwargs['task_definition'].data['networkMode'] != 'awsvpc':
+            kwargs['task_definition'].data['networkMode'] = 'awsvpc'
         if 'schedule' in self.data:
-            kwargs['schedule'] = EventScheduleRule.new(self.data, 'deployfish')
-        if self.secrets:
-            kwargs['secrets'] = secrets
+            data['schedule'] = self.data['schedule']
+            if 'schedule_role' in self.data:
+                data['schedule_role'] = self.data['schedule_role']
+            kwargs['schedule'] = EventScheduleRule.new(
+                self.get_schedule_data(data, kwargs['task_definition']),
+                'deployfish'
+            )
         return data, kwargs
 
 
-class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
+class ServiceHelperTaskAdapter(AbstractTaskAdapter):
     """
     The problem here is that, unlike all our other adapters, we need to create many objects out of this.
 
@@ -592,11 +721,6 @@ class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
         elif data_key in source:
             data[data_key] = source[data_key]
 
-    def is_fargate(self, data):
-        if 'requiresCompatibilities' in self.data and self.data['requiresCompatibilities'] == ['FARGATE']:
-            return True
-        return False
-
     def get_data(self, data, task, source=None):
         """
         Construct `data` so that it can be used for constructing our Task parameters by combining data from an existing
@@ -633,87 +757,6 @@ class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
             data['count'] = task['count']
         self.set(data, task, 'schedule', 'schedule', source=source)
         self.set(data, task, 'schedule_role', 'schedule_role', source=source)
-
-    def get_schedule_data(self, data, task_definition):
-        """
-        Construct the dict that will be given as input for configuring an EventScheduleRule and EventTarget for our
-        helper task.
-
-        The EventScheduleRule.new() factory method expects this struct:
-
-           {
-              'name': the name for the schedule
-              'schedule': the schedule expression
-              'schedule_role': the ARN of the role EventBridge will use to execute our task definition
-              'cluster': the name of the cluster in which to run our tasks
-              'count': (optional) the number of tasks to run
-              'launch_type': (optional): "FARGATE" or "EC2"
-              'platform_version': (optional)
-              'group': (optional) task group
-              'vpc_configuration': { (optional)
-                'subnets': list of subnet ids
-                'security_groups': list of security group ids
-                'public_ip': bool: assign a public ip to our containers?
-              }
-        }
-
-
-        :param data dict(str, *): the output of self.get_data()
-        :param task_definition TaskDefinition:  the task definition to schedule
-
-        :rtype: dict(str, *): data appropriate for configuring an EventScheduleRule and Event Target
-        """
-        schedule_data = {}
-        schedule_data['name'] = task_definition.data['family']
-        schedule_data['schedule'] = data['schedule']
-        if 'schedule_role' in data:
-            schedule_data['schedule_role'] = data['schedule_role']
-        schedule_data['cluster'] = data['cluster']
-        if 'count' not in schedule_data:
-            schedule_data['count'] = 1
-        if 'launchType' in data:
-            schedule_data['launch_type'] = data['launchType']
-        if schedule_data.get('launch_type', 'EC2') == 'FARGATE':
-            if 'platformVersion' in data:
-                schedule_data['platform_version'] = data['platformVersion']
-        if 'group' in data:
-            schedule_data['group'] = data['group']
-        if 'networkConfiguration' in data:
-            vc = data['networkConfiguration']['awsvpcConfiguration']
-            schedule_data['vpc_configuration'] = {}
-            if 'subnets' in vc:
-                schedule_data['vpc_configuration']['subnets'] = vc['subnets']
-            if 'securityGroups' in vc:
-                schedule_data['vpc_configuration']['security_groups'] = vc['securityGroups']
-            if 'allowPublicIp' in vc:
-                schedule_data['vpc_configuration']['public_ip'] = vc['allowPublicIp'] == 'ENABLED'
-        return schedule_data
-
-    def update_container_logging(self, data, task_definition):
-        """
-        FARGATE tasks can only use these logging drivers: awslogs, splunk, awsfirelens.   Examine each
-        container in our task definition and if (a) there is no logging stanza or (b) the logging driver
-        is not valid, replace the logging stanza with one that writes the logs to awslogs.
-        """
-        if task_definition.is_fargate():
-            for container in task_definition.containers:
-                if 'logConfiguration' in container.data:
-                    lc = container.data['logConfiguration']
-                    if lc['logDriver'] in ['awslogs', 'splunk', 'awsfirelens']:
-                        continue
-                # the log configuration needs to be fixed
-                lc = {
-                    'logDriver': 'awslogs',
-                    'options': {
-                        'awslogs-create-group': "true",
-                        'awslogs-region': get_boto3_session().region_name,
-                        'awslogs-group': '/{}/{}'.format(self.service.data['cluster'], self.service.name),
-                        'awslogs-stream-prefix': data['command']
-                    }
-
-                }
-                # FIXME: probably should log a warning to the user or something
-                container.data['logConfiguration'] = lc
 
     def update_container_environments(self, task_definition, extra_environment):
         """
@@ -786,9 +829,10 @@ class ServiceHelperTaskAdapter(VpcConfigurationMixin, Adapter):
         # Build our new Task data based on the general task overlay we got from self._get_base_task_data()
         self.get_data(data, command, source=data_base)
         data['service'] = self.service.pk
-        data['cluster'] = self.service.data['cluster']
+        if 'cluster' not in data:
+            data['cluster'] = self.service.data['cluster']
         try:
-            data['command'] = command['name']
+            data['name'] = command['name']
         except KeyError:
             raise self.SchemaException(
                 'Service(pk="{}"): Each helper task must have a "name" assigned in the "commands" section'.format(

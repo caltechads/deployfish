@@ -178,8 +178,8 @@ class BaseTestServiceHelperTaskAdapter_basic(object):
         tasks_yml = deepcopy(self.TASKS)
         tasks_yml['tasks'][0]['cpu'] = 1024
         data_list, kwargs_list = ServiceHelperTaskAdapter(tasks_yml, self.service).convert()
-        self.assertEqual(kwargs_list[0]['task_definition'].data['cpu'], 1024)
-        self.assertEqual(kwargs_list[1]['task_definition'].data['cpu'], 1024)
+        self.assertEqual(kwargs_list[0]['task_definition'].data['cpu'], '1024')
+        self.assertEqual(kwargs_list[1]['task_definition'].data['cpu'], '1024')
 
     def test_containers_have_correct_cpu(self):
         data_list, kwargs_list = self.adapter.convert()
@@ -204,8 +204,8 @@ class BaseTestServiceHelperTaskAdapter_basic(object):
         tasks_yml = deepcopy(self.TASKS)
         tasks_yml['tasks'][0]['memory'] = 2048
         data_list, kwargs_list = ServiceHelperTaskAdapter(tasks_yml, self.service).convert()
-        self.assertEqual(kwargs_list[0]['task_definition'].data['memory'], 2048)
-        self.assertEqual(kwargs_list[1]['task_definition'].data['memory'], 2048)
+        self.assertEqual(kwargs_list[0]['task_definition'].data['memory'], '2048')
+        self.assertEqual(kwargs_list[1]['task_definition'].data['memory'], '2048')
 
     def test_containers_have_correct_memory(self):
         data_list, kwargs_list = self.adapter.convert()
@@ -251,11 +251,11 @@ class BaseTestServiceHelperTaskAdapter_basic(object):
     def test_DEPLOYFISH_ENVIRONMENT_set_correctly_in_container_environment(self):
         data_list, kwargs_list = self.adapter.convert()
         self.assertTrue(
-            {'name': 'DEPLOYFISH_ENVIRONMENT', 'value': self.service.environment} in
+            {'name': 'DEPLOYFISH_ENVIRONMENT', 'value': self.service.deployfish_environment} in
             kwargs_list[0]['task_definition'].containers[0].data['environment'],
         )
         self.assertTrue(
-            {'name': 'DEPLOYFISH_ENVIRONMENT', 'value': self.service.environment} in
+            {'name': 'DEPLOYFISH_ENVIRONMENT', 'value': self.service.deployfish_environment} in
             kwargs_list[1]['task_definition'].containers[0].data['environment'],
         )
 
@@ -326,8 +326,8 @@ class TestServiceHelperTaskAdapter_FARGATE(BaseTestServiceHelperTaskAdapter_basi
         tasks_yml = deepcopy(self.TASKS)
         tasks_yml['tasks'][0]['memory'] = 2048
         data_list, kwargs_list = ServiceHelperTaskAdapter(tasks_yml, self.service).convert()
-        self.assertEqual(kwargs_list[0]['task_definition'].data['memory'], 2048)
-        self.assertEqual(kwargs_list[1]['task_definition'].data['memory'], 2048)
+        self.assertEqual(kwargs_list[0]['task_definition'].data['memory'], '2048')
+        self.assertEqual(kwargs_list[1]['task_definition'].data['memory'], '2048')
 
     def test_launchType_is_set_to_FARGATE(self):
         data_list, kwargs_list = self.adapter.convert()
@@ -465,7 +465,7 @@ class TestServiceHelperTaskAdapter_schedule_EC2(unittest.TestCase):
         self.assertTrue('schedule' in self.kwargs_list[0])
 
     def test_schedule_rule_name_is_correct(self):
-        self.assertEqual(self.kwargs_list[0]['schedule'].name, 'foobar-tasks-test-migrate')
+        self.assertEqual(self.kwargs_list[0]['schedule'].name, 'deployfish-foobar-tasks-test-migrate')
 
     def test_schedule_rule_ScheduleExpression_is_correct(self):
         self.assertEqual(self.kwargs_list[0]['schedule'].data['ScheduleExpression'], 'cron(5 * * * ? *)')
@@ -550,7 +550,7 @@ class TestServiceHelperTaskAdapter_schedule_FARGATE(unittest.TestCase):
         self.assertTrue('schedule' in self.kwargs_list[0])
 
     def test_schedule_rule_name_is_correct(self):
-        self.assertEqual(self.kwargs_list[0]['schedule'].name, 'foobar-tasks-test-migrate')
+        self.assertEqual(self.kwargs_list[0]['schedule'].name, 'deployfish-foobar-tasks-test-migrate')
 
     def test_schedule_rule_ScheduleExpression_is_correct(self):
         self.assertEqual(self.kwargs_list[0]['schedule'].data['ScheduleExpression'], 'cron(5 * * * ? *)')
