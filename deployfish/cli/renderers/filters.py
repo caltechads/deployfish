@@ -1,4 +1,3 @@
-from copy import copy
 from datetime import datetime
 
 import click
@@ -72,7 +71,6 @@ def tabular(data, **kwargs):
                 columns[k] = {}
             columns[k]['key'] = v
 
-    print(columns)
     renderer = TableRenderer(columns, *renderer_kwargs)
     return renderer.render(data)
 
