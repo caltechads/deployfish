@@ -30,9 +30,18 @@ class FunctionTypeCommentParser(object):
             type_str = type_str[5:-1]
         if type_str.startswith("str["):
             # look for string specs
+            inside = type_str[4:-1]
+            # This has a list of string specs
             type_def = {
                 'type': str,
-                'specs': [spec.strip('"') for spec in type_str[4:-1].split(',')]
+                'specs': [spec.strip('"') for spec in inside.split(',')]
+            }
+        elif type_str.startswith('choice['):
+            # This is a choice field
+            inside = type_str[7:-1]
+            type_def = {
+                'type': 'choice',
+                'choices': [s for s in inside.split('|')]
             }
         if is_list:
             type_def['multiple'] = True
