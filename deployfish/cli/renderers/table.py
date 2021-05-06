@@ -18,8 +18,8 @@ class TableRenderer(AbstractRenderer):
     Render a list of results as an ASCII table.
     """
 
-    DEFAULT_DATETIME_FORMAT = "%b %d, %Y %I:%M:%S %p"
-    DEFAULT_DATE_FORMAT = "%b %d, %Y"
+    DEFAULT_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+    DEFAULT_DATE_FORMAT = "%Y-%m-%d"
     DEFAULT_FLOAT_PRECISION = 2
 
     def __init__(self, columns, datetime_format=None, date_format=None, float_precision=None, ordering=None,
