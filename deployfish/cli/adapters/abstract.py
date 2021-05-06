@@ -91,11 +91,7 @@ class ClickBaseModelAdapter(object):
             click_type = click.DateTime()
         else:
             click_type = arg_type
-        help_str = None
-        if 'specs' in arg:
-            formats = ['"{}"'.format(spec) for spec in arg['specs']]
-            help_str = "Acceptible formats: {}".format(', '.join(formats))
-        function = click.argument(name, type=click_type, help=help_str)(function)
+        function = click.argument(name, type=click_type)(function)
         return function
 
     @classmethod
@@ -109,10 +105,15 @@ class ClickBaseModelAdapter(object):
 
         :rtype: function
         """
-        option = "--{}".format(name.replace('_', '-'))
         arg_type = kwarg['type']
+        if arg_type == bool:
+            option = "--{name}/--no-{name}".format(name=name.replace('_', '-'))
+        else:
+            option = "--{}".format(name.replace('_', '-'))
         if arg_type == 'datetime':
             click_type = click.DateTime()
+        elif arg_type == 'choice':
+            click_type = click.Choice(kwarg['choices'])
         else:
             click_type = arg_type
         help_str = "Filter results by {}".format(name)
@@ -130,7 +131,7 @@ class ClickBaseModelAdapter(object):
                 'default': kwarg['default'],
                 'help': help_str
             }
-        if not isinstance(click_type, str):
+        if not isinstance(click_type, str) and arg_type != bool:
             option_kwargs['type'] = click_type
         function = click.option(option, **option_kwargs)(function)
         return function
