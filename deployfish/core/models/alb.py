@@ -208,7 +208,7 @@ class TargetGroupManager(Manager):
         return self.get_many([pk])[0]
 
     def get_many(self, pks):
-        # hint: (list(str["{target_group_arn}","{target_group_name}"]))
+        # hint: (list[str["{target_group_arn}","{target_group_name}"]])
         kwargs = {}
         for pk in pks:
             if pk.startswith('arn:'):
