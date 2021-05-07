@@ -57,6 +57,7 @@ class TableRenderer(AbstractRenderer):
             * ``default``:  If the attribute/key is not present in our object, return the default value instead of
                             raising an exception.
             * ``datatype``:  Cast the value of this column to this datatype.  See "Manually specified datatypes", below.
+            * ``wrap``: Wrap the value to the specified number of columns
 
 
         Automatcially detected data types:
@@ -67,7 +68,7 @@ class TableRenderer(AbstractRenderer):
               kwarg or (if not provided) self.DEFAULT_DATE_FORMAT
             * ``float``: render with decimal precision from either the ``float_precision`` kwarg or (if not provided)
               self.DEFAULT_FLOAT_PRECISION
-            * ``str``: render, wrapping at 72 colums
+            * ``str``: render as is
 
             Available datatypes: ``timestamp``, which
             converts an Unix epoch timestamp (seconds or milliseco
@@ -141,7 +142,7 @@ class TableRenderer(AbstractRenderer):
             value /= 1024.0
         return "%.1f%s%s" % (value, 'Yi', suffix)
 
-    def _default_cast(self, obj, value):
+    def _default_cast(self, value):
         if isinstance(value, datetime.datetime):
             value = value.strftime(self.datetime_format)
         elif isinstance(value, datetime.date):
@@ -150,7 +151,6 @@ class TableRenderer(AbstractRenderer):
             value = self.float_format.format(value)
         else:
             value = str(value)
-            value = '\n'.join(wrap(value, 72))
         return value
 
     def cast_column(self, obj, value, column):
@@ -166,28 +166,22 @@ class TableRenderer(AbstractRenderer):
             return value
         if isinstance(column, dict):
             if 'datatype' not in column:
-                return self._default_cast(obj, value)
+                value = self._default_cast(value)
             else:
                 if column['datatype'] == 'timestamp':
                     value = int(value)
                     try:
-                        return datetime.datetime.fromtimestamp(value).strftime(self.datetime_format)
+                        value = datetime.datetime.fromtimestamp(value).strftime(self.datetime_format)
                     except ValueError:
-                        # This is an AWS timestamp with microseconds
-                        return datetime.datetime.fromtimestamp(value / 1000.0).strftime(self.datetime_format)
+                        # This is an AWS timestamp in milliseconds, not seconds
+                        value = datetime.datetime.fromtimestamp(value / 1000.0).strftime(self.datetime_format)
+                    value = self._default_cast(value)
                 elif column['datatype'] == 'bytes':
                     value = int(value)
-                    return self.human_bytes(value)
-
-        if isinstance(value, datetime.datetime):
-            value = value.strftime(self.datetime_format)
-        elif isinstance(value, datetime.date):
-            value = value.strftime(self.date_format)
-        elif isinstance(value, float):
-            value = self.float_format.format(value)
-        else:
-            value = str(value)
-            value = '\n'.join(wrap(value, 72))
+                    value = self.human_bytes(value)
+            if 'wrap' in column:
+                value = str(value)
+                value = '\n'.join(wrap(value, column['wrap']))
         return value
 
     def render_column(self, obj, column):
