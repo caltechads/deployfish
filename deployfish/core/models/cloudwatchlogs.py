@@ -105,10 +105,10 @@ class CloudWatchLogStreamTailer(object):
             'logStreamName': stream.name,
         }
         # startTime is milliseconds since Jan 1, 1970 00:00:00 UTC
-        if stream.data['lastEventTimestamp']:
+        if 'lastEventTimestamp' in stream.data:
             self.kwargs['startTime'] = stream.data['lastEventTimestamp'] - (1000 * sleep)
         else:
-            self.kwargs['startTime'] = int(time.mktime(datetime.utcnow(timezone.utc).timetuple()) * 1000)
+            self.kwargs['startTime'] = int(((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() - sleep) * 1000)
         self.sleep = sleep
         self.last_event = None
 
@@ -125,6 +125,8 @@ class CloudWatchLogStreamTailer(object):
             # Just convert our timetamp to something more useful
             event['raw_timestamp'] = event['timestamp']
             event['timestamp'] = datetime.fromtimestamp(event['timestamp'] / 1000.0)
+            # FIXME: what is dumb here is that get_log_events does not return the eventId, but filter_log_events does.
+            # eventId is very useful for deduping
             if event != self.last_event:
                 events.append(event)
         if events:
