@@ -12,6 +12,8 @@ class EventTargetManager(Manager):
     service = 'events'
 
     def get(self, pk, rule=None):
+        if not pk.startswith('deployfish-'):
+            pk = 'deployfish-' + pk
         response = self.client.list_targets_by_rule(Rule=rule.pk)
         data = {}
         for target in response['Targets']:
@@ -43,6 +45,8 @@ class EventScheduleRuleManager(Manager):
     service = 'events'
 
     def get(self, pk):
+        if not pk.startswith('deployfish-'):
+            pk = 'deployfish-' + pk
         response = self.client.list_rules(NamePrefix=pk, Limit=1)
         if not response['Rules']:
             raise EventScheduleRule.DoesNotExist(
@@ -51,18 +55,18 @@ class EventScheduleRuleManager(Manager):
         else:
             data = response['Rules'][0]
         rule = EventScheduleRule(data)
-        try:
-            rule.target = EventTarget.objects.get(pk, rule=rule)
-        except EventTarget.DoesNotExist:
-            pass
-        return EventScheduleRule(data)
+        rule.target = EventTarget.objects.get(pk, rule=rule)
+        return rule
 
     def list(self):
         paginator = self.client.get_paginator('list_rules')
         response_iterator = paginator.paginate(NamePrefix="deployfish-")
         rules = []
         for response in response_iterator:
-            rules.extend([EventScheduleRule(data) for data in response['Rules']])
+            for data in response['Rules']:
+                rule = EventScheduleRule(data)
+                rule.target = EventTarget.objects.get(rule.pk, rule=rule)
+                rules.append(rule)
         return rules
 
     def save(self, obj):
@@ -180,8 +184,6 @@ class EventScheduleRule(Model):
 
     def __init__(self, data):
         super(EventScheduleRule, self).__init__(data)
-        if not self.data['Name'].startswith('deployfish-'):
-            self.data['Name'] = 'deployfish-' + self.data['Name']
         self.target = None
 
     @property

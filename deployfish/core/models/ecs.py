@@ -401,9 +401,13 @@ class AbstractTaskManager(Manager):
                 'No TaskDefintion for {}(pk="{}") exists in AWS'.format(self.model.__name__, pk)
             )
         schedule = None
-        # FIXME: we should always be prefixing deployfish- in EventScheduleRuleManager so we don't need to do this
-        if EventScheduleRule.objects.exists('deployfish-' + task_definition.family):
-            schedule = EventScheduleRule.objects.get('deployfish-' + task_definition.family)
+        if EventScheduleRule.objects.exists(task_definition.family):
+            schedule = EventScheduleRule.objects.get(task_definition.family)
+            if not schedule.target:
+                # This should never happen
+                schedule = None
+            elif schedule.target.data['EcsParameters']['TaskDefinitionArn'] != task_definition.arn:
+                schedule = None
         # Extract the info we need to run the task from tags on the task definition
         data = TaskTagImporter().convert(task_definition.data.get('tags', []))
         return self.model(data, task_definition=task_definition, schedule=schedule)

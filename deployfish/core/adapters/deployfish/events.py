@@ -26,7 +26,7 @@ class EventTargetAdapter(Adapter):
 
     def convert(self):
         data = {}
-        data['Id'] = self.data['name']
+        data['Id'] = 'deployfish-' + self.data['name']
         data['Arn'] = self.get_cluster_arn()
         data['RoleArn'] = self.data['schedule_role']
         ecs = {}
@@ -49,7 +49,7 @@ class EventScheduleRuleAdapter(Adapter):
 
     def convert(self):
         data = {}
-        data['Name'] = self.data['name']
+        data['Name'] = 'deployfish-' + self.data['name']
         data['ScheduleExpression'] = self.data['schedule']
         data['State'] = 'ENABLED'
         data['Description'] = 'Scheduler for task: {}'.format(self.data['name'])
