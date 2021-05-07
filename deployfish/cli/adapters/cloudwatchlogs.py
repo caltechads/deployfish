@@ -14,7 +14,6 @@ class ClickCloudWatchLogGroupAdapter(
     list_ordering = 'Name'
     list_result_columns = {
         'Name': 'logGroupName',
-        'Arn': 'arn',
         'Created': {'key': 'creationTime', 'datatype': 'timestamp'},
         'Retention': {'key': 'retentionInDays', 'default': 'inf'},
         'Size': {'key': 'storedBytes', 'datatype': 'bytes'}
@@ -34,5 +33,4 @@ class ClickCloudWatchLogStreamAdapter(
         'Group': 'logGroupName',
         'Created': {'key': 'creationTime', 'datatype': 'timestamp'},
         'lastEventTimestamp': {'key': 'lastEventTimestamp', 'datatype': 'timestamp', 'default': ''},
-        'Arn': 'arn',
     }
