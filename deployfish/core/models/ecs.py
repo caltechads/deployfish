@@ -5,6 +5,7 @@ import textwrap
 
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.ssh import DockerMixin, SSHMixin
+from deployfish.core.utils import is_fnmatch_filter
 
 from .abstract import Manager, Model, LazyAttributeMixin
 from .ec2 import Instance, AutoscalingGroup
@@ -508,23 +509,119 @@ class StandaloneTaskManager(AbstractTaskManager):
     task_type = 'standalone'
     # model is set after the StandaloneTask class definition, below
 
-    def list(self, scheduled_only=False, all_revisions=False, task_type='standalone'):
-        # hint: (bool, bool, choice[standalone|service_helper|any])
+    def list(self, scheduled_only=False, all_revisions=False, task_type='standalone', service_name=None, cluster_name=None, task_name=None):
+        # hint: (bool, bool, choice[standalone|service_helper|any], str["{service_pk:glob}"], str["{cluster_name:glob}"], str["{task_name:glob}"])
+        """
+        List all Tasks (StandaloneTasks and ServiceHelperTasks), filtering by various dimensions.
+
+        :param scheduled_only bool: If ``True``, only return Tasks that have EventScheduleRules
+        :param all_revisions bool: If ``True`` return every task revision that is a deployfish Task.  Default: return
+                                   only the latest revision for each Task
+        :param task_type str: If provided, filter results by task type. A choice field: standalone, service_helper, any.
+        :param service_name str: If provided, filter results by service_name. This is a glob pattern.
+        :param cluster_name str: If provided, filter results by cluster_name. This is a glob pattern.
+        :param task_name str: If provided, filter results by task_name. This is a glob pattern.
+
+        Filter ``tasks`` by various dimensions, returning only those tasks that match our filters.
+
+        :rtype: list(Task)
+        """
         if task_type == 'any':
             task_type = ['standalone', 'service_helper']
         else:
             task_type = [task_type]
         if scheduled_only:
-            return self.list_scheduled()
+            return self.list_scheduled(
+                service_name=service_name,
+                cluster_name=cluster_name,
+                task_name=task_name,
+                task_type=task_type
+            )
         else:
-            return self.list_all(all_revisions=all_revisions, task_type=task_type)
+            return self.list_all(
+                all_revisions=all_revisions,
+                task_type=task_type,
+                service_name=service_name,
+                task_name=task_name
+            )
 
-    def list_all(self, all_revisions=False, task_type='standalone'):
+    def filter_list_results(self, tasks, service_name, cluster_name, task_name):
+        """
+        Filter ``tasks`` by various dimensions, returning only those tasks that match our filters.
+
+        :param service_name str: If provided, filter results by service_name. This is a glob pattern.
+        :param cluster_name str: If provided, filter results by cluster_name. This is a glob pattern.
+        :param task_name str: If provided, filter results by task_name. This is a glob pattern.
+
+        :rtype: list(Task)
+        """
+        if service_name or any(map(is_fnmatch_filter, [cluster_name, task_name])):
+            matched_tasks = []
+            for task in tasks:
+                if service_name:
+                    # the service tag is actually a service pk: {cluster_name}:{service_name}
+                    cluster, service = task.data['service'].split(':')
+                    if fnmatch.fnmatch(service, service_name):
+                        matched_tasks.append(task)
+                if cluster_name and is_fnmatch_filter(cluster_name):
+                    if fnmatch.fnmatch(task.data['cluster'], cluster_name):
+                        matched_tasks.append(task)
+                if task_name and is_fnmatch_filter(task_name):
+                    if fnmatch.fnmatch(task.data['name'], task_name):
+                        matched_tasks.append(task)
+            tasks = matched_tasks
+        return tasks
+
+    def list_scheduled(self, service_name=None, cluster_name=None, task_type=None, task_name=None):
+        """
+        List only the scheduled tasks, filtering by various dimensions.  We do this by listing all the deployfish
+        related schedules and building the Task objects based on the task definition attached to them.
+
+        .. warning::
+
+            One thing we're assuming here is that the run_task data attached to the EventTarget is the same as that
+            saved as tags on the task definition.   Hopefully those two things can only differ if we screwed up
+            somewhere.
+        """
+        tasks = super(StandaloneTaskManager, self).list_scheduled()
+
+        if task_type != 'any':
+            new_tasks = []
+            for task in tasks:
+                if task.data['task_type'] == task_type:
+                    new_tasks.append(task)
+            tasks = new_tasks
+        if any([service_name, cluster_name, task_name]):
+            matched_tasks = []
+            for task in tasks:
+                if service_name:
+                    # the service tag is actually a service pk: {cluster_name}:{service_name}
+                    cluster, service = task.data['service'].split(':')
+                    if fnmatch.fnmatch(service, service_name):
+                        matched_tasks.append(task)
+                if cluster_name:
+                    if fnmatch.fnmatch(task.data['cluster'], cluster_name):
+                        matched_tasks.append(task)
+                if task_name:
+                    if fnmatch.fnmatch(task.data['name'], task_name):
+                        matched_tasks.append(task)
+            tasks = matched_tasks
+        return tasks
+
+    def list_all(self, all_revisions=False, task_type='standalone', service_name=None, cluster_name=None,
+                 task_name=None):
         """
         List all the StandaloneTasks, which means return the list of StandaloneTasks that represent the latest revision
         among all families of task definitions which have the tag "deployfish:type" equal to "standalone".
 
         These will not include the ServiceHelperTasks.
+
+        :param all_revisions bool: If ``True`` return every task revision that is a deployfish Task.  Default: return
+                                   only the latest revision for each Task
+        :param task_type str: If provided, filter results by task type. A choice field: standalone, service_helper, any.
+        :param service_name str: If provided, filter results by service_name. This is a glob pattern.
+        :param cluster_name str: If provided, filter results by cluster_name. This is a glob pattern.
+        :param task_name str: If provided, filter results by task_name. This is a glob pattern.
 
         .. note::
 
@@ -538,10 +635,15 @@ class StandaloneTaskManager(AbstractTaskManager):
         # our standalone tasks should be tagged, while the service tasks won't be tagged.
         client = get_boto3_session().client('resourcegroupstaggingapi')
         paginator = client.get_paginator('get_resources')
-        response_iterator = paginator.paginate(
-            TagFilters=[{'Key': 'deployfish:type', 'Values': task_type}],
-            ResourceTypeFilters=['ecs:task-definition']
-        )
+        tag_filters = []
+        tag_filters.append({'Key': 'deployfish:type', 'Values': task_type})
+        # Because deployfish:service is a {cluster_name}:{service_name}, and we expect people to just give us a bare
+        # service name, don't filter by tag on serviice_name at all -- we use self.filter_list_results()
+        if cluster_name and not is_fnmatch_filter(cluster_name):
+            tag_filters.append({'Key': 'deployfish:cluster', 'Values': cluster_name})
+        if task_name and not is_fnmatch_filter(task_name):
+            tag_filters.append({'Key': 'deployfish:task-name', 'Values': task_name})
+        response_iterator = paginator.paginate(TagFilters=tag_filters, ResourceTypeFilters=['ecs:task-definition'])
         resource_arns = []
         for response in response_iterator:
             for resource in response['ResourceTagMappingList']:
@@ -561,6 +663,7 @@ class StandaloneTaskManager(AbstractTaskManager):
         tasks = []
         for pk in pks:
             tasks.append(self.get(pk))
+        tasks = self.filter_list_results(tasks, service_name, cluster_name, task_name)
         return tasks
 
 
@@ -839,7 +942,7 @@ class ServiceManager(Manager):
         return False
 
     def list(self, cluster_name=None, service_name=None, launch_type='any', scheduling_strategy='any'):
-        # hint: (str["{cluster_name:glob}"], str["{service_name:glob}"], choice[EC2|FARGATE|None], choice[REPLICA|DAEMON|any])
+        # hint: (str["{cluster_name:glob}"], str["{service_name:glob}"], choice[EC2|FARGATE|any], choice[REPLICA|DAEMON|any])
         if launch_type not in ['any', 'EC2', 'FARGATE']:
             raise self.OperationFailed(
                 '{} is not a valid launch_type.  Valid types are: EC2, FARGATE.'.format(launch_type)
