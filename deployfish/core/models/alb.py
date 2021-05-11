@@ -1,6 +1,8 @@
 import fnmatch
 
 from .abstract import Manager, Model
+from .ec2 import Instance
+from .mixins import TagsMixin
 
 
 # ----------------------------------------
@@ -13,7 +15,7 @@ class ApplicationLoadBalancerManager(Manager):
     service = 'elbv2'
 
     def get(self, pk):
-        # hint: (str["{load balancer name}", "{load balancer arn}"])
+        # hint: (str["{load_balancer_name}", "{load_balancer_arn}"])
         instances = self.get_many([pk])
         if len(instances) > 1:
             raise ApplicationLoadBalancer.MultipleObjectsReturned(
@@ -48,8 +50,8 @@ class ApplicationLoadBalancerManager(Manager):
             raise ApplicationLoadBalancer.DoesNotExist(str(e))
         return [ApplicationLoadBalancer(lb) for lb in lbs if lb['Type'] == 'application']
 
-    def list(self, vpc_ids=None, scheme=None, name=None):
-        # hint: (list[str], str["{internet-facing|internal}"], str)
+    def list(self, vpc_id=None, scheme='any', name=None):
+        # hint: (str["{vpc_id}"], choice[internet-facing|internal|any], str["{load_balancer_name:glob}"])
         paginator = self.client.get_paginator('describe_load_balancers')
         response_iterator = paginator.paginate()
         lb_data = []
@@ -59,9 +61,9 @@ class ApplicationLoadBalancerManager(Manager):
         for lb in lb_data:
             if name and not fnmatch.fnmatch(lb['LoadBalancerName'], name):
                 continue
-            if vpc_ids and not lb['VpcId'] in vpc_ids:
+            if vpc_id and lb['VpcId'] != vpc_id:
                 continue
-            if scheme and not lb['Scheme'] == scheme:
+            if scheme != 'any' and lb['Scheme'] != scheme:
                 continue
             albs.append(ApplicationLoadBalancer(lb))
         return albs
@@ -94,12 +96,16 @@ class LoadBalancerListenerManager(Manager):
             raise LoadBalancerListener.DoesNotExist(str(e))
         return LoadBalancerListener(response['Listeners'][0])
 
-    def list(self, load_balancer_arn=None):
-        # hint: (str["{load_balancer_arn}"])
-        paginator = self.client.get_paginator('describe_load_balancers')
+    def list(self, load_balancer=None):
+        # hint: (str["{load_balancer_arn}","{load_balancer_name}"])
+        paginator = self.client.get_paginator('describe_listeners')
         kwargs = {}
-        if load_balancer_arn:
-            kwargs['LoadBalancerArn'] = load_balancer_arn
+        if not load_balancer.startswith('arn:'):
+            # This is a load balancer name
+            lb = ApplicationLoadBalancer.objects.get(load_balancer)
+            load_balancer = lb.arn
+        if load_balancer:
+            kwargs['LoadBalancerArn'] = load_balancer
         response_iterator = paginator.paginate(**kwargs)
         listeners = []
         try:
@@ -127,6 +133,10 @@ class LoadBalancerListenerRuleManager(Manager):
 
     service = 'elbv2'
 
+    def __init__(self):
+        super(LoadBalancerListenerRuleManager, self).__init__()
+        self.cache = {'load_balancers': {}}
+
     def get(self, pk):
         # hint: (str["{listener_arn}"])
         return self.get_many([pk])[0]
@@ -140,50 +150,53 @@ class LoadBalancerListenerRuleManager(Manager):
             rules.extend(response['Rules'])
         return [LoadBalancerListenerRule(rule) for rule in rules]
 
+    def __get_rules_for_load_balancer(self, load_balancer_pk):
+        if load_balancer_pk not in self.cache['load_balancers']:
+            lb = ApplicationLoadBalancer.objects.get(load_balancer_pk)
+            listener_arns = [listener.arn for listener in lb.listeners]
+            rule_objects = []
+            for arn in listener_arns:
+                rule_objects.extend(self.list(listener_arn=arn))
+            self.cache['load_balancers'][load_balancer_pk] = rule_objects
+        return self.cache['load_balancers'][load_balancer_pk]
+
+    def __get_rules_for_target_group(self, target_group_arn):
+        tg = TargetGroup.objects.get(target_group_arn)
+        load_balancer_pk = tg.data['LoadBalancerArns'][0]
+        rule_objects = self.__get_rules_for_load_balancer(load_balancer_pk)
+        matched_rules = []
+        for obj in rule_objects:
+            for action in obj.data['Actions']:
+                if action['Type'] == 'forward' and action['TargetGroupArn'] == target_group_arn:
+                    # I'm making an important assumption here that the relevant target group is the one attached
+                    # to the first 'forward' action on the rule, and that we only have one TargetGroup -- we're
+                    # not using a weighted ForwardConfig with a list of TargetGroupArns.
+                    #
+                    # If we ever start doing green/blue deployments with two services attached to the same
+                    # listener rule, we'll need to fix this.
+                    matched_rules.append(obj)
+        return matched_rules
+
     def list(self, listener_arn=None, load_balancer_pk=None, target_group_arn=None):
         # hint: (str["{listener_arn}"], str["{load_balancer_arn}","{load_balancer_name}"], str["{target_group_arn}"])
         options = [listener_arn, load_balancer_pk, target_group_arn]
-        if sum(x is not None for x in options) < 2:
-            raise self.OperationFailed('Use only one of "listener_arn", "load_balancer_pk", or "target_group_arn".')
+        if sum(x is not None for x in options) > 1:
+            raise LoadBalancerListener.OperationFailed(
+                'Use only one of "listener_arn", "load_balancer_pk", or "target_group_arn".'
+            )
         kwargs = {}
         if target_group_arn:
-            tg = TargetGroup.objects.get(target_group_arn)
-            load_balancer_pk = tg.data['LoadBalancerArn']
-        if load_balancer_pk:
-            lb = ApplicationLoadBalancer.objects.get(load_balancer_pk)
-            listener_arns = [listener.arn for listener in lb.listeners]
-            rules = []
-            for arn in listener_arns:
-                rules.extend(self.list(listener_arn=arn))
-            return rules
-        if listener_arn:
+            return self.__get_rules_for_target_group(target_group_arn)
+        elif load_balancer_pk:
+            return self.__get_rules_for_load_balancer(load_balancer_pk)
+        elif listener_arn:
             kwargs['ListenerArn'] = listener_arn
-        paginator = self.client.get_paginator('describe_rules')
-        response_iterator = paginator.paginate(**kwargs)
-        rules = []
-        for response in response_iterator:
-            rules.extend(response['Rules'])
-        if target_group_arn:
-            # This is seemingly the only way to find the listener rule that a target group is attached to --
-            # * The TargetGroup knows its ApplicationLoadBalancer, but nothing else, so:
-            #   * List all LoadBalancerListeners on that ApplicationLoadBalancer
-            #   * List all LoadBalancerListenerRules on each of those LoadBalancerListeners
-            #   * Look through all those LoadBalancerListenerRules to find those which reference our TargetGroup.
-            #   * Return that list of LoadBalancerListenerRules
-            rule_objects = []
-            for rule in rules:
-                for action in rule['Actions']:
-                    if action['Type'] == 'forward' and action['TargetGroupArn'] == target_group_arn:
-                        # I'm making an important assumption here that the relevant target group is the one attached to
-                        # the first 'forward' action on the rule, and that we only have one TargetGroup -- we're not
-                        # using a weighted ForwardConfig with a list of TargetGroupArns.
-                        #
-                        # If we ever start doing green/blue deployments with two services attached to the same listener
-                        # rule, we'll need to fix this.
-                        rule_objects.append(LoadBalancerListenerRule(rule))
-        else:
-            rule_objects = [LoadBalancerListenerRule(rule, listener_arn=listener_arn) for rule in rules]
-        return rule_objects
+            paginator = self.client.get_paginator('describe_rules')
+            response_iterator = paginator.paginate(**kwargs)
+            rules = []
+            for response in response_iterator:
+                rules.extend(response['Rules'])
+            return [LoadBalancerListenerRule(rule, listener_arn=listener_arn) for rule in rules]
 
     def get_tags(self, arn):
         try:
@@ -231,13 +244,17 @@ class TargetGroupManager(Manager):
             raise TargetGroup.DoesNotExist(str(e))
         return [TargetGroup(tg) for tg in tgs]
 
-    def list(self, load_balancer_arn=None):
-        # hint: (str["{load_balancer_arn}"])
+    def list(self, load_balancer=None):
+        # hint: (str["{load_balancer_arn}","{load_balancer_name}"])
         kwargs = {}
-        if load_balancer_arn:
-            kwargs['LoadBalancerArn'] = load_balancer_arn
+        if not load_balancer.startswith('arn:'):
+            # This is a load balancer name
+            lb = ApplicationLoadBalancer.objects.get(load_balancer)
+            load_balancer = lb.arn
+        if load_balancer:
+            kwargs['LoadBalancerArn'] = load_balancer
         paginator = self.client.get_paginator('describe_target_groups')
-        response_iterator = paginator.paginate(LoadBalancerArn=load_balancer_arn)
+        response_iterator = paginator.paginate(**kwargs)
         tgs = []
         try:
             for response in response_iterator:
@@ -254,23 +271,47 @@ class TargetGroupManager(Manager):
         return response['TagDescriptions']['Tags']
 
     def save(self, obj):
-        raise LoadBalancerListener.ReadOnly('Cannot modify Load Balancer Listeners with deployfish')
+        raise LoadBalancerListener.ReadOnly('Cannot modify TargetGroups with deployfish')
 
     def delete(self, pk):
-        raise LoadBalancerListener.ReadOnly('Cannot modify Load Balancer Listeners with deployfish')
+        raise LoadBalancerListener.ReadOnly('Cannot modify TargetGroups with deployfish')
+
+
+class TargetGroupTargetManager(Manager):
+
+    service = 'elbv2'
+
+    def list(self, target_group_arn):
+        try:
+            response = self.client.describe_target_health(TargetGroupArn=target_group_arn)
+        except self.client.exceptions.TargetGroupNotFoundException:
+            raise TargetGroup.DoesNotExist('TargetGroup("{}") does not exist in AWS'.format(target_group_arn))
+        targets = []
+        for data in response['TargetHealthDescriptions']:
+            target_data = data['Target']
+            target_data['TargetHealth'] = data['TargetHealth']
+            target_data['HealthCheckPort'] = data['HealthCheckPort']
+            targets.append(TargetGroupTarget(target_data))
+        return targets
+
+    def save(self, obj):
+        raise TargetGroupTarget.ReadOnly('Cannot modify TargetGroupTargets.')
+
+    def delete(self, pk):
+        raise TargetGroupTarget.ReadOnly('Cannot modify TargetGroupTargets.')
 
 
 # ----------------------------------------
 # Models
 # ----------------------------------------
 
-class ApplicationLoadBalancer(Model):
+class ApplicationLoadBalancer(TagsMixin, Model):
 
     objects = ApplicationLoadBalancerManager()
 
     @property
     def pk(self):
-        return self.data['LoadBalancerArn']
+        return self.arn
 
     @property
     def name(self):
@@ -289,12 +330,16 @@ class ApplicationLoadBalancer(Model):
         return self.data['DNSName']
 
     @property
-    def tags(self):
-        if 'tags' not in self.cache:
-            self.cache['tags'] = {}
-            for tag in self.objects.get_tags(self.arn):
-                self.cache['tags'][tag['Key']] = tag['Value']
-        return self.cache['tags']
+    def listeners(self):
+        if 'listeners' not in self.cache:
+            self.cache['listeners'] = LoadBalancerListener.objects.list(load_balancer=self.arn)
+        return self.cache['listeners']
+
+    @property
+    def target_groups(self):
+        if 'target_groups' not in self.cache:
+            self.cache['target_groups'] = TargetGroup.objects.list(load_balancer=self.data['LoadBalancerArn'])
+        return self.cache['target_groups']
 
 
 class LoadBalancerListener(Model):
@@ -307,7 +352,7 @@ class LoadBalancerListener(Model):
 
     @property
     def name(self):
-        return self.arn
+        return '{} ({})'.format(self.port, self.protocol)
 
     @property
     def arn(self):
@@ -334,12 +379,12 @@ class LoadBalancerListener(Model):
         return self.data['Protocol']
 
     @property
-    def tags(self):
-        if 'tags' not in self.cache:
-            self.cache['tags'] = {}
-            for tag in self.objects.get_tags(self.arn):
-                self.cache['tags'][tag['Key']] = tag['Value']
-        return self.cache['tags']
+    def ssl_certificates(self):
+        return [c['CertificateArn'] for c in self.data.get(self.data['Certificates'])]
+
+    @property
+    def ssl_policy(self):
+        return self.data['SslPolicy']
 
 
 class LoadBalancerListenerRule(Model):
@@ -369,6 +414,12 @@ class LoadBalancerListenerRule(Model):
         return self.cache['load_balancer']
 
     @property
+    def listener(self):
+        if 'listener' not in self.cache:
+            self.cache['listener'] = LoadBalancerListener.objects.get(self.listener_arn)
+        return self.cache['listener']
+
+    @property
     def target_group(self):
         """
         .. note::
@@ -396,14 +447,6 @@ class LoadBalancerListenerRule(Model):
     def protocol(self):
         return self.data['Protocol']
 
-    @property
-    def tags(self):
-        if 'tags' not in self.cache:
-            self.cache['tags'] = {}
-            for tag in self.objects.get_tags(self.arn):
-                self.cache['tags'][tag['Key']] = tag['Value']
-        return self.cache['tags']
-
 
 class TargetGroup(Model):
 
@@ -411,30 +454,55 @@ class TargetGroup(Model):
 
     @property
     def pk(self):
-        return "{}:{}".format(self.data['LoadBalancerArn'], self.data['ListenerArn'])
+        return self.arn
 
     @property
     def name(self):
-        return self.pk
+        return self.data['TargetGroupName']
 
     @property
     def arn(self):
-        return self.data['ListenerArn']
+        return self.data['TargetGroupArn']
 
     @property
-    def load_balancer(self):
-        if 'load_balancer' not in self.cache:
-            self.cache['load_balancer'] = ApplicationLoadBalancer.objects.get(self.data['LoadBalancerArn'])
-        return self.cache['load_balancer']
+    def load_balancers(self):
+        if 'load_balancers' not in self.cache:
+            self.cache['load_balancers'] = ApplicationLoadBalancer.objects.get_many(self.data['LoadBalancerArns'])
+        return self.cache['load_balancers']
 
     @property
-    def listener_rule(self):
+    def rules(self):
         """
         .. note::
 
-            The dumb thing here is that you can't ask the target group itself what listener rule it is attached to --
+            The dumb thing here is that you can't ask the target group itself what listener rules it is attached to --
             you have to start at the load balancer, list all the listener rules that
         """
+        if 'listener_rules' not in self.cache:
+            self.cache['listener_rules'] = LoadBalancerListenerRule.objects.list(target_group_arn=self.arn)
+        return self.cache['listener_rules']
+
+    @property
+    def listeners(self):
+        if 'listeners' not in self.cache:
+            listeners = {}
+            # First extract the listeners from any rules we have
+            for rule in self.rules:
+                listeners[rule.listener_arn] = rule.listener
+            # Now look through all the listeners on our load balancers to see
+            # if we're the default action on any of them
+            for lb in self.load_balancers:
+                for listener in lb.listeners:
+                    if 'DefaultActions' in listener.data:
+                        for action in listener.data['DefaultActions']:
+                            if action['Type'] == 'forward' and 'TargetGroupArn' in action:
+                                listeners[listener.arn] = listener
+            self.cache['listeners'] = list(listeners.values())
+        return self.cache['listeners']
+
+    @property
+    def targets(self):
+        return TargetGroupTarget.objects.list(self.arn)
 
     @property
     def port(self):
@@ -444,10 +512,41 @@ class TargetGroup(Model):
     def protocol(self):
         return self.data['Protocol']
 
+
+class TargetGroupTarget(Model):
+
+    objects = TargetGroupTargetManager()
+
     @property
-    def tags(self):
-        if 'tags' not in self.cache:
-            self.cache['tags'] = {}
-            for tag in self.objects.get_tags(self.arn):
-                self.cache['tags'][tag['Key']] = tag['Value']
-        return self.cache['tags']
+    def pk(self):
+        return self.data['Id']
+
+    @property
+    def name(self):
+        return self.pk
+
+    @property
+    def arn(self):
+        return None
+
+    @property
+    def target(self):
+        if 'target' not in self.cache:
+            if self.data['Id'].startswith('i-'):
+                # this is an instance
+                self.cache['target'] = Instance.objects.get(self.data['Id'])
+            else:
+                raise self.OperationFailed(
+                    'TargetGroupTarget("{}"): currently can\'t defereference targets of this type'.format(self.pk)
+                )
+        return self.cache['target']
+
+    @property
+    def target_group(self):
+        if 'target_group' not in self.cache:
+            self.cache['target_group'] = TargetGroup.objects.get(self.data['TargetGroupArn'])
+        return self.cache['target_group']
+
+    @property
+    def health(self):
+        return self.data['TargetHealth']

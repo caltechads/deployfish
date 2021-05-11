@@ -1,3 +1,4 @@
+from copy import deepcopy
 import datetime
 from textwrap import wrap
 
@@ -6,6 +7,7 @@ from tabulate import tabulate
 
 from deployfish.exceptions import RenderException
 
+from deployfish.core.models import TargetGroup
 from .abstract import AbstractRenderer
 
 
@@ -58,6 +60,7 @@ class TableRenderer(AbstractRenderer):
                             raising an exception.
             * ``datatype``:  Cast the value of this column to this datatype.  See "Manually specified datatypes", below.
             * ``wrap``: Wrap the value to the specified number of columns
+            * ``length``: Just render the length of the value.  Useful for counting sub-objects
 
 
         Automatcially detected data types:
@@ -127,10 +130,16 @@ class TableRenderer(AbstractRenderer):
                 return column['default']
 
         from pprint import pprint
-        pprint(obj.render_for_display())
+        if isinstance(obj, dict):
+            pprint(obj)
+        else:
+            print('dir(obj):\n')
+            pprint(dir(obj))
+            print('\nobj.render_for_display():\n')
+            pprint(obj.render_for_display())
         raise RenderException(
             click.style(
-                '\n\n{our_name}: Could not dereference "{key}"'.format(our_name=self.__class__.__name__, key=column),
+                '\n\n{our_name}: Could not dereference "{key}"'.format(our_name=self.__class__.__name__, key=data_key),
                 fg='red'
             )
         )
@@ -149,8 +158,6 @@ class TableRenderer(AbstractRenderer):
             value = value.strftime(self.date_format)
         elif isinstance(value, float):
             value = self.float_format.format(value)
-        else:
-            value = str(value)
         return value
 
     def cast_column(self, obj, value, column):
@@ -165,7 +172,9 @@ class TableRenderer(AbstractRenderer):
         if value == '':
             return value
         if isinstance(column, dict):
-            if 'datatype' not in column:
+            if 'length' in column:
+                return len(value)
+            elif 'datatype' not in column:
                 value = self._default_cast(value)
             else:
                 if column['datatype'] == 'timestamp':
@@ -198,14 +207,23 @@ class TableRenderer(AbstractRenderer):
         :rtype: str
         """
 
-        if hasattr(self, f'render_{column}_value'):
-            value = getattr(self, f'render_{column}_value')(obj, column)
+        if isinstance(column, dict):
+            key = column['key']
         else:
-            if '__' in column:
-                refs = column.split('__')
+            key = column
+        if hasattr(self, f'render_{column}_value'):
+            value = getattr(self, f'render_{column}_value')(obj, key, column)
+        else:
+            if '__' in key:
+                refs = key.split('__')
                 ref = refs.pop(0)
                 while ref:
-                    obj = self.get_value(obj, ref)
+                    if isinstance(column, dict):
+                        sub_column = deepcopy(column)
+                        sub_column['key'] = ref
+                    else:
+                        sub_column = ref
+                    obj = self.get_value(obj, sub_column)
                     try:
                         ref = refs.pop(0)
                     except IndexError:
@@ -240,3 +258,90 @@ class TableRenderer(AbstractRenderer):
             return tabulate(table, headers=self.headers, tablefmt=self.tablefmt)
         else:
             return tabulate(table, tablefmt=self.tablefmt)
+
+
+class TargetGroupTableRenderer(TableRenderer):
+
+    def render_load_balancers_value(self, obj, key, column):
+        load_balancer_names = [lb.name for lb in obj.load_balancers]
+        return '\n'.join(load_balancer_names)
+
+    def render_targets_value(self, obj, key, column):
+        target_names = [t.target.name for t in obj.targets]
+        return '\n'.join(target_names)
+
+    def render_rules_value(self, obj, key, column):
+        rules = obj.rules
+        conditions = []
+        for rule in rules:
+            if 'Conditions' in rule.data:
+                for condition in rule.data['Conditions']:
+                    if 'HostHeaderConfig' in condition:
+                        for v in condition['HostHeaderConfig']['Values']:
+                            conditions.append('hostname:{}'.format(v))
+                    if 'HttpHeaderConfig' in condition:
+                        conditions.append('header:{} -> {}'.format(
+                            condition['HttpHeaderConfig']['HttpHeaderName'],
+                            ','.join(condition['HttpHeaderConfig']['Values'])
+                        ))
+                    if 'PathPatternConfig' in condition:
+                        for v in condition['PathPatternConfig']['Values']:
+                            conditions.append('path:{}'.format(v))
+                    if 'QueryStringConfig' in condition:
+                        for v in condition['QueryStringConfig']['Values']:
+                            conditions.append('qs:{} -> '.format(v['Key'], v['Value']))
+                    if 'SourceIpConfig' in condition:
+                        for v in condition['SourceIpConfig']['Values']:
+                            conditions.append('ip:{} -> '.format(v))
+                    if 'HttpRequestMethod' in condition:
+                        for v in condition['HttpRequestMethod']['Values']:
+                            conditions.append('verb:{} -> '.format(v))
+        if not conditions:
+            conditions.append('forward:ALB:{} -> CONTAINER:{}'.format(obj.listeners[0].port, obj.port))
+        return '\n'.join(sorted(conditions))
+
+    def render_listener_port_value(self, obj, key, column):
+        return '\n'.join([str(l.port) for l in obj.listeners])
+
+
+class ALBListenerTableRenderer(TableRenderer):
+
+    def render_default_action_value(self, obj, key, column):
+        actions = []
+        for action in obj.data['DefaultActions']:
+            if action['Type'] == 'forward':
+                tg = TargetGroup.objects.get(action['TargetGroupArn'])
+                actions.append('forward:{}'.format(tg.name))
+            elif action['Type'] == 'redirect':
+                c = action['RedirectConfig']
+                action_string = 'redirect[{}]:'.format(
+                    '301' if c['StatusCode'] == 'HTTP_301' else '302'
+                )
+                action_string += "{}://{}".format(c['Protocol'].lower(), c['Host'])
+                if 'Port' in c and c['Port']:
+                    action_string += ":{}".format(c['Port'])
+                action_string += '/'
+                if 'Query' in c and c['Query']:
+                    action_string += '?{}'.format(c['Query'])
+                actions.append(action_string)
+            elif action['Type'] == 'fixed':
+                c = action['FixedResponseConfig']
+                actions.append('fixed[{}]: {}'.format(c['StatusCode'], c['ContentType']))
+        return '\n'.join(actions)
+
+    def render_certificates_value(self, obj, key, column):
+        certs = []
+        if 'Certificates' in obj.data:
+            for cert in obj.data['Certificates']:
+                arn = cert['CertificateArn']
+                arn_source = arn.split(':')[2].upper()
+                arn_id = arn.rsplit('/')[1]
+                arn_string = '{}: {}'.format(arn_source, arn_id)
+                if 'IsDefault' in cert and cert['IsDefault']:
+                    certs.append('[Default] {}'.format(arn_string))
+                else:
+                    certs.append(arn_string)
+        return '\n'.join(certs)
+
+    def render_rules_value(self, obj, key, column):
+        return len(obj.rules)

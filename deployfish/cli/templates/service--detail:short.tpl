@@ -17,5 +17,5 @@
   count               :      {{ obj.data['desiredCount'] }}
 {%- endif -%}
 {%- if obj.data['loadBalancers'] %}
-{%- for lb in obj.data['loadBalancers'] %}{{ load_balancer(lb)|indent(width=2) }}{% endfor -%}
+{%- for lb in obj.load_balancers %}{{ load_balancer(lb)|indent(width=2) }}{% endfor -%}
 {%- endif %}

@@ -8,7 +8,9 @@ from deployfish.core.ssh import DockerMixin, SSHMixin
 from deployfish.core.utils import is_fnmatch_filter
 
 from .abstract import Manager, Model, LazyAttributeMixin
+from .alb import TargetGroup
 from .ec2 import Instance, AutoscalingGroup
+from .elb import ClassicLoadBalancer
 from .events import EventScheduleRule
 from .mixins import TaskDefinitionFARGATEMixin, TagsMixin
 from .secrets import SecretsMixin, Secret
@@ -1828,6 +1830,20 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
     @task_definition.setter
     def task_definition(self, value):
         self.cache['task_definition'] = value
+
+    @property
+    def load_balancers(self):
+        if 'load_balancers' not in self.cache:
+            lbs = []
+            for lb in self.data['loadBalancers']:
+                data = deepcopy(lb)
+                if 'targetGroupArn' in lb:
+                    data['TargetGroup'] = TargetGroup.objects.get(data['targetGroupArn'])
+                else:
+                    data['LoadBalancer'] = ClassicLoadBalancer.objects.get(data['loadBalancerName'])
+                lbs.append(data)
+            self.cache['load_balancers'] = lbs
+        return self.cache['load_balancers']
 
     @property
     def helper_tasks(self):
