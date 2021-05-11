@@ -193,6 +193,10 @@ class Instance(TagsMixin, SSHMixin, Model):
         return self.tags.get('Name', None)
 
     @property
+    def arn(self):
+        return None
+
+    @property
     def ssh_target(self):
         return self
 
