@@ -5,6 +5,47 @@ from deployfish.core.models import Secret, ExternalSecret
 from ..abstract import Adapter
 
 
+def parse_secret_string(secret_string):
+    """
+    Parse an identifier from a deployfish.yml parameter definition that looks like one of the following:
+
+        KEY=VALUE
+        KEY:secure=VALUE
+        KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
+    """
+    i = 0
+    key = None
+    is_secure = False
+    kms_key_id = None
+    identifier, value = deepcopy(secret_string).split('=', 1)
+    while identifier is not None:
+        segments = identifier.split(':', 1)
+        segment = segments[0]
+        if len(segments) > 1:
+            identifier = segments[1]
+        else:
+            identifier = None
+        if i == 0:
+            key = segment
+        elif segment == 'secure':
+            is_secure = True
+        elif segment == 'arn':
+            kms_key_id = 'arn:{}'.format(segments[1])
+            break
+        i += 1
+    kwargs = {
+        'Value': value,
+        'DataType': 'text',
+        'Tier': 'Standard'
+    }
+    if is_secure:
+        kwargs['Type'] = 'SecureString'
+        kwargs['KeyId'] = kms_key_id
+    else:
+        kwargs['Type'] = 'String'
+    return key, kwargs
+
+
 # ------------------------
 # Mixins
 # ------------------------
@@ -68,37 +109,7 @@ class SecretAdapter(Adapter):
             KEY:secure=VALUE
             KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
         """
-        i = 0
-        key = None
-        is_secure = False
-        kms_key_id = None
-        identifier, value = deepcopy(self.data).split('=', 1)
-        while identifier is not None:
-            segments = identifier.split(':', 1)
-            segment = segments[0]
-            if len(segments) > 1:
-                identifier = segments[1]
-            else:
-                identifier = None
-            if i == 0:
-                key = segment
-            elif segment == 'secure':
-                is_secure = True
-            elif segment == 'arn':
-                kms_key_id = 'arn:{}'.format(segments[1])
-                break
-            i += 1
-        kwargs = {
-            'Value': value,
-            'DataType': 'text',
-            'Tier': 'Standard'
-        }
-        if is_secure:
-            kwargs['Type'] = 'SecureString'
-            kwargs['KeyId'] = kms_key_id
-        else:
-            kwargs['Type'] = 'String'
-        return key, kwargs
+        return parse_secret_string(self.data)
 
     def convert(self):
         if self.is_external():

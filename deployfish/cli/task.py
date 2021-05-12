@@ -13,6 +13,7 @@ task_secrets_group = ClickStandaloneTaskSecretsAdapter.add_command_group(task_gr
 task_secrets_diff = ClickStandaloneTaskSecretsAdapter.add_diff_secrets_command(task_secrets_group)
 task_secrets_show = ClickStandaloneTaskSecretsAdapter.add_show_secrets_command(task_secrets_group)
 task_secrets_write = ClickStandaloneTaskSecretsAdapter.add_write_secrets_command(task_secrets_group)
+task_secrets_export = ClickStandaloneTaskSecretsAdapter.add_export_secrets_command(task_secrets_group)
 
 
 @task_group.group('logs', help='Describe task logs')

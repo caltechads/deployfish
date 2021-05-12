@@ -19,6 +19,7 @@ from .commands import (
     ClickObjectSecretsDiffCommandMixin,
     ClickObjectSecretsShowCommandMixin,
     ClickObjectSecretsWriteCommandMixin,
+    ClickObjectSecretsExportCommandMixin,
 )
 
 
@@ -275,6 +276,7 @@ class ClickSecretsAdapter(
     ClickObjectSecretsDiffCommandMixin,
     ClickObjectSecretsShowCommandMixin,
     ClickObjectSecretsWriteCommandMixin,
+    ClickObjectSecretsExportCommandMixin,
     ClickBaseModelAdapter,
 ):
 

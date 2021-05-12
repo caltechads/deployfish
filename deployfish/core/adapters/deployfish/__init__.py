@@ -14,7 +14,7 @@ from .appscaling import (
     ECSServiceScalingPolicyAdapter,
     ECSServiceScalableTargetAdapter,
 )
-from .secrets import SecretAdapter
+from .secrets import SecretAdapter, parse_secret_string
 from .service_discovery import ServiceDiscoveryServiceAdapter
 from .ssh import SSHTunnelAdapter
 

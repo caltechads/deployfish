@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy, copy
 import os
 import sys
 
@@ -58,6 +58,7 @@ class Config(object):
     def __init__(self, filename, use_aws_section=True, raw_config=None, boto3_session=None):
         self.filename = filename
         self.__raw = raw_config if raw_config else self.load_config(filename)
+        self.__cooked = deepcopy(self.__raw)
         if use_aws_section:
             build_boto3_session(config=self, boto3_session_override=boto3_session)
         else:
@@ -69,8 +70,6 @@ class Config(object):
 
     @property
     def cooked(self):
-        if not hasattr(self, '__cooked'):
-            self.__cooked = copy(self.__raw)
         return self.__cooked
 
     @property
@@ -135,6 +134,26 @@ class Config(object):
         """
         if section_name in self.cooked:
             for item in self.cooked[section_name]:
+                if item['name'] == item_name:
+                    return item
+                elif 'environment' in item and item['environment'] == item_name:
+                    return item
+        raise KeyError
+
+    def get_raw_section_item(self, section_name, item_name):
+        """
+        Get an item from a top level section of the raw config with 'name' equal to ``item_name``
+        from our parsed ``deployfish.yml`` file.
+
+        :param section_name string: The name of the top level section to search
+
+        :param item_name: The name of the instance of the section
+        :type item_name: string
+
+        :rtype: dict
+        """
+        if section_name in self.raw:
+            for item in self.raw[section_name]:
                 if item['name'] == item_name:
                     return item
                 elif 'environment' in item and item['environment'] == item_name:

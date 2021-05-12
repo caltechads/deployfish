@@ -10,6 +10,7 @@ from deployfish.cli.renderers import (
     JSONRenderer,
     TemplateRenderer
 )
+from deployfish.core.adapters import parse_secret_string
 
 
 # ====================
@@ -264,3 +265,69 @@ Diff the AWS SSM Parameter Store secrets against their counterparts in deployfis
             )
         else:
             return TemplateRenderer().render(changes, template='secrets--diff.tpl')
+
+
+class ClickObjectSecretsExportCommandMixin(object):
+
+    @classmethod
+    def add_export_secrets_command(cls, command_group):
+        """
+        Build a fully specified click command for exporting the ${env.VAR} related secrets between from AWS SSM Paramter
+        store and and deployfish.yml.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def diff_secrets(ctx, *args, **kwargs):
+            ctx.obj['config'] = get_config(**ctx.obj)
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].export_secrets(kwargs['identifier'], ctx.obj['config']))
+
+        pk_description = cls.get_pk_description()
+        diff_secrets.__doc__ = """
+Extract AWS SSM Parameter Store secrets for a {object_name} in AWS and print
+them to stdout in the proper format for use in a deployfish.yml "env_file:".
+We will specifically only export the secrets that in deployfish.yml have their
+values defined as ${{env.VAR}} interpolations, as these are what should go in your
+"env_file:".
+
+{pk_description}
+""".format(
+            pk_description=pk_description,
+            object_name=cls.model.__name__
+        )
+
+        function = print_render_exception(diff_secrets)
+        function = click.pass_context(function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'export',
+            short_help='Export the AWS SSM Parameter Store secrets vs those in deployfish.yml for a {}'.format(
+                cls.model.__name__
+            )
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def export_secrets(self, identifier, config):
+        """
+        Extract AWS SSM Parameter Store secrets for a {object_name} in AWS and print them to stdout in the proper format
+        for use in a deployfish.yml "env_file:".  We will specifically only export the secrets that in deployfish.yml
+        have their values defined as ${env.VAR} interpolations, as these are what should go in your "env_file:".
+        """
+        obj = self.get_object_from_deployfish(identifier)
+        item = config.get_raw_section_item(self.model.config_section, obj.name)
+        env_vars = {}
+        for secret_def in item['config']:
+            key, kwargs = parse_secret_string(secret_def)
+            value = kwargs['Value'].strip()
+            if value.startswith('${env.'):
+                env_var = value[6:-1]
+                env_vars[key] = env_var
+        secrets = Secret.objects.list(obj.secrets_prefix)
+        lines = []
+        for secret in secrets:
+            if secret.secret_name in env_vars:
+                lines.append("{}={}".format(env_vars[secret.secret_name], secret.value))
+        return '\n'.join(lines)

@@ -19,6 +19,7 @@ service_secrets_group = ClickServiceSecretsAdapter.add_command_group(service_gro
 service_secrets_diff = ClickServiceSecretsAdapter.add_diff_secrets_command(service_secrets_group)
 service_secrets_show = ClickServiceSecretsAdapter.add_show_secrets_command(service_secrets_group)
 service_secrets_write = ClickServiceSecretsAdapter.add_write_secrets_command(service_secrets_group)
+service_secrets_export = ClickServiceSecretsAdapter.add_export_secrets_command(service_secrets_group)
 
 service_tasks_group = ClickServiceTasksAdapter.add_command_group(service_group, 'tasks')
 service_tasks_list = ClickServiceTasksAdapter.add_list_helper_tasks_click_command(service_tasks_group)

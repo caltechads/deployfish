@@ -47,7 +47,7 @@ def cli(ctx, filename, env_file, import_env, version, tfe_token, use_aws_section
         if 'DEPLOYFISH_CONFIG_FILE' in os.environ:
             filename = os.environ['DEPLOYFISH_CONFIG_FILE']
     if filename is not None:
-        click.secho("Using '{}' as our deployfish config file".format(filename))
+        click.secho("Using '{}' as our deployfish config file".format(filename), err=True)
     ctx.obj['FILENAME'] = filename
     ctx.obj['ENV_FILE'] = env_file
     ctx.obj['IMPORT_ENV'] = import_env
