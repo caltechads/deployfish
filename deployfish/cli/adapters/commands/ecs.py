@@ -702,6 +702,67 @@ If a ServiceHelperTask uses "awslogs" as its logDriver, list the available log s
         return '\n' + TableRenderer(columns, ordering='-Created').render(streams) + '\n'
 
 
+class ClickUpdateHelperTasksCommandMixin(object):
+
+    update_template = None
+
+    @classmethod
+    def add_update_helper_tasks_click_command(cls, command_group):
+        """
+        Build a fully specified click command for updating ServiceHelperTasks without updating the related Service, and
+        add it to the click command group `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def update_helper_tasks(ctx, *args, **kwargs):
+            try:
+                ctx.obj['config'] = get_config(**ctx.obj)
+            except ConfigProcessingFailed as e:
+                raise RenderException(str(e))
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].update_helper_tasks(kwargs.pop('service_identifier')))
+        pk_description = cls.get_pk_description(name='SERVICE_IDENTIFIER')
+        update_helper_tasks.__doc__ = """
+Update all the Service's ServiceHelperTasks in AWS independently of the Service,
+and return the new task defintiion family:revision for each.
+
+This command exists because while we normally update ServiceHelperTasks
+automatically when their Service is updated, sometimes we want to update a
+ServiceHelperTask without touching the Service.  For example, when we want to
+run our database migrations before updating the code for the Service.
+
+NOTE: The ServiceHelperTasks you write with this command won't be directly
+associated with the live Service in AWS, like they would when doing "deploy
+service update".  So to run these tasks, use the family:revision returned by
+this command with "deploy task run" instead of running them with "deploy service
+tasks run".
+
+{pk_description}
+""".format(pk_description=pk_description)
+
+        function = print_render_exception(update_helper_tasks)
+        function = click.pass_context(function)
+        function = click.argument('service_identifier')(function)
+        function = command_group.command(
+            'update',
+            short_help='Update ServiceHelperTasks independently of their Service'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def update_helper_tasks(self, identifier, **kwargs):
+        obj = self.get_object_from_deployfish(identifier)
+        click.secho('\n\nUpdating ServiceHelperTasks associated with Service("{}"):\n'.format(obj.pk), fg='yellow')
+        for task in obj.helper_tasks:
+            click.secho('UPDATE: {} -> '.format(task.command), nl=False)
+            arn = task.save()
+            family_revision = arn.rsplit('/')[1]
+            click.secho(family_revision)
+        return click.style('\nDone.', fg='yellow')
+
+
 # StandaloneTasks
 # ---------------
 

@@ -14,6 +14,7 @@ from .commands import (
     ClickRunStandaloneTaskCommandMixin,
     ClickTailStandaloneTaskLogsMixin,
     ClickListStandaloneTaskLogsMixin,
+    ClickUpdateHelperTasksCommandMixin,
 )
 from deployfish.config import get_config
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
@@ -25,8 +26,8 @@ class ServiceDereferenceMixin(object):
 
     def dereference_identifier(self, identifier):
         """
-        For Services, we want to allow the users to specify just Service.name or Service.environment and dereference
-        that into our usual "{cluster_name}:{service_name}" primary key for services.
+        For Services, allow users to specify just Service.name or Service.environment and dereference that into our
+        usual "{cluster_name}:{service_name}" primary key.
 
         :param identifier str: an identifier for a Service
 
@@ -134,6 +135,7 @@ class ClickServiceTasksAdapter(
     ClickRunHelperTaskCommandMixin,
     ClickTailHelperTaskLogsMixin,
     ClickListHelperTaskLogsMixin,
+    ClickUpdateHelperTasksCommandMixin,
     ClickBaseModelAdapter
 ):
 
