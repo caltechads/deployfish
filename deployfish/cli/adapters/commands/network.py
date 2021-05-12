@@ -99,7 +99,10 @@ class ClickSSHObjectCommandMixin(object):
             ctx.obj['adapter'].ssh(kwargs['identifier'], kwargs['choose'], kwargs['verbose'])
         pk_description = cls.get_pk_description()
         ssh_object.__doc__ = """
-SSH to an existing {object_name} in AWS.
+SSH to a container machine running one of the tasks for an existing {object_name} in AWS.
+
+NOTE: this is only available if your {object_name} is of launch type EC2.  You cannot ssh
+to the container machine of a FARGATE {object_name}.
 
 {pk_description}
 """.format(pk_description=pk_description, object_name=cls.model.__name__)
@@ -195,6 +198,7 @@ class ClickTunnelObjectCommandMixin(object):
         Build a fully specified click command for setting up an SSH tunnel through an instances to another service in
         AWS, and add it to the click command group `command_group`.  Return the function object.
 
+
         :param command_group function: the click command group function to use to register our click command
 
         :rtype: function
@@ -216,7 +220,13 @@ class ClickTunnelObjectCommandMixin(object):
             )
         pk_description = cls.get_pk_description()
         tunnel_object.__doc__ = """
-Create an SSH tunnel through an instance related to a {object_name}.
+Establish an SSH tunnel from your machine through an instance related to a {object_name} to a target in AWS.
+
+You can do this in two ways:
+
+    * Provide the name of a tunnel from the 'tunnels:' section
+
+    * Specify an ad-hoc tunnel with the --host-port, --local-port and --host flags.  You need to specify all three flags.
 
 {pk_description}
 """.format(pk_description=pk_description, object_name=cls.model.__name__)

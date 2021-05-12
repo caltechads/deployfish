@@ -248,7 +248,11 @@ class ClickRestartServiceCommandMixin(ClickScaleInstancesCommandMixin):
 
         pk_description = cls.get_pk_description()
         restart_service.__doc__ = """
-Restart the running tasks for a Service in AWS.
+Iterate through the running tasks for the Service, killing each one and waiting
+for its replacement to be healthy before killing the next.
+
+If --hard is passed, kill all tasks simultaneously.  You might use this if your
+Service is completely wedged.
 
 {pk_description}
 """.format(pk_description=pk_description)
@@ -258,7 +262,7 @@ Restart the running tasks for a Service in AWS.
         function = click.option(
             '--hard/--no-hard',
             default=False,
-            help='Force the AutoscalingGroup to scale outside its MinCount or MaxCount'
+            help='Kill off all tasks at once instead of iterating through them'
         )(function)
         function = click.argument('identifier')(function)
         function = command_group.command(
@@ -723,7 +727,6 @@ class ClickUpdateHelperTasksCommandMixin(object):
                 raise RenderException(str(e))
             ctx.obj['adapter'] = cls()
             click.secho(ctx.obj['adapter'].update_helper_tasks(kwargs.pop('service_identifier')))
-        pk_description = cls.get_pk_description(name='SERVICE_IDENTIFIER')
         update_helper_tasks.__doc__ = """
 Update all the Service's ServiceHelperTasks in AWS independently of the Service,
 and return the new task defintiion family:revision for each.
@@ -739,8 +742,12 @@ service update".  So to run these tasks, use the family:revision returned by
 this command with "deploy task run" instead of running them with "deploy service
 tasks run".
 
-{pk_description}
-""".format(pk_description=pk_description)
+SERVICE_IDENTIFIER is a string that looks like one of:
+
+    * Service.name
+
+    * Service.environment
+"""
 
         function = print_render_exception(update_helper_tasks)
         function = click.pass_context(function)

@@ -254,7 +254,7 @@ class ClickObjectExistsCommandMixin(object):
         args, kwargs = FunctionTypeCommentParser().parse(cls.model.objects.exists)
         pk_description = cls.get_pk_description()
         object_exists.__doc__ = """
-Show info about a {object_name} object that exists in AWS.
+Determine whether a {object_name} object exists in AWS or not.
 
 {pk_description}
 
@@ -364,7 +364,7 @@ class ClickUpdateObjectCommandMixin(object):
             ctx.obj['adapter'] = cls()
             click.secho(ctx.obj['adapter'].update(kwargs.pop('identifier')))
         update_object.__doc__ = """
-Update attributes of an existing a new {object_name} object in AWS from what we have in our deployfish.yml file.
+Update an existing a {object_name} object in AWS from what we have in our deployfish.yml file.
 """.format(object_name=cls.model.__name__)
 
         function = print_render_exception(update_object)

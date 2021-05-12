@@ -26,7 +26,7 @@ class ClickTailLogStreamCommandMixin(object):
 
         pk_description = cls.get_pk_description()
         tail_log_stream.__doc__ = """
-Eternaly tail the events in the named log stream.   You'll need to use ^C to stop this command.
+Eternally tail the events in the named log stream.   You'll need to use ^C to stop this command.
 
 {pk_description}
 

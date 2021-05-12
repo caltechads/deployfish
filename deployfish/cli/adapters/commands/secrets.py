@@ -91,7 +91,7 @@ class ClickObjectSecretsShowCommandMixin(object):
             click.secho(ctx.obj['adapter'].show_secrets(kwargs['identifier'], kwargs['display']))
         pk_description = cls.get_pk_description()
         show_secrets.__doc__ = """
-Show the AWS SSM Parameter Store secrets associated with a {object_name}.
+Show the live values of the AWS SSM Parameter Store secrets associated with a {object_name}.
 
 {pk_description}
 """.format(pk_description=pk_description, object_name=cls.model.__name__)
@@ -226,7 +226,7 @@ class ClickObjectSecretsDiffCommandMixin(object):
 
         pk_description = cls.get_pk_description()
         diff_secrets.__doc__ = """
-Diff the AWS SSM Parameter Store secrets vs their counterparts in deployfish.yml.
+Diff the AWS SSM Parameter Store secrets against their counterparts in deployfish.yml.
 
 {pk_description}
 """.format(
