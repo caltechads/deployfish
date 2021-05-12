@@ -18,6 +18,19 @@ class FunctionTypeCommentParser(object):
         else:
             return None
 
+    def _get_help_strings(self, obj):
+        index = 2
+        help_strings = {}
+        while True:
+            line = inspect2.getsourcelines(obj)[0][index].strip()
+            if not line.startswith('# help_str:'):
+                break
+            else:
+                arg_name, help_str = line[11:].split(':', 1)
+                help_strings[arg_name] = help_str
+            index += 1
+        return help_strings
+
     def parse_type(self, type_str):
         is_list = False
         type_def = {'type': type_str}
@@ -57,6 +70,7 @@ class FunctionTypeCommentParser(object):
 
             def foo(self, arg1, kwarg1='Hello', kwarg2=None):
                 # hint: (str, str, Union[None, str])
+                # help_str:kwarg1:Set the greeting
 
         For that function, we will return:
         (
@@ -64,7 +78,7 @@ class FunctionTypeCommentParser(object):
                 'arg1': {'type': 'str'}
             },
             {
-                'kwarg1': {'type': str, 'default': 'Hello'},
+                'kwarg1': {'type': str, 'default': 'Hello', 'help_str': 'Set the greeting'},
                 'kwarg2': {'type': ['None', str], 'default': None},
             },
         )
@@ -74,6 +88,7 @@ class FunctionTypeCommentParser(object):
         :rtype: dict(str, dict(str, Any))
         """
         arg_annotations = self._get_type_annotations(func)
+        help_strings = self._get_help_strings(func)
         argspec = inspect2.getfullargspec(func)
         args = argspec.args
         if argspec.args[0] in ['self', 'cls']:
@@ -95,4 +110,7 @@ class FunctionTypeCommentParser(object):
                 response_kwargs[arg]['default'] = defaults[i]
             else:
                 response_args[arg] = arg_def
+        for k, v in help_strings.items():
+            if k in response_kwargs:
+                response_kwargs[k]['help_str'] = v
         return response_args, response_kwargs

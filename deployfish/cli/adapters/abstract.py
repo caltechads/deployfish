@@ -116,7 +116,9 @@ class ClickBaseModelAdapter(object):
             click_type = click.Choice(kwarg['choices'])
         else:
             click_type = arg_type
-        help_str = "Filter results by {}".format(name)
+        help_str = kwarg.get('help_str', "Filter results by {}".format(name))
+        if kwarg['default'] is not None:
+            help_str += ". Default: {}.".format(kwarg['default'])
         if 'specs' in kwarg:
             formats = ['"{}"'.format(spec) for spec in kwarg['specs']]
             help_str += ". Acceptible value formats: {}".format(', '.join(formats))

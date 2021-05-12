@@ -282,6 +282,8 @@ class CloudWatchLogGroup(Model):
 
     def get_event_tailer(self, stream_prefix=None, sleep=10, filter_pattern=None):
         # hint: (str["{log_stream_prefix}"], int, str["{filter_pattern}"])
+        # help_str:stream_prefix:Filter log events to those from streams matching this prefix
+        # help_str:sleep:Sleep for this many seconds between polls
         """
         Return a properly configured iterator that will eternally poll our log group (note -- not stream) for new
         messages in any of its streams, possibly filtering by log stream prefix and filter pattern.
