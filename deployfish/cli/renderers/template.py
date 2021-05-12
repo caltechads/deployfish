@@ -8,9 +8,10 @@ from .filters import (
     section_title,
     tabular,
     target_group_table,
-    target_group_listener_rules,
     alb_listener_table,
 )
+from .misc import target_group_listener_rules
+
 
 from .abstract import AbstractRenderer
 

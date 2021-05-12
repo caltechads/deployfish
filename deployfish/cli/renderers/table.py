@@ -9,6 +9,7 @@ from deployfish.exceptions import RenderException
 
 from deployfish.core.models import TargetGroup
 from .abstract import AbstractRenderer
+from .misc import target_group_listener_rules
 
 
 # ========================
@@ -271,34 +272,7 @@ class TargetGroupTableRenderer(TableRenderer):
         return '\n'.join(target_names)
 
     def render_rules_value(self, obj, key, column):
-        rules = obj.rules
-        conditions = []
-        for rule in rules:
-            if 'Conditions' in rule.data:
-                for condition in rule.data['Conditions']:
-                    if 'HostHeaderConfig' in condition:
-                        for v in condition['HostHeaderConfig']['Values']:
-                            conditions.append('hostname:{}'.format(v))
-                    if 'HttpHeaderConfig' in condition:
-                        conditions.append('header:{} -> {}'.format(
-                            condition['HttpHeaderConfig']['HttpHeaderName'],
-                            ','.join(condition['HttpHeaderConfig']['Values'])
-                        ))
-                    if 'PathPatternConfig' in condition:
-                        for v in condition['PathPatternConfig']['Values']:
-                            conditions.append('path:{}'.format(v))
-                    if 'QueryStringConfig' in condition:
-                        for v in condition['QueryStringConfig']['Values']:
-                            conditions.append('qs:{} -> '.format(v['Key'], v['Value']))
-                    if 'SourceIpConfig' in condition:
-                        for v in condition['SourceIpConfig']['Values']:
-                            conditions.append('ip:{} -> '.format(v))
-                    if 'HttpRequestMethod' in condition:
-                        for v in condition['HttpRequestMethod']['Values']:
-                            conditions.append('verb:{} -> '.format(v))
-        if not conditions:
-            conditions.append('forward:ALB:{} -> CONTAINER:{}'.format(obj.listeners[0].port, obj.port))
-        return '\n'.join(sorted(conditions))
+        return target_group_listener_rules(obj)
 
     def render_listener_port_value(self, obj, key, column):
         return '\n'.join([str(l.port) for l in obj.listeners])
