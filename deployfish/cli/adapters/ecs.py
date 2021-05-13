@@ -141,10 +141,9 @@ class ClickServiceTasksAdapter(
 
     model = Service
 
-    list_helper_tasks_ordering = 'Name'
+    list_helper_tasks_ordering = 'Command Name'
     list_helper_tasks_result_columns = {
-        'Service': 'serviceName',
-        'Name': 'name',
+        'Command Name': 'command',
         'Revision': 'family_revision',
         'Version': 'version',
         'Launch Type': 'launchType',

@@ -21,11 +21,15 @@ service_secrets_show = ClickServiceSecretsAdapter.add_show_secrets_command(servi
 service_secrets_write = ClickServiceSecretsAdapter.add_write_secrets_command(service_secrets_group)
 service_secrets_export = ClickServiceSecretsAdapter.add_export_secrets_command(service_secrets_group)
 
-service_tasks_group = ClickServiceTasksAdapter.add_command_group(service_group, 'tasks')
-service_tasks_list = ClickServiceTasksAdapter.add_list_helper_tasks_click_command(service_tasks_group)
-service_tasks_info = ClickServiceTasksAdapter.add_helper_task_info_click_command(service_tasks_group)
-service_tasks_run = ClickServiceTasksAdapter.add_run_helper_task_click_command(service_tasks_group)
-service_tasks_update = ClickServiceTasksAdapter.add_update_helper_tasks_click_command(service_tasks_group)
+service_command_group = ClickServiceTasksAdapter.add_command_group(
+    service_group,
+    'commands',
+    short_help='Manage Commands (ServiceHelperTasks) for a Service'
+)
+service_command_list = ClickServiceTasksAdapter.add_list_helper_tasks_click_command(service_command_group)
+service_command_info = ClickServiceTasksAdapter.add_helper_task_info_click_command(service_command_group)
+service_command_run = ClickServiceTasksAdapter.add_run_helper_task_click_command(service_command_group)
+service_command_update = ClickServiceTasksAdapter.add_update_helper_tasks_click_command(service_command_group)
 
 
 @service_tasks_group.group('logs', help='Describe service and task logs')
