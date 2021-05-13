@@ -6,6 +6,7 @@ from .commands import (
     ClickRestartServiceCommandMixin,
     ClickScaleInstancesCommandMixin,
     ClickScaleServiceCommandMixin,
+    ClickUpdateServiceRelatedTasksCommandMixin,
     ClickListHelperTasksCommandMixin,
     ClickHelperTaskInfoCommandMixin,
     ClickRunHelperTaskCommandMixin,
@@ -71,6 +72,7 @@ class ClickServiceAdapter(
     ServiceDereferenceMixin,
     ClickScaleServiceCommandMixin,
     ClickRestartServiceCommandMixin,
+    ClickUpdateServiceRelatedTasksCommandMixin,
     ClickModelAdapter
 ):
 

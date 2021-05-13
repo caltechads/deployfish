@@ -147,7 +147,7 @@ class ClickBaseModelAdapter(object):
         return required_args
 
     @classmethod
-    def get_pk_description(cls, name='IDENTIFIER'):
+    def get_pk_description(cls, name='IDENTIFIER', model=None):
         """
         For click commands that work on a single object, build a description of all the different ways the primary key
         can be constructed by looking at the type hints for the "get" method on the model's Manager.
@@ -162,19 +162,21 @@ class ClickBaseModelAdapter(object):
 
         :rtype: str
         """
-        args, kwargs = FunctionTypeCommentParser().parse(cls.model.objects.get)
+        if not model:
+            model = cls.model
+        args, kwargs = FunctionTypeCommentParser().parse(model.objects.get)
         pk_description = ''
         pk_description = "{} is a string that looks like".format(name)
         if 'specs' in args['pk']:
-            if len(args['pk']['specs']) > 1 or cls.model.config_section:
+            if len(args['pk']['specs']) > 1 or model.config_section:
                 pk_description += " one of:\n\n"
                 for spec in args['pk']['specs']:
                     pk_description += '    * {}\n\n'.format(spec)
             else:
                 pk_description += ' {}\n\n'.format(args['pk']['specs'][0])
-            if cls.model.config_section is not None:
-                pk_description += "    * {}.name\n\n".format(cls.model.__name__)
-                pk_description += "    * {}.environment\n\n".format(cls.model.__name__)
+            if model.config_section is not None:
+                pk_description += "    * {}.name\n\n".format(model.__name__)
+                pk_description += "    * {}.environment\n\n".format(model.__name__)
         return pk_description
 
     def __init__(self):
@@ -186,24 +188,28 @@ class ClickBaseModelAdapter(object):
     def dereference_identifier(self, identifier):
         return identifier
 
-    def get_object_from_aws(self, identifier):
-        if self.model.config_section is not None:
+    def get_object_from_aws(self, identifier, model=None):
+        if not model:
+            model = self.model
+        if model.config_section is not None:
             identifier = self.dereference_identifier(identifier)
         try:
-            obj = self.model.objects.get(identifier)
-        except self.model.DoesNotExist as e:
+            obj = model.objects.get(identifier)
+        except model.DoesNotExist as e:
             raise RenderException(str(e))
         return obj
 
-    def get_object_from_deployfish(self, identifier, factory_kwargs=None):
-        if self.model.config_section is not None:
+    def get_object_from_deployfish(self, identifier, factory_kwargs=None, model=None):
+        if not model:
+            model = self.model
+        if model.config_section is not None:
             try:
-                obj = self.factory(identifier, factory_kwargs)
+                obj = self.factory(identifier, factory_kwargs, model=model)
             except ConfigProcessingFailed as e:
                 raise RenderException(str(e))
         return obj
 
-    def factory(self, identifier, factory_kwargs=None):
+    def factory(self, identifier, factory_kwargs=None, model=None):
         """
         Load an object from deployfish.yml.  Look in the section named by `self.model.config_section` for the entry
         named `identifier` and return a fully configured self.model object.
@@ -215,20 +221,22 @@ class ClickBaseModelAdapter(object):
 
         :rtype: self.model
         """
+        if not model:
+            model = self.model
         if not factory_kwargs:
             factory_kwargs = {}
         config = get_config()
-        if self.model.config_section:
+        if model.config_section:
             try:
-                data = config.get_section_item(self.model.config_section, identifier)
-                return self.model.new(data, 'deployfish', **factory_kwargs)
+                data = config.get_section_item(model.config_section, identifier)
+                return model.new(data, 'deployfish', **factory_kwargs)
             except KeyError:
                 raise self.DeployfishObjectDoesNotExist(
-                    'Could not find a {} named "{}" in deployfish.yml\n'.format(self.model.__name__, identifier)
+                    'Could not find a {} named "{}" in deployfish.yml\n'.format(model.__name__, identifier)
                 )
         else:
             raise self.ObjectNotManaged(
-                'deployfish.yml does not manage objects of class {}'.format(self.model.__class__)
+                'deployfish.yml does not manage objects of class {}'.format(model.__class__)
             )
 
     def wait(self, operation, **kwargs):
