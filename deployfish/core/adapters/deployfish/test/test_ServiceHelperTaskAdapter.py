@@ -152,8 +152,8 @@ class BaseTestServiceHelperTaskAdapter_basic(object):
 
     def test_commands_have_correct_names(self):
         data_list, kwargs_list = self.adapter.convert()
-        self.assertEqual(data_list[0]['command'], 'migrate')
-        self.assertEqual(data_list[1]['command'], 'update_index')
+        self.assertEqual(data_list[0]['name'], 'migrate')
+        self.assertEqual(data_list[1]['name'], 'update_index')
 
     def test_commands_have_correct_cluster(self):
         data_list, kwargs_list = self.adapter.convert()

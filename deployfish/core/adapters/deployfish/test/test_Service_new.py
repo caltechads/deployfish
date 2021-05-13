@@ -78,7 +78,7 @@ class TestService_new(unittest.TestCase):
     def test_service_environment_is_set_correctly(self):
         data = deepcopy(self.SERVICE_YML)
         service = Service.new(data, 'deployfish')
-        self.assertEqual(service.environment, 'test')
+        self.assertEqual(service.deployfish_environment, 'test')
 
     def test_service_desiredCount_is_set_correctly(self):
         data = deepcopy(self.SERVICE_YML)

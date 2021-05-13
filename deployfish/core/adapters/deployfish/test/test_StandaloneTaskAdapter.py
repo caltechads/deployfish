@@ -18,7 +18,7 @@ logging.getLogger('botocore').setLevel(logging.CRITICAL)
 EC2_TASK_YML = {
     'name': 'foobar-test-mytask',
     'cluster': 'foobar-cluster',
-    'service': 'foobar-test',
+    'service': 'foobar-cluster:foobar-test',
     'environment': 'test',
     'count': 1,
     'family': 'foobar-test-mytask',
@@ -60,7 +60,7 @@ EC2_TASK_YML = {
 FARGATE_TASK_YML = {
     'name': 'foobar-test-mytask',
     'cluster': 'foobar-cluster',
-    'service': 'foobar-test',
+    'service': 'foobar-cluster:foobar-test',
     'environment': 'test',
     'launch_type': 'FARGATE',
     'count': 1,
