@@ -270,6 +270,40 @@ class BaseTestServiceHelperTaskAdapter_basic(object):
             kwargs_list[1]['task_definition'].containers[0].data['environment'],
         )
 
+    def test_old_style_command_definition_works(self):
+        """
+        Ensure old style command definitions still work:
+
+            tasks:
+              - family: foobar-test-helper
+                environment: test
+                network_mode: bridge
+                task_role_arn: ${terraform.iam_task_role}
+                containers:
+                - name: foobar
+                  image: ${terraform.ecr_repo_url}:0.1.0
+                  cpu: 128
+                  memory: 384
+                  commands:
+                    migrate: ./manage.py migrate
+                    update_index: ./manage.py update_index
+        """
+        tasks_yml = deepcopy(self.TASKS)
+        tasks_yml['tasks'][0]['containers'][0]['commands'] = {
+            'migrate': "manage.py migrate",
+            'update_index': 'manage.py update_index'
+        }
+        del tasks_yml['tasks'][0]['commands']
+        data_list, kwargs_list = ServiceHelperTaskAdapter(tasks_yml, self.service).convert()
+        self.assertEqual(
+            kwargs_list[0]['task_definition'].containers[0].data['command'],
+            ['manage.py', 'migrate']
+        )
+        self.assertEqual(
+            kwargs_list[1]['task_definition'].containers[0].data['command'],
+            ['manage.py', 'update_index']
+        )
+
 
 class TestServiceHelperTaskAdapter_EC2(BaseTestServiceHelperTaskAdapter_basic, unittest.TestCase):
 
@@ -289,7 +323,7 @@ class TestServiceHelperTaskAdapter_FARGATE(BaseTestServiceHelperTaskAdapter_basi
                 'vpc_configuration': {
                     'subnets': ['subnet-1', 'subnet-2'],
                     'security_groups': ['sg-1', 'sg-2'],
-                    'public_ip': True
+                    'public_ip': 'ENABLED'
                 },
                 'containers': [
                     {

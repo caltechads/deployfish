@@ -685,10 +685,15 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
                               driver: awslogs
                       commands:
                         - name: migrate
-                          command: manage.py migrate
+                          containers:
+                            - name: foo
+                              command: manage.py migrate
                         - name: update_index
-                          command: manage.py update_index
                           schedule: cron(5 * * * ? *)
+                          containers:
+                            - name: foo
+                              command: manage.py update_index
+                          command: manage.py update_index
 
 
     """
@@ -811,6 +816,62 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
             base_td.data['networkMode'] = 'bridge'
         return data_base, base_td
 
+    def _preprocess_task_data(self, task_data, service_td):
+        """
+        Change old style command defintions that look like this:
+
+            tasks:
+              - family: foobar-test-helper
+                environment: test
+                network_mode: bridge
+                task_role_arn: ${terraform.iam_task_role}
+                containers:
+                  - name: foobar
+                    image: ${terraform.ecr_repo_url}:0.1.0
+                    cpu: 128
+                    memory: 384
+                    commands:
+                      migrate: ./manage.py migrate
+                      update_index: ./manage.py update_index
+
+        to look like this:
+
+            tasks:
+              - family: foobar-test-helper
+                environment: test
+                network_mode: bridge
+                task_role_arn: ${terraform.iam_task_role}
+                containers:
+                  - name: foobar
+                    image: ${terraform.ecr_repo_url}:0.1.0
+                    cpu: 128
+                  memory: 384
+                commands:
+                  - name: migrate
+                    containers:
+                      - name: foobar
+                        command: ./manage.py migrate
+                  - name: update_index
+                    containers:
+                      - name: foobar
+                        command: ./manage.py update_index
+
+        """
+        if 'containers' in task_data:
+            for container_data in task_data['containers']:
+                if 'commands' in container_data:
+                    if 'commands' not in task_data:
+                        task_data['commands'] = []
+                    for command_name, command in container_data['commands'].items():
+                        task_data['commands'].append({
+                            'name': command_name,
+                            'containers': [{
+                                'name': container_data['name'],
+                                'command': command
+                            }]
+                        })
+                    del container_data['commands']
+
     def _get_command_specific_data(self, command, data_base, base_td):
         """
         Build a dict that takes info from the output of self._get_base_task_data() and overlays the command specific
@@ -867,6 +928,8 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         service_td = self.service.task_definition.copy()
         if 'tasks' in self.data:
             for task in self.data['tasks']:
+                # Preprocess the data to turn the old-style command definitions into the new style definitions
+                self._preprocess_task_data(task, service_td)
                 data_base, base_td = self._get_base_task_data(task, service_td)
                 # Now iterate through each item in task -> commands
                 for command in task['commands']:
