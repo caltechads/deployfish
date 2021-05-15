@@ -25,4 +25,4 @@
 
 {{ heading('Services') }}
 
-{{ obj.services|tabular(Name='name', Version='version', Desired='desiredCount', Running='runningCount', Created='createdAt', ordering='Name') }}
+{{ obj.services|tabular(Name='name', Version='version', Desired='desiredCount', Running='runningCount', Created='createdAt') }}
