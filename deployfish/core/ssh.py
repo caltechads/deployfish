@@ -1,3 +1,4 @@
+import os
 import random
 import subprocess
 
@@ -168,7 +169,9 @@ class SSHMixin(object):
         provider = self.providers[self.ssh_proxy_type](self.ssh_target, verbose=verbose)
         subprocess.call(provider.ssh(), shell=True)
 
-    def ssh_command(self, command, verbose=False, output=None, input_data=None):
+    def ssh_noninteractive(self, command, verbose=False, output=None, input_data=None, ssh_target=None):
+        if ssh_target is None:
+            ssh_target = self.ssh_target
         stdout = output if self.__is_or_has_file(output) else subprocess.PIPE
         input_string = None
         if input_data:
@@ -179,7 +182,9 @@ class SSHMixin(object):
                 input_string = input_data
         else:
             stdin = None
-        provider = self.providers[self.ssh_proxy_type](self.ssh_target, verbose=verbose)
+        provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
+        if not command.startswith('ssh'):
+            command = provider.ssh_command(command)
         try:
             p = subprocess.Popen(
                 provider.ssh_command(command),
