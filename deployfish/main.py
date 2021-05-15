@@ -1,7 +1,7 @@
 import importlib
 import pkg_resources
 
-from jinja2 import FileSystemLoader, Environment
+from jinja2 import FileSystemLoader
 
 import deployfish.core.adapters  # noqa:F401
 from deployfish import TEMPLATE_PATHS, jinja_env
