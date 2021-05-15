@@ -365,6 +365,12 @@ class ClickUpdateObjectCommandMixin(object):
             click.secho(ctx.obj['adapter'].update(kwargs.pop('identifier')))
         update_object.__doc__ = """
 Update an existing a {object_name} object in AWS from what we have in our deployfish.yml file.
+
+IDENTIFIER is a string that looks like one of:
+
+    * {object_name}.name
+
+    * {object_name}.environment
 """.format(object_name=cls.model.__name__)
 
         function = print_render_exception(update_object)

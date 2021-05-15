@@ -9,14 +9,18 @@ task_info = ClickStandaloneTaskAdapter.add_info_click_command(task_group)
 task_exists = ClickStandaloneTaskAdapter.add_exists_click_command(task_group)
 task_run = ClickStandaloneTaskAdapter.add_run_task_click_command(task_group)
 
-task_secrets_group = ClickStandaloneTaskSecretsAdapter.add_command_group(task_group, 'config')
+task_secrets_group = ClickStandaloneTaskSecretsAdapter.add_command_group(
+    task_group,
+    'config',
+    short_help='Manage AWS Parameter Store secrets for StandaloneTasks'
+)
 task_secrets_diff = ClickStandaloneTaskSecretsAdapter.add_diff_secrets_command(task_secrets_group)
 task_secrets_show = ClickStandaloneTaskSecretsAdapter.add_show_secrets_command(task_secrets_group)
 task_secrets_write = ClickStandaloneTaskSecretsAdapter.add_write_secrets_command(task_secrets_group)
 task_secrets_export = ClickStandaloneTaskSecretsAdapter.add_export_secrets_command(task_secrets_group)
 
 
-@task_group.group('logs', help='Describe task logs')
+@task_group.group('logs', help='Work with StandaloneTask logs')
 def service_tasks_logs():
     pass
 

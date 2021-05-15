@@ -16,7 +16,11 @@ service_scale = ClickServiceAdapter.add_scale_service_click_command(service_grou
 service_restart = ClickServiceAdapter.add_restart_service_click_command(service_group)
 service_update_related_tasks = ClickServiceAdapter.add_update_related_tasks_click_command(service_group)
 
-service_secrets_group = ClickServiceSecretsAdapter.add_command_group(service_group, 'config')
+service_secrets_group = ClickServiceSecretsAdapter.add_command_group(
+    service_group,
+    'config',
+    short_help='Manage AWS Parameter Store secrets for a Service'
+)
 service_secrets_diff = ClickServiceSecretsAdapter.add_diff_secrets_command(service_secrets_group)
 service_secrets_show = ClickServiceSecretsAdapter.add_show_secrets_command(service_secrets_group)
 service_secrets_write = ClickServiceSecretsAdapter.add_write_secrets_command(service_secrets_group)
@@ -33,7 +37,7 @@ service_command_run = ClickServiceTasksAdapter.add_run_helper_task_click_command
 service_command_update = ClickServiceTasksAdapter.add_update_helper_tasks_click_command(service_command_group)
 
 
-@service_tasks_group.group('logs', help='Describe service and task logs')
+@service_command_group.group('logs', help='Describe service and command logs')
 def service_tasks_logs():
     pass
 
