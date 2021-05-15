@@ -193,8 +193,8 @@ class SSHMixin(object):
                 shell=True,
                 universal_newlines=True
             )
-            output, errors = p.communicate(input_string)
-            return True, output
+            stdout_output, errors = p.communicate(input_string)
+            return True, stdout_output
         except subprocess.CalledProcessError as err:
             return False, err.output
 
