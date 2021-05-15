@@ -1,6 +1,4 @@
-from pathlib import Path
-
-from jinja2 import FileSystemLoader, Environment
+from deployfish import jinja_env
 
 from .filters import (
     color,
@@ -12,11 +10,8 @@ from .filters import (
 )
 from .misc import target_group_listener_rules
 
-
 from .abstract import AbstractRenderer
 
-templates_path = Path(__file__).parent.parent / 'templates'
-jinja_env = Environment(loader=FileSystemLoader(str(templates_path)))
 jinja_env.filters['color'] = color
 jinja_env.filters['tabular'] = tabular
 jinja_env.filters['target_group_table'] = target_group_table

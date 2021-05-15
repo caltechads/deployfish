@@ -1,9 +1,10 @@
 import importlib
 import pkg_resources
 
-import deployfish.core.adapters  # noqa:F401
+from jinja2 import FileSystemLoader, Environment
 
-from .cli import cli
+import deployfish.core.adapters  # noqa:F401
+from deployfish import TEMPLATE_PATHS, jinja_env
 
 
 def load_local_click_modules():
@@ -12,7 +13,11 @@ def load_local_click_modules():
 
 
 def main():
+    global jinja_env
     load_local_click_modules()
+    # Update the template paths with whatever any plugins would have added
+    jinja_env.loader = FileSystemLoader([str(p) for p in TEMPLATE_PATHS])
+    from .cli import cli
     cli(obj={})
 
 
