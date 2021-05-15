@@ -206,6 +206,17 @@ class SSHMixin(object):
         )
         subprocess.call(cmd, shell=True)
 
+    def push_file(self, input_filename, verbose=False):
+        provider = self.providers[self.ssh_proxy_type](self.ssh_target, verbose=verbose)
+        path, filename = os.path.split(input_filename)
+        remote_filename = '/tmp/' + filename
+        command = provider.push(remote_filename)
+        success, output = self.ssh_noninteractive(
+            command,
+            input_data=open(input_filename)
+        )
+        return success, output, remote_filename
+
 
 class DockerMixin(SSHMixin):
 
