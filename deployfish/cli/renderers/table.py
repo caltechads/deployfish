@@ -275,7 +275,10 @@ class TargetGroupTableRenderer(TableRenderer):
         return target_group_listener_rules(obj)
 
     def render_listener_port_value(self, obj, key, column):
-        return '\n'.join([str(l.port) for l in obj.listeners])
+        return '\n'.join(["{}:{}".format(l.protocol, str(l.port)) for l in obj.listeners])
+
+    def render_container_port_value(self, obj, key, column):
+        return "{}:{}".format(obj.data['Protocol'], obj.data['Port'])
 
 
 class ALBListenerTableRenderer(TableRenderer):
@@ -308,7 +311,7 @@ class ALBListenerTableRenderer(TableRenderer):
         if 'Certificates' in obj.data:
             for cert in obj.data['Certificates']:
                 arn = cert['CertificateArn']
-                arn_source = arn.split(':')[2].upper()
+                arn_source = click.style(arn.split(':')[2].upper(), fg='yellow')
                 arn_id = arn.rsplit('/')[1]
                 arn_string = '{}: {}'.format(arn_source, arn_id)
                 if 'IsDefault' in cert and cert['IsDefault']:

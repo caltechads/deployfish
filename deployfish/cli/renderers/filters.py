@@ -80,11 +80,10 @@ def target_group_table(data):
     Render a table for a list of TargetGroups.
     """
     columns = {
-        'ALB Port': 'listener_port',
         'Name': 'name',
+        'ALB Port': 'listener_port',
         'Rules': 'rules',
-        'Protocol': 'Protocol',
-        'Target Port': 'Port',
+        'Target Port': 'container_port',
         'Targets': 'targets'
     }
     renderer = TargetGroupTableRenderer(columns)
