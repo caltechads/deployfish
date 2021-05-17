@@ -94,8 +94,8 @@ without polluting your global python environment.
 
 Download a release from [Github](https://github.com/caltechads/deployfish/releases), then:
 
-    unzip deployfish-deployfish-1.0.3.zip
-    cd deployfish-deployfish-1.0.3
+    unzip deployfish-deployfish-1.0.4.zip
+    cd deployfish-deployfish-1.0.4
     python setup.py install
 
 Or:
