@@ -1258,6 +1258,8 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
                 if 'secrets' in d:
                     del d['secrets']
         data['tags'] = self.render_tags()
+        if not data['tags']:
+            del data['tags']
         return data
 
     def save(self):

@@ -1,2 +1,2 @@
 recursive-include deployfish *
-global-exclude *.py[cod] __pycache__ *.so .*.sw*
+global-exclude *.py[cod] __pycache__ *.so *.sw*
