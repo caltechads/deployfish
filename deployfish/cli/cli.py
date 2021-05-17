@@ -28,8 +28,14 @@ DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
     default=True,
     help="Whether or not to obey the 'aws:' section of a deployfish.yml"
 )
+@click.option(
+    '--ignore-missing-environment/--no-ignore-missing-environment',
+    default=False,
+    envvar='DEPLOYFISH_IGNORE_MISSING_ENVIRONMENT',
+    help="Don't stop processing if we can't dereference an ${env.VAR} interpolation in deployfish.yml"
+)
 @click.pass_context
-def cli(ctx, filename, env_file, import_env, version, tfe_token, use_aws_section):
+def cli(ctx, filename, env_file, import_env, version, tfe_token, use_aws_section, ignore_missing_environment):
     """
     Run and maintain ECS services.
 
@@ -53,3 +59,4 @@ def cli(ctx, filename, env_file, import_env, version, tfe_token, use_aws_section
     ctx.obj['IMPORT_ENV'] = import_env
     ctx.obj['TFE_TOKEN'] = tfe_token
     ctx.obj['USE_AWS_SECTION'] = use_aws_section
+    ctx.obj['IGNORE_MISSING_ENVIRONMENT'] = ignore_missing_environment

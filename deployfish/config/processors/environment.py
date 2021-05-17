@@ -23,15 +23,24 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
         if not filename:
             return {}
         if not os.path.exists(filename):
-            raise self.ProcessingFailed('Environment file "{}" does not exist'.format(filename))
+            if not self.context['ignore_missing_environment']:
+                raise self.ProcessingFailed('Environment file "{}" does not exist'.format(filename))
+            else:
+                return {}
         if not os.path.isfile(filename):
-            raise self.ProcessingFailed('Environment file "{}" is not a regular file'.format(filename))
+            if not self.context['ignore_missing_environment']:
+                raise self.ProcessingFailed('Environment file "{}" is not a regular file'.format(filename))
+            else:
+                return {}
         try:
             with open(filename) as f:
                 raw_lines = f.readlines()
         except IOError as e:
             if e.errno == errno.EACCES:
-                raise self.ProcessingFailed('Environment file "{}" is not readable'.format(filename))
+                if not self.context['ignore_missing_environment']:
+                    raise self.ProcessingFailed('Environment file "{}" is not readable'.format(filename))
+                else:
+                    return {}
         # Strip the comments and empty lines
         lines = [x.strip() for x in raw_lines if x.strip() and not x.strip().startswith("#")]
         environment = {}
@@ -68,11 +77,14 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
                 try:
                     env_value = self.environ[envkey]
                 except KeyError:
-                    raise self.ProcessingFailed(
-                        'Config["{}"]["{}"]: Could not find value for ${{env.{}}}'.format(
-                            section_name,
-                            item_name,
-                            envkey
+                    if not self.context['ignore_missing_environment']:
+                        raise self.ProcessingFailed(
+                            'Config["{}"]["{}"]: Could not find value for ${{env.{}}}'.format(
+                                section_name,
+                                item_name,
+                                envkey
+                            )
                         )
-                    )
+                    else:
+                        env_value = 'NOT-IN-ENVIRONMENT'
             obj[key] = self.ENVIRONMENT_RE.sub(env_value, value)
