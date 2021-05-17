@@ -67,7 +67,7 @@ class TerraformS3State(AbstractTerraformState):
             state_file = key.get()["Body"].read().decode('utf-8')
         except botocore.exceptions.ClientError as ex:
             if ex.response['Error']['Code'] == 'NoSuchKey':
-                raise NoSuchTerraformStateFile("Could not find Terraform state file {}".format(self.state_file_url))
+                raise NoSuchTerraformStateFile("Could not find Terraform state file {}".format(state_file_url))
             else:
                 raise ex
         return json.loads(state_file)
