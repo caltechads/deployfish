@@ -1,3 +1,21 @@
+## 1.0.0 (2021-05-17)
+
+ENHANCEMENTS:
+
+  * Complete refactoring of the deployfish codebase
+    * Django like models and managers for all AWS resources
+    * Jinja2 and python-tabulate for rich output
+    * Class based views for click commands
+    * Many other changes
+  * FEATURE: You can now work with all Services and Tasks in your AWS account, even if they're not listed in your deployfish.yml file
+  * FEATURE: Service helper tasks can now be scheduled
+  * FEATURE: Service helper tasks logging now defaults to awslogs when configured for FARGATE
+  * FEATURE: All standalone tasks (in the top level tasks: section) for a service can now be updated with a single command
+  * FEATURE: You can now look at task logs in CloudWatch Logs with deployfish
+  * FEATURE: Describe ALBs, Target Groups
+  * FEATURE: Describe ELBs
+  * UPDATE: Service info output now includes details about load balancing setup
+
 ## 0.30.1 (2019-12-17)
 
 BUG FIXES:

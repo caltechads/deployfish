@@ -71,16 +71,17 @@ First create all the appropriate objects from the service config in deployfish.y
   (via ``deployfish.core.adapters.deployfish.ServiceDiscoveryServiceAdapter``).
 * If a ``tasks:`` section is present in the service's config, build configuration for one or more ``ServiceHelperTasks`` (via
   ``deployfish.core.adapters.deployfish.ServiceHelperTaskAdapter``, but (**important**) loaded in Service.new(), not in
-  ServiceAdapter.convert() -- we need the fully configured Service object in order to make the helper tasks, and that
-  doesn't happen until we get into Service.new()
+  ``ServiceAdapter.convert()`` -- we need the fully configured ``Service`` object in order to make the helper tasks, and that
+  doesn't happen until we get into ``Service.new()``.
 
-Finally the Service object is configured.
+Finally the ``Service`` object is configured.
 
-Here's how Service.save() works when creating a service:
+Here's how ``Service.save()`` works when creating a service:
 
-* If we have ServiceHelperTasks, create them in AWS and save their family:revisions on our TaskDefinition, so that we know which specific revision to run to get the version of the code we want
-* Create the TaskDefinition in AWS, and save its ARN to the Service as ``taskDefinition``
-* If we need it, create the ServiceDiscoveryService in AWS, and save its ARN to the service as ``serviceRegistries[0]['registryArn']``
-* Create the Service in AWS
-* If we need it, create the ScalingTarget, ScalingPolicy and CloudwatchAlarm objects in AWS
+* If we have ``ServiceHelperTasks``, create them in AWS and save their ``family:revisions`` on our ``TaskDefinition``, so that we know which specific revision to run to get the version of the code we want
+* Create the ``TaskDefinition`` in AWS, and save its ARN to the Service as ``taskDefinition``
+* If we need it, create the ``ServiceDiscoveryService`` in AWS, and save its ARN to the service as ``serviceRegistries[0]['registryArn']``; otherwise delete any ``ServiceDiscoveryService`` associated
+  with the ``Service``.
+* Create the ``Service`` in AWS
+* If we need it, create the ``ScalingTarget``, ``ScalingPolicy`` and ``CloudwatchAlarm`` objects in AWS, otherwise delete any such that exist in AWS
 

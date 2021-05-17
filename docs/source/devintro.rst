@@ -13,7 +13,7 @@ command group::
     import os
 
     from deployfish.cli import cli
-    from deployfish.aws.ecs import Service
+    from deployfish.core.models import Service
     from deployfish.config import Config, needs_config
 
     @cli.group(short_help="Manage a remote MySQL database")
@@ -24,10 +24,10 @@ You can then add commands to that group::
 
     @mysql.command('create', short_help="Create database and user")
     @click.pass_context
-    @click.argument('service_name')
+    @click.argument('identifier')
     @needs_config
-    def create(ctx, service_name):
-        service = Service(service_name, config=ctx.obj['CONFIG'])
+    def create(ctx, identifier):
+        service = Service.objects.get(identifier)
 
         host, name, user, passwd, port = _get_db_parameters(service)
         root = click.prompt('DB root user')
