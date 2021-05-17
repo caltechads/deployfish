@@ -1,9 +1,12 @@
-click==6.7                                    # https://github.com/pallets/click
-PyYaml==5.1.2                                 # https://github.com/yaml/pyyaml
+click>=6.7                                    # https://github.com/pallets/click
+PyYaml>=5.1                                   # https://github.com/yaml/pyyaml
 tzlocal==2.0.0                                # https://github.com/regebro/tzlocal
+requests>=2.18.4                              # https://github.com/psf/requests
+jsondiff2>=1.2.3                              # https://github.com/edoreld/jsondiff
+inspect2>=0.1.2                               # https://github.com/JelleZijlstra/inspect2
+jinja2>=2.11                                  # https://github.com/pallets/jinja
 # ---- Purposely unpinned ----
-awscli                                        # https://github.com/aws/aws-cli
-boto3                                         # https://github.com/boto/boto3
+boto3>=1.17                                   # https://github.com/boto/boto3
 
 # Packaging
 # ------------------------------------------------------------------------------

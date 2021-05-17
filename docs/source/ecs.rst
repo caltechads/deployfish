@@ -5,30 +5,41 @@ Elastic Container Service
 Service
 =======
 
-.. autoclass:: deployfish.aws.ecs.Service
+.. autoclass:: deployfish.core.models.Service
    :members:
 
-Task
-====
+.. autoclass:: deployfish.core.models.ServiceManager
+   :members:
 
-.. autoclass:: deployfish.aws.ecs.Task
+Tasks
+=====
+
+.. autoclass:: deployfish.core.models.ServiceHelperTask
+   :members:
+
+.. autoclass:: deployfish.core.models.ServiceHelperTaskManager
+   :members:
+
+.. autoclass:: deployfish.core.models.StandaloneTask
+   :members:
+
+.. autoclass:: deployfish.core.models.StandaloneTaskManager
    :members:
 
 TaskDefinition
 ==============
 
-.. autoclass:: deployfish.aws.ecs.TaskDefinition
+.. autoclass:: deployfish.core.models.TaskDefinition
    :members:
 
-ContainerDefinition
-===================
-
-.. autoclass:: deployfish.aws.ecs.ContainerDefinition
+.. autoclass:: deployfish.core.models.ContainerDefinition
    :members:
 
-VolumeMixin
-===========
+Cluster
+=======
 
-.. autoclass:: deployfish.aws.ecs.VolumeMixin
+.. autoclass:: deployfish.core.models.Cluster
    :members:
 
+.. autoclass:: deployfish.core.models.ClusterManager
+   :members:

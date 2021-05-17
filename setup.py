@@ -23,15 +23,18 @@ setup(name="deployfish",
       packages=find_packages(),
       include_package_data=True,
       install_requires=[
-          "boto3 >= 1.10.40",
-          "botocore >= 1.13.40",
+          "boto3 >= 1.17",
           "click >= 6.7",
-          "PyYAML >= 5",
+          "PyYAML >= 5.1",
           "tzlocal >= 1.4",
-          "requests >= 2.18.4"
+          "requests >= 2.18.4",
+          "jsondiff2 >= 1.2.3",
+          "inspect2 >= 0.1.2",
+          "tabulate >= 0.8.1",
+          "jinja2 >= 2.11"
       ],
       entry_points={'console_scripts': [
-          'deploy = deployfish.dplycli:main',
-          'dpy = deployfish.dplycli:main'
+          'deploy = deployfish.main:main',
+          'dpy = deployfish.main:main'
       ]}
       )
