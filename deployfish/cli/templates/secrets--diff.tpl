@@ -16,16 +16,8 @@
 {% filter color(fg='cyan', bold=True) %}These secrets would be updated in AWS:{% endfilter %}
 {% for secret, changes in obj['$update'].items() %}
   {{ secret|color(fg='yellow') }}:
-{%- if 'Value' in changes['$update'] %}
-    Value -> {{ changes['$update']['Value'] }}
-{%- endif -%}
-{%- if 'Type' in changes['$update'] -%}
-  {%- if changes['$update']['Type'] == 'SecureString' %}
-    Secure -> True
-    KMS Key ID -> {{ changes['$insert']['KeyId'] }}
-  {%- else %}
-    Secure -> False
-  {%- endif -%}
-{%- endif %}
+{%- for k, v in changes['$update'].items() %}
+    {{ k }} -> {{ v }}
+{% endfor %}
 {% endfor %}
 {%- endif %}

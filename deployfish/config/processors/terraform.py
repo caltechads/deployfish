@@ -180,6 +180,6 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
             if isinstance(tfvalue, (list, tuple, dict)):
                 obj[key] = tfvalue
             elif isinstance(tfvalue, int):
-                tfvalue = str(tfvalue)
+                obj[key] = self.TERRAFORM_RE.sub(str(tfvalue), value)
             else:
                 obj[key] = self.TERRAFORM_RE.sub(tfvalue, value)
