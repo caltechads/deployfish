@@ -36,11 +36,14 @@ class Manager(object):
 
     service = None
 
-    def __init__(self):
-        if self.service:
-            self.client = get_boto3_session().client(self.service)
-        else:
-            self.client = None
+    @property
+    def client(self):
+        if not hasattr(self, '_client'):
+            if self.service:
+                self._client = get_boto3_session().client(self.service)
+            else:
+                self._client = None
+        return self._client
 
     def get(self, pk, **kwargs):
         raise NotImplementedError

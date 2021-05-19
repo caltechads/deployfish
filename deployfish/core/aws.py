@@ -1,4 +1,9 @@
 import boto3
+import os
+
+import yaml
+
+from deployfish.exceptions import ConfigProcessingFailed
 
 
 boto3_session = None
@@ -12,13 +17,30 @@ class AWSSessionBuilder(object):
     class ForbiddenAWSAccountId(Exception):
         pass
 
-    def new(self, config=None):
-        aws_config = {}
-        if config:
-            try:
-                aws_config = config.get_section('aws')
-            except KeyError:
-                pass
+    def load_config(self, filename):
+        """
+        Read our deployfish.yml file from disk and return it as parsed YAML.
+
+        :param filename: the path to our deployfish.yml file
+        :type filename: string
+
+        :rtype: dict
+        """
+        if not os.path.exists(filename):
+            return {}
+        elif not os.access(filename, os.R_OK):
+            raise ConfigProcessingFailed(
+                "Deployfish config file '{}' exists but is not readable".format(filename)
+            )
+        with open(filename) as f:
+            return yaml.load(f, Loader=yaml.FullLoader)
+
+    def new(self, filename, use_aws_section=True):
+        config = self.load_config(filename)
+        if config and use_aws_section:
+            aws_config = config.get('aws', {})
+        else:
+            aws_config = {}
         boto3_session = self.__get_boto3_session(config=aws_config)
         if ('allowed_account_ids' in aws_config or 'forbidden_account_ids' in aws_config):
             account_id = boto3_session.client('sts').get_caller_identity().get('Account')
@@ -69,12 +91,12 @@ class AWSSessionBuilder(object):
         return self.boto3_session.client('sts').get_caller_identity().get('Account')
 
 
-def build_boto3_session(config=None, boto3_session_override=None):
+def build_boto3_session(filename=None, boto3_session_override=None, use_aws_section=True):
     global boto3_session
     if boto3_session_override:
         boto3_session = boto3_session_override
     else:
-        boto3_session = AWSSessionBuilder().new(config)
+        boto3_session = AWSSessionBuilder().new(filename, use_aws_section=use_aws_section)
 
 
 def get_boto3_session(boto3_session_override=None):

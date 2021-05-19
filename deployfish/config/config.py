@@ -6,7 +6,6 @@ import click
 import yaml
 
 from deployfish.exceptions import ConfigProcessingFailed
-from deployfish.core.aws import build_boto3_session
 from .processors import ConfigProcessor
 
 
@@ -40,12 +39,7 @@ class Config(object):
         filename = kwargs.pop('filename', cls.DEFAULT_DEPLOYFISH_CONFIG_FILE)
         if filename is None:
             filename = cls.DEFAULT_DEPLOYFISH_CONFIG_FILE
-        config = cls(
-            filename=filename,
-            use_aws_section=kwargs.pop('use_aws_section', True),
-            raw_config=kwargs.pop('raw_config', None),
-            boto3_session=kwargs.pop('boto3_session', None)
-        )
+        config = cls(filename=filename, raw_config=kwargs.pop('raw_config', None))
         if kwargs.pop('interpolate', True):
             try:
                 processor = ConfigProcessor(config, kwargs)
@@ -55,14 +49,10 @@ class Config(object):
                 sys.exit(1)
         return config
 
-    def __init__(self, filename, use_aws_section=True, raw_config=None, boto3_session=None):
+    def __init__(self, filename, raw_config=None, boto3_session=None):
         self.filename = filename
         self.__raw = raw_config if raw_config else self.load_config(filename)
         self.__cooked = deepcopy(self.__raw)
-        if use_aws_section:
-            build_boto3_session(config=self, boto3_session_override=boto3_session)
-        else:
-            build_boto3_session(boto3_session_override=boto3_session)
 
     @property
     def raw(self):

@@ -7,6 +7,7 @@ import click
 
 import deployfish
 import deployfish.core.adapters
+from deployfish.core.aws import build_boto3_session, get_boto3_session
 
 
 DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
@@ -58,5 +59,5 @@ def cli(ctx, filename, env_file, import_env, version, tfe_token, use_aws_section
     ctx.obj['ENV_FILE'] = env_file
     ctx.obj['IMPORT_ENV'] = import_env
     ctx.obj['TFE_TOKEN'] = tfe_token
-    ctx.obj['USE_AWS_SECTION'] = use_aws_section
     ctx.obj['IGNORE_MISSING_ENVIRONMENT'] = ignore_missing_environment
+    build_boto3_session(filename, use_aws_section=use_aws_section)
