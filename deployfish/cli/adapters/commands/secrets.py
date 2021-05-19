@@ -330,4 +330,5 @@ values defined as ${{env.VAR}} interpolations, as these are what should go in yo
         for secret in secrets:
             if secret.secret_name in env_vars:
                 lines.append("{}={}".format(env_vars[secret.secret_name], secret.value))
+        lines = sorted(lines)
         return '\n'.join(lines)
