@@ -24,7 +24,7 @@ class CloudwatchAlarmManager(Manager):
         return []
 
     def save(self, obj):
-        self.delete(obj.pk)
+        self.delete(obj)
         self.client.put_metric_alarm(**obj.render_for_create())
 
     def delete(self, obj):
@@ -69,4 +69,5 @@ class CloudwatchAlarm(Model):
         data['Unit'] = self.data['Unit']
         data['EvaluationPeriods'] = self.data['EvaluationPeriods']
         data['ComparisonOperator'] = self.data['ComparisonOperator']
+        data['Threshold'] = self.data['Threshold']
         return data

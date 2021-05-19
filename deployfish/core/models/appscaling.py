@@ -42,8 +42,8 @@ class ScalingPolicyManager(Manager):
         # See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/application-autoscaling.html#ApplicationAutoScaling.Client.put_scaling_policy
         response = self.client.put_scaling_policy(**obj.render_for_create())
         arn = response['PolicyARN']
-        self.alarm.set_policy_arn(arn)
-        self.alarm.save()
+        obj.alarm.set_policy_arn(arn)
+        obj.alarm.save()
         return arn
 
     def delete(self, obj):
@@ -56,7 +56,7 @@ class ScalingPolicyManager(Manager):
                 ResourceId=obj.data['ResourceId'],
                 ScalableDimension=obj.data['ScalableDimension']
             )
-        except self.client.ObjectNotFoundException:
+        except self.client.exceptions.ObjectNotFoundException:
             pass
 
 
@@ -106,7 +106,7 @@ class ScalableTargetManager(Manager):
                 ResourceId=obj.pk,
                 ScalableDimension=obj.data['ScalableDimension']
             )
-        except self.client.ObjectNotFoundException:
+        except self.client.exceptions.ObjectNotFoundException:
             pass
 
 

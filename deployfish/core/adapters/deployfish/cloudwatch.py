@@ -73,4 +73,5 @@ class ECSServiceCPUAlarmAdapter(Adapter):
         data['Unit'] = self.data.get('unit', 'Percent')
         data['EvaluationPeriods'] = int(self.data['periods'])
         data['ComparisonOperator'] = self.get_ComparisonOperator()
+        data['Threshold'] = self.get_Threshold()
         return data, {}
