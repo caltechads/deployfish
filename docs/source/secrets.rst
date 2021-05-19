@@ -10,6 +10,3 @@ AWS SSM Paramter Store
 
 .. autoclass:: deployfish.core.models.secrets.ExternalSecret
    :members:
-
-.. autoclass:: deployfish.core.models.secrets.ExternalSecretManager
-   :members:
