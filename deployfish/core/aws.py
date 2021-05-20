@@ -36,6 +36,8 @@ class AWSSessionBuilder(object):
             return yaml.load(f, Loader=yaml.FullLoader)
 
     def new(self, filename, use_aws_section=True):
+        if not filename:
+            filename = 'deployfish.yml'
         config = self.load_config(filename)
         if config and use_aws_section:
             aws_config = config.get('aws', {})
@@ -91,7 +93,7 @@ class AWSSessionBuilder(object):
         return self.boto3_session.client('sts').get_caller_identity().get('Account')
 
 
-def build_boto3_session(filename='deployfish.yml', boto3_session_override=None, use_aws_section=True):
+def build_boto3_session(filename, boto3_session_override=None, use_aws_section=True):
     global boto3_session
     if boto3_session_override:
         boto3_session = boto3_session_override
