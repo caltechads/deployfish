@@ -20,8 +20,8 @@ Install via `setup.py`
 
 Download a release from `Github <https://github.com/caltechads/deployfish/releases>`_, then::
 
-    unzip deployfish-deployfish-1.0.9.zip
-    cd deployfish-deployfish-1.0.9
+    unzip deployfish-deployfish-1.0.10.zip
+    cd deployfish-deployfish-1.0.10
     python setup.py install
 
 Or::
