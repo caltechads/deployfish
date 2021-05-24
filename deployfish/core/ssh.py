@@ -2,6 +2,8 @@ import os
 import random
 import subprocess
 
+import shellescape
+
 from deployfish.exceptions import ConfigProcessingFailed
 from deployfish.config import get_config
 
@@ -20,7 +22,7 @@ class AbstractSSHProvider(object):
         raise NotImplementedError
 
     def ssh_command(self, command):
-        return '{} {}'.format(self.ssh(), command)
+        return '{} {}'.format(self.ssh(), shellescape.quote(command))
 
     def docker_exec(self):
         # FIXME: the "head -1" here crudely handles the case where we have multiple instances of the same container
@@ -211,14 +213,17 @@ class SSHMixin(object):
         )
         subprocess.call(cmd, shell=True)
 
-    def push_file(self, input_filename, verbose=False):
-        provider = self.providers[self.ssh_proxy_type](self.ssh_target, verbose=verbose)
+    def push_file(self, input_filename, verbose=False, ssh_target=None):
+        if ssh_target is None:
+            ssh_target = self.ssh_target
+        provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
         path, filename = os.path.split(input_filename)
         remote_filename = '/tmp/' + filename
         command = provider.push(remote_filename)
         success, output = self.ssh_noninteractive(
             command,
-            input_data=open(input_filename)
+            input_data=open(input_filename),
+            ssh_target=ssh_target
         )
         return success, output, remote_filename
 

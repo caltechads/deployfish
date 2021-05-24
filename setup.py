@@ -31,6 +31,7 @@ setup(name="deployfish",
           "jsondiff2 >= 1.2.3",
           "inspect2 >= 0.1.2",
           "tabulate >= 0.8.1",
+          "shellescape >= 3.8.1",
           "jinja2 >= 2.11"
       ],
       entry_points={'console_scripts': [
