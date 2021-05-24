@@ -177,3 +177,9 @@ class ScalableTarget(Model):
             }
         data['scaling_policies'] = [p.render_for_diff() for p in sorted(self.policies, key=lambda x: x.pk)]
         return data
+
+    def render_for_create(self):
+        data = self.render()
+        if 'CreationTime' in data:
+            del data['CreationTime']
+        return data
