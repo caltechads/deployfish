@@ -22,13 +22,13 @@ class AbstractSSHProvider(object):
         raise NotImplementedError
 
     def ssh_command(self, command):
-        return '{} {}'.format(self.ssh(), shellescape.quote(command))
+        return '{} {}'.format(self.ssh(quiet=True), shellescape.quote(command))
 
     def docker_exec(self):
         # FIXME: the "head -1" here crudely handles the case where we have multiple instances of the same container
         # running on the same container instance.  But this eliminates the possibility of execing into the 2nd, 3rd,
         # etc. containers
-        return '\'/usr/bin/docker exec -it "`/usr/bin/docker ps --filter \"name=ecs-{}-[0-9]+-{}\" -q | head -1`" bash \''
+        return "/usr/bin/docker exec -it '$(/usr/bin/docker ps --filter \"name=ecs-{}-[0-9]+-{}\" -q | head -1)' bash"
 
     def tunnel(self):
         raise NotImplementedError
@@ -98,7 +98,7 @@ class BastionSSHProvider(AbstractSSHProvider):
         # FIXME: the "head -1" here crudely handles the case where we have multiple instances of the same container
         # running on the same container instance.  But this eliminates the possibility of execing into the 2nd, 3rd,
         # etc. containers
-        return "\"/usr/bin/docker exec -it '\$(/usr/bin/docker ps --filter \"name=ecs-{}-[0-9]+-{}\" -q | head -1)' bash\""
+        return "/usr/bin/docker exec -it '$(/usr/bin/docker ps --filter \"name=ecs-{}-[0-9]+-{}\" -q | head -1)' bash"
 
     def push(self, filename, run=False):
         if run:
