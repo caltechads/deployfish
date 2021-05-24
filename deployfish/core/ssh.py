@@ -18,7 +18,7 @@ class AbstractSSHProvider(object):
         self.verbose = verbose
         self.ssh_verbose_flag = '-vv' if self.verbose else ''
 
-    def ssh(self):
+    def ssh(self, quiet=False):
         raise NotImplementedError
 
     def ssh_command(self, command):
@@ -39,8 +39,12 @@ class AbstractSSHProvider(object):
 
 class SSMSSHProvider(AbstractSSHProvider):
 
-    def ssh(self):
-        return 'ssh -t {} ec2-user@{}'.format(self.ssh_verbose_flag, self.instance.pk)
+    def ssh(self, quiet=False):
+        if quiet:
+            flags = "-q"
+        else:
+            flags = self.ssh_verbose_flags
+        return 'ssh -t {} ec2-user@{}'.format(flags, self.instance.pk)
 
     def tunnel(self, local_port, target_host, host_port):
         cmd = 'ssh {} -N -L {}:{}:{} {}'.format(
@@ -65,9 +69,13 @@ class BastionSSHProvider(AbstractSSHProvider):
         assert self.instance.bastion is not None, \
             '{}.instance has no bastion host'.format(self.__class__.__name__)
 
-    def ssh(self):
+    def ssh(self, quiet=False):
+        if quiet:
+            flags = "-q"
+        else:
+            flags = self.ssh_verbose_flags
         cmd = 'ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{bastion} ssh {flags} -o StrictHostKeyChecking=no -A -t {instance}'.format(   # noqa:E501
-            flags=self.ssh_verbose_flag,
+            flags=flags,
             bastion=self.instance.bastion.hostname,
             instance=self.instance.ip_address
         )
