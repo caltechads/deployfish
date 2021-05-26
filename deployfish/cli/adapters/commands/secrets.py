@@ -1,8 +1,11 @@
+from datetime import datetime
+import os
+import time
 import click
 
 from deployfish.config import get_config
 from deployfish.exceptions import ConfigProcessingFailed
-from deployfish.core.models import Secret
+from deployfish.core.models import Secret, Service, StandaloneTask
 
 from deployfish.cli.adapters.utils import handle_model_exceptions, print_render_exception
 from deployfish.cli.renderers import (
@@ -34,6 +37,33 @@ class SecretsTableRenderer(TableRenderer):
 # ====================
 # Command mixins
 # ====================
+
+class SecretsExportMixin(object):
+
+    CONFIG_EXPORT_SECTIONS = {
+        'Service': 'services',
+        'StandaloneTask': 'tasks'
+    }
+
+    def export_environment_secrets(self, config, obj):
+        item = config.get_raw_section_item(self.CONFIG_EXPORT_SECTIONS[
+            obj.__class__.__name__
+        ], obj.name)
+        env_vars = {}
+        for secret_def in item['config']:
+            key, kwargs = parse_secret_string(secret_def)
+            value = kwargs['Value'].strip()
+            if value.startswith('${env.'):
+                env_var = value[6:-1]
+                env_vars[key] = env_var
+        secrets = Secret.objects.list(obj.secrets_prefix)
+        lines = []
+        for secret in secrets:
+            if secret.secret_name in env_vars:
+                lines.append("{}={}".format(env_vars[secret.secret_name], secret.value))
+        lines = sorted(lines)
+        return '\n'.join(lines)
+
 
 class ClickObjectSecretsShowCommandMixin(object):
 
@@ -184,17 +214,14 @@ Write the AWS SSM Parameter Store secrets associated with a {object_name} to AWS
         click.echo(
             TemplateRenderer().render(changes, template='secrets--diff.tpl')
         )
-        click.echo("\nIf you really want to do this, answer \"yes\" to the question below.\n".format(obj.name))
+        click.echo("\nIf you really want to do this, answer \"yes\" to the question below.\n")
         value = click.prompt("Apply the above changes to AWS?")
         if value != 'yes':
             return click.style(
                 '\nABORTED: not updating secrets for {}({}).'.format(self.model.__name__, obj.pk),
                 fg='green'
             )
-        click.secho(
-            '\nWriting secrets ...'.format(self.model.__name__, obj.pk),
-            nl=False
-        )
+        click.secho('\nWriting secrets ...', nl=False)
         obj.write_secrets()
         click.secho(' done.\n\n')
         obj.reload_secrets()
@@ -232,7 +259,6 @@ Diff the AWS SSM Parameter Store secrets against their counterparts in deployfis
 {pk_description}
 """.format(
             pk_description=pk_description,
-            object_name=cls.model.__name__
         )
 
         function = print_render_exception(diff_secrets)
@@ -279,13 +305,13 @@ class ClickObjectSecretsExportCommandMixin(object):
 
         :rtype: function
         """
-        def diff_secrets(ctx, *args, **kwargs):
+        def export_secrets(ctx, *args, **kwargs):
             ctx.obj['config'] = get_config(**ctx.obj)
             ctx.obj['adapter'] = cls()
             click.secho(ctx.obj['adapter'].export_secrets(kwargs['identifier'], ctx.obj['config']))
 
         pk_description = cls.get_pk_description()
-        diff_secrets.__doc__ = """
+        export_secrets.__doc__ = """
 Extract AWS SSM Parameter Store secrets for a {object_name} in AWS and print
 them to stdout in the proper format for use in a deployfish.yml "env_file:".
 We will specifically only export the secrets that in deployfish.yml have their
@@ -298,7 +324,7 @@ values defined as ${{env.VAR}} interpolations, as these are what should go in yo
             object_name=cls.model.__name__
         )
 
-        function = print_render_exception(diff_secrets)
+        function = print_render_exception(export_secrets)
         function = click.pass_context(function)
         function = click.argument('identifier')(function)
         function = command_group.command(
@@ -317,18 +343,77 @@ values defined as ${{env.VAR}} interpolations, as these are what should go in yo
         have their values defined as ${env.VAR} interpolations, as these are what should go in your "env_file:".
         """
         obj = self.get_object_from_deployfish(identifier)
-        item = config.get_raw_section_item(self.model.config_section, obj.name)
-        env_vars = {}
-        for secret_def in item['config']:
-            key, kwargs = parse_secret_string(secret_def)
-            value = kwargs['Value'].strip()
-            if value.startswith('${env.'):
-                env_var = value[6:-1]
-                env_vars[key] = env_var
-        secrets = Secret.objects.list(obj.secrets_prefix)
-        lines = []
-        for secret in secrets:
-            if secret.secret_name in env_vars:
-                lines.append("{}={}".format(env_vars[secret.secret_name], secret.value))
-        lines = sorted(lines)
-        return '\n'.join(lines)
+        return self.export_environment_secrets(config, obj)
+
+
+class ClickSyncSecretsCommandMixin(object):
+
+    @classmethod
+    def add_sync_secrets_command(cls, command_group):
+        """
+        Build a fully specified click command for syncing all the ${env.VAR} related secrets for all tasks and services
+        from from AWS SSM Paramter store to the appropriate env_files in the local file system.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def sync_secrets(ctx, *args, **kwargs):
+            ctx.obj['config'] = get_config(**ctx.obj)
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].sync_secrets(ctx.obj['config']))
+
+        sync_secrets.__doc__ = """
+For each standalone task and service, if the task/service has an "env_file:" defined,
+export the ${{env.VAR}} related secrets to that "env_file:".  Save a backup copy of the
+existing "env_file:".
+"""
+
+        function = print_render_exception(sync_secrets)
+        function = click.pass_context(function)
+        function = command_group.command(
+            'sync',
+            short_help='Download data for all env_files defined in deployfish.yml sections'
+        )(function)
+        return function
+
+    def _maybe_rename_existing_file(self, env_file, obj):
+        if os.path.exists(env_file):
+            new_filename = "{}.{}".format(env_file, datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
+            while os.path.exists(new_filename):
+                time.sleep(1)
+                new_filename = "{}.{}".format(env_file, datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
+            os.rename(env_file, new_filename)
+            click.secho('{}("{}"): renamed existing env_file to {}'.format(
+                obj.__class__.__name__,
+                obj.pk,
+                new_filename
+            ), fg='yellow')
+
+    def _write_env_file(self, config, env_file, name, model):
+        obj = self.get_object_from_deployfish(name, model=model)
+        self._maybe_rename_existing_file(env_file, obj)
+        contents = self.export_environment_secrets(config, obj)
+        with open(env_file, "w") as fd:
+            fd.write(contents)
+            click.secho('{}("{}"): exported live secrets to env_file {}'.format(
+                obj.__class__.__name__,
+                obj.pk,
+                env_file
+            ), fg='green')
+
+    @handle_model_exceptions
+    def sync_secrets(self, config):
+        """
+        For each StandaloneTask and Service that has an "env_file:" defined in deployfish.yml, extract the AWS SSM
+        Parameter Store secrets and write them to that filename, moving any existing file out of the way first.
+
+        We will specifically only export the secrets that in deployfish.yml have their values defined as ${env.VAR}
+        interpolations, as these are what should go in your "env_file:".
+        """
+        services = {item['name']: item['env_file'] for item in config.services if 'env_file' in item}
+        tasks = {item['tasks']: item['env_file'] for item in config.tasks if 'env_file' in item}
+        for service, env_file in services.items():
+            self._write_env_file(config, env_file, service, Service)
+        for task, env_file in tasks.items():
+            self._write_env_file(config, env_file, task, StandaloneTask)

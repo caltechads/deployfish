@@ -64,11 +64,11 @@ class Config(object):
 
     @property
     def tasks(self):
-        return self.cooked['tasks']
+        return self.cooked.get('tasks', [])
 
     @property
     def services(self):
-        return self.cooked['services']
+        return self.cooked.get('services', [])
 
     def load_config(self, filename):
         """

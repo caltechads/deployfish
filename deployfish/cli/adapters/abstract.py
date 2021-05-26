@@ -7,6 +7,7 @@ from deployfish.typing import FunctionTypeCommentParser
 from .commands import (
     GetSSHTargetMixin,
     GetExecTargetMixin,
+    SecretsExportMixin,
     ClickListObjectsCommandMixin,
     ClickObjectInfoCommandMixin,
     ClickObjectExistsCommandMixin,
@@ -20,6 +21,7 @@ from .commands import (
     ClickObjectSecretsShowCommandMixin,
     ClickObjectSecretsWriteCommandMixin,
     ClickObjectSecretsExportCommandMixin,
+    ClickSyncSecretsCommandMixin
 )
 
 
@@ -285,6 +287,8 @@ class ClickSecretsAdapter(
     ClickObjectSecretsShowCommandMixin,
     ClickObjectSecretsWriteCommandMixin,
     ClickObjectSecretsExportCommandMixin,
+    ClickSyncSecretsCommandMixin,
+    SecretsExportMixin,
     ClickBaseModelAdapter,
 ):
 
