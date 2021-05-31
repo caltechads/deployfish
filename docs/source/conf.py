@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Deployfish'
-copyright = u'2017, Chris Malek, Glenn Bach'
+copyright = u'2021, Chris Malek, Glenn Bach'
 author = u'Chris Malek, Glenn Bach'
 show_authors = False
 
