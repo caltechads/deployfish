@@ -22,7 +22,7 @@ class AbstractSSHProvider(object):
         raise NotImplementedError
 
     def ssh_command(self, command):
-        return '{} {}'.format(self.ssh(quiet=True), shellescape.quote(command))
+        return self.ssh(quiet=True, command=command)
 
     def docker_exec(self):
         # FIXME: the "head -1" here crudely handles the case where we have multiple instances of the same container
@@ -39,12 +39,14 @@ class AbstractSSHProvider(object):
 
 class SSMSSHProvider(AbstractSSHProvider):
 
-    def ssh(self, quiet=False):
+    def ssh(self, quiet=False, command=None):
         if quiet:
             flags = "-q"
         else:
-            flags = self.ssh_verbose_flags
-        return 'ssh -t {} ec2-user@{}'.format(flags, self.instance.pk)
+            flags = self.ssh_verbose_flag
+        if not command:
+            command = ''
+        return 'ssh -t {} ec2-user@{} {}'.format(flags, self.instance.pk, shellescape.quote(command))
 
     def tunnel(self, local_port, target_host, host_port):
         cmd = 'ssh {} -N -L {}:{}:{} {}'.format(
@@ -69,15 +71,22 @@ class BastionSSHProvider(AbstractSSHProvider):
         assert self.instance.bastion is not None, \
             '{}.instance has no bastion host'.format(self.__class__.__name__)
 
-    def ssh(self, quiet=False):
+    def ssh(self, quiet=False, command=None):
         if quiet:
             flags = "-q"
         else:
-            flags = self.ssh_verbose_flags
-        cmd = 'ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{bastion} ssh {flags} -o StrictHostKeyChecking=no -A -t {instance}'.format(   # noqa:E501
+            flags = self.ssh_verbose_flag
+        if not command:
+            command = ''
+        hop2 = "ssh {flags} -o StrictHostKeyChecking=no -A -t {instance} {command}".format(
             flags=flags,
+            instance=self.instance.ip_address,
+            command=shellescape.quote(command)
+        )
+        cmd = "ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{bastion} {hop2}".format(   # noqa:E501
+            flags=flags,
+            hop2=shellescape.quote(hop2),
             bastion=self.instance.bastion.hostname,
-            instance=self.instance.ip_address
         )
         return cmd
 
@@ -102,8 +111,8 @@ class BastionSSHProvider(AbstractSSHProvider):
 
     def push(self, filename, run=False):
         if run:
-            return r'"cat \> {filename}\;bash {filename}\;rm {filename}"'.format(filename=filename)
-        return r'"cat \> {}"'.format(filename)
+            return 'cat > {filename};bash {filename};rm {filename}'.format(filename=filename)
+        return 'cat > {}'.format(filename)
 
 
 class SSHMixin(object):
@@ -197,14 +206,14 @@ class SSHMixin(object):
             command = provider.ssh_command(command)
         try:
             p = subprocess.Popen(
-                provider.ssh_command(command),
+                command,
                 stdout=stdout,
                 stdin=stdin,
                 shell=True,
                 universal_newlines=True
             )
             stdout_output, errors = p.communicate(input_string)
-            return True, stdout_output
+            return p.returncode == 0, stdout_output
         except subprocess.CalledProcessError as err:
             return False, err.output
 
