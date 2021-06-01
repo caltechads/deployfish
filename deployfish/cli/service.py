@@ -16,6 +16,7 @@ service_scale = ClickServiceAdapter.add_scale_service_click_command(service_grou
 service_restart = ClickServiceAdapter.add_restart_service_click_command(service_group)
 service_update_related_tasks = ClickServiceAdapter.add_update_related_tasks_click_command(service_group)
 service_run = ClickServiceAdapter.add_run_command_click_command(service_group)
+service_running_tasks = ClickServiceAdapter.add_list_running_tasks_click_command(service_group)
 
 service_secrets_group = ClickServiceSecretsAdapter.add_command_group(
     service_group,

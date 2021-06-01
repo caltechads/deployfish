@@ -14,6 +14,7 @@ from .commands import (
     ClickListHelperTaskLogsMixin,
     ClickRunStandaloneTaskCommandMixin,
     ClickTailStandaloneTaskLogsMixin,
+    ClickListRunningTasksCommandMixin,
     ClickListStandaloneTaskLogsMixin,
     ClickUpdateHelperTasksCommandMixin,
 )
@@ -70,6 +71,7 @@ class ServiceDereferenceMixin(object):
 
 class ClickServiceAdapter(
     ServiceDereferenceMixin,
+    ClickListRunningTasksCommandMixin,
     ClickScaleServiceCommandMixin,
     ClickRestartServiceCommandMixin,
     ClickUpdateServiceRelatedTasksCommandMixin,
@@ -99,6 +101,15 @@ class ClickServiceAdapter(
         'Created': 'createdAt',
     }
     update_template = 'service--detail:short.tpl'
+    list_running_tasks_ordering = 'Instance'
+    list_running_tasks_result_columns = {
+        'Instance': 'instance__name',
+        'Instance ID': 'instance__pk',
+        'AZ': 'availabilityZone',
+        'Family': 'taskDefinition__family_revision',
+        'Launch Type': 'launchType',
+        'created': 'createdAt'
+    }
 
     def service_waiter(self, obj, **kwargs):
         kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
@@ -179,7 +190,11 @@ class ClickStandaloneTaskSecretsAdapter(ClickSecretsAdapter):
     model = StandaloneTask
 
 
-class ClickClusterAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
+class ClickClusterAdapter(
+    ClickScaleInstancesCommandMixin,
+    ClickListRunningTasksCommandMixin,
+    ClickModelAdapter
+):
 
     model = Cluster
 
@@ -190,6 +205,15 @@ class ClickClusterAdapter(ClickScaleInstancesCommandMixin, ClickModelAdapter):
         'Services': 'activeServicesCount',
         'Running Tasks': 'runningTasksCount',
         'Pending Tasks': 'pendingTasksCount'
+    }
+    list_running_tasks_ordering = 'Instance'
+    list_running_tasks_result_columns = {
+        'Instance': 'instance__name',
+        'Instance ID': 'instance__pk',
+        'AZ': 'availabilityZone',
+        'Family': 'taskDefinition__family_revision',
+        'Launch Type': 'launchType',
+        'created': 'createdAt'
     }
 
 

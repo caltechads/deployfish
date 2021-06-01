@@ -1554,13 +1554,17 @@ class InvokedTask(DockerMixin, Model):
         return self.cache['task_definition']
 
     @property
+    def instance(self):
+        return self.container_instance.ec2_instance
+
+    @property
     def ssh_target(self):
         """
         .. warning::
 
             If this is a FARGATE task, we may have a container instance, but we won't be able to ssh to it.
         """
-        return self.container_instance.ec2_instance
+        return self.instance
 
     @property
     def cluster_name(self):
@@ -1692,8 +1696,8 @@ class Cluster(TagsMixin, SSHMixin, Model):
         return responses
 
     @property
-    def tasks(self):
-        return InvokedTask.objects.list
+    def running_tasks(self):
+        return InvokedTask.objects.list(self.name)
 
     @property
     def services(self):
@@ -1937,12 +1941,7 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
 
     @property
     def running_tasks(self):
-        return self.get_cached(
-            'running_tasks',
-            InvokedTask.objects.list,
-            [self.data['cluster']],
-            {'service': self.data['serviceName']}
-        )
+        return InvokedTask.objects.list(self.data['cluster'], service=self.name)
 
     @property
     def container_instances(self):
