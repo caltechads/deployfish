@@ -1,3 +1,5 @@
+from itertools import cycle
+
 import click
 from tabulate import tabulate
 
@@ -403,3 +405,101 @@ You can do this in two ways:
             target.ip_address,
         ), fg='cyan')
         target.tunnel(tunnel, verbose=verbose)
+
+
+class ClickRunCommandCommandMixin(object):
+
+    @classmethod
+    def add_run_command_click_command(cls, command_group):
+        """
+        Build a fully specified click command for running a command on one or all instances in an ECS cluster and add it
+        to command group `command_group`.  Return the properly wrapped function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def run_command(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed as e:
+                    ctx.obj['config'] = e
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].run_command(
+                kwargs['identifier'],
+                kwargs['command'],
+                kwargs['choose'],
+                kwargs['all'],
+                kwargs['verbose']
+            ))
+
+        pk_description = cls.get_pk_description()
+        run_command.__doc__ = """
+Run a shell command on an instance in a {object_name}.  If --all is passed, run the command
+on all instances in the {object_name}.
+
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(run_command)
+        function = click.pass_context(function)
+        function = click.option(
+            '--verbose/--no-verbose',
+            '-v',
+            default=False,
+            help="Show all SSH output."
+        )(function)
+        function = click.option(
+            '--choose/--no-choose',
+            default=False,
+            help="Choose from all available targets for ssh, instead of having one chosen automatically."
+        )(function)
+        function = click.option(
+            '--all/--no-all',
+            default=False,
+            help="Run the shell command on all instances in the {}".format(cls.model.__name__)
+        )(function)
+        function = click.argument('command', nargs=-1)(function)
+        function = click.argument('identifier', nargs=1)(function)
+        function = command_group.command(
+            'run',
+            short_help='Run a shell command on one or all instances of a {object_name}.'.format(
+                object_name=cls.model.__name__
+            )
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def run_command(self, identifier, command, choose, all_instances, verbose):
+        colors = [
+            'green',
+            'yellow',
+            'cyan',
+            'magenta',
+            'white',
+            'bright_green',
+            'bright_yellow',
+            'bright_cyan',
+            'bright_magenta',
+            'bright_white'
+        ]
+        colors_cycle = cycle(colors)
+        obj = self.get_object_from_aws(identifier)
+        command = ' '.join(command)
+        if not all_instances:
+            targets = [self.get_ssh_target(obj, choose=choose)]
+        else:
+            targets = obj.ssh_targets
+        for target in targets:
+            color = next(colors_cycle)
+            success, output = target.ssh_noninteractive(command, verbose=verbose, ssh_target=target)
+            if success:
+                for line in output.split('\n'):
+                    print('{}: {}'.format(click.style(target.name, fg=color), line))
+            else:
+                for line in output.split('\n'):
+                    line = click.style('ERROR: {}'.format(line), fg='red')
+                    print('{}: {}'.format(click.style(target.name, fg=color), line))
