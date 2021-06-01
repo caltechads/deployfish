@@ -61,7 +61,7 @@ class ServiceDereferenceMixin(object):
                 lines.append(click.style('\nAvailable {}s:\n'.format(self.model.__name__), fg='cyan'))
                 for name in names:
                     lines.append('  {}'.format(name))
-                lines.append(click.style('\nAvailable environments:\n'.format(self.model.__name__), fg='cyan'))
+                lines.append(click.style('\nAvailable environments:\n', fg='cyan'))
                 for environment in environments:
                     lines.append('  {}'.format(environment))
                 raise RenderException('\n'.join(lines))

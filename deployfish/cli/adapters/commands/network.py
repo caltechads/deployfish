@@ -119,7 +119,6 @@ to the container machine of a FARGATE {object_name}.
         )(function)
         function = click.option(
             '--choose/--no-choose',
-            '-v',
             default=False,
             help="Choose from all available targets for ssh, instead of having one chosen automatically."
         )(function)
@@ -174,14 +173,13 @@ Exec into a container in a {object_name} in AWS.
         )(function)
         function = click.option(
             '--choose/--no-choose',
-            '-v',
             default=False,
             help='Choose from all available targets for "docker exec", instead of having one chosen automatically.'
         )(function)
         function = click.argument('identifier')(function)
         function = command_group.command(
             'exec',
-            short_help='Exec into a container in AWS'.format(cls.model.__name__)
+            short_help='Exec into a container in AWS'
         )(function)
         return function
 
@@ -243,7 +241,6 @@ You can do this in two ways:
         )(function)
         function = click.option(
             '--choose/--no-choose',
-            '-v',
             default=False,
             help="Choose from all available targets for ssh, instead of having one chosen automatically."
         )(function)
@@ -310,39 +307,7 @@ You can do this in two ways:
             tunnel = tunnels[list(tunnels)[choice - 1]]
         return tunnel
 
-    @handle_model_exceptions
-    def tunnel(self, identifier, choose, local_port, host, host_port, verbose):
-        """
-        Establish an SSH tunnel from our machine through a Service instance to a host:port in AWS.
-
-        This is designed to be a multi-homed command so that we can put it at the top level:
-
-            deploy tunnel TUNNEL_NAME
-
-        or under the service group:
-
-            deploy service tunnel SERVICE_NAME TUNNEL_NAME
-            deploy service tunnel SERVICE_NAME --local-port=8888 --host=10.2.0.1 --host-port=3306
-
-
-        Three cases here:
-
-            * We're a command under the `service` command group
-              * In this case, identifier is a list with either one or entries
-                * If only one entry, that entry is the service name, and we expect the local_port, host and host_port
-                  arguments to be defined.
-                * If two entries, the first is the service name, and the second is the tunnel name.  We expect
-                  local_port, host and host_port to be None
-            * We're under the top level `cli` command group
-                * In this case, the identifier is a tunnel name, and local_port, host, and host_port are always None.
-
-        :param identifier Union[list(str), str]: either a SERVICE_NAME, TUNNEL_NAME pair, or either SERVICE_NAME
-                                                  or TUNNEL_NAME
-        :param choose bool: if True, present a list of instances available for tunneling through
-        :param local_port int: (optional) the local port to bind our end of the tunnel to
-        :param host int: (optional) the host in AWS on the other end of the tunnel
-        :param host_port int: (optional) the port on `host` on the other end of the tunnel
-        """
+    def _get_tunnel_config(self, identifier, local_port, host, host_port):
         if isinstance(identifier, tuple):
             # We're a command under the sub command group like service or cluster
             if identifier:
@@ -384,6 +349,42 @@ You can do this in two ways:
             else:
                 tunnel = self.get_tunnel()
             obj = tunnel
+        return tunnel, obj
+
+    @handle_model_exceptions
+    def tunnel(self, identifier, choose, local_port, host, host_port, verbose):
+        """
+        Establish an SSH tunnel from our machine through a Service instance to a host:port in AWS.
+
+        This is designed to be a multi-homed command so that we can put it at the top level:
+
+            deploy tunnel TUNNEL_NAME
+
+        or under the service group:
+
+            deploy service tunnel SERVICE_NAME TUNNEL_NAME
+            deploy service tunnel SERVICE_NAME --local-port=8888 --host=10.2.0.1 --host-port=3306
+
+
+        Three cases here:
+
+            * We're a command under the `service` command group
+              * In this case, identifier is a list with either one or entries
+                * If only one entry, that entry is the service name, and we expect the local_port, host and host_port
+                  arguments to be defined.
+                * If two entries, the first is the service name, and the second is the tunnel name.  We expect
+                  local_port, host and host_port to be None
+            * We're under the top level `cli` command group
+                * In this case, the identifier is a tunnel name, and local_port, host, and host_port are always None.
+
+        :param identifier Union[list(str), str]: either a SERVICE_NAME, TUNNEL_NAME pair, or either SERVICE_NAME
+                                                  or TUNNEL_NAME
+        :param choose bool: if True, present a list of instances available for tunneling through
+        :param local_port int: (optional) the local port to bind our end of the tunnel to
+        :param host int: (optional) the host in AWS on the other end of the tunnel
+        :param host_port int: (optional) the port on `host` on the other end of the tunnel
+        """
+        tunnel, obj = self._get_tunnel_config(identifier, local_port, host, host_port)
         if choose:
             target = self.get_ssh_target(tunnel)
         else:
