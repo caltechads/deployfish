@@ -95,6 +95,7 @@ class TestContainerDefinition_load_yaml(unittest.TestCase):
     def test_environment_simple_interpolation(self):
         self.assertEqual(self.config.get_service('foobar-prod')['config'][0], 'FOOBAR=hi_mom')
         self.assertEqual(self.config.get_service('foobar-prod')['config'][2], 'FOO_BAR_PREFIX=oh_no/test')
+        self.assertEqual(self.config.get_service('foobar-prod')['config'][3], 'FOO_BAR_SECRET=)(#jlk329!!3$3093%%.__)')
 
 
 class TestContainerDefinition_load_yaml_no_interpolate(unittest.TestCase):

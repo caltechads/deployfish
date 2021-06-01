@@ -23,6 +23,7 @@ services:
       - FOOBAR=${env.FOOBAR_ENV}
       - DB_HOST=my_host
       - FOO_BAR_PREFIX=${env.FOO_BAR_PREFIX_ENV}/test
+      - FOO_BAR_SECRET=${env.FOO_BAR_SECRET_ENV}
     family: foobar-prod
     network_mode: host
     task_role_arn: ${terraform.iam_task_role}

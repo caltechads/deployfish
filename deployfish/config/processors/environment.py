@@ -8,7 +8,7 @@ from .abstract import AbstractConfigProcessor
 
 class EnvironmentConfigProcessor(AbstractConfigProcessor):
 
-    ENVIRONMENT_RE = re.compile(r'\$\{env.(?P<key>.+)\}')
+    ENVIRONMENT_RE = re.compile(r'\$\{env.(?P<key>[A-Za-z0-9-_]+)\}')
 
     def __init__(self, config, context):
         super(EnvironmentConfigProcessor, self).__init__(config, context)
@@ -65,6 +65,7 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
     def replace(self, obj, key, value, section_name, item_name):
         self.load_per_item_environment(section_name, item_name)
         replacers = self.get_deployfish_replacements(section_name, item_name)
+        # FIXME: need to deal with multiple matches in the same line
         m = self.ENVIRONMENT_RE.search(value)
         if m:
             envkey = m.group('key')
@@ -87,4 +88,4 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
                         )
                     else:
                         env_value = 'NOT-IN-ENVIRONMENT'
-            obj[key] = self.ENVIRONMENT_RE.sub(env_value, value)
+            obj[key] = value.replace(m.group(0), env_value)
