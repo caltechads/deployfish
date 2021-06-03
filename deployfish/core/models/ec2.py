@@ -190,7 +190,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
     @property
     def name(self):
-        return self.tags.get('Name', None)
+        return self.tags.get('Name', '')
 
     @property
     def arn(self):

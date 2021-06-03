@@ -27,7 +27,7 @@ class GetSSHTargetMixin(object):
                 for i, target in enumerate(obj.ssh_targets):
                     rows.append([
                         i + 1,
-                        click.style(target.tags['Name'], fg='cyan'),
+                        click.style(target.name, fg='cyan'),
                         target.pk,
                         target.ip_address
                     ])
