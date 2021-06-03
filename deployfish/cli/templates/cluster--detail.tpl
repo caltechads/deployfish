@@ -21,7 +21,7 @@
 
 {{ heading('Container instances') }}
 
-{{ obj.container_instances|tabular(Name='ec2_instance__tags__Name', Instance_Type='ec2_instance__InstanceType', IP_Address='ec2_instance__PrivateIpAddress', Free_CPU='free_cpu', Free_Memory='free_memory', ordering='Name') }}
+{{ obj.container_instances|tabular(Name='ec2_instance__name', Instance_Type='ec2_instance__InstanceType', IP_Address='ec2_instance__PrivateIpAddress', Free_CPU='free_cpu', Free_Memory='free_memory', Launch_Time='ec2_instance__LaunchTime', ordering='Name') }}
 
 {{ heading('Services') }}
 
