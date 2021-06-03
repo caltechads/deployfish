@@ -1562,9 +1562,12 @@ class InvokedTask(DockerMixin, Model):
         """
         .. warning::
 
-            If this is a FARGATE task, we may have a container instance, but we won't be able to ssh to it.
+            If this is a FARGATE task, we won't have a container instance.
         """
-        return self.instance
+        if self.container_instance:
+            return self.container_instance.ec2_instance
+        else:
+            return None
 
     @property
     def cluster_name(self):
@@ -1577,16 +1580,26 @@ class InvokedTask(DockerMixin, Model):
     @property
     def container_instance(self):
         # This may not work for FARGATE tasks -- do they return containerInstanceArn?
-        return self.get_cached(
-            'container_machine',
-            ContainerInstance.objects.get,
-            ['{}:{}'.format(self.cluster_name, self.data['containerInstanceArn'])]
-        )
+        try:
+            return self.get_cached(
+                'container_machine',
+                ContainerInstance.objects.get,
+                ['{}:{}'.format(self.cluster_name, self.data['containerInstanceArn'])]
+            )
+        except KeyError:
+            # this is a FARGATE task
+            return None
 
     def render_for_display(self):
         data = self.render()
         data['version'] = self.task_definition.version
         data['cluster'] = self.cluster_name
+        if self.container_instance:
+            data['instanceName'] = self.container_instance.name
+            data['instanceId'] = self.container_instance.ec2_instance.pk
+        else:
+            data['instanceName'] = ''
+            data['instanceId'] = ''
         data['taskDefinition'] = self.task_definition.render_for_display()
         return data
 
@@ -1714,7 +1727,7 @@ class Cluster(TagsMixin, SSHMixin, Model):
                 self.cache['autoscaling_group'] = AutoscalingGroup.objects.get(self.name)
             except AutoscalingGroup.DoesNotExist:
                 self.cache['autoscaling_group'] = None
-        return self.cache['autoscaling_group']
+        return self.cache.get('autoscaling_group', None)
 
     def scale(self, count, force=True):
         if self.autoscaling_group:

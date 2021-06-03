@@ -103,8 +103,8 @@ class ClickServiceAdapter(
     update_template = 'service--detail:short.tpl'
     list_running_tasks_ordering = 'Instance'
     list_running_tasks_result_columns = {
-        'Instance': 'instance__name',
-        'Instance ID': 'instance__pk',
+        'Instance': 'instanceName',
+        'Instance ID': 'instanceId',
         'AZ': 'availabilityZone',
         'Family': 'taskDefinition__family_revision',
         'Launch Type': 'launchType',
@@ -208,8 +208,8 @@ class ClickClusterAdapter(
     }
     list_running_tasks_ordering = 'Instance'
     list_running_tasks_result_columns = {
-        'Instance': 'instance__name',
-        'Instance ID': 'instance__pk',
+        'Instance': 'instanceName',
+        'Instance ID': 'instanceId',
         'AZ': 'availabilityZone',
         'Family': 'taskDefinition__family_revision',
         'Launch Type': 'launchType',
