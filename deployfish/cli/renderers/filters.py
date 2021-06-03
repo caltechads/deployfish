@@ -71,7 +71,7 @@ def tabular(data, **kwargs):
                 columns[k] = {}
             columns[k]['key'] = v
 
-    renderer = TableRenderer(columns, *renderer_kwargs)
+    renderer = TableRenderer(columns, **renderer_kwargs)
     return renderer.render(data)
 
 
