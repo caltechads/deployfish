@@ -23,20 +23,28 @@ def handle_model_exceptions(func):
             raise RenderException(click.style(str(e), fg='red'))
         except self.model.OperationFailed as e:
             raise RenderException(click.style(str(e), fg='red'))
+        except self.DeployfishSectionDoesNotExist as e:
+            raise RenderException(click.style('ERROR: {}.\n'.format(e.msg), fg='red'))
         except self.DeployfishObjectDoesNotExist as e:
             config = get_config()
             lines = []
-            lines.append(click.style('ERROR: could not find a {} identified by "{}" in deployfish.yml\n'.format(
-                self.model.__name__,
-                e.name
-            ), fg='red'))
-            lines.append(click.style('Available {}:'.format(e.section), fg='cyan'))
+            lines.append(click.style('ERROR: {}'.format(e.msg), fg='red'))
+            lines.append(
+                click.style('Available {}s in the "{}:" section of deployfish.yml:'.format(
+                    self.model.__name__,
+                    e.section
+                ), fg='cyan')
+            )
             for item in config.get_section(e.section):
                 lines.append('  {}'.format(item['name']))
-            lines.append(click.style('\nAvailable environments:', fg='cyan'))
+            environments = []
             for item in config.get_section(e.section):
                 if 'environment' in item:
-                    lines.append('  {}'.format(item['environment']))
+                    environments.append('  {}'.format(item['environment']))
+            if environments:
+                lines.append(click.style('\nAvailable environments:', fg='cyan'))
+                lines.extend(environments)
+            lines.append('')
             raise RenderException('\n'.join(lines))
         return obj
     return inner

@@ -32,6 +32,12 @@ from .commands import (
 
 class ClickBaseModelAdapter(object):
 
+    class DeployfishSectionDoesNotExist(ObjectDoesNotExist):
+
+        def __init__(self, msg, section):
+            self.msg = msg
+            self.section = section
+
     class DeployfishObjectDoesNotExist(ObjectDoesNotExist):
 
         def __init__(self, msg, section, name):
@@ -231,11 +237,20 @@ class ClickBaseModelAdapter(object):
         config = get_config()
         if model.config_section:
             try:
+                config.get_section(model.config_section)
+            except KeyError:
+                raise self.DeployfishSectionDoesNotExist(
+                    'No section in deployfish.yml named "{}" \n'.format(model.__name__, identifier),
+                    model.config_section
+                )
+            try:
                 data = config.get_section_item(model.config_section, identifier)
                 return model.new(data, 'deployfish', **factory_kwargs)
             except KeyError:
                 raise self.DeployfishObjectDoesNotExist(
-                    'Could not find a {} named "{}" in deployfish.yml\n'.format(model.__name__, identifier)
+                    'Could not find a {} named "{}" in deployfish.yml\n'.format(model.__name__, identifier),
+                    model.config_section,
+                    identifier
                 )
         else:
             raise self.ObjectNotManaged(
