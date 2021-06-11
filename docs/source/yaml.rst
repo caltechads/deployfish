@@ -131,7 +131,7 @@ scheduling_strategy
         clsuter: foodbar-cluster
         scheduling_strategy: DAEMON
 
-See: 
+See:
 
 count
 -----
@@ -409,7 +409,7 @@ To specify that the the service is to use an ALB or NLB, you'll need to specify:
 
   If you set ``network_mode`` to ``awsvpc`` or you've set ``launch_type`` to ``FARGATE``, you need to configure your
   ALB to target IP addresses, not EC2 instances. This is because tasks that use the awsvpc network mode are associated
-  with an elastic network interface, not an Amazon EC2 instance.  
+  with an elastic network interface, not an Amazon EC2 instance.
 
   See: `Service Load Balancing <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html>`_
 
@@ -476,7 +476,7 @@ Example ::
           weight: 2
 
 
-See the description of the ``capacityProviderStrategy`` parameter in the 
+See the description of the ``capacityProviderStrategy`` parameter in the
 `boto3 ECS create_service() documentation <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ecs.html#ECS.Client.create_service>`_.
 
 service_discovery
@@ -821,7 +821,7 @@ allowed.
 service
 -------
 
-(String, Option) Use the ``service`` option to associate this task with a particular service. 
+(String, Option) Use the ``service`` option to associate this task with a particular service.
 This is used when running ``deploy service service tasks <service_name>``.
 
     tasks:
@@ -1644,8 +1644,8 @@ how do we use them?  You need an execution role.
 Execution Role
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You must provide an execution_role that has permission to get the parameter store values, 
-then your task or service will automatically have the parameter store values inserted 
+You must provide an execution_role that has permission to get the parameter store values,
+then your task or service will automatically have the parameter store values inserted
 into the environment.
 
 Service Helper Tasks
@@ -1699,17 +1699,15 @@ correct task revision. ::
               - ENVIRONMENT=prod
               - SECRETS_BUCKET_NAME=my-secrets-bucket
         tasks:
-          - family: foobar-tasks-prod
-            launch_type: FARGATE
+          - launch_type: FARGATE
             network_mode: awsvpc
             vpc_configuration:
-              - subnets:
+              subnets:
                 - subnet-1234
                 - subnet-1235
-              - security_groups:
+              security_groups:
                 - sg-12345
-            task_role_arn: arn:aws:iam::123142123547:role/myTaskRole
-            execution_role: arn:aws:iam::123142123547:role/myExecutionRole
+            schedule_role: arn:aws:iam::123142123547:role/ecsEventsRole
             containers:
               - name: foobar
                 cpu: 128
@@ -1725,8 +1723,8 @@ correct task revision. ::
                   - name: foobar
                     command: ./manage.py update_index
 
-This example defines 2 separate new task defintions ("foobar-tasks-prod-migrate"  and
-"foobar-tasks-prod-update-index") for our service "foobar-prod". Those two task definitions
+This example defines 2 separate new task defintions ("foobar-prod-tasks-migrate"  and
+"foobar-prod-tasks-update-index") for our service "foobar-prod". Those two task definitions
 implement the two available commands on our service: ``migrate`` and ``update_index``.
 These task defintions are created by starting with the Service's task definition, updating
 it with values from the top of the `tasks:` entry, and then further updating that with
