@@ -27,6 +27,12 @@ class Config(object):
       the value of that environment variable.
     """
 
+    class NoSuchSectionError(Exception):
+        pass
+
+    class NoSuchSectionItemError(Exception):
+        pass
+
     DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
 
     processable_sections = [
@@ -64,11 +70,17 @@ class Config(object):
 
     @property
     def tasks(self):
-        return self.cooked.get('tasks', [])
+        try:
+            return self.cooked.get('tasks', [])
+        except KeyError:
+            raise self.NoSuchSectionError('No tasks section in deployfish.yml')
 
     @property
     def services(self):
-        return self.cooked.get('services', [])
+        try:
+            return self.cooked.get('services', [])
+        except KeyError:
+            raise self.NoSuchSectionError('No services section in deployfish.yml')
 
     def load_config(self, filename):
         """
@@ -128,7 +140,11 @@ class Config(object):
                     return item
                 elif 'environment' in item and item['environment'] == item_name:
                     return item
-        raise KeyError
+        else:
+            raise self.NoSuchSectionError(f'No section named "{section_name}" in deployfish.yml')
+        raise self.NoSuchSectionItemError(
+            f'No item named "{item_name}" in the "{section_name}" section of deployfish.yml'
+        )
 
     def get_raw_section_item(self, section_name, item_name):
         """
@@ -148,7 +164,11 @@ class Config(object):
                     return item
                 elif 'environment' in item and item['environment'] == item_name:
                     return item
-        raise KeyError
+        else:
+            raise self.NoSuchSectionError(f'No section named "{section_name}" in deployfish.yml')
+        raise self.NoSuchSectionItemError(
+            f'No item named "{item_name}" in the "{section_name}" section of deployfish.yml'
+        )
 
     def get_global_config(self, section):
         if 'deployfish' in self.cooked:

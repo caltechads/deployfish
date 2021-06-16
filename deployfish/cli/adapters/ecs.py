@@ -46,7 +46,9 @@ class ServiceDereferenceMixin(object):
                 raise RenderException('\n'.join(lines))
             try:
                 item = config.get_section_item(self.model.config_section, identifier)
-            except KeyError:
+            except config.NoSuchSectionError as e:
+                raise RenderException(str(e))
+            except config.NoSuchSectionItemError:
                 lines = []
                 lines.append(click.style(
                     '\nERROR: no service in your deployfish.yml matched "{}".'.format(identifier),
