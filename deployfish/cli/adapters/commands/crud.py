@@ -338,6 +338,7 @@ class ClickCreateObjectCommandMixin(object):
 class ClickUpdateObjectCommandMixin(object):
 
     update_template = None
+    update_extra_help = None
 
     @classmethod
     def add_update_click_command(cls, command_group):
@@ -364,7 +365,7 @@ class ClickUpdateObjectCommandMixin(object):
             ctx.obj['adapter'] = cls()
             click.secho(ctx.obj['adapter'].update(kwargs.pop('identifier')))
         update_object.__doc__ = """
-Update an existing a {object_name} object in AWS from what we have in our deployfish.yml file.
+Update an existing {object_name} object in AWS from what we have in our deployfish.yml file.
 
 IDENTIFIER is a string that looks like one of:
 
@@ -372,6 +373,9 @@ IDENTIFIER is a string that looks like one of:
 
     * {object_name}.environment
 """.format(object_name=cls.model.__name__)
+        if cls.update_extra_help:
+            update_object.__doc__ += "\n"
+            update_object.__doc__ += cls.update_extra_help
 
         function = print_render_exception(update_object)
         function = click.pass_context(function)

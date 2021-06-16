@@ -1,5 +1,6 @@
 import botocore
 import click
+import os
 
 from .abstract import ClickModelAdapter, ClickBaseModelAdapter, ClickSecretsAdapter
 from .commands import (
@@ -103,6 +104,19 @@ class ClickServiceAdapter(
         'Created': 'createdAt',
     }
     update_template = 'service--detail:short.tpl'
+    update_extra_help = """
+NOTES:
+
+  * All this command does is update your Services' configuration in AWS.  It does not manage your containers!  The AWS ECS service itself does the rolling deploy and deployfish simply reports on the status.
+
+  * We wait for 15 minutes for the Service to become stable after applying our updates to it.  A Service is stable when it sees that the Service has the correct number of running tasks, that those tasks are running the desired task definition, and that those tasks have passed their health checks. If it takes longer than 15 minutes for the service to be stable, deployfish will say the deploy timed out.  We do this because sometimes the deployment really is broken and we don't want our deployment pipelines in CodePipeline to run for hours waiting.
+
+  THE DEPLOYMENT IS STILL RUNNING IN AWS. Go to the AWS ECS Console to see status.
+
+  * If you want deployfish to wait more than 15 minutes, set the environment variable DEPLOYFISH_SERVICE_UPDATE_TIMEOUT to a longer value, in minutes.
+
+    export DEPLOYFISH_SERVICE_UPDATE_TIMEOUT=30
+"""
     list_running_tasks_ordering = 'Instance'
     list_running_tasks_result_columns = {
         'Instance': 'instanceName',
@@ -115,6 +129,11 @@ class ClickServiceAdapter(
 
     def service_waiter(self, obj, **kwargs):
         kwargs['WaiterHooks'] = [ECSDeploymentStatusWaiterHook(obj)]
+        timeout_minutes = os.environ.get('DEPLOYFISH_SERVICE_UPDATE_TIMEOUT', 15)
+        kwargs['WaiterConfig'] = {
+            'Delay': 10,
+            'MaxAttempts': timeout_minutes * 6
+        }
         kwargs['services'] = [obj.name]
         kwargs['cluster'] = obj.data['cluster']
         self.wait('services_stable', **kwargs)
