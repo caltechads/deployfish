@@ -22,7 +22,7 @@ class AbstractSSHProvider(object):
         raise NotImplementedError
 
     def ssh_command(self, command):
-        return self.ssh(quiet=True, command=command)
+        return self.ssh(quiet=True, command=command)  # noqa
 
     def docker_exec(self):
         # FIXME: the "head -1" here crudely handles the case where we have multiple instances of the same container
@@ -129,6 +129,7 @@ class SSHMixin(object):
 
     def __init__(self, *args, **kwargs):
         proxy = self.DEFAULT_PROVIDER
+        known_proxy_types = []
         if not hasattr(self, 'ssh_proxy_type'):
             known_proxy_types = list(self.providers.keys())
             if 'ssh_proxy' in kwargs:
@@ -185,7 +186,7 @@ class SSHMixin(object):
     def ssh_interactive(self, ssh_target=None, verbose=False):
         if ssh_target is None:
             ssh_target = self.ssh_target
-        provider = self.providers[self.ssh_proxy_type](self.ssh_target, verbose=verbose)
+        provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
         subprocess.call(provider.ssh(), shell=True)
 
     def ssh_noninteractive(self, command, verbose=False, output=None, input_data=None, ssh_target=None):
@@ -212,15 +213,16 @@ class SSHMixin(object):
                 shell=True,
                 universal_newlines=True
             )
-            stdout_output, errors = p.communicate(input_string)
-            return p.returncode == 0, stdout_output
         except subprocess.CalledProcessError as err:
             return False, err.output
+        else:
+            stdout_output, errors = p.communicate(input_string)
+            return p.returncode == 0, stdout_output
 
     def tunnel(self, tunnel, verbose=False):
         """
-        :param tunnel deployfish.core.models.SSHTunnel: the tunnel config
-        :param verbose bool: if True, display verbose output from ssh
+        :param tunnel: A deployfish.core.models.SSHTunnel object: the tunnel config
+        :param verbose: if True, display verbose output from ssh
         """
         provider = self.providers[self.ssh_proxy_type](self.ssh_target, verbose=verbose)
         cmd = provider.tunnel(
@@ -267,7 +269,7 @@ class DockerMixin(SSHMixin):
             ssh_target = self.ssh_target
         if not container_name:
             container_name = self.container_names[0]
-        provider = self.providers[self.ssh_proxy_type](self.ssh_target, verbose=verbose)
-        cmd = provider.docker_exec().format(self.task_definition.data['family'], container_name)
+        provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
+        cmd = provider.docker_exec().format(self.task_definition.data['family'], container_name)  # noqa
         cmd = provider.ssh_command(cmd)
         subprocess.call(cmd, shell=True)
