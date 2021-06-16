@@ -161,16 +161,25 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
         In the YAML, volume definitions look like this:
 
             volumes:
-            - name: 'string'
-              path: 'string'
-              config:
-                scope: 'task' | 'shared'
-                autoprovision: true | false
-                driver: 'string'
-                driverOpts:
-                    'string': 'string'
-                labels:
-                    'string': 'string'
+              - name: 'string'
+                path: 'string'
+                config:
+                  scope: 'task' | 'shared'
+                  autoprovision: true | false
+                  driver: 'string'
+                  driverOpts:
+                      'string': 'string'
+                  labels:
+                      'string': 'string'
+                efs_config:
+                  file_system_id: 'string'
+                  root_directory: 'string'
+
+        .. note::
+
+            People can only actually specify one of 'path', 'config' or 'efs_config' -- they're mutually exclusive.
+            And 'path' is not available for FARGATE tasks.
+
 
         Convert that to to the same structure that boto3.client('ecs').describe_task_definition() returns for that info:
 
@@ -191,6 +200,10 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
                             'string': 'string'
                         }
                     },
+                    'efsVolumeConfiguration': {
+                        'fileSystemId': 'string',
+                        'rootDirectory': 'string'
+                    },
             ]
 
         .. warning:
@@ -208,11 +221,22 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
             if v['name'] in volume_names:
                 continue
             v_dict = {'name': v['name']}
+            if not self.only_one_is_True([x in v for x in ['path', 'config', 'efs_config']]):
+                raise self.SchemaException(
+                    'When defining volumes, specify only one of "path", "config" or "efs_config"'
+                )
             if 'path' in v:
                 v_dict['host'] = {}
                 v_dict['host']['sourcePath'] = v['path']
             elif 'config' in v:
                 v_dict['dockerVolumeConfiguration'] = copy(v['config'])
+            elif 'efs_config' in v:
+                try:
+                    v_dict['efsVolumeConfiguration'] = {'fileSystemId': v['efs_config']['file_system_id']}
+                except KeyError as e:
+                    raise self.SchemaException(str(e))
+                if 'root_directory' in v['efs_config']:
+                    v_dict['efsVolumeConfiguration']['rootDirectory'] = v['efs_config']['root_directory']
             volumes.append(v_dict)
             volume_names.add(v_dict['name'])
         return volumes

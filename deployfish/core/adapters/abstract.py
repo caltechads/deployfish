@@ -11,6 +11,19 @@ class Adapter(object):
     def __init__(self, data, **kwargs):
         self.data = data
 
+    def only_one_is_True(self, data):
+        """
+        Look through the list ``data``, a list of boolean values, and return True if only one True is in the
+        list, False otherwise.
+        """
+        true_found = False
+        for v in data:
+            if v and not true_found:
+                true_found = True
+            elif v and true_found:
+                return False  # "Too Many Trues"
+        return true_found
+
     def set(self, data, source_key, dest_key=None, default=NONE, optional=False, convert=None):
         if dest_key is None:
             dest_key = source_key

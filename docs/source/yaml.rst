@@ -282,7 +282,7 @@ service definition.  You only really need to do use this if you want to use a do
 in ``local`` one -- the one that allows you to mount host machinefolders into your container.  To mount one of the
 volumes you define here in one of your containers, see "volumes" under "Container Definitions" on this page.
 
-Here is a fully qualfied example ::
+Here is a fully specified example ::
 
     services:
       - name: foobar-prod
@@ -293,7 +293,7 @@ Here is a fully qualfied example ::
               scope: task
               autoprovision: true
               driver: my_vol_driver:latest
-          - name: storage
+          - name: storage_shared
             config:
               scope: shared
               driver: my_vol_driver:latest
@@ -303,16 +303,23 @@ Here is a fully qualfied example ::
               labels:
                 key: value
                 key: value
+          - name: efs_storage
+            efs_config:
+              file_system_id: my-file-system-id
+              root_directory: my-root-directory
           - name: local_storage
             path: /host/path
 
-The above defines three volumes:
+The above defines four volumes:
 
 * (EC2 launch type only) a task specific (not usable by other tasks) volume named ``storage_task`` that will be
   autocreated and which will use the ``my_vol_driver:latest`` volume driver
 * (EC2 launch type only) a shared (usable by other tasks) volume named ``storage`` that uses the docker volume driver
   ``my_vol_driver:latest`` with the driver options given in the ``driverOpts:`` section (driver options are volume
   driver specific) and labels given by ``labels``.
+* (Both EC2 or FARGATE launch types) a volume named ``efs_storage`` that allows you is the EFS file system
+  ``my-filesystem-id``, rooted in the folder ``my-root-directory``.  Note: `root_directory` is optional, and if ommitted
+  will be set to ``/``.
 * (Both EC2 or FARGATE launch types) a volume named ``local_storage`` that just allows you to mount ``/host/path`` from
   the host machine using the builtin ``local`` volume driver.  For this type of mount, you can also mount ``/host/path``
   directly via the ``volumes`` section of your container definition and not define it here.
