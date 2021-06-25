@@ -1721,12 +1721,12 @@ class Cluster(TagsMixin, SSHMixin, Model):
         if 'autoscaling_group' not in self.cache:
             if len(self.container_instances) > 0:
                 self.cache['autoscaling_group'] = self.container_instances[0].autoscaling_group
-        else:
-            # Try to guess our autoscaling group based on our cluster name
-            try:
-                self.cache['autoscaling_group'] = AutoscalingGroup.objects.get(self.name)
-            except AutoscalingGroup.DoesNotExist:
-                self.cache['autoscaling_group'] = None
+            else:
+                # Try to guess our autoscaling group based on our cluster name
+                try:
+                    self.cache['autoscaling_group'] = AutoscalingGroup.objects.get(self.name)
+                except AutoscalingGroup.DoesNotExist:
+                    self.cache['autoscaling_group'] = None
         return self.cache.get('autoscaling_group', None)
 
     def scale(self, count, force=True):
