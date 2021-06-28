@@ -23,12 +23,12 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
         if not filename:
             return {}
         if not os.path.exists(filename):
-            if not self.context['ignore_missing_environment']:
+            if not self.context.get('ignore_missing_environment', False):
                 raise self.ProcessingFailed('Environment file "{}" does not exist'.format(filename))
             else:
                 return {}
         if not os.path.isfile(filename):
-            if not self.context['ignore_missing_environment']:
+            if not self.context.get('ignore_missing_environment', False):
                 raise self.ProcessingFailed('Environment file "{}" is not a regular file'.format(filename))
             else:
                 return {}
@@ -37,7 +37,7 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
                 raw_lines = f.readlines()
         except IOError as e:
             if e.errno == errno.EACCES:
-                if not self.context['ignore_missing_environment']:
+                if not self.context.get('ignore_missing_environment', False):
                     raise self.ProcessingFailed('Environment file "{}" is not readable'.format(filename))
                 else:
                     return {}
@@ -78,7 +78,7 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
                 try:
                     env_value = self.environ[envkey]
                 except KeyError:
-                    if not self.context['ignore_missing_environment']:
+                    if not self.context.get('ignore_missing_environment', False):
                         raise self.ProcessingFailed(
                             'Config["{}"]["{}"]: Could not find value for ${{env.{}}}'.format(
                                 section_name,
