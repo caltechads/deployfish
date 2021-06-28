@@ -412,7 +412,7 @@ existing "env_file:".
         interpolations, as these are what should go in your "env_file:".
         """
         services = {item['name']: item['env_file'] for item in config.services if 'env_file' in item}
-        tasks = {item['tasks']: item['env_file'] for item in config.tasks if 'env_file' in item}
+        tasks = {item['name']: item['env_file'] for item in config.tasks if 'env_file' in item}
         for service, env_file in services.items():
             self._write_env_file(config, env_file, service, Service)
         for task, env_file in tasks.items():
