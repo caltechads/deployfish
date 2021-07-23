@@ -1161,7 +1161,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
     @property
     def secrets_prefix(self):
         if self.secrets:
-            return list(self.secrets.values()[0].prefix)
+            return self.secrets.values()[0].prefix
         else:
             raise self.ImproperlyConfigured(
                 'Can\'t determine secrets prefix for TaskDefinition(pk="{}"): it has no secrets'.format(self.pk)
@@ -1301,7 +1301,7 @@ class ContainerDefinition(SecretsMixin, LazyAttributeMixin):
     @property
     def secrets_prefix(self):
         if self.secrets:
-            return list(self.secrets.values()[0].prefix)
+            return self.secrets.values()[0].prefix
         else:
             raise self.ImproperlyConfigured(
                 'Can\'t determine secrets prefix for ContainerDefinition(pk="{}"): it has no secrets'.format(self.pk)
