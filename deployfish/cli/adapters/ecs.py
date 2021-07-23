@@ -194,6 +194,7 @@ class ClickStandaloneTaskAdapter(
 
     model = StandaloneTask
 
+    info_includes = ['secrets']
     list_ordering = 'Name'
     list_result_columns = {
         'Name': 'name',
