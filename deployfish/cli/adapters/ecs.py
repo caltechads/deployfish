@@ -205,6 +205,7 @@ class ClickStandaloneTaskAdapter(
         'Version': 'version',
         'Schedule': 'schedule_expression'
     }
+    update_template = 'standalonetask--detail:short.tpl'
 
 
 class ClickStandaloneTaskSecretsAdapter(ClickSecretsAdapter):
