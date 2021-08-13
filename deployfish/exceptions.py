@@ -35,3 +35,7 @@ class NoSuchTerraformStateFile(Exception):
 
 class ConfigProcessingFailed(Exception):
     pass
+
+
+class SkipConfigProcessing(Exception):
+    pass

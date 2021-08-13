@@ -1,9 +1,9 @@
-from deployfish.exceptions import ConfigProcessingFailed
+from deployfish.exceptions import ConfigProcessingFailed, SkipConfigProcessing
 
 
 class AbstractConfigProcessor(object):
 
-    class SkipConfigProcessing(Exception):
+    class SkipConfigProcessing(SkipConfigProcessing):
         pass
 
     class ProcessingFailed(ConfigProcessingFailed):

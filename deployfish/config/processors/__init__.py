@@ -1,4 +1,4 @@
-from deployfish.exceptions import ConfigProcessingFailed
+from deployfish.exceptions import ConfigProcessingFailed, SkipConfigProcessing
 
 from .environment import EnvironmentConfigProcessor
 from .terraform import TerraformStateConfigProcessor
@@ -23,11 +23,11 @@ class ConfigProcessor(object):
         for processor_class in self.processor_classes:
             try:
                 current_processor = processor_class(self.config, self.context)
-            except current_processor.SkipConfigProcessing:
+            except SkipConfigProcessing:
                 continue
             try:
                 current_processor.process()
-            except current_processor.ProcessingFailed as e:
+            except ConfigProcessingFailed as e:
                 raise self.ProcessingFailed(str(e))
 
 
