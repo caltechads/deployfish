@@ -645,6 +645,10 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
             data['schedule'] = self.data['schedule']
             if 'schedule_role' in self.data:
                 data['schedule_role'] = self.data['schedule_role']
+            if 'schedule_role' not in data:
+                raise self.SchemaException(
+                    f'''StandaloneTask("{data['name']}"): "schedule_role" is required when you specify a schedule'''
+                )
             kwargs['schedule'] = EventScheduleRule.new(
                 self.get_schedule_data(data, kwargs['task_definition']),
                 'deployfish'
@@ -943,6 +947,11 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         kwargs['task_definition'] = command_td
         # See if we need to schedule this command
         if 'schedule' in command:
+            if 'schedule_role' not in data:
+                raise self.SchemaException(
+                    f'''ServiceHelperTask("{command['name']}") in Service("{self.service.pk}"): '''
+                    '"schedule_role" is required when you specify a schedule'
+                )
             kwargs['schedule'] = EventScheduleRule.new(self.get_schedule_data(data, command_td), 'deployfish')
         return data, kwargs
 

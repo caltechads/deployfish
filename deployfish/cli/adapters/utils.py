@@ -4,14 +4,14 @@ import sys
 import click
 
 from deployfish.config import get_config
-from deployfish.exceptions import RenderException
+from deployfish.exceptions import RenderException, SchemaException
 
 
 # ========================
 # Decorators
 # ========================
 
-def handle_model_exceptions(func):
+def handle_model_exceptions(func):  # noqa:C901
 
     @wraps(func)
     def inner(self, *args, **kwargs):
@@ -25,6 +25,8 @@ def handle_model_exceptions(func):
             raise RenderException(click.style(str(e), fg='red'))
         except self.DeployfishSectionDoesNotExist as e:
             raise RenderException(click.style('ERROR: {}.\n'.format(e.msg), fg='red'))
+        except SchemaException as e:
+            raise RenderException(click.style(str(e), fg='red'))
         except self.DeployfishObjectDoesNotExist as e:
             config = get_config()
             lines = []

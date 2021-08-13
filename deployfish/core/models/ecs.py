@@ -2,6 +2,7 @@ from copy import deepcopy
 import fnmatch
 import re
 import textwrap
+from pprint import pprint
 
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.ssh import DockerMixin, SSHMixin
@@ -562,9 +563,10 @@ class StandaloneTaskManager(AbstractTaskManager):
             for task in tasks:
                 if service_name:
                     # the service tag is actually a service pk: {cluster_name}:{service_name}
-                    cluster, service = task.data['service'].split(':')
-                    if fnmatch.fnmatch(service, service_name):
-                        matched_tasks.append(task)
+                    if 'service' in task.data:
+                        cluster, service = task.data['service'].split(':')
+                        if fnmatch.fnmatch(service, service_name):
+                            matched_tasks.append(task)
                 if cluster_name and is_fnmatch_filter(cluster_name):
                     if fnmatch.fnmatch(task.data['cluster'], cluster_name):
                         matched_tasks.append(task)
@@ -984,7 +986,10 @@ class ServiceManager(Manager):
             except self.client.exceptions.ClusterNotFoundException:
                 raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
         if service_name:
-            services = [arn for arn in services if fnmatch.fnmatch(arn.split('/')[1], service_name)]
+            print(f'SERVICE NAME: {service_name}')
+            values = ([(arn.rsplit('/')[1], fnmatch.fnmatch(arn.rsplit('/')[1], service_name), arn) for arn in services])
+            pprint(sorted(values, key=lambda x: x[0]))
+            services = [arn for arn in services if fnmatch.fnmatch(arn.rsplit('/')[1], service_name)]
         return self.get_many(services)
 
     def save(self, obj):
@@ -1500,6 +1505,14 @@ class StandaloneTask(SecretsMixin, Task):
         if 'secrets' not in self.cache:
             self.cache['secrets'] = self.task_definition.secrets
         return self.cache['secrets']
+
+    def reload_secrets(self):
+        """
+        Reload our AWS SSM Paramter Store secrets from AWS.
+        """
+        super().reload_secrets()
+        self.task_definition.reload_secrets()
+
 
 # We need to set the manager model this way to avoid circular references
 StandaloneTaskManager.model = StandaloneTask  # noqa:E305
@@ -2024,7 +2037,8 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
         data = {}
         data['service'] = self.data['serviceName']
         data['cluster'] = self.data['cluster']
-        data['desiredCount'] = self.data['desiredCount']
+        # Purposely not setting desiredCount here -- we may be scaled up, so we shouldn't be scaling back to whatever
+        # deployfish.yml says lest we underprovision the service inadvertently
         data['taskDefinition'] = self.data['taskDefinition']
         if 'capacityProviderStrategy' in self.data:
             data['capacityProviderStrategy'] = self.data['capacityProviderStrategy']
