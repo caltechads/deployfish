@@ -179,7 +179,10 @@ class ClickObjectSecretsWriteCommandMixin(object):
         def write_secrets(ctx, *args, **kwargs):
             ctx.obj['config'] = get_config(**ctx.obj)
             ctx.obj['adapter'] = cls()
-            click.secho(ctx.obj['adapter'].write_secrets(kwargs['identifier']))
+            click.secho(ctx.obj['adapter'].write_secrets(
+                kwargs['identifier'],
+                kwargs['force'],
+            ))
 
         pk_description = cls.get_pk_description()
         write_secrets.__doc__ = """
@@ -194,6 +197,11 @@ Write the AWS SSM Parameter Store secrets associated with a {object_name} to AWS
         function = print_render_exception(write_secrets)
         function = click.pass_context(function)
         function = click.argument('identifier')(function)
+        function = click.option(
+            '--force/--no-force',
+            default=False,
+            help="Don't do a diff before writing the secrets; just write them."
+        )(function)
         function = command_group.command(
             'write',
             short_help='Write AWS SSM Parameter Store secrets for a {} to AWS'.format(cls.model.__name__)
@@ -201,26 +209,27 @@ Write the AWS SSM Parameter Store secrets associated with a {object_name} to AWS
         return function
 
     @handle_model_exceptions
-    def write_secrets(self, identifier):
+    def write_secrets(self, identifier, force):
         obj = self.get_object_from_deployfish(identifier)
         other = Secret.objects.list(obj.secrets_prefix)
-        changes = obj.diff_secrets(other, ignore_external=True)
-        if not changes:
-            return click.style(
-                '\nABORTED: The AWS secrets for {}("{}") are up to date.\n'.format(self.model.__name__, obj.pk),
-                fg='green'
+        if not force:
+            changes = obj.diff_secrets(other, ignore_external=True)
+            if not changes:
+                return click.style(
+                    '\nABORTED: The AWS secrets for {}("{}") are up to date.\n'.format(self.model.__name__, obj.pk),
+                    fg='green'
+                )
+            click.echo('\nChanges to be applied to secrets for {}("{}"):\n'.format(self.model.__name__, obj.pk))
+            click.echo(
+                TemplateRenderer().render(changes, template='secrets--diff.tpl')
             )
-        click.echo('\nChanges to be applied to secrets for {}("{}"):\n'.format(self.model.__name__, obj.pk))
-        click.echo(
-            TemplateRenderer().render(changes, template='secrets--diff.tpl')
-        )
-        click.echo("\nIf you really want to do this, answer \"yes\" to the question below.\n")
-        value = click.prompt("Apply the above changes to AWS?")
-        if value != 'yes':
-            return click.style(
-                '\nABORTED: not updating secrets for {}({}).'.format(self.model.__name__, obj.pk),
-                fg='green'
-            )
+            click.echo("\nIf you really want to do this, answer \"yes\" to the question below.\n")
+            value = click.prompt("Apply the above changes to AWS?")
+            if value != 'yes':
+                return click.style(
+                    '\nABORTED: not updating secrets for {}({}).'.format(self.model.__name__, obj.pk),
+                    fg='green'
+                )
         click.secho('\nWriting secrets ...', nl=False)
         obj.write_secrets()
         click.secho(' done.\n\n')
