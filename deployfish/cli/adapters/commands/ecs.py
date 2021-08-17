@@ -385,6 +385,70 @@ Service is completely wedged.
         return click.style('\n\nRestarted tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
 
 
+class ClickListServiceRelatedTasksCommandMixin(ClickUpdateObjectCommandMixin):
+    @classmethod
+    def add_list_related_tasks_click_command(cls, command_group):
+        """
+        Build a fully specified click command for listing StandaloneTasks related to a Service from what we have in our
+        deployfish.yml file, and add it to the click command group `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        if cls.model.config_section is None:
+            raise cls.ReadOnly(
+                '{} objects are read only. If you want them to be read/write, define the '
+                '"config_section" class attribute on the model to be the section in deployfish.yml '
+                'where configuration info can be found for them.'
+            )
+
+        def list_related_tasks(ctx, *args, **kwargs):
+            try:
+                ctx.obj['config'] = get_config(**ctx.obj)
+            except ConfigProcessingFailed as e:
+                raise RenderException(str(e))
+            ctx.obj['adapter'] = cls()
+            ctx.obj['adapter'].list_related_standalone_tasks(kwargs.pop('identifier'))
+        list_related_tasks.__doc__ = """
+List StandaloneTasks related to a Service from what we have in our deployfish.yml file.
+
+NOTE: This lists tasks defined under the top level 'tasks:' section in deployfish.yml.  ServiceHelperTasks -- those
+defined by a 'tasks:' section under the Service definition will not be listed here.
+
+IDENTIFIER is a string that looks like one of:
+
+    * Service.name
+
+    * Service.environment
+
+"""
+        function = print_render_exception(list_related_tasks)
+        function = click.pass_context(function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'list-related-tasks',
+            short_help='List StandaloneTasks related to a Service from configuration in deployfish.yml'
+        )(function)
+        return function
+
+    def list_related_standalone_tasks(self, service_identifier, **kwargs):
+        service = self.get_object_from_deployfish(
+            service_identifier,
+            factory_kwargs=self.factory_kwargs.get('list_related_tasks', {})
+        )
+        config = get_config()
+        tasks = []
+        for task_data in config.cooked['tasks']:
+            if 'service' in task_data:
+                if (task_data['service'] == service.pk or task_data['service'] == service.name):
+                    tasks.append(task_data['name'])
+        tasks.sort()
+        if tasks:
+            for task in tasks:
+                click.echo(task)
+
+
 class ClickUpdateServiceRelatedTasksCommandMixin(ClickUpdateObjectCommandMixin):
     @classmethod
     def add_update_related_tasks_click_command(cls, command_group):

@@ -4,20 +4,21 @@ import os
 
 from .abstract import ClickModelAdapter, ClickBaseModelAdapter, ClickSecretsAdapter
 from .commands import (
+    ClickHelperTaskInfoCommandMixin,
+    ClickListHelperTaskLogsMixin,
+    ClickListHelperTasksCommandMixin,
+    ClickListRunningTasksCommandMixin,
+    ClickListServiceRelatedTasksCommandMixin,
+    ClickListStandaloneTaskLogsMixin,
     ClickRestartServiceCommandMixin,
+    ClickRunHelperTaskCommandMixin,
+    ClickRunStandaloneTaskCommandMixin,
     ClickScaleInstancesCommandMixin,
     ClickScaleServiceCommandMixin,
-    ClickUpdateServiceRelatedTasksCommandMixin,
-    ClickListHelperTasksCommandMixin,
-    ClickHelperTaskInfoCommandMixin,
-    ClickRunHelperTaskCommandMixin,
     ClickTailHelperTaskLogsMixin,
-    ClickListHelperTaskLogsMixin,
-    ClickRunStandaloneTaskCommandMixin,
     ClickTailStandaloneTaskLogsMixin,
-    ClickListRunningTasksCommandMixin,
-    ClickListStandaloneTaskLogsMixin,
     ClickUpdateHelperTasksCommandMixin,
+    ClickUpdateServiceRelatedTasksCommandMixin,
 )
 from deployfish.config import get_config
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
@@ -77,6 +78,7 @@ class ClickServiceAdapter(
     ClickListRunningTasksCommandMixin,
     ClickScaleServiceCommandMixin,
     ClickRestartServiceCommandMixin,
+    ClickListServiceRelatedTasksCommandMixin,
     ClickUpdateServiceRelatedTasksCommandMixin,
     ClickModelAdapter
 ):
