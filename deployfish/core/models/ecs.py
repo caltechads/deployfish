@@ -2,7 +2,6 @@ from copy import deepcopy
 import fnmatch
 import re
 import textwrap
-from pprint import pprint
 
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.ssh import DockerMixin, SSHMixin
@@ -534,7 +533,7 @@ class StandaloneTaskManager(AbstractTaskManager):
     task_type = 'standalone'
     # model is set after the StandaloneTask class definition, below
 
-    def list(self, scheduled_only=False, all_revisions=False, task_type='standalone', service_name=None, cluster_name=None, task_name=None):
+    def list(self, scheduled_only=False, all_revisions=False, task_type='standalone', service_name=None, cluster_name=None, task_name=None):  # noqa:E501
         # hint: (bool, bool, choice[standalone|service_helper|any], str["{service_pk:glob}"], str["{cluster_name:glob}"], str["{task_name:glob}"])
         """
         List all Tasks (StandaloneTasks and ServiceHelperTasks), filtering by various dimensions.
