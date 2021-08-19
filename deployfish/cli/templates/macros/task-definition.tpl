@@ -10,9 +10,11 @@ Macros related to rendering TaskDefinitions, ContainerDefinitions and all their 
 {# ------------------------------------------------ #}
 {% macro volume(obj) %}
 {%- if 'host' in obj %}
+type            :     host
 source path     :     {{ obj['host']['sourcePath'] }}
 {%- endif %}
 {%- if 'dockerVolumeConfiguration' in obj %}
+type            :     docker
 {{- subsection('config:') }}
 {# Render the dockerVolumeConfiguration for a task volume #}
   scope         :     {{ obj['dockerVolumeConfiguration']['scope'] }}
@@ -23,6 +25,16 @@ source path     :     {{ obj['host']['sourcePath'] }}
 {%- for key, value in obj['dockerVolumeConfiguration']['driverOpts'] %}
     {{ key }}: {{ value }}
 {%- endfor %}
+{% endif -%}
+{%- if 'efsVolumeConfiguration' in obj %}
+type          :     EFS
+name          :     {{ obj['efsVolumeConfiguration']['FileSystem'].name }}
+id            :     {{ obj['efsVolumeConfiguration']['fileSystemId'] }}
+arn           :     {{ obj['efsVolumeConfiguration']['FileSystem'].arn }}
+created       :     {{ obj['efsVolumeConfiguration']['FileSystem'].data['CreationTime'] }}
+size          :     {{ obj['efsVolumeConfiguration']['FileSystem'].size|filesizeformat }}
+state         :     {{ obj['efsVolumeConfiguration']['FileSystem'].state }}
+rootDirectory :     {{ obj['efsVolumeConfiguration']['rootDirectory'] }}
 {% endif -%}
 {% endmacro %}
 
@@ -183,7 +195,7 @@ task memory         :     {{ obj.data['memory'] }}
 {%- endif %}
 {%- if 'volumes' in obj.data and obj.data['volumes'] %}
 
-{% for volume_def in obj.data['volumes'] -%}
+{% for volume_def in obj.render_for_display()['volumes'] -%}
 {{ subobject('Volume', volume_def['name']) }}
 {{- volume(volume_def)|indent(width=2) }}
 {%- endfor -%}

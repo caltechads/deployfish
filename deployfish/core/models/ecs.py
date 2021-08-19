@@ -10,6 +10,7 @@ from deployfish.core.utils import is_fnmatch_filter
 from .abstract import Manager, Model, LazyAttributeMixin
 from .alb import TargetGroup
 from .ec2 import Instance, AutoscalingGroup
+from .efs import EFSFileSystem
 from .elb import ClassicLoadBalancer
 from .events import EventScheduleRule
 from .mixins import TaskDefinitionFARGATEMixin, TagsMixin
@@ -1247,6 +1248,12 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         if 'compatibilities' in data:
             data['requiresCompatibilities'] = data['compatibilities']
             del data['compatibilities']
+        if 'volumes' in data:
+            for volume in data['volumes']:
+                if 'efsVolumeConfiguration' in volume:
+                    volume['efsVolumeConfiguration']['FileSystem'] = EFSFileSystem.objects.get(
+                        volume['efsVolumeConfiguration']['fileSystemId']
+                    )
         return data
 
     def render_for_diff(self):

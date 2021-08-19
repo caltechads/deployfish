@@ -5,6 +5,7 @@ from .cloudwatch import *    # noqa:F403,F401
 from .cloudwatchlogs import *    # noqa:F403,F401
 from .ec2 import *    # noqa:F403,F401
 from .ecs import *    # noqa:F403,F401
+from .efs import *    # noqa:F403,F401
 from .elb import *    # noqa:F403,F401
 from .events import *    # noqa:F403,F401
 from .secrets import *    # noqa:F403,F401
