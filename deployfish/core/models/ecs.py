@@ -986,9 +986,6 @@ class ServiceManager(Manager):
             except self.client.exceptions.ClusterNotFoundException:
                 raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
         if service_name:
-            print(f'SERVICE NAME: {service_name}')
-            values = ([(arn.rsplit('/')[1], fnmatch.fnmatch(arn.rsplit('/')[1], service_name), arn) for arn in services])
-            pprint(sorted(values, key=lambda x: x[0]))
             services = [arn for arn in services if fnmatch.fnmatch(arn.rsplit('/')[1], service_name)]
         return self.get_many(services)
 
