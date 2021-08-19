@@ -16,7 +16,7 @@
 {{ vpc_configuration(obj)|indent(width=2) -}}
 {% endif -%}
 {%- if obj.schedule %}
-  {% filter color(fg='yellow', bold=True) %}schedule{% endfilter %}            :     {{ obj.schedule.data['ScheduleExpression']|color(fg='yellow', bold=True) }}
+  {% filter color(fg='yellow', bold=True) %}schedule{% endfilter %}            :     {{ obj.schedule.data['ScheduleExpression']|color(fg='yellow', bold=True) }}  {% if not obj.enabled %}{% filter color(fg='red', bold=True)%}[DISABLED]{% endfilter %}{% endif %}
 {%- endif %}
 
 {% filter section_title(fg='cyan', bold=True) %}Task Definition{% endfilter %}

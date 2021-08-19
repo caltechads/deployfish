@@ -180,6 +180,7 @@ class ClickServiceTasksAdapter(
     list_helper_tasks_ordering = 'Command Name'
     list_helper_tasks_result_columns = {
         'Command Name': 'command',
+        'Disabled?': 'schedule_disabled',
         'Revision': 'family_revision',
         'Version': 'version',
         'Launch Type': 'launchType',
@@ -200,6 +201,7 @@ class ClickStandaloneTaskAdapter(
     list_ordering = 'Name'
     list_result_columns = {
         'Name': 'name',
+        'Disabled?': 'schedule_disabled',
         'Service': {'key': 'serviceName', 'default': ''},
         'Cluster': 'cluster__name',
         'Launch Type': 'launchType',

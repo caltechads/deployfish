@@ -1475,10 +1475,11 @@ class Task(TagsMixin, Model):
         else:
             data['serviceName'] = ''
         data.update(self.task_definition.render_for_display())
+        data['schedule_expression'] = ''
+        data['schedule_disabled'] = ''
         if self.schedule:
             data['schedule_expression'] = self.schedule.data['ScheduleExpression']
-        else:
-            data['schedule_expression'] = ''
+            data['schedule_disabled'] = 'DISABLED' if not self.schedule.enabled else ''
         return data
 
 
