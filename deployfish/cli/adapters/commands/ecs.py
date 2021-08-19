@@ -2,7 +2,7 @@ import click
 
 from deployfish.cli.adapters.utils import handle_model_exceptions, print_render_exception
 from deployfish.config import get_config
-from deployfish.core.models import Cluster, AutoscalingGroup, CloudWatchLogGroup, Service, StandaloneTask
+from deployfish.core.models import Cluster, AutoscalingGroup, CloudWatchLogGroup, StandaloneTask
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook, ECSTaskStatusHook
 from deployfish.exceptions import RenderException, ConfigProcessingFailed
 from deployfish.typing import FunctionTypeCommentParser
@@ -1008,6 +1008,121 @@ SERVICE_IDENTIFIER is a string that looks like one of:
         return click.style('\nDone.', fg='yellow')
 
 
+class ClickDisableHelperTaskMixin(object):
+
+    @classmethod
+    def add_disable_task_schedule_click_command(cls, command_group):
+        """
+        Build a fully specified click command for disabling the schedule rule for a task, and add it to the click
+        command group `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def disable_schedule(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].disable_schedule(
+                kwargs['service_identifier'],
+                kwargs['helper_task_name'],
+            ))
+
+        pk_description = cls.get_pk_description(name='SERVICE_IDENTIFIER')
+        pk_description = cls.get_pk_description()
+        disable_schedule.__doc__ = """
+If a ServiceHelperTask in AWS has a schedule rule and that rule is currently enabled, disable it.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(disable_schedule)
+        function = click.pass_context(function)
+        function = click.argument('helper_task_name')(function)
+        function = click.argument('service_identifier')(function)
+        function = command_group.command(
+            'disable',
+            short_help='Disable the schedule for a ServiceHelperTask.'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def disable_schedule(self, service_pk, command_name, **kwargs):
+        command = self.get_task(service_pk, command_name)
+        if command.schedule is None:
+            return click.style(
+                f'ABORT: ServiceHelperTask("{command_name}") has no schedule; disabling only affects schedules.',
+                fg='yellow'
+            )
+        command.disable_schedule()
+        if command.schedule.enabled:
+            return click.style(f'ServiceHelperTask("{command_name}") state is now ENABLED.', fg='red')
+        else:
+            return click.style(f'ServiceHelperTask("{command_name}") state is now DISABLED.', fg='green')
+
+
+class ClickEnableHelperTaskMixin(object):
+
+    @classmethod
+    def add_enable_task_schedule_click_command(cls, command_group):
+        """
+        Build a fully specified click command for enabling the schedule rule for a task, and add it to the click
+        command group `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def enable_schedule(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].enable_schedule(
+                kwargs['service_identifier'],
+                kwargs['helper_task_name'],
+            ))
+
+        pk_description = cls.get_pk_description(name='SERVICE_IDENTIFIER')
+        enable_schedule.__doc__ = """
+If a ServiceHelperTask in AWS has a schedule rule and that rule is currently disabled, enable it.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(enable_schedule)
+        function = click.pass_context(function)
+        function = click.argument('helper_task_name')(function)
+        function = click.argument('service_identifier')(function)
+        function = command_group.command(
+            'enable',
+            short_help='Enable the schedule for a ServiceHelperTask.'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def enable_schedule(self, service_pk, command_name, **kwargs):
+        command = self.get_task(service_pk, command_name)
+        if command.schedule is None:
+            return click.style(
+                f'ABORT: ServiceHelperTask("{command_name}") has no schedule; enabling only affects schedules.',
+                fg='yellow'
+            )
+        command.enable_schedule()
+        if command.schedule.enabled:
+            return click.style(f'ServiceHelperTask("{command_name}") state is now ENABLED.', fg='green')
+        else:
+            return click.style(f'ServiceHelperTask("{command_name}") state is now DISABLED.', fg='red')
+
+
 # StandaloneTasks
 # ---------------
 
@@ -1194,7 +1309,7 @@ If a StandaloneTask uses "awslogs" as its logDriver, list the available log stre
         function = click.argument('identifier')(function)
         function = command_group.command(
             'list',
-            short_help='List awslogs log streams for a ServiceStandaloneTask.'
+            short_help='List awslogs log streams for a StandaloneTask.'
         )(function)
         return function
 
@@ -1215,3 +1330,115 @@ If a StandaloneTask uses "awslogs" as its logDriver, list the available log stre
             'Last Event': {'key': 'lastEventTimestamp', 'datatype': 'timestamp', 'default': ''},
         }
         return '\n' + TableRenderer(columns, ordering='-Created').render(streams) + '\n'
+
+
+class ClickDisableStandaloneTaskMixin(object):
+
+    @classmethod
+    def add_disable_schedule_click_command(cls, command_group):
+        """
+        Build a fully specified click command for disabling the schedule rule for a task, and add it to the click
+        command group `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def disable_schedule(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            click.secho(ctx.obj['adapter'].disable_schedule(kwargs['identifier']))
+
+        pk_description = cls.get_pk_description()
+        disable_schedule.__doc__ = """
+If a StandaloneTask in AWS has a schedule rule and that rule is currently enabled, disable it.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(disable_schedule)
+        function = click.pass_context(function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'disable',
+            short_help='Disable the schedule for a StandaloneTask.'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def disable_schedule(self, pk, **kwargs):
+        obj = self.get_object_from_aws(pk)
+        if obj.schedule is None:
+            return click.style(
+                f'ABORT: StandaloneTask("{pk}") has no schedule; disabling only affects schedules.',
+                fg='yellow'
+            )
+        obj.disable_schedule()
+        if obj.schedule.enabled:
+            return click.style(f'StandaloneTask("{pk}") state is now ENABLED.', fg='red')
+        else:
+            return click.style(f'StandaloneTask("{pk}") state is now DISABLED.', fg='green')
+
+
+class ClickEnableStandaloneTaskMixin(object):
+
+    @classmethod
+    def add_enable_schedule_click_command(cls, command_group):
+        """
+        Build a fully specified click command for enabling the schedule rule for a task, and add it to the click
+        command group `command_group`.  Return the function object.
+
+        :param command_group function: the click command group function to use to register our click command
+
+        :rtype: function
+        """
+        def enable_schedule(ctx, *args, **kwargs):
+            if cls.model.config_section is not None:
+                try:
+                    ctx.obj['config'] = get_config(**ctx.obj)
+                except ConfigProcessingFailed:
+                    pass
+            ctx.obj['adapter'] = cls()
+            lines = ctx.obj['adapter'].enable_schedule(
+                kwargs['identifier'],
+            )
+            if lines.count('\n') > 40:
+                click.echo_via_pager(lines)
+            else:
+                click.echo(lines)
+
+        pk_description = cls.get_pk_description()
+        enable_schedule.__doc__ = """
+If a StandaloneTask in AWS has a schedule rule and that rule is currently disabled, enable it.
+
+{pk_description}
+
+""".format(pk_description=pk_description, object_name=cls.model.__name__)
+
+        function = print_render_exception(enable_schedule)
+        function = click.pass_context(function)
+        function = click.argument('identifier')(function)
+        function = command_group.command(
+            'enable',
+            short_help='Enable the schedule for a StandaloneTask.'
+        )(function)
+        return function
+
+    @handle_model_exceptions
+    def enable_schedule(self, pk, **kwargs):
+        obj = self.get_object_from_aws(pk)
+        if obj.schedule is None:
+            return click.style(
+                f'ABORT: StandaloneTask("{pk}") has no schedule; enabling only affects schedules.',
+                fg='yellow'
+            )
+        obj.enable_schedule()
+        if obj.schedule.enabled:
+            return click.style(f'StandaloneTask("{pk}") state is now ENABLED.', fg='green')
+        else:
+            return click.style(f'StandaloneTask("{pk}") state is now DISABLED.', fg='red')

@@ -38,6 +38,8 @@ service_command_list = ClickServiceTasksAdapter.add_list_helper_tasks_click_comm
 service_command_info = ClickServiceTasksAdapter.add_helper_task_info_click_command(service_command_group)
 service_command_run = ClickServiceTasksAdapter.add_run_helper_task_click_command(service_command_group)
 service_command_update = ClickServiceTasksAdapter.add_update_helper_tasks_click_command(service_command_group)
+service_command_enable = ClickServiceTasksAdapter.add_disable_task_schedule_click_command(service_command_group)
+service_command_disable = ClickServiceTasksAdapter.add_enable_task_schedule_click_command(service_command_group)
 
 
 @service_command_group.group('logs', help='Describe service and command logs')

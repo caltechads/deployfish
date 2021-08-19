@@ -84,6 +84,30 @@ class EventScheduleRuleManager(Manager):
                 EventTarget.objects.delete(target)
             self.client.delete_rule(Name=obj.pk)
 
+    def enable(self, obj):
+        """
+        If `obj` is disabled, change its state of 'ENABLED'. Otherwise, do nothing.
+
+        :param obj EventScheduleRule: the rule to enable
+        """
+        if not obj.enabled:
+            self.client.enable_rule(
+                Name=obj.name,
+                EventBusName=obj.data['EventBusName']
+            )
+
+    def disable(self, obj):
+        """
+        If `obj` is enabled, change the its state to 'DISABLED'. Otherwise, do nothing.
+
+        :param obj EventScheduleRule: the rule to enable
+        """
+        if obj.enabled:
+            self.client.disable_rule(
+                Name=obj.name,
+                EventBusName=obj.data['EventBusName']
+            )
+
 
 # ----------------------------------------
 # Models
@@ -198,8 +222,20 @@ class EventScheduleRule(Model):
     def arn(self):
         return self.data['Arn']
 
+    @property
+    def enabled(self):
+        return self.data['State'] == 'ENABLED'
+
     def set_task_definition_arn(self, arn):
         self.target.set_task_definition_arn(arn)
+
+    def enable(self):
+        self.objects.enable(self)
+        self.reload_from_db()
+
+    def disable(self):
+        self.objects.disable(self)
+        self.reload_from_db()
 
     def render_for_diff(self):
         """

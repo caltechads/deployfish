@@ -4,6 +4,10 @@ import os
 
 from .abstract import ClickModelAdapter, ClickBaseModelAdapter, ClickSecretsAdapter
 from .commands import (
+    ClickDisableHelperTaskMixin,
+    ClickDisableStandaloneTaskMixin,
+    ClickEnableHelperTaskMixin,
+    ClickEnableStandaloneTaskMixin,
     ClickHelperTaskInfoCommandMixin,
     ClickListHelperTaskLogsMixin,
     ClickListHelperTasksCommandMixin,
@@ -109,13 +113,22 @@ class ClickServiceAdapter(
     update_extra_help = """
 NOTES:
 
-  * All this command does is update your Services' configuration in AWS.  It does not manage your containers!  The AWS ECS service itself does the rolling deploy and deployfish simply reports on the status.
+  * All this command does is update your Services' configuration in AWS.  It does not manage
+    your containers!  The AWS ECS service itself does the rolling deploy and deployfish simply
+    reports on the status.
 
-  * We wait for 15 minutes for the Service to become stable after applying our updates to it.  A Service is stable when it sees that the Service has the correct number of running tasks, that those tasks are running the desired task definition, and that those tasks have passed their health checks. If it takes longer than 15 minutes for the service to be stable, deployfish will say the deploy timed out.  We do this because sometimes the deployment really is broken and we don't want our deployment pipelines in CodePipeline to run for hours waiting.
+  * We wait for 15 minutes for the Service to become stable after applying our updates to it.
+    A Service is stable when it sees that the Service has the correct number of running tasks,
+    that those tasks are running the desired task definition, and that those tasks have passed
+    their health checks. If it takes longer than 15 minutes for the service to be stable,
+    deployfish will say the deploy timed out.  We do this because sometimes the deployment
+    really is broken and we don't want our deployment pipelines in CodePipeline to run for hours
+    waiting.
 
   THE DEPLOYMENT IS STILL RUNNING IN AWS. Go to the AWS ECS Console to see status.
 
-  * If you want deployfish to wait more than 15 minutes, set the environment variable DEPLOYFISH_SERVICE_UPDATE_TIMEOUT to a longer value, in minutes.
+  * If you want deployfish to wait more than 15 minutes, set the environment variable
+    DEPLOYFISH_SERVICE_UPDATE_TIMEOUT  to a longer value, in minutes.
 
     export DEPLOYFISH_SERVICE_UPDATE_TIMEOUT=30
 """
@@ -166,11 +179,13 @@ class ClickServiceSecretsAdapter(
 
 class ClickServiceTasksAdapter(
     ServiceDereferenceMixin,
-    ClickListHelperTasksCommandMixin,
+    ClickDisableHelperTaskMixin,
+    ClickEnableHelperTaskMixin,
     ClickHelperTaskInfoCommandMixin,
+    ClickListHelperTaskLogsMixin,
+    ClickListHelperTasksCommandMixin,
     ClickRunHelperTaskCommandMixin,
     ClickTailHelperTaskLogsMixin,
-    ClickListHelperTaskLogsMixin,
     ClickUpdateHelperTasksCommandMixin,
     ClickBaseModelAdapter
 ):
@@ -192,6 +207,8 @@ class ClickStandaloneTaskAdapter(
     ClickRunStandaloneTaskCommandMixin,
     ClickTailStandaloneTaskLogsMixin,
     ClickListStandaloneTaskLogsMixin,
+    ClickDisableStandaloneTaskMixin,
+    ClickEnableStandaloneTaskMixin,
     ClickModelAdapter
 ):
 
@@ -205,7 +222,7 @@ class ClickStandaloneTaskAdapter(
         'Service': {'key': 'serviceName', 'default': ''},
         'Cluster': 'cluster__name',
         'Launch Type': 'launchType',
-        'Revision': 'family_revision',
+        'Revision': 'revision',
         'Version': 'version',
         'Schedule': 'schedule_expression'
     }

@@ -8,6 +8,8 @@ task_list = ClickStandaloneTaskAdapter.add_list_click_command(task_group)
 task_info = ClickStandaloneTaskAdapter.add_info_click_command(task_group)
 task_exists = ClickStandaloneTaskAdapter.add_exists_click_command(task_group)
 task_run = ClickStandaloneTaskAdapter.add_run_task_click_command(task_group)
+task_enable = ClickStandaloneTaskAdapter.add_enable_schedule_click_command(task_group)
+task_disable = ClickStandaloneTaskAdapter.add_disable_schedule_click_command(task_group)
 
 task_secrets_group = ClickStandaloneTaskSecretsAdapter.add_command_group(
     task_group,

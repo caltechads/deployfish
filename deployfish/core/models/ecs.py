@@ -506,6 +506,28 @@ class AbstractTaskManager(Manager):
         response = self.client.run_task(**obj.render())
         return [InvokedTask(data) for data in response['tasks']]
 
+    def enable_schedule(self, pk):
+        # hint: (str["{family}:{revision}","{family}","{task_definition_arn}"])
+        """
+        If the task has a scchedule and the schedule rule is disabled, enable the schedule rule.  Otherwise
+        do nothing.
+
+        :param obj pk: the task to enable
+        """
+        obj = self.get(pk)
+        obj.enable_schedule()
+
+    def disable_schedule(self, pk):
+        # hint: (str["{family}:{revision}","{family}","{task_definition_arn}"])
+        """
+        If the task has a scchedule and the schedule rule is enabled, disable the schedule rule.  Otherwise
+        do nothing.
+
+        :param obj pk: the task to disable
+        """
+        obj = self.get(pk)
+        obj.disable_schedule()
+
 
 class StandaloneTaskManager(AbstractTaskManager):
 
@@ -681,7 +703,8 @@ class ServiceHelperTaskManager(AbstractTaskManager):
         List all the ServiceHelperTasks.  To do this accurately, we need to:
 
             * List all the services
-            * Look at the active task definition for the "deployfish:task-name" tags and collect the task definition arns
+            * Look at the active task definition for the "deployfish:task-name" tags and collect the task
+              definition arns
             * Build ServiceHelperTasks based on those arns and return them
 
         We need to do this instead of just listing all tasks with the tag 'deployfish:type' of 'service_helper' because
@@ -1370,8 +1393,8 @@ class Task(TagsMixin, Model):
         platformVersion: (optional) only used if launchType == FARGATE
         networkConfiguration.awsvpcConfiguration: If the task definition's networkMode is 'awsvpc', this tells us
             what subnets in which to run the tasks, and which security groups to assign to them
-        capacityProviderStrategy: (optional) the capacity provider strategy to use, if any.  This is mutually exclusive with
-            launchType
+        capacityProviderStrategy: (optional) the capacity provider strategy to use, if any.  This is mutually
+            exclusive with launchType
         placementConstraints: (optional) placement constraints for running the task
         placementStrategy: (optional) the placement strategy for running the task
         group: (optional)the task group
@@ -1464,6 +1487,14 @@ class Task(TagsMixin, Model):
     def unschedule(self):
         if self.schedule:
             self.schedule.delete()
+
+    def enable_schedule(self):
+        if self.schedule:
+            self.schedule.enable()
+
+    def disable_schedule(self):
+        if self.schedule:
+            self.schedule.disable()
 
     def render_for_display(self):
         data = deepcopy(self.data)
