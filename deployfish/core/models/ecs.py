@@ -1760,7 +1760,9 @@ class Cluster(TagsMixin, SSHMixin, Model):
     @property
     def autoscaling_group(self):
         if 'autoscaling_group' not in self.cache:
-            if len(self.container_instances) > 0:
+            if 'deployfish:autoscalingGroup' in self.tags:
+                self.cache['autoscaling_group'] = AutoscalingGroup.objects.get(self.tags['deployfish:autoscalingGroup'])
+            elif len(self.container_instances) > 0:
                 self.cache['autoscaling_group'] = self.container_instances[0].autoscaling_group
             else:
                 # Try to guess our autoscaling group based on our cluster name

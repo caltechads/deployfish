@@ -179,19 +179,25 @@ class ClickScaleInstancesCommandMixin(object):
 
         pk_description = cls.get_pk_description()
         scale_instances.__doc__ = """
-Change the number of instances for a {object_name} in AWS.
+Change the number of instances for an ECS cluster in AWS.
+
+We'll try to detect the name of the autoscaling group by one of two methods:
+
+  * Look for a tag on the cluster named "deployfish:autoscalingGroup"
+
+  * Look for the tag named "aws:autoscalingGroup" on one of the running container instances
 
 {pk_description}
 
 COUNT is an integer.
-""".format(pk_description=pk_description, object_name=cls.model.__name__)
+""".format(pk_description=pk_description)
 
         function = print_render_exception(scale_instances)
         function = click.pass_context(function)
         function = click.option(
             '--force/--no-force',
             default=False,
-            help='Force the {object_name} to scale outside its MinCount or MaxCount'.format(
+            help='Force the Cluster to scale outside its MinCount or MaxCount'.format(
                 object_name=cls.model.__name__
             )
         )(function)
@@ -199,7 +205,7 @@ COUNT is an integer.
         function = click.argument('identifier')(function)
         function = command_group.command(
             'scale',
-            short_help='Change the number of instances for a {object_name} in AWS.'.format(
+            short_help='Change the number of instances for a Cluster in AWS.'.format(
                 object_name=cls.model.__name__
             )
         )(function)
