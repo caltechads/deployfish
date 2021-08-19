@@ -368,6 +368,9 @@ class ClickSyncSecretsCommandMixin(object):
         :rtype: function
         """
         def sync_secrets(ctx, *args, **kwargs):
+            # Always ignore missing environment here -- the whole purpose of the command is to
+            # fix missing environment variables
+            ctx.obj['IGNORE_MISSING_ENVIRONMENT'] = True
             ctx.obj['config'] = get_config(**ctx.obj)
             ctx.obj['adapter'] = cls()
             click.secho(ctx.obj['adapter'].sync_secrets(ctx.obj['config']))
