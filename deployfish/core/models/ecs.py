@@ -1055,10 +1055,10 @@ class ServiceManager(Manager):
             for task in obj.helper_tasks:
                 task.unschedule()
             # first scale to 0
+            service, cluster = self.__get_service_and_cluster_from_pk(obj.pk)
             if obj.data['desiredCount'] > 0:
                 self.scale(obj, 0)
                 waiter = self.get_waiter('services_stable')
-                service, cluster = self.__get_service_and_cluster_from_pk(obj.pk)
                 waiter.wait(cluster=cluster, services=[service])
             # Then delete the service
             self.client.delete_service(cluster=cluster, service=service)
