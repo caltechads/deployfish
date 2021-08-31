@@ -51,7 +51,11 @@ class SecretsExportMixin(object):
         ], obj.name)
         env_vars = {}
         for secret_def in item['config']:
-            key, kwargs = parse_secret_string(secret_def)
+            if '=' not in secret_def:
+                # This is an external parameter spec
+                continue
+            else:
+                key, kwargs = parse_secret_string(secret_def)
             value = kwargs['Value'].strip()
             if value.startswith('${env.'):
                 env_var = value[6:-1]
