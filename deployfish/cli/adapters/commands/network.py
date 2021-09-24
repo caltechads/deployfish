@@ -56,17 +56,18 @@ class GetExecTargetMixin(object):
                 number = 1
                 choices = []
                 for target in obj.ssh_targets:
-                    for container_name in obj.container_names:
+                    for container in obj.containers:
                         rows.append([
                             number,
                             click.style(target.tags['Name'], fg='cyan'),
-                            click.style(container_name, fg='yellow'),
+                            click.style(container.name, fg='yellow'),
+                            click.style(container.version, fg='yellow'),
                             target.pk,
                             target.ip_address
                         ])
                         choices.append((target, container_name))
                         number += 1
-                click.secho(tabulate(rows, headers=['#', 'Instance', 'Container', 'Instance Id', 'IP']))
+                click.secho(tabulate(rows, headers=['#', 'Instance', 'Container', 'Version', 'Instance Id', 'IP']))
                 choice = click.prompt('\nEnter the number of the instance you want: ', type=int, default=1)
                 target, container_name = choices[choice - 1]
         else:

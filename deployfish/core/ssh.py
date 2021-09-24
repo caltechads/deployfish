@@ -253,12 +253,12 @@ class DockerMixin(SSHMixin):
         pass
 
     @property
-    def container_names(self):
+    def containers(self):
         raise NotImplementedError
 
     @property
     def container_name(self):
-        return self.container_names[0]
+        return self.containers[0].name
 
     def __init__(self, *args, **kwargs):
         self.provider_type = kwargs.pop('provider_type', 'bastion')
@@ -268,7 +268,7 @@ class DockerMixin(SSHMixin):
         if ssh_target is None:
             ssh_target = self.ssh_target
         if not container_name:
-            container_name = self.container_names[0]
+            container_name = self.container_name
         provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
         cmd = provider.docker_exec().format(self.task_definition.data['family'], container_name)  # noqa
         cmd = provider.ssh_command(cmd)

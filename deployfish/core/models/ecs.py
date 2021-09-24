@@ -1178,10 +1178,13 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
 
     @property
     def version(self):
-        try:
-            return self.containers[0].data['image'].rsplit(':', 1)[1]
-        except IndexError:
-            return 'latest'
+        """
+        Return the version for the task definition.  We're cheating here by just returning the version of the first
+        container image, assuming that the first container will be the primary container for the TaskDefinition.
+
+        :rtype: str
+        """
+        return self.containers[0].version
 
     @property
     def secrets_prefix(self):
@@ -1328,6 +1331,13 @@ class ContainerDefinition(SecretsMixin, LazyAttributeMixin):
     @property
     def name(self):
         return self.data.get('name', None)
+
+    @property
+    def version(self):
+        try:
+            return self.data['image'].rsplit(':', 1)[1]
+        except IndexError:
+            return 'latest'
 
     @property
     def secrets_prefix(self):
@@ -1939,8 +1949,8 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
         return self.cache['autoscaling_group']
 
     @property
-    def container_names(self):
-        return [c.name for c in self.task_definition.containers]
+    def containers(self):
+        return self.task_definition.containers
 
     @property
     def ssh_tunnels(self):
