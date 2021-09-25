@@ -46,36 +46,39 @@ class GetSSHTargetMixin(object):
 class GetExecTargetMixin(object):
 
     def get_exec_target(self, obj, choose=False):
+        """
+        This depends on ``obj`` having a method named ``running_tasks``.
+        """
         target = None
         container_name = None
+        running_tasks = sorted(obj.running_tasks, key=lambda x: x.ssh_target.tags['Name'])
         if choose:
-            if obj.ssh_targets:
-                rows = []
-                click.secho('\nAvailable exec targets:', fg='green')
-                click.secho('----------------------\n', fg='green')
-                number = 1
-                choices = []
-                for target in obj.ssh_targets:
-                    for container in obj.containers:
-                        rows.append([
-                            number,
-                            click.style(target.tags['Name'], fg='cyan'),
-                            click.style(container.name, fg='yellow'),
-                            click.style(container.version, fg='yellow'),
-                            target.pk,
-                            target.ip_address
-                        ])
-                        choices.append((target, container_name))
-                        number += 1
-                click.secho(tabulate(rows, headers=['#', 'Instance', 'Container', 'Version', 'Instance Id', 'IP']))
-                choice = click.prompt('\nEnter the number of the instance you want: ', type=int, default=1)
-                target, container_name = choices[choice - 1]
+            rows = []
+            click.secho('\nAvailable exec targets:', fg='green')
+            click.secho('----------------------\n', fg='green')
+            number = 1
+            choices = []
+            for task in running_tasks:
+                for container in task.containers:
+                    rows.append([
+                        number,
+                        click.style(task.ssh_target.tags['Name'], fg='cyan'),
+                        click.style(container.name, fg='yellow'),
+                        click.style(container.version, fg='yellow'),
+                        task.ssh_target.pk,
+                        task.ssh_target.ip_address
+                    ])
+                choices.append((task.ssh_target, container.name))
+                number += 1
+            click.secho(tabulate(rows, headers=['#', 'Instance', 'Container', 'Version', 'Instance Id', 'IP']))
+            choice = click.prompt('\nEnter the number of the container you want: ', type=int, default=1)
+            target, container_name = choices[choice - 1]
         else:
-            target = obj.ssh_target
-            container_name = obj.container_name
+            target = running_tasks[0].ssh_target
+            container_name = running_tasks[0].containers[0].name
         if target is None:
             raise self.RenderException(
-                '{}(pk="{}") has no instances available'.format(self.model.__class__, obj.pk)
+                '{}(pk="{}") has no containers available'.format(self.model.__class__, obj.pk)
             )
         return target, container_name
 

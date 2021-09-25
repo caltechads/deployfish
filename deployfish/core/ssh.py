@@ -253,12 +253,8 @@ class DockerMixin(SSHMixin):
         pass
 
     @property
-    def containers(self):
+    def running_tasks(self):
         raise NotImplementedError
-
-    @property
-    def container_name(self):
-        return self.containers[0].name
 
     def __init__(self, *args, **kwargs):
         self.provider_type = kwargs.pop('provider_type', 'bastion')

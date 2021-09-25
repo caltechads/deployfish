@@ -1612,6 +1612,10 @@ class InvokedTask(DockerMixin, Model):
         return self.cache['task_definition']
 
     @property
+    def containers(self):
+        return self.task_definition.containers
+
+    @property
     def instance(self):
         return self.container_instance.ec2_instance
 
@@ -1950,6 +1954,11 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
 
     @property
     def containers(self):
+        """
+        This returns a list of  ``ContainerDefinition`` objects in the ``TaskDefinition`` for the PRIMARY deployment for
+        the service.  If you want the list of actual running containers for the service, use
+        ``self.running_containers``.
+        """
         return self.task_definition.containers
 
     @property
