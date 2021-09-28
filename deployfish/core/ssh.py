@@ -15,14 +15,14 @@ class AbstractSSHProvider(object):
         assert instance.__class__.__name__ == 'Instance', \
             '{}.instance must be an Instance object'.format(self.__class__.__name__)
         self.instance = instance
-        self.verbose = verbose
-        self.ssh_verbose_flag = '-vv' if self.verbose else ''
+        # If the caller specified --verbose, we send SSH the `-vv` flag.
+        self.ssh_verbose_flag = '-vv' if verbose else ''
 
-    def ssh(self, quiet=False):
+    def ssh(self, command=None):
         raise NotImplementedError
 
     def ssh_command(self, command):
-        return self.ssh(quiet=True, command=command)  # noqa
+        return self.ssh(command)
 
     def docker_exec(self):
         # FIXME: the "head -1" here crudely handles the case where we have multiple instances of the same container
@@ -39,11 +39,9 @@ class AbstractSSHProvider(object):
 
 class SSMSSHProvider(AbstractSSHProvider):
 
-    def ssh(self, quiet=False, command=None):
-        if quiet:
-            flags = "-q"
-        else:
-            flags = self.ssh_verbose_flag
+    def ssh(self, command=None):
+        # If the caller specified --verbose, have SSH print everything. Otherwise, have SSH print nothing.
+        flags = self.ssh_verbose_flag if self.ssh_verbose_flag else '-q'
         if not command:
             command = ''
         return 'ssh -t {} ec2-user@{} {}'.format(flags, self.instance.pk, shellescape.quote(command))
@@ -71,11 +69,9 @@ class BastionSSHProvider(AbstractSSHProvider):
         assert self.instance.bastion is not None, \
             '{}.instance has no bastion host'.format(self.__class__.__name__)
 
-    def ssh(self, quiet=False, command=None):
-        if quiet:
-            flags = "-q"
-        else:
-            flags = self.ssh_verbose_flag
+    def ssh(self, command=None):
+        # If the caller specified --verbose, have SSH print everything. Otherwise, have SSH print nothing.
+        flags = self.ssh_verbose_flag if self.ssh_verbose_flag else '-q'
         if not command:
             command = ''
         hop2 = "ssh {flags} -o StrictHostKeyChecking=no -A -t {instance} {command}".format(
@@ -83,7 +79,7 @@ class BastionSSHProvider(AbstractSSHProvider):
             instance=self.instance.ip_address,
             command=shellescape.quote(command)
         )
-        cmd = "ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{bastion} {hop2}".format(   # noqa:E501
+        cmd = "ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{bastion} {hop2}".format(
             flags=flags,
             hop2=shellescape.quote(hop2),
             bastion=self.instance.bastion.hostname,
@@ -92,7 +88,8 @@ class BastionSSHProvider(AbstractSSHProvider):
 
     def tunnel(self, local_port, target_host, host_port):
         interim_port = random.randrange(10000, 64000, 1)
-        cmd = 'ssh {flags} -L {local_port}:localhost:{interim_port} ec2-user@{bastion} ssh -L {interim_port}:{target_host}:{host_port} {instance}'.format(  # noqa:E501
+        cmd = ('ssh {flags} -L {local_port}:localhost:{interim_port} ec2-user@{bastion}'
+               ' ssh -L {interim_port}:{target_host}:{host_port} {instance}').format(
             flags=self.ssh_verbose_flag,
             local_port=local_port,
             interim_port=interim_port,
@@ -264,6 +261,8 @@ class DockerMixin(SSHMixin):
         if ssh_target is None:
             ssh_target = self.ssh_target
         if not container_name:
+            # FIXME: self.container_name doesn't exist. But refactoring this method to remove this code block also broke
+            #  stuff, somehow. So I'm leaving it alone. -- rrollins 2021-09028
             container_name = self.container_name
         provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
         cmd = provider.docker_exec().format(self.task_definition.data['family'], container_name)  # noqa

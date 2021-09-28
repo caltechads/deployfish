@@ -35,5 +35,4 @@ nose==1.3.7                                   # https://github.com/nose-devs/nos
 
 # Other utils
 # ------------------------------------------------------------------------------
-colorama==0.3.7                               # https://github.com/tartley/colorama
 ipython==7.1.0                                # https://github.com/ipython/ipython
