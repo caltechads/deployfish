@@ -95,28 +95,57 @@ class Model(LazyAttributeMixin):
     config_section = None
 
     class DoesNotExist(ObjectDoesNotExist):
+        """
+        We tried to get a single object but it does not exist in AWS.
+        """
         pass
 
     class MultipleObjectsReturned(MultipleObjectsReturned):
+        """
+        We expected to retrieve only one object but got multiple objects.
+        """
         pass
 
     class ImproperlyConfigured(ObjectImproperlyConfigured):
+        """
+        Deployfish, our Manager or the model itself is not properly configured.
+        """
         pass
 
     class ReadOnly(ObjectReadOnly):
+        """
+        This is a read only model; no writes to AWS permitted.
+        """
         pass
 
     class OperationFailed(OperationFailed):
+        """
+        We did a call to AWS we expected to succeed, but it failed.
+        """
         pass
 
     @classmethod
     def adapt(cls, obj, source, **kwargs):
+        """
+        Given an appropriate bit of data `obj` from a data source `source`, return the appropriate args and kwargs to to
+        the Model.new factory method so it can use them to construct the model instance.  This means:  take the
+        data in `obj` and convert it to look like the dict returned by AWS when we use boto3 to retrieve a single object
+        of this type.
+
+        .. note::
+
+            At this time, the only valid `source` is `deployfish`, and so all `obj` will be bits of parsed
+            deployfish.yml data.
+        """
         adapter = cls.adapters.get(cls.__name__, source)(obj, **kwargs)
         data, data_kwargs = adapter.convert()
         return data, data_kwargs
 
     @classmethod
     def new(cls, obj, source, **kwargs):
+        """
+        This is a factory method.
+        """
         data, kwargs = cls.adapt(obj, source, **kwargs)
         return cls(data, **kwargs)
 

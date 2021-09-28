@@ -251,6 +251,11 @@ class DockerMixin(SSHMixin):
 
     @property
     def running_tasks(self):
+        """
+        This should return a list of InvokedTask objects.
+
+        :rtype: list(InvokedTask)
+        """
         raise NotImplementedError
 
     def __init__(self, *args, **kwargs):
