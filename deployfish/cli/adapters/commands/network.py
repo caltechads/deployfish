@@ -51,8 +51,8 @@ class GetExecTargetMixin(object):
         """
         target = None
         container_name = None
-        running_tasks = sorted(obj.running_tasks, key=lambda x: x.ssh_target.tags['Name'])
         if choose:
+            running_tasks = sorted(obj.running_tasks, key=lambda x: x.ssh_target.tags['Name'])
             rows = []
             click.secho('\nAvailable exec targets:', fg='green')
             click.secho('----------------------\n', fg='green')
@@ -73,13 +73,6 @@ class GetExecTargetMixin(object):
             click.secho(tabulate(rows, headers=['#', 'Instance', 'Container', 'Version', 'Instance Id', 'IP']))
             choice = click.prompt('\nEnter the number of the container you want: ', type=int, default=1)
             target, container_name = choices[choice - 1]
-        else:
-            target = running_tasks[0].ssh_target
-            container_name = running_tasks[0].containers[0].name
-        if target is None:
-            raise self.RenderException(
-                '{}(pk="{}") has no containers available'.format(self.model.__class__, obj.pk)
-            )
         return target, container_name
 
 

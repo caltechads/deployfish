@@ -263,13 +263,15 @@ class DockerMixin(SSHMixin):
         super(DockerMixin, self).__init__(*args, **kwargs)
 
     def docker_exec(self, ssh_target=None, container_name=None, verbose=False):
+        if self.running_tasks:
+            if ssh_target is None:
+                ssh_target = self.running_tasks[0].ssh_target
+            if not container_name:
+                # Arbitrarily exec into the first container in our object
+                container_name = self.running_tasks[0].containers[0].name
         if ssh_target is None:
-            ssh_target = self.ssh_target
-        if not container_name:
-            # FIXME: self.container_name doesn't exist. But refactoring this method to remove this code block also broke
-            #  stuff, somehow. So I'm leaving it alone. -- rrollins 2021-09028
-            container_name = self.container_name
+            raise self.OperationFailed(f'{self.__class__.__name__}(pk={self.pk}) has no containers available.')
         provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
-        cmd = provider.docker_exec().format(self.task_definition.data['family'], container_name)  # noqa
+        cmd = provider.docker_exec().format(self.task_definition.data['family'], container_name)
         cmd = provider.ssh_command(cmd)
         subprocess.call(cmd, shell=True)
