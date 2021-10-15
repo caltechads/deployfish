@@ -272,6 +272,9 @@ class DockerMixin(SSHMixin):
         if ssh_target is None:
             raise self.OperationFailed(f'{self.__class__.__name__}(pk={self.pk}) has no containers available.')
         provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
-        cmd = provider.docker_exec().format(self.task_definition.data['family'], container_name)
+        cmd = provider.docker_exec().format(
+            self.task_definition.data['family'],
+            container_name.replace('_', '')
+        )
         cmd = provider.ssh_command(cmd)
         subprocess.call(cmd, shell=True)

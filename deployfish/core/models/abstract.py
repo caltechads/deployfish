@@ -135,7 +135,7 @@ class Model(LazyAttributeMixin):
         .. note::
 
             At this time, the only valid `source` is `deployfish`, and so all `obj` will be bits of parsed
-            deployfish.yml data.
+            deployfish.yml data.  CPM 2021-09-
         """
         adapter = cls.adapters.get(cls.__name__, source)(obj, **kwargs)
         data, data_kwargs = adapter.convert()
