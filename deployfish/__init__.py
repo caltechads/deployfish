@@ -2,7 +2,7 @@ from pathlib import Path
 
 from jinja2 import FileSystemLoader, Environment
 
-__version__ = "1.3.8"
+__version__ = "1.3.9"
 
 TEMPLATE_PATHS = [
     Path(__file__).parent / 'cli' / 'templates'
