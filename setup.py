@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-import os.path
-
 from deployfish import __version__
-from setuptools import setup, find_packages  # @UnresolvedImport
+from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -32,7 +30,8 @@ setup(name="deployfish",
           "inspect2 >= 0.1.2",
           "tabulate >= 0.8.1",
           "shellescape >= 3.8.1",
-          "jinja2 >= 2.11"
+          "jinja2 >= 2.11",
+          "tzlocal >= 4.1"
       ],
       entry_points={'console_scripts': [
           'deploy = deployfish.main:main',

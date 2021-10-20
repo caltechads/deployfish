@@ -18,7 +18,7 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
     def __init__(self, obj):
         super(ECSDeploymentStatusWaiterHook, self).__init__(obj)
         self.our_timezone = get_localzone()
-        self.start = self.our_timezone.localize(datetime.now())
+        self.start = datetime.now().replace(tzinfo=self.our_timezone)
         self.timestamp = self.start
 
     def display_deployments(self, deployments):
@@ -68,7 +68,7 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
         click.secho('\n\nService events:', fg='cyan')
         click.secho('---------------\n', fg='cyan')
         self.display_events(service.events)
-        self.timestamp = self.our_timezone.localize(datetime.now())
+        self.timestamp = datetime.now().replace(tzinfo=self.our_timezone)
         click.secho('\n')
         self.mark(status, response, num_attempts, **kwargs)
 
@@ -94,7 +94,7 @@ class ECSTaskStatusHook(AbstractWaiterHook):
     def __init__(self, obj):
         super(ECSTaskStatusHook, self).__init__(obj)
         self.our_timezone = get_localzone()
-        self.start = self.our_timezone.localize(datetime.now())
+        self.start = datetime.now().replace(tzinfo=self.our_timezone)
         self.timestamp = self.start
 
     def waiting(self, status, response, num_attempts, **kwargs):
@@ -149,7 +149,7 @@ class ECSTaskLogsHook(AbstractWaiterHook):
     def __init__(self, obj):
         super(ECSTaskStatusHook, self).__init__(obj)
         self.our_timezone = get_localzone()
-        self.start = self.our_timezone.localize(datetime.now())
+        self.start = datetime.now().replace(tzinfo=self.our_timezone)
         self.timestamp = self.start
 
     def waiting(self, status, response, num_attempts, **kwargs):
