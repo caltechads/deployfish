@@ -150,9 +150,9 @@ class CloudWatchLogGroupManager(Manager):
         )
         if len(response['logGroups']) > 1:
             raise CloudWatchLogGroup.MultipleObjectsReturned(
-                "Got more than one log group when searching for pk={}".format(
+                "Got more than one log group when searching for logGroupNamePrefix='{}': {}".format(
                     pk,
-                    ", ".join([group for group in response['logGroups']])
+                    ", ".join([group['logGroupName'] for group in response['logGroups']])
                 )
             )
         elif len(response['logGroups']) == 0:
