@@ -148,9 +148,9 @@ class AutoscalingGroup(Model):
             if count < 0:
                 count = 0
             if force:
-                if count < self.min:
+                if count < min_size:
                     min_size = count
-                elif count > self.max:
+                elif count > max_size:
                     max_size = count
             else:
                 if count < min_size:
