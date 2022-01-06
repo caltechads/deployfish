@@ -68,8 +68,8 @@ class GetExecTargetMixin(object):
                         task.ssh_target.pk,
                         task.ssh_target.ip_address
                     ])
-                choices.append((task.ssh_target, container.name))
-                number += 1
+                    choices.append((task.ssh_target, container.name))
+                    number += 1
             click.secho(tabulate(rows, headers=['#', 'Instance', 'Container', 'Version', 'Instance Id', 'IP']))
             choice = click.prompt('\nEnter the number of the container you want: ', type=int, default=1)
             target, container_name = choices[choice - 1]
