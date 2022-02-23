@@ -1254,9 +1254,12 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         if 'volumes' in data:
             for volume in data['volumes']:
                 if 'efsVolumeConfiguration' in volume:
-                    volume['efsVolumeConfiguration']['FileSystem'] = EFSFileSystem.objects.get(
-                        volume['efsVolumeConfiguration']['fileSystemId']
-                    )
+                    try:
+                        volume['efsVolumeConfiguration']['FileSystem'] = EFSFileSystem.objects.get(
+                            volume['efsVolumeConfiguration']['fileSystemId']
+                        )
+                    except EFSFileSystem.DoesNotExist as e:
+                        volume['efsVolumeConfiguration']['FileSystem'] = "DOES NOT EXIST"
         return data
 
     def render_for_diff(self):
