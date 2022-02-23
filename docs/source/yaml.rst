@@ -219,6 +219,15 @@ Example::
 
 See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html)>`_.
 
+enable_exec
+-----------
+
+If "``true``", enable ECS Exec for the tasks on this service.  If ``enable_exec`` is not specified, default to
+""``false``"".
+
+**Important**: In addition to setting this to "``true``", in order for ECS Exec to work, you'll need to configure your cluster,
+task role and the system on which you run deployfish as described here: `Using Amazon ECS Exec for debugging <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html>`_.
+
 vpc_configuration
 -----------------
 

@@ -1469,6 +1469,10 @@ class Task(TagsMixin, Model):
         return self.pk
 
     @property
+    def availability_zone(self):
+        return self.data['availabilityZone']
+
+    @property
     def arn(self):
         return self.task_definition.arn
 
@@ -1996,6 +2000,10 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
         return self.data.get('status', 'UNKNOWN')
 
     @property
+    def exec_enabled(self):
+        return self.data.get('enableExecuteCommand', False)
+
+    @property
     def events(self):
         return self.data.get('events', [])
 
@@ -2035,6 +2043,7 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
                 task.container_instance for task in self.running_tasks
             ]
         return self.cache['container_instances']
+
 
     # Custom actions
 
@@ -2096,6 +2105,7 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
         data = {}
         data['service'] = self.data['serviceName']
         data['cluster'] = self.data['cluster']
+        data['enableExecuteCommand'] = self.data['enableExecuteCommand']
         # Purposely not setting desiredCount here -- we may be scaled up, so we shouldn't be scaling back to whatever
         # deployfish.yml says lest we underprovision the service inadvertently
         data['taskDefinition'] = self.data['taskDefinition']

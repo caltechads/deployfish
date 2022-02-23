@@ -45,7 +45,7 @@ class GetSSHTargetMixin(object):
 
 class GetExecTargetMixin(object):
 
-    def get_exec_target(self, obj, choose=False):
+    def get_ssh_exec_target(self, obj, choose=False):
         """
         This depends on ``obj`` having a method named ``running_tasks``.
         """
@@ -74,6 +74,35 @@ class GetExecTargetMixin(object):
             choice = click.prompt('\nEnter the number of the container you want: ', type=int, default=1)
             target, container_name = choices[choice - 1]
         return target, container_name
+
+    def get_ecs_exec_target(self, obj, choose=False):
+        """
+        This depends on ``obj`` having a method named ``running_tasks``.
+        """
+        task_arn = None
+        container_name = None
+        if choose:
+            running_tasks = sorted(obj.running_tasks, key=lambda x: x.pk)
+            rows = []
+            click.secho('\nAvailable exec targets:', fg='green')
+            click.secho('----------------------\n', fg='green')
+            number = 1
+            choices = []
+            for task in running_tasks:
+                for container in task.containers:
+                    rows.append([
+                        number,
+                        click.style(task.pk.split('/')[-1], fg='cyan'),
+                        click.style(task.availability_zone, fg='white'),
+                        click.style(container.name, fg='yellow'),
+                        click.style(container.version, fg='yellow'),
+                    ])
+                    choices.append((task.arn, container.name))
+                    number += 1
+            click.secho(tabulate(rows, headers=['#', 'Task', 'Container', 'Version']))
+            choice = click.prompt('\nEnter the number of the container you want: ', type=int, default=1)
+            task_arn, container_name = choices[choice - 1]
+        return task_arn, container_name
 
 
 class ClickSSHObjectCommandMixin(object):
@@ -183,8 +212,12 @@ Exec into a container in a {object_name} in AWS.
     @handle_model_exceptions
     def exec(self, identifier, choose, verbose):
         obj = self.get_object_from_aws(identifier)
-        target, container_name = self.get_exec_target(obj, choose=choose)
-        obj.docker_exec(ssh_target=target, container_name=container_name, verbose=verbose)
+        if obj.exec_enabled:
+            task_arn, container_name = self.get_ecs_exec_target(obj, choose=choose)
+            obj.docker_ecs_exec(task_arn=task_arn, container_name=container_name, verbose=verbose)
+        else:
+            target, container_name = self.get_ssh_exec_target(obj, choose=choose)
+            obj.docker_ssh_exec(ssh_target=target, container_name=container_name, verbose=verbose)
 
 
 class ClickTunnelObjectCommandMixin(object):

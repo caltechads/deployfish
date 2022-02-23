@@ -980,6 +980,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
     * Autoscaling Group          [x]
     * Application Autoscaling    [x]
     * Service Discovery          [x]
+    * ECS Exec                   [x]
 
     Helper Tasks
     ------------
@@ -1099,6 +1100,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         else:
             data['desiredCount'] = self.data['count']
         data['clientToken'] = self.get_clientToken()
+        data['enableExecuteCommand'] = self.data.get('enable_exec', False)
 
     def __build_Secrets(self):
         """

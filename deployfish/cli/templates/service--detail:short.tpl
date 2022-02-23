@@ -5,6 +5,7 @@
   status              :     {{ obj.data['status'] }}
   cluster             :     {{ obj.data['cluster'] }}
   launch type         :     {{ obj.data['launchType'] }}
+  ECS Exec enabled    :     {{ obj.exec_enabled }}
 {% if obj.data['launchType'] == 'FARGATE' -%}
   platform version    :     {{ obj.data['platformVersion'] }}
 {% endif -%}

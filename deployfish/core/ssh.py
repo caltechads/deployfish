@@ -1,6 +1,7 @@
 import os
 import random
 import subprocess
+from typing import Optional
 
 import shellescape
 
@@ -262,7 +263,7 @@ class DockerMixin(SSHMixin):
         self.provider_type = kwargs.pop('provider_type', 'bastion')
         super(DockerMixin, self).__init__(*args, **kwargs)
 
-    def docker_exec(self, ssh_target=None, container_name=None, verbose=False):
+    def docker_ssh_exec(self, ssh_target=None, container_name=None, verbose=False):
         if self.running_tasks:
             if ssh_target is None:
                 ssh_target = self.running_tasks[0].ssh_target
@@ -277,4 +278,23 @@ class DockerMixin(SSHMixin):
             container_name.replace('_', '')
         )
         cmd = provider.ssh_command(cmd)
+        subprocess.call(cmd, shell=True)
+
+    def docker_ecs_exec(
+        self,
+        task_arn: Optional[str] = None,
+        container_name: Optional[str] = None,
+        verbose: bool = False
+    ) -> None:
+        if self.running_tasks:
+            if task_arn is None:
+                task_arn = self.running_tasks[0].arn
+            if not container_name:
+                # Arbitrarily exec into the first container in our object
+                container_name = self.running_tasks[0].containers[0].name
+        if task_arn is None:
+            raise self.OperationFailed(f'{self.__class__.__name__}(pk={self.pk}) has no containers available.')
+        cmd = "aws ecs execute-command"
+        cmd += f" --cluster {self.cluster.name} --task={task_arn} --container={container_name}"
+        cmd += " --interactive --command \"/bin/sh\""
         subprocess.call(cmd, shell=True)
