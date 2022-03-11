@@ -1101,6 +1101,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
             data['desiredCount'] = self.data['count']
         data['clientToken'] = self.get_clientToken()
         data['enableExecuteCommand'] = self.data.get('enable_exec', False)
+        data['enableECSManagedTags'] = True
 
     def __build_Secrets(self):
         """

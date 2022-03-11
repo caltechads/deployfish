@@ -1,13 +1,15 @@
 {% from 'macros/service.tpl' import load_balancer %}
+{% from 'macros/task.tpl' import vpc_configuration %}
 {% filter color(fg='green') %}Service: {% endfilter %}{{ obj.name|color(fg='cyan', bold=True) }}
   pk                  :     {{ obj.pk }}
   arn                 :     {{ obj.arn }}
   status              :     {{ obj.data['status'] }}
   cluster             :     {{ obj.data['cluster'] }}
-  launch type         :     {{ obj.data['launchType'] }}
   ECS Exec enabled    :     {{ obj.exec_enabled }}
-{% if obj.data['launchType'] == 'FARGATE' -%}
-  platform version    :     {{ obj.data['platformVersion'] }}
+  launch type         :     {{ obj.data['launchType'] }}
+{% if obj.data['launchType'] == 'FARGATE' %}  platform version    :     {{ obj.data['platformVersion'] }}
+{% endif -%}
+{% if 'networkConfiguration' in obj.data %}{% filter color(fg='cyan') %}  vpc configuration{% endfilter %}{{ vpc_configuration(obj)|indent(width=6)}}
 {% endif -%}
 {%- if obj.data['runningCount'] != 'UNKNOWN' -%}
 {% filter color(fg='cyan') %}  task counts{% endfilter %}

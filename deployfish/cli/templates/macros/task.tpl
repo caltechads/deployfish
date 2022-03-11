@@ -8,13 +8,14 @@ Macros related to rendering Tasks
 {# Render the awsvpcConfiguration a task #}
 {# ------------------------------------- #}
 {% macro vpc_configuration(obj) -%}
-{% if 'subnets' in obj.data['networkConfiguration']['awsvpcConfiguration'] %}
-subnets             :     {{ obj.data['networkConfiguration']['awsvpcConfiguration']['subnets']|join(', ') }}
+{%- if 'subnets' in obj.vpc_configuration %}
+vpc             :     {{ obj.vpc_configuration['vpc'].name}}
+subnets
+{% for subnet in obj.vpc_configuration['subnets'] %}    {{ subnet.name|color(fg='green') }} [{{ subnet.pk }}] {{ subnet.cidr_block|color(fg='cyan') }}
+{% endfor -%}
+{% endif -%}{% if 'security_groups' in obj.vpc_configuration %}security_groups
+{% for sg in obj.vpc_configuration['security_groups'] %}    {{sg.name|color(fg='green')}} [{{sg.pk}}]
+{% endfor -%}
 {% endif -%}
-{% if 'securityGroups' in obj.data['networkConfiguration']['awsvpcConfiguration'] -%}
-security groups     :     {{ obj.data['networkConfiguration']['awsvpcConfiguration']['securityGroups']|join(', ') }}
-{% endif -%}
-{% if 'allowPublicIp' in obj.data['networkConfiguration']['awsvpcConfiguration'] -%}
-allow public IP     :     {{ obj.data['networkConfiguration']['awsvpcConfiguration']['allowPublicIp'] }}
-{% endif -%}
+allow public IP  :    {{ obj.vpc_configuration['allow_public_ip'] }}
 {% endmacro -%}

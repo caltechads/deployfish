@@ -12,12 +12,10 @@
   platform version    :     {{ obj.data.get('platformVersion', 'LATEST') }}
 {%- endif %}
   count               :     {{ obj.data.get('count', 1) }}
-{% if 'networkConfiguration' in obj.data and obj.task_definition.data.get('networkMode', 'bridge') == 'awsvpc' -%}
-{{ vpc_configuration(obj)|indent(width=2) -}}
-{% endif -%}
 {%- if obj.schedule %}
   {% filter color(fg='yellow', bold=True) %}schedule{% endfilter %}            :     {{ obj.schedule.data['ScheduleExpression']|color(fg='yellow', bold=True) }}  {% if not obj.schedule.enabled %}{% filter color(fg='red', bold=True)%}[DISABLED]{% endfilter %}{% endif %}
 {%- endif %}
+{% if 'networkConfiguration' in obj.data %}{% filter color(fg='cyan') %}  vpc configuration{% endfilter %}{{ vpc_configuration(obj)|indent(width=4)}}{% endif %}
 
 {% filter section_title(fg='cyan', bold=True) %}Task Definition{% endfilter %}
 {{ task_definition(obj.task_definition)|indent }}

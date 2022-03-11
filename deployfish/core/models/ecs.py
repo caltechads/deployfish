@@ -17,6 +17,30 @@ from .mixins import TaskDefinitionFARGATEMixin, TagsMixin
 from .secrets import SecretsMixin, Secret
 from .appscaling import ScalableTarget
 from .service_discovery import ServiceDiscoveryService
+from .vpc import Subnet, SecurityGroup
+
+
+# ----------------------------------------
+# Mixins
+# ----------------------------------------
+
+class VPCConfigurationMixin:
+
+    @property
+    def vpc_configuration(self):
+        if 'vpc_configuration' not in self.cache:
+            if 'networkConfiguration' in self.data:
+                raw = self.data['networkConfiguration']['awsvpcConfiguration']
+                data = {}
+                data['subnets'] = [Subnet.objects.get(subnet_id) for subnet_id in raw['subnets']]
+                data['security_groups'] = [SecurityGroup.objects.get(sg_id) for sg_id in raw['securityGroups']]
+                data['allow_public_ip'] = raw.get('allowPublicIp', False)
+                data['vpc'] = data['subnets'][0].vpc
+                self.cache['vpc_configuration'] = data
+            else:
+                self.cache['vpc_configuration'] = None
+        return self.cache['vpc_configuration']
+
 
 # ----------------------------------------
 # Helpers
@@ -1393,7 +1417,7 @@ class ContainerDefinition(SecretsMixin, LazyAttributeMixin):
         return c
 
 
-class Task(TagsMixin, Model):
+class Task(TagsMixin, VPCConfigurationMixin, Model):
     """
     Tasks are TaskDefinitions with additional on how to run them as tasks.  Tasks can also be scheduled using Cloudwatch
     Events Rules.
@@ -1809,7 +1833,7 @@ class Cluster(TagsMixin, SSHMixin, Model):
             )
 
 
-class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
+class Service(TagsMixin, DockerMixin, SecretsMixin, VPCConfigurationMixin, Model):
 
     config_section = 'services'
 
