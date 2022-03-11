@@ -1258,7 +1258,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
                         volume['efsVolumeConfiguration']['FileSystem'] = EFSFileSystem.objects.get(
                             volume['efsVolumeConfiguration']['fileSystemId']
                         )
-                    except EFSFileSystem.DoesNotExist as e:
+                    except EFSFileSystem.DoesNotExist:
                         volume['efsVolumeConfiguration']['FileSystem'] = "DOES NOT EXIST"
         return data
 
@@ -2043,7 +2043,6 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, Model):
                 task.container_instance for task in self.running_tasks
             ]
         return self.cache['container_instances']
-
 
     # Custom actions
 
