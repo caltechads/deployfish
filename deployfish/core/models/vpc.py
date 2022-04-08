@@ -91,6 +91,8 @@ class SubnetManager(Manager):
         except botocore.exceptions.ClientError as e:
             if 'InvalidSubnetId.NotFound' in str(e):
                 raise Subnet.DoesNotExist(str(e))
+        except Exception:
+            raise
         return Subnet(response['Subnets'][0])
 
     def list(self, vpc_id=None):
