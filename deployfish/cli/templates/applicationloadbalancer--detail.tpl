@@ -20,7 +20,7 @@
 
 {{ heading('Listeners') }}
 
-{{ obj.listeners|alb_listener_table }}
+{{ obj.listeners|lb_listener_table }}
 
 {{ heading('Target Groups') }}
 

@@ -9,6 +9,6 @@ Extending deployfish
    devintro
    dev
    ecs
-   alb
+   elbv2
    elb
    secrets

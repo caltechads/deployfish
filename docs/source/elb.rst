@@ -1,11 +1,11 @@
-**************************
-Application Load Balancing
-**************************
+**********************************
+Application/Network Load Balancing
+**********************************
 
-.. autoclass:: deployfish.core.models.ApplicationLoadBalancer
+.. autoclass:: deployfish.core.models.LoadBalancer
    :members:
 
-.. autoclass:: deployfish.core.models.ApplicationLoadBalancerManager
+.. autoclass:: deployfish.core.models.LoadBalancerManager
    :members:
 
 .. autoclass:: deployfish.core.models.LoadBalancerListener

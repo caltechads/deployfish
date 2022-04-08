@@ -281,7 +281,7 @@ class TargetGroupTableRenderer(TableRenderer):
         return "{}:{}".format(obj.data['Protocol'], obj.data['Port'])
 
 
-class ALBListenerTableRenderer(TableRenderer):
+class LBListenerTableRenderer(TableRenderer):
 
     def render_default_action_value(self, obj, key, column):
         actions = []

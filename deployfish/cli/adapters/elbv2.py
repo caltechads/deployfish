@@ -1,17 +1,18 @@
-from deployfish.core.models import ApplicationLoadBalancer, LoadBalancerListener, TargetGroup
+from deployfish.core.models import LoadBalancer, LoadBalancerListener, TargetGroup
 
 from ..renderers import TargetGroupTableRenderer
 
 from .abstract import ClickModelAdapter
 
 
-class ClickApplicationLoadBalancerAdapter(ClickModelAdapter):
+class ClickLoadBalancerAdapter(ClickModelAdapter):
 
-    model = ApplicationLoadBalancer
+    model = LoadBalancer
 
     list_ordering = 'Name'
     list_result_columns = {
         'Name': 'name',
+        'Type': 'lb_type',
         'Scheme': 'scheme',
         'VPC': 'VpcId',
         'Hostname': 'DNSName'

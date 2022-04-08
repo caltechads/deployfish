@@ -9,7 +9,7 @@ Service related macros
 {% from 'macros/classicloadbalancer.tpl' import elb_health_check %}
 
 {% macro load_balancer(lb_data) %}
-{%- if 'targetGroupArn' in lb_data %}{% set lb_type='ALB' %}{% else %}{% set lb_type='Classic (ELB)' %}{% endif %}
+{%- if 'targetGroupArn' in lb_data %}{% set lb_type=lb_data['TargetGroup'].load_balancers[0].lb_type %}{% else %}{% set lb_type='Classic (ELB)' %}{% endif %}
 {{ subobject('Load Balancer', lb_type) }}{% if 'targetGroupArn' in lb_data %}
     load balancer   :     {{ lb_data['TargetGroup'].load_balancers[0].name }}
     hostname        :     {{ lb_data['TargetGroup'].load_balancers[0].hostname }}

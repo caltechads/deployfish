@@ -33,5 +33,11 @@ def target_group_listener_rules(obj):
                     for v in condition['HttpRequestMethod']['Values']:
                         conditions.append('verb:{} -> '.format(v))
     if not conditions:
-        conditions.append('forward:ALB:{} -> CONTAINER:{}'.format(obj.listeners[0].port, obj.port))
+        conditions.append('forward:{}:{}:{} -> CONTAINER:{}:{}'.format(
+            obj.load_balancers[0].lb_type,
+            obj.listeners[0].port,
+            obj.listeners[0].protocol,
+            obj.port,
+            obj.protocol
+        ))
     return '\n'.join(sorted(conditions))

@@ -62,10 +62,12 @@ The *load_balancer* parameter requires the following four parameters if you are 
 *container_port*
     The port on the container to associate with the load balancer. This port must correspond to a container port on container container_name in your service’s task definition
 
-ALB
-^^^
+ALB or NLB
+^^^^^^^^^^
 
-AWS also offers the Application Load Balancer (ALB). If you are using that instead of the ELB, you will still use the *load_balancer* parameter, but it will require *target_group_arn* to be specified, rather than *load_balancer_name*:
+AWS also offers the Application Load Balancers (ALB) and Network Load Balancers. If you are using one of those instead
+of the ELB, you will still use the *load_balancer* parameter, but it will require *target_group_arn* to be specified,
+rather than *load_balancer_name*:
 
 *target_group_arn*
     The full ARN of the target group to use for this service.

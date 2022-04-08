@@ -2,7 +2,7 @@ from datetime import datetime
 
 import click
 
-from .table import ALBListenerTableRenderer, TableRenderer, TargetGroupTableRenderer
+from .table import LBListenerTableRenderer, TableRenderer, TargetGroupTableRenderer
 
 
 def color(value, **kwargs):
@@ -81,7 +81,7 @@ def target_group_table(data):
     """
     columns = {
         'Name': 'name',
-        'ALB Port': 'listener_port',
+        'LB Port': 'listener_port',
         'Rules': 'rules',
         'Target Port': 'container_port',
         'Targets': 'targets'
@@ -90,9 +90,9 @@ def target_group_table(data):
     return renderer.render(data)
 
 
-def alb_listener_table(data):
+def lb_listener_table(data):
     """
-    Render a table for a list of ALB Listeners.
+    Render a table for a list of elbv2 Listeners.
     """
     columns = {
         'Port': 'port',
@@ -101,7 +101,7 @@ def alb_listener_table(data):
         '# Rules': 'rules',
         'Certificates': 'certificates',
     }
-    renderer = ALBListenerTableRenderer(columns)
+    renderer = LBListenerTableRenderer(columns)
     return renderer.render(data)
 
 

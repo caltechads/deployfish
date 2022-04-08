@@ -424,8 +424,8 @@ To specify that the the service is to use an ALB or NLB, you'll need to specify:
 .. note::
 
   If you set ``network_mode`` to ``awsvpc`` or you've set ``launch_type`` to ``FARGATE``, you need to configure your
-  ALB to target IP addresses, not EC2 instances. This is because tasks that use the awsvpc network mode are associated
-  with an elastic network interface, not an Amazon EC2 instance.
+  ALB/NLB target group to target IP addresses, not EC2 instances. This is because tasks that use the awsvpc network mode
+  are associated with an elastic network interface, not an Amazon EC2 instance.
 
   See: `Service Load Balancing <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html>`_
 

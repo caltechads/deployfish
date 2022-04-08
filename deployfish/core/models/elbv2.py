@@ -10,7 +10,7 @@ from .mixins import TagsMixin
 # ----------------------------------------
 
 
-class ApplicationLoadBalancerManager(Manager):
+class LoadBalancerManager(Manager):
 
     service = 'elbv2'
 
@@ -18,7 +18,7 @@ class ApplicationLoadBalancerManager(Manager):
         # hint: (str["{load_balancer_name}", "{load_balancer_arn}"])
         instances = self.get_many([pk])
         if len(instances) > 1:
-            raise ApplicationLoadBalancer.MultipleObjectsReturned(
+            raise LoadBalancer.MultipleObjectsReturned(
                 "Got more than one load balancer when searching for pk={}".format(
                     pk,
                     ", ".join([instance.pk for instance in instances])
@@ -47,17 +47,17 @@ class ApplicationLoadBalancerManager(Manager):
             for response in response_iterator:
                 lbs.extend(response['LoadBalancers'])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise ApplicationLoadBalancer.DoesNotExist(str(e))
-        return [ApplicationLoadBalancer(lb) for lb in lbs if lb['Type'] == 'application']
+            raise LoadBalancer.DoesNotExist(str(e))
+        return [LoadBalancer(lb) for lb in lbs]
 
-    def list(self, vpc_id=None, scheme='any', name=None):
-        # hint: (str["{vpc_id}"], choice[internet-facing|internal|any], str["{load_balancer_name:glob}"])
+    def list(self, vpc_id=None, lb_type='any', scheme='any', name=None):
+        # hint: (str["{vpc_id}"], choice[any|application|network], choice[internet-facing|internal|any], str["{load_balancer_name:glob}"])
         paginator = self.client.get_paginator('describe_load_balancers')
         response_iterator = paginator.paginate()
         lb_data = []
         for response in response_iterator:
             lb_data.extend(response['LoadBalancers'])
-        albs = []
+        lbs = []
         for lb in lb_data:
             if name and not fnmatch.fnmatch(lb['LoadBalancerName'], name):
                 continue
@@ -65,21 +65,23 @@ class ApplicationLoadBalancerManager(Manager):
                 continue
             if scheme != 'any' and lb['Scheme'] != scheme:
                 continue
-            albs.append(ApplicationLoadBalancer(lb))
-        return albs
+            if lb_type != 'any' and lb['Type'] != lb_type:
+                continue
+            lbs.append(LoadBalancer(lb))
+        return lbs
 
     def get_tags(self, arn):
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise ApplicationLoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e))
         return response['TagDescriptions']['Tags']
 
     def save(self, obj):
-        raise ApplicationLoadBalancer.ReadOnly('Cannot modify Application Load Balancers with deployfish')
+        raise LoadBalancer.ReadOnly('Cannot modify  Load Balancers with deployfish')
 
     def delete(self, pk):
-        raise ApplicationLoadBalancer.ReadOnly('Cannot modify Application Load Balancers with deployfish')
+        raise LoadBalancer.ReadOnly('Cannot modify  Load Balancers with deployfish')
 
 
 class LoadBalancerListenerManager(Manager):
@@ -102,7 +104,7 @@ class LoadBalancerListenerManager(Manager):
         kwargs = {}
         if not load_balancer.startswith('arn:'):
             # This is a load balancer name
-            lb = ApplicationLoadBalancer.objects.get(load_balancer)
+            lb = LoadBalancer.objects.get(load_balancer)
             load_balancer = lb.arn
         if load_balancer:
             kwargs['LoadBalancerArn'] = load_balancer
@@ -112,14 +114,14 @@ class LoadBalancerListenerManager(Manager):
             for response in response_iterator:
                 listeners.extend(response['Listeners'])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise ApplicationLoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e))
         return [LoadBalancerListener(listener) for listener in listeners]
 
     def get_tags(self, arn):
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise ApplicationLoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e))
         return response['TagDescriptions']['Tags']
 
     def save(self, obj):
@@ -152,7 +154,7 @@ class LoadBalancerListenerRuleManager(Manager):
 
     def __get_rules_for_load_balancer(self, load_balancer_pk):
         if load_balancer_pk not in self.cache['load_balancers']:
-            lb = ApplicationLoadBalancer.objects.get(load_balancer_pk)
+            lb = LoadBalancer.objects.get(load_balancer_pk)
             listener_arns = [listener.arn for listener in lb.listeners]
             rule_objects = []
             for arn in listener_arns:
@@ -202,7 +204,7 @@ class LoadBalancerListenerRuleManager(Manager):
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise ApplicationLoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e))
         return response['TagDescriptions']['Tags']
 
     def save(self, obj):
@@ -239,7 +241,7 @@ class TargetGroupManager(Manager):
             for response in response_iterator:
                 tgs.extend(response['TargetGroups'])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise ApplicationLoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e))
         except self.client.exceptions.TargetGroupNotFoundException as e:
             raise TargetGroup.DoesNotExist(str(e))
         return [TargetGroup(tg) for tg in tgs]
@@ -249,7 +251,7 @@ class TargetGroupManager(Manager):
         kwargs = {}
         if not load_balancer.startswith('arn:'):
             # This is a load balancer name
-            lb = ApplicationLoadBalancer.objects.get(load_balancer)
+            lb = LoadBalancer.objects.get(load_balancer)
             load_balancer = lb.arn
         if load_balancer:
             kwargs['LoadBalancerArn'] = load_balancer
@@ -260,14 +262,14 @@ class TargetGroupManager(Manager):
             for response in response_iterator:
                 tgs.extend(response['TargetGroups'])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise ApplicationLoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e))
         return [TargetGroup(tg) for tg in tgs]
 
     def get_tags(self, arn):
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise ApplicationLoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e))
         return response['TagDescriptions']['Tags']
 
     def save(self, obj):
@@ -305,9 +307,9 @@ class TargetGroupTargetManager(Manager):
 # Models
 # ----------------------------------------
 
-class ApplicationLoadBalancer(TagsMixin, Model):
+class LoadBalancer(TagsMixin, Model):
 
-    objects = ApplicationLoadBalancerManager()
+    objects = LoadBalancerManager()
 
     @property
     def pk(self):
@@ -316,6 +318,14 @@ class ApplicationLoadBalancer(TagsMixin, Model):
     @property
     def name(self):
         return self.data['LoadBalancerName']
+
+    @property
+    def lb_type(self):
+        if self.data['Type'] == 'application':
+            return "ALB"
+        elif self.data['Type'] == 'network':
+            return "NLB"
+        return "Unknown"
 
     @property
     def arn(self):
@@ -361,7 +371,7 @@ class LoadBalancerListener(Model):
     @property
     def load_balancer(self):
         if 'load_balancer' not in self.cache:
-            self.cache['load_balancer'] = ApplicationLoadBalancer.objects.get(self.data['LoadBalancerArn'])
+            self.cache['load_balancer'] = LoadBalancer.objects.get(self.data['LoadBalancerArn'])
         return self.cache['load_balancer']
 
     @property
@@ -410,7 +420,7 @@ class LoadBalancerListenerRule(Model):
     @property
     def load_balancer(self):
         if 'load_balancer' not in self.cache:
-            self.cache['load_balancer'] = ApplicationLoadBalancer.objects.get(self.data['LoadBalancerArn'])
+            self.cache['load_balancer'] = LoadBalancer.objects.get(self.data['LoadBalancerArn'])
         return self.cache['load_balancer']
 
     @property
@@ -467,7 +477,7 @@ class TargetGroup(Model):
     @property
     def load_balancers(self):
         if 'load_balancers' not in self.cache:
-            self.cache['load_balancers'] = ApplicationLoadBalancer.objects.get_many(self.data['LoadBalancerArns'])
+            self.cache['load_balancers'] = LoadBalancer.objects.get_many(self.data['LoadBalancerArns'])
         return self.cache['load_balancers']
 
     @property

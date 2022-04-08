@@ -57,7 +57,7 @@ class ClassicLoadBalancerManager(Manager):
                 raise ClassicLoadBalancer.DoesNotExist(
                     'No Classic Load Balancer with name "{}" exists in AWS'.format(m.group('lbname'))
                 )
-        albs = []
+        lbs = []
         for lb in lb_data:
             if name and not fnmatch.fnmatch(lb['LoadBalancerName'], name):
                 continue
@@ -65,8 +65,8 @@ class ClassicLoadBalancerManager(Manager):
                 continue
             if scheme != 'any' and lb['Scheme'] != scheme:
                 continue
-            albs.append(ClassicLoadBalancer(lb))
-        return albs
+            lbs.append(ClassicLoadBalancer(lb))
+        return lbs
 
     def get_tags(self, pk):
         response = self.client.describe_tags(LoadBalancerName=pk)
@@ -110,6 +110,8 @@ class ClassicLoadBalancerTargetManager(Manager):
 class ClassicLoadBalancer(TagsMixin, Model):
 
     objects = ClassicLoadBalancerManager()
+
+    lb_type = 'Classic (ELB)'
 
     @property
     def pk(self):

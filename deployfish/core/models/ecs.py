@@ -8,10 +8,10 @@ from deployfish.core.ssh import DockerMixin, SSHMixin
 from deployfish.core.utils import is_fnmatch_filter
 
 from .abstract import Manager, Model, LazyAttributeMixin
-from .alb import TargetGroup
 from .ec2 import Instance, AutoscalingGroup
 from .efs import EFSFileSystem
 from .elb import ClassicLoadBalancer
+from .elbv2 import TargetGroup
 from .events import EventScheduleRule
 from .mixins import TaskDefinitionFARGATEMixin, TagsMixin
 from .secrets import SecretsMixin, Secret

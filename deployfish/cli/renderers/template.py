@@ -6,7 +6,7 @@ from .filters import (
     section_title,
     tabular,
     target_group_table,
-    alb_listener_table,
+    lb_listener_table,
 )
 from .misc import target_group_listener_rules
 
@@ -15,7 +15,7 @@ from .abstract import AbstractRenderer
 jinja_env.filters['color'] = color
 jinja_env.filters['tabular'] = tabular
 jinja_env.filters['target_group_table'] = target_group_table
-jinja_env.filters['alb_listener_table'] = alb_listener_table
+jinja_env.filters['lb_listener_table'] = lb_listener_table
 jinja_env.filters['target_group_listener_rules'] = target_group_listener_rules
 jinja_env.filters['section_title'] = section_title
 jinja_env.filters['fromtimestamp'] = fromtimestamp
