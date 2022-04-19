@@ -31,7 +31,8 @@ setup(name="deployfish",
           "tabulate >= 0.8.1",
           "shellescape >= 3.8.1",
           "jinja2 >= 2.11",
-          "tzlocal >= 4.0.1"
+          "tzlocal >= 4.0.1",
+          "pytz"
       ],
       entry_points={'console_scripts': [
           'deploy = deployfish.main:main',

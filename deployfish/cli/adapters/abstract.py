@@ -1,3 +1,4 @@
+from types import ModuleType
 import click
 
 from deployfish.config import get_config
@@ -121,6 +122,11 @@ class ClickBaseModelAdapter(object):
         else:
             option = "--{}".format(name.replace('_', '-'))
         if arg_type == 'datetime':
+            click_type = click.DateTime()
+        elif isinstance(arg_type, ModuleType) and arg_type.__name__ == 'datetime':
+            # our type definition obtained from deployfish.typing.FunctionTypeCommentParser will end up as
+            # the "datetime" module if we declared the option as being of type "datetime".  In this one case
+            # we want to use the click.DateTime() type instead of doing a cast
             click_type = click.DateTime()
         elif arg_type == 'choice':
             click_type = click.Choice(kwarg['choices'])

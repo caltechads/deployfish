@@ -2,6 +2,7 @@ from copy import deepcopy
 import fnmatch
 import re
 import textwrap
+from tzlocal import get_localzone
 
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.ssh import DockerMixin, SSHMixin
@@ -1010,6 +1011,9 @@ class ServiceManager(Manager):
             )
         if scheduling_strategy == 'any':
             scheduling_strategy = None
+        if updated_since:
+            local_tz = get_localzone()
+            updated_since = updated_since.astimezone(local_tz)
         paginator = self.client.get_paginator('list_clusters')
         response_iterator = paginator.paginate()
         cluster_arns = []
@@ -1034,7 +1038,10 @@ class ServiceManager(Manager):
                 raise Cluster.DoesNotExist('No cluster with name "{}" exists in AWS'.format(cluster))
         if service_name:
             services = [arn for arn in services if fnmatch.fnmatch(arn.rsplit('/')[1], service_name)]
-        return self.get_many(services)
+        services = self.get_many(services)
+        if updated_since:
+            services = [s for s in services if s.last_updated >= updated_since]
+        return services
 
     def save(self, obj):
         # hint: (deployfish.core.models.Service)
@@ -2034,6 +2041,16 @@ class Service(TagsMixin, DockerMixin, SecretsMixin, VPCConfigurationMixin, Model
     @property
     def deployments(self):
         return self.data.get('deployments', [])
+
+    @property
+    def last_updated(self):
+        for d in self.deployments:
+            if d['status'] == 'PRIMARY':
+                # We want createdAt here rather than updatedAt.  updatedAt gets changed whenever we scale the service up
+                # or down, but createdAt gets set only when doing a new deployment
+                return d['createdAt']
+            break
+        return None
 
     @property
     def cluster(self):

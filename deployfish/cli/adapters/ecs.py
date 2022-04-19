@@ -107,7 +107,7 @@ class ClickServiceAdapter(
         'D': 'desiredCount',
         'R': 'runningCount',
         'P': 'pendingCount',
-        'Created': 'createdAt',
+        'Updated': 'last_updated',
     }
     update_template = 'service--detail:short.tpl'
     update_extra_help = """

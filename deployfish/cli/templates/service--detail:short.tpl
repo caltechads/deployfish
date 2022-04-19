@@ -4,7 +4,8 @@
   pk                  :     {{ obj.pk }}
   arn                 :     {{ obj.arn }}
   status              :     {{ obj.data['status'] }}
-  ccluster             :     {{ obj.data['cluster'] }}
+  last updated        :     {{ obj.last_updated }}
+  cluster             :     {{ obj.data['cluster'] }}
   ECS Exec enabled    :     {{ obj.exec_enabled }}
   launch type         :     {{ obj.data['launchType'] }}
 {% if obj.data['launchType'] == 'FARGATE' %}  platform version    :     {{ obj.data['platformVersion'] }}
