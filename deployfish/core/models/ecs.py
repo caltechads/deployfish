@@ -1,5 +1,7 @@
 from copy import deepcopy
+import datetime
 import fnmatch
+import pytz
 import re
 import textwrap
 from tzlocal import get_localzone
@@ -993,8 +995,8 @@ class ServiceManager(Manager):
             return True
         return False
 
-    def list(self, cluster_name=None, service_name=None, launch_type='any', scheduling_strategy='any'):
-        # hint: (str["{cluster_name:glob}"], str["{service_name:glob}"], choice[EC2|FARGATE|any], choice[REPLICA|DAEMON|any])
+    def list(self, cluster_name=None, service_name=None, launch_type='any', scheduling_strategy='any', updated_since=None):
+        # hint: (str["{cluster_name:glob}"], str["{service_name:glob}"], choice[EC2|FARGATE|any], # # choice[REPLICA|DAEMON|any], datetime)
         if launch_type not in ['any', 'EC2', 'FARGATE']:
             raise self.OperationFailed(
                 '{} is not a valid launch_type.  Valid types are: EC2, FARGATE.'.format(launch_type)
@@ -1208,6 +1210,16 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         return self.data.get('revsion', None)
 
     @property
+    def timestamp(self):
+        ts = self.tags.get('Timestamp', None)
+        if ts:
+            ts = datetime.datetime.strptime(ts, '%Y/%m/%dT%H:%M:%SZ')
+            ts = pytz.utc.localize(ts)
+            local_tz = get_localzone()
+            ts = ts.astimezone(local_tz)
+        return ts
+
+    @property
     def version(self):
         """
         Return the version for the task definition.  We're cheating here by just returning the version of the first
@@ -1279,6 +1291,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         else:
             data['family_revision'] = "{}:{}".format(data['family'], data['revision'])
         data['version'] = self.version
+        data['timestamp'] = self.timestamp
         if 'compatibilities' in data:
             data['requiresCompatibilities'] = data['compatibilities']
             del data['compatibilities']
@@ -1325,6 +1338,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             for d in data['containerDefinitions']:
                 if 'secrets' in d:
                     del d['secrets']
+        self._tags['Timestamp'] = datetime.datetime.utcnow().strftime('%Y/%m/%dT%H:%M:%SZ')
         data['tags'] = self.render_tags()
         if not data['tags']:
             del data['tags']

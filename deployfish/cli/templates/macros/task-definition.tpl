@@ -177,6 +177,9 @@ command            :     {{ obj.data['command']|join('  ') }}
 arn                 :     {{ obj.arn }}
 family              :     {{ obj.family }}
 revision            :     {{ obj.data['revision'] }}
+{%- if obj.timestamp %}
+created             :     {{ obj.timestamp }}
+{%- endif %}
 {%- if 'taskRoleArn' in obj.data %}
 task role           :     {{ obj.data['taskRoleArn'] }}
 {%- endif %}
