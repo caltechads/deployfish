@@ -31,7 +31,7 @@ from .commands import (
 # Adapters
 # ====================
 
-class ClickBaseModelAdapter(object):
+class ClickBaseModelAdapter:
 
     class DeployfishSectionDoesNotExist(ObjectDoesNotExist):
 
@@ -156,7 +156,7 @@ class ClickBaseModelAdapter(object):
 
     @classmethod
     def get_required_args(cls, args):
-        required_args = " ".join([arg.upper() for arg in args.keys()])
+        required_args = " ".join([arg.upper() for arg in list(args.keys())])
         if required_args:
             required_args += " "
         return required_args

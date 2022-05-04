@@ -30,7 +30,7 @@ from deployfish.core.models import Service, Cluster, StandaloneTask, InvokedTask
 from deployfish.core.waiters.hooks import ECSDeploymentStatusWaiterHook
 
 
-class ServiceDereferenceMixin(object):
+class ServiceDereferenceMixin:
 
     def dereference_identifier(self, identifier):
         """
@@ -244,7 +244,7 @@ class ClickClusterAdapter(
 
     list_result_columns = {
         'Name': 'clusterName',
-        'Status': 'status',
+        'Type': 'cluster_type',
         'Instances': 'registeredContainerInstancesCount',
         'Services': 'activeServicesCount',
         'Running Tasks': 'runningTasksCount',

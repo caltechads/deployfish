@@ -65,7 +65,7 @@ def create_hooked_waiter_with_client(waiter_name, waiter_model, client):
     )
 
 
-class HookedWaiter(object):
+class HookedWaiter:
     """
 
     A HookedWaiter is almost exactly like a standard boto3 Waiter with one difference:

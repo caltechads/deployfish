@@ -9,7 +9,7 @@ from deployfish.exceptions import ConfigProcessingFailed
 from deployfish.config import get_config
 
 
-class AbstractSSHProvider(object):
+class AbstractSSHProvider:
 
     def __init__(self, instance, verbose=False):
         assert instance is not None, '{}.instance must not be None'.format(self.__class__.__name__)
@@ -113,7 +113,7 @@ class BastionSSHProvider(AbstractSSHProvider):
         return 'cat > {}'.format(filename)
 
 
-class SSHMixin(object):
+class SSHMixin:
 
     providers = {
         'ssm': SSMSSHProvider,

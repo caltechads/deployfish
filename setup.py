@@ -15,7 +15,6 @@ setup(name="deployfish",
       long_description_content_type="text/markdown",
       keywords=['aws', 'ecs', 'docker', 'devops'],
       classifiers=[
-          "Programming Language :: Python :: 2.7",
           "Programming Language :: Python :: 3"
       ],
       packages=find_packages(),

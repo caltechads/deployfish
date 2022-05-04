@@ -68,7 +68,7 @@ SERVICE_YML = {
 }
 
 
-class BaseTestServiceHelperTaskAdapter_basic(object):
+class BaseTestServiceHelperTaskAdapter_basic:
 
     TASKS = {
         'tasks': [

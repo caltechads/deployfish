@@ -123,7 +123,7 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
                 if 'service' in data:
                     log_group = '/{}/{}'.format(*data['service'].split(':'))
                 else:
-                    log_group = '/{}/standalone-tasks'.format(data['cluster'])
+                    log_group = f"/{data['cluster']}/standalone-tasks"
                 lc = {
                     'logDriver': 'awslogs',
                     'options': {
@@ -445,7 +445,7 @@ class ContainerDefinitionAdapter(Adapter):
             else:
                 source_environment = self.data['environment']
             source_environment.update(self.extra_environment)
-            return [{'name': k, 'value': v} for k, v in source_environment.items()]
+            return [{'name': k, 'value': v} for k, v in list(source_environment.items())]
 
     def get_dockerLabels(self):
         """
@@ -482,7 +482,7 @@ class ContainerDefinitionAdapter(Adapter):
 
     def get_ulimits(self):
         ulimits = []
-        for key, value in self.data['ulimits'].items():
+        for key, value in list(self.data['ulimits'].items()):
             # FIXME: should validate key here maybe
             if type(value) != dict:
                 soft = value
@@ -613,7 +613,7 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
                     service_data = config.get_section_item('services', data['service'])
                 except KeyError:
                     raise self.SchemaException('No service named "{}" exists in deployfish.yml'.format(data['service']))
-                data['service'] = '{}:{}'.format(service_data['cluster'], service_data['name'])
+                data['service'] = f"{service_data['cluster']}:{service_data['name']}"
         data['cluster'] = self.data.get('cluster', 'default')
         vpc_configuration = self.get_vpc_configuration()
         if vpc_configuration:
@@ -636,7 +636,7 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
         kwargs = {}
         secrets = []
         if 'config' in self.data:
-            secrets = self.get_secrets(data['cluster'], 'task-{}'.format(data['name']))
+            secrets = self.get_secrets(data['cluster'], f"task-{data['name']}")
         kwargs['task_definition'] = self.get_task_definition(secrets=secrets)
         self.update_container_logging(data, kwargs['task_definition'])
         if 'networkConfiguration' in data and kwargs['task_definition'].data['networkMode'] != 'awsvpc':
@@ -831,7 +831,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         data_base['service'] = self.service.pk
         base_td_overlay = TaskDefinition.new(task_data, 'deployfish', partial=True)
         base_td = service_td + base_td_overlay
-        base_td.data['family'] = task_data.get('family', "{}-tasks".format(service_td.data['family']))
+        base_td.data['family'] = task_data.get('family', f"{service_td.data['family']}-tasks")
         # Remove any portMappings fro our task definition -- we don't need them for ephemeral tasks
         for container in base_td.containers:
             if 'portMappings' in container.data:
@@ -890,7 +890,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
                 if 'commands' in container_data:
                     if 'commands' not in task_data:
                         task_data['commands'] = []
-                    for command_name, command in container_data['commands'].items():
+                    for command_name, command in list(container_data['commands'].items()):
                         task_data['commands'].append({
                             'name': command_name,
                             'containers': [{
@@ -930,7 +930,8 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
             )
         if 'family' not in command:
             # Make the task definition family be named after our command
-            command['family'] = "{}-{}".format(base_td.data['family'], command['name'].replace('_', '-'))
+            command_name = command['name'].replace('_', '-')
+            command['family'] = f"{base_td['family']}-{command_name}"
         # Generate our overlay task definition
         command_td_overlay = TaskDefinition.new(command, 'deployfish', partial=True)
         # Use that to make our actual task definition
@@ -1007,7 +1008,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         super(ServiceAdapter, self).__init__(data, **kwargs)
 
     def get_clientToken(self):
-        return 'token-{}-{}'.format(self.data['name'], self.data['cluster'])[:35]
+        return f"token-{self.data['name']}-{self.data['cluster']}"[:35]
 
     def get_task_definition(self):
         secrets = self.__build_Secrets()

@@ -1,3 +1,5 @@
+from typing import Dict, List, Any
+
 from .abstract import Manager, Model
 from .cloudwatch import CloudwatchAlarm
 
@@ -10,7 +12,7 @@ class ScalingPolicyManager(Manager):
 
     service = 'application-autoscaling'
 
-    def get(self, pk, **kwargs):
+    def get(self, pk: str, **kwargs: Dict[str, Any]) -> "ScalingPolicy":
         response = self.client.describe_scaling_policies(PolicyNames=[pk], ServiceNamespace='ecs')
         if 'ScalingPolicies' in response and response['ScalingPolicies']:
             data = response['ScalingPolicies'][0]
@@ -25,7 +27,7 @@ class ScalingPolicyManager(Manager):
     def list(self, cluster, service):
         response = self.client.describe_scaling_policies(
             ServiceNamespace='ecs',
-            ResourceId='service/{}/{}'.format(cluster, service)
+            ResourceId=f'service/{cluster}/{service}'
         )
         policies = []
         for data in response['ScalingPolicies']:
@@ -36,7 +38,7 @@ class ScalingPolicyManager(Manager):
             policies.append(ScalingPolicy(data, alarm=alarm))
         return policies
 
-    def save(self, obj):
+    def save(self, obj: "ScalingPolicy") -> str:
         # NOTE: even though the operation is called put_scaling_policy, it can be used for both create
         # and update.  Thus we don't need to remove the existing ScalableTarget if we want to update it
         # See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/application-autoscaling.html#ApplicationAutoScaling.Client.put_scaling_policy
@@ -64,7 +66,12 @@ class ScalableTargetManager(Manager):
 
     service = 'application-autoscaling'
 
-    def get(self, pk, **kwargs):
+    def get(self, pk: str, **kwargs: Dict[str, Any]) -> "ScalableTarget":
+        """
+        Get a single ScalableTarget.
+
+        :param
+        """
         response = self.client.describe_scalable_targets(
             ResourceIds=[pk],
             ServiceNamespace='ecs'
@@ -119,7 +126,7 @@ class ScalingPolicy(Model):
     objects = ScalingPolicyManager()
 
     def __init__(self, data, alarm=None):
-        super(ScalingPolicy, self).__init__(data)
+        super().__init__(data)
         self.alarm = alarm
 
     @property
@@ -150,7 +157,7 @@ class ScalableTarget(Model):
     objects = ScalableTargetManager()
 
     def __init__(self, data, policies=None):
-        super(ScalableTarget, self).__init__(data)
+        super().__init__(data)
         if not policies:
             policies = []
         self.policies = policies

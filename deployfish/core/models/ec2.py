@@ -22,7 +22,12 @@ class AutoscalingGroupManager(Manager):
             raise AutoscalingGroup.DoesNotExist(
                 'No Autoscaling Group named "{}" exists in AWS'.format(pk)
             )
-        return AutoscalingGroup(response['AutoScalingGroups'][0])
+        try:
+            return AutoscalingGroup(response['AutoScalingGroups'][0])
+        except IndexError:
+            raise AutoscalingGroup.DoesNotExist(
+                'No Autoscaling Group named "{}" exists in AWS'.format(pk)
+            )
 
     def list(self):
         response = self.client.describe_auto_scaling_groups()
@@ -95,7 +100,10 @@ class InstanceManager(TagsManagerMixin, Manager):
             if tags is not None:
                 for tag in tags:
                     tag_name, tag_value = tag.split(':')
-                    ec2_kwargs['Filters'].append({'Name': 'tag:{}'.format(tag_name), 'Values': [tag_value]})
+                    ec2_kwargs['Filters'].append({
+                        'Name': f'tag:{tag_name}',
+                        'Values': [tag_value]
+                    })
         paginator = self.client.get_paginator('describe_instances')
         response_iterator = paginator.paginate()
         instances = []

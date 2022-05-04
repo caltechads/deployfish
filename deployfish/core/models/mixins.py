@@ -1,7 +1,7 @@
 from deployfish.exceptions import SchemaException
 
 
-class TagsManagerMixin(object):
+class TagsManagerMixin:
 
     def get_tags(self, obj):
         raise NotImplementedError
@@ -10,7 +10,7 @@ class TagsManagerMixin(object):
         raise NotImplementedError
 
 
-class TagsMixin(object):
+class TagsMixin:
 
     def __init__(self, data, **kwargs):
         super(TagsMixin, self).__init__(data, **kwargs)
@@ -48,12 +48,12 @@ class TagsMixin(object):
 
     def render_tags(self):
         data = []
-        for key, value in self.tags.items():
+        for key, value in list(self.tags.items()):
             data.append({'key': key, 'value': value})
         return data
 
 
-class TaskDefinitionFARGATEMixin(object):
+class TaskDefinitionFARGATEMixin:
 
     class SchemaException(SchemaException):
         pass

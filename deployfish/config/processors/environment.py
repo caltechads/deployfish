@@ -69,7 +69,7 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
         m = self.ENVIRONMENT_RE.search(value)
         if m:
             envkey = m.group('key')
-            for replace_str, replace_value in replacers.items():
+            for replace_str, replace_value in list(replacers.items()):
                 envkey = envkey.replace(replace_str, replace_value)
             envkey = envkey.upper().replace('-', '_')
             try:

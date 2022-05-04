@@ -101,7 +101,7 @@ FARGATE_TASK_YML = {
 }
 
 
-class BaseTestStandaloneTaskAdapter_basic(object):
+class BaseTestStandaloneTaskAdapter_basic:
 
     CONFIG = None
 

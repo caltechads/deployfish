@@ -18,7 +18,9 @@ class CloudwatchAlarmManager(Manager):
             raise CloudwatchAlarm.DoesNotExist('No Cloudwatch Alarm with name "{}" exists in AWS'.format(pk))
 
     def list(self, cluster, service):
-        response = self.client.describe_alarms(AlarmNamePrefix=['{}-{}'.format(cluster, service)])
+        response = self.client.describe_alarms(
+            AlarmNamePrefix=[f'{cluster}-{service}']
+        )
         if 'MetricAlarms' in response:
             return [CloudwatchAlarm(d) for d in response['MetricAlarms']]
         return []

@@ -328,7 +328,7 @@ class CloudWatchLogStream(Model):
 
     @property
     def pk(self):
-        return "{}:{}".format(self.data['logGroupName'], self.data['logStreamName'])
+        return f"{self.data['logGroupName']}:{self.data['logStreamName']}"
 
     @property
     def name(self):

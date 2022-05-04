@@ -9,7 +9,7 @@ from deployfish.exceptions import ConfigProcessingFailed
 boto3_session = None
 
 
-class AWSSessionBuilder(object):
+class AWSSessionBuilder:
 
     class NoSuchAWSProfile(Exception):
         pass

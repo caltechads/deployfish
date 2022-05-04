@@ -16,7 +16,7 @@ from deployfish.cli.renderers import (
 from .crud import ClickUpdateObjectCommandMixin
 
 
-class HelperTaskCommandMixin(object):
+class HelperTaskCommandMixin:
 
     def get_task(self, service_pk, task_name):
         obj = self.get_object_from_aws(service_pk)
@@ -55,7 +55,7 @@ class HelperTaskCommandMixin(object):
 # Cluster/Service
 # ---------------
 
-class ClickListRunningTasksCommandMixin(object):
+class ClickListRunningTasksCommandMixin:
 
     list_running_tasks_ordering = None
     list_running_tasks_result_columns = {}
@@ -152,7 +152,7 @@ List the running tasks associated with a {object_name} in AWS.
 # Service
 # ---------
 
-class ClickScaleInstancesCommandMixin(object):
+class ClickScaleInstancesCommandMixin:
 
     @classmethod
     def add_scale_instances_click_command(cls, command_group):
@@ -214,7 +214,7 @@ COUNT is an integer.
     def _scale_instances(self, obj, count, force):
         try:
             obj.scale(count, force=force)
-        except Cluster.ImproperlyConfigured as e:
+        except Cluster.OperationFailed as e:
             # We don't have an autoscaling group
             raise RenderException(str(e))
         except AutoscalingGroup.OperationFailed as e:
@@ -533,7 +533,7 @@ IDENTIFIER is a string that looks like one of:
 # ServiceHelperTasks
 # ------------------
 
-class ClickListHelperTasksCommandMixin(object):
+class ClickListHelperTasksCommandMixin:
 
     list_helper_tasks_ordering = None
     list_helper_tasks_result_columns = {}
@@ -846,10 +846,10 @@ If a ServiceHelperTask uses "awslogs" as its logDriver, tail the logs for that S
             default=False,
             help="Print out a line every --sleep seconds.  Use this to know that the log tailer isn't stuck.",
         )(function)
-        for key, kwarg in kwargs.items():
+        for key, kwarg in list(kwargs.items()):
             if key != 'stream_prefix':
                 function = cls.add_option(key, kwarg, function)
-        for key, arg in args.items():
+        for key, arg in list(args.items()):
             function = cls.add_argument(key, arg, function)
         function = click.argument('helper_task_name')(function)
         function = click.argument('service_identifier')(function)
@@ -950,7 +950,7 @@ If a ServiceHelperTask uses "awslogs" as its logDriver, list the available log s
         return '\n' + TableRenderer(columns, ordering='-Created').render(streams) + '\n'
 
 
-class ClickUpdateHelperTasksCommandMixin(object):
+class ClickUpdateHelperTasksCommandMixin:
 
     update_template = None
 
@@ -1014,7 +1014,7 @@ SERVICE_IDENTIFIER is a string that looks like one of:
         return click.style('\nDone.', fg='yellow')
 
 
-class ClickDisableHelperTaskMixin(object):
+class ClickDisableHelperTaskMixin:
 
     @classmethod
     def add_disable_task_schedule_click_command(cls, command_group):
@@ -1072,7 +1072,7 @@ If a ServiceHelperTask in AWS has a schedule rule and that rule is currently ena
             return click.style(f'ServiceHelperTask("{command_name}") state is now DISABLED.', fg='green')
 
 
-class ClickEnableHelperTaskMixin(object):
+class ClickEnableHelperTaskMixin:
 
     @classmethod
     def add_enable_task_schedule_click_command(cls, command_group):
@@ -1132,7 +1132,7 @@ If a ServiceHelperTask in AWS has a schedule rule and that rule is currently dis
 # StandaloneTasks
 # ---------------
 
-class ClickRunStandaloneTaskCommandMixin(object):
+class ClickRunStandaloneTaskCommandMixin:
 
     def run_task_waiter(self, tasks, **kwargs):
         kwargs['WaiterHooks'] = [ECSTaskStatusHook(tasks)]
@@ -1195,7 +1195,7 @@ Run a StandaloneTask that exists in AWS.
             self.run_task_waiter(tasks)
 
 
-class ClickTailStandaloneTaskLogsMixin(object):
+class ClickTailStandaloneTaskLogsMixin:
 
     @classmethod
     def add_tail_logs_click_command(cls, command_group):
@@ -1237,10 +1237,10 @@ If a StandaloneTask uses "awslogs" as its logDriver, tail the logs for that Stan
             default=False,
             help="Print out a line every --sleep seconds.  Use this to know that the log tailer isn't stuck.",
         )(function)
-        for key, kwarg in kwargs.items():
+        for key, kwarg in list(kwargs.items()):
             if key != 'stream_prefix':
                 function = cls.add_option(key, kwarg, function)
-        for key, arg in args.items():
+        for key, arg in list(args.items()):
             function = cls.add_argument(key, arg, function)
         function = click.argument('identifier')(function)
         function = command_group.command(
@@ -1268,7 +1268,7 @@ If a StandaloneTask uses "awslogs" as its logDriver, tail the logs for that Stan
                 click.secho("==============================  mark  ===================================", fg="yellow")
 
 
-class ClickListStandaloneTaskLogsMixin(object):
+class ClickListStandaloneTaskLogsMixin:
 
     @classmethod
     def add_list_logs_click_command(cls, command_group):
@@ -1338,7 +1338,7 @@ If a StandaloneTask uses "awslogs" as its logDriver, list the available log stre
         return '\n' + TableRenderer(columns, ordering='-Created').render(streams) + '\n'
 
 
-class ClickDisableStandaloneTaskMixin(object):
+class ClickDisableStandaloneTaskMixin:
 
     @classmethod
     def add_disable_schedule_click_command(cls, command_group):
@@ -1391,7 +1391,7 @@ If a StandaloneTask in AWS has a schedule rule and that rule is currently enable
             return click.style(f'StandaloneTask("{pk}") state is now DISABLED.', fg='green')
 
 
-class ClickEnableStandaloneTaskMixin(object):
+class ClickEnableStandaloneTaskMixin:
 
     @classmethod
     def add_enable_schedule_click_command(cls, command_group):

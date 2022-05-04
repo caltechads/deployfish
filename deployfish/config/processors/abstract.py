@@ -1,7 +1,7 @@
 from deployfish.exceptions import ConfigProcessingFailed, SkipConfigProcessing
 
 
-class AbstractConfigProcessor(object):
+class AbstractConfigProcessor:
 
     class SkipConfigProcessing(SkipConfigProcessing):
         pass
@@ -50,7 +50,7 @@ class AbstractConfigProcessor(object):
             self.__process(obj, i, value, section_name, item_name)
 
     def __process_dict(self, obj, section_name, item_name):
-        for key, value in obj.items():
+        for key, value in list(obj.items()):
             self.__process(obj, key, value, section_name, item_name)
 
     def process(self):

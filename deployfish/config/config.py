@@ -9,7 +9,7 @@ from deployfish.exceptions import ConfigProcessingFailed
 from .processors import ConfigProcessor
 
 
-class Config(object):
+class Config:
 
     """
     This class reads our ``deployfish.yml`` file and handles the allowed

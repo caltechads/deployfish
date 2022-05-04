@@ -38,7 +38,7 @@ class SecretsTableRenderer(TableRenderer):
 # Command mixins
 # ====================
 
-class SecretsExportMixin(object):
+class SecretsExportMixin:
 
     CONFIG_EXPORT_SECTIONS = {
         'Service': 'services',
@@ -69,7 +69,7 @@ class SecretsExportMixin(object):
         return '\n'.join(lines)
 
 
-class ClickObjectSecretsShowCommandMixin(object):
+class ClickObjectSecretsShowCommandMixin:
 
     show_secrets_ordering = 'Name'
     show_secrets_columns = {
@@ -160,15 +160,15 @@ Show the live values of the AWS SSM Parameter Store secrets associated with a {o
             results = self.show_secrets_renderer_classes[display](
                 self.show_secrets_columns,
                 ordering=self.show_secrets_ordering
-            ).render(obj.secrets.values())
+            ).render(list(obj.secrets.values()))
         elif display == 'template':
             results = self.show_secrets_renderer_classes[display]().render(obj.secrets, template='secrets--detail.tpl')
         else:
-            results = self.show_secrets_renderer_classes[display]().render([s.data for s in obj.secrets.values()])
+            results = self.show_secrets_renderer_classes[display]().render([s.data for s in list(obj.secrets.values())])
         return '\n' + results + '\n'
 
 
-class ClickObjectSecretsWriteCommandMixin(object):
+class ClickObjectSecretsWriteCommandMixin:
 
     @classmethod
     def add_write_secrets_command(cls, command_group):
@@ -248,7 +248,7 @@ Write the AWS SSM Parameter Store secrets associated with a {object_name} to AWS
         return TemplateRenderer().render(obj.secrets, template='secrets--detail.tpl')
 
 
-class ClickObjectSecretsDiffCommandMixin(object):
+class ClickObjectSecretsDiffCommandMixin:
 
     @classmethod
     def add_diff_secrets_command(cls, command_group):
@@ -306,7 +306,7 @@ Diff the AWS SSM Parameter Store secrets against their counterparts in deployfis
             return TemplateRenderer().render(changes, template='secrets--diff.tpl')
 
 
-class ClickObjectSecretsExportCommandMixin(object):
+class ClickObjectSecretsExportCommandMixin:
 
     @classmethod
     def add_export_secrets_command(cls, command_group):
@@ -359,7 +359,7 @@ values defined as ${{env.VAR}} interpolations, as these are what should go in yo
         return self.export_environment_secrets(config, obj)
 
 
-class ClickSyncSecretsCommandMixin(object):
+class ClickSyncSecretsCommandMixin:
 
     @classmethod
     def add_sync_secrets_command(cls, command_group):
@@ -429,7 +429,7 @@ existing "env_file:".
         """
         services = {item['name']: item['env_file'] for item in config.services if 'env_file' in item}
         tasks = {item['name']: item['env_file'] for item in config.tasks if 'env_file' in item}
-        for service, env_file in services.items():
+        for service, env_file in list(services.items()):
             self._write_env_file(config, env_file, service, Service)
-        for task, env_file in tasks.items():
+        for task, env_file in list(tasks.items()):
             self._write_env_file(config, env_file, task, StandaloneTask)

@@ -1,7 +1,7 @@
 from deployfish.exceptions import SchemaException
 
 
-class Adapter(object):
+class Adapter:
 
     NONE = 'deployfish:required'
 

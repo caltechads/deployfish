@@ -50,7 +50,7 @@ def tabular(data, **kwargs):
     """
     renderer_kwargs = {}
     columns = {}
-    for k, v in kwargs.items():
+    for k, v in list(kwargs.items()):
         if k in ['ordering', 'date_format', 'datetime_format', 'float_precision', 'tablefmt', 'show_headers']:
             renderer_kwargs[k] = v
         elif k.endswith('_datatype'):

@@ -1,4 +1,4 @@
-class AbstractRenderer(object):
+class AbstractRenderer:
 
     def __init__(self, *args, **kwargs):
         pass

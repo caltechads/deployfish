@@ -13,7 +13,7 @@ from deployfish.core.aws import get_boto3_session
 from .abstract import AbstractConfigProcessor
 
 
-class TerraformStateFactory(object):
+class TerraformStateFactory:
 
     @staticmethod
     def new(terraform_config, context):
@@ -29,7 +29,7 @@ class TerraformStateFactory(object):
             )
 
 
-class AbstractTerraformState(object):
+class AbstractTerraformState:
 
     def __init__(self, terraform_config, context):
         self.context = context
@@ -42,7 +42,7 @@ class AbstractTerraformState(object):
 
     def lookup(self, attr, replacements):
         lookup_key = self.terraform_config['lookups'][attr]
-        for key, value in replacements.items():
+        for key, value in list(replacements.items()):
             lookup_key = lookup_key.replace(key, value)
         return self.terraform_lookups[lookup_key]['value']
 
@@ -74,12 +74,12 @@ class TerraformS3State(AbstractTerraformState):
 
     def _load_pre_version_12(self, tfstate):
         for i in tfstate['modules']:
-            if i['path'] == [u'root']:
-                for key, value in i['outputs'].items():
+            if i['path'] == ['root']:
+                for key, value in list(i['outputs'].items()):
                     self.terraform_lookups[key] = value
 
     def _load_post_version_12(self, tfstate):
-        for key, value in tfstate['outputs'].items():
+        for key, value in list(tfstate['outputs'].items()):
             self.terraform_lookups[key] = value
 
     def load(self, replacements):
@@ -87,7 +87,7 @@ class TerraformS3State(AbstractTerraformState):
             return
         self.replacements = replacements
         statefile_url = self.terraform_config['statefile']
-        for key, value in replacements.items():
+        for key, value in list(replacements.items()):
             statefile_url = statefile_url.replace(key, value)
         if not self.loaded:
             tfstate = self._get_state_file_from_s3(
@@ -142,8 +142,8 @@ class TerraformEnterpriseState(AbstractTerraformState):
             response = requests.get(state_download_url)
             tfstate = json.loads(response.text)
             for i in tfstate['modules']:
-                if i['path'] == [u'root']:
-                    for key, value in i['outputs'].items():
+                if i['path'] == ['root']:
+                    for key, value in list(i['outputs'].items()):
                         self.terraform_lookups[key] = value
             self.loaded = True
 

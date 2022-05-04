@@ -253,9 +253,9 @@ class ServiceDiscoveryService(Model):
         if self.data.get('Id', None):
             return self.data['Id']
         elif self.data.get('NamespaceId', None):
-            return "{}:{}".format(self.data['NamespaceId'], self.name)
+            return f"{self.data['NamespaceId']}:{self.name}"
         elif self.namespace_name:
-            return "{}:{}".format(self.namespace_name, self.name)
+            return f"{self.namespace_name}:{self.name}"
         else:
             return self.name
 

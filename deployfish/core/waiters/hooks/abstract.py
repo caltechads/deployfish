@@ -1,7 +1,7 @@
 import click
 
 
-class AbstractWaiterHook(object):
+class AbstractWaiterHook:
 
     def __init__(self, obj):
         self.obj = obj

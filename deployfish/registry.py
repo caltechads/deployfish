@@ -1,4 +1,4 @@
-class AdapterRegistry(object):
+class AdapterRegistry:
 
     def __init__(self):
         self.adapters = {}

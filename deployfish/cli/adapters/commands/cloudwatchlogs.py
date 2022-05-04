@@ -4,7 +4,7 @@ from deployfish.typing import FunctionTypeCommentParser
 from deployfish.cli.adapters.utils import handle_model_exceptions, print_render_exception
 
 
-class ClickTailLogStreamCommandMixin(object):
+class ClickTailLogStreamCommandMixin:
 
     @classmethod
     def add_tail_stream_click_command(cls, command_group):
@@ -66,7 +66,7 @@ Eternally tail the events in the named log stream.   You'll need to use ^C to st
                 click.secho("==============================  mark  ===================================", fg="yellow")
 
 
-class ClickTailLogGroupCommandMixin(object):
+class ClickTailLogGroupCommandMixin:
 
     @classmethod
     def add_tail_group_click_command(cls, command_group):
@@ -105,9 +105,9 @@ need to use ^C to stop this command.
             default=False,
             help="Print out a line every --sleep seconds.  Use this to know that the log tailer isn't stuck.",
         )(function)
-        for key, kwarg in kwargs.items():
+        for key, kwarg in list(kwargs.items()):
             function = cls.add_option(key, kwarg, function)
-        for key, arg in args.items():
+        for key, arg in list(args.items()):
             function = cls.add_argument(key, arg, function)
         function = click.argument('identifier')(function)
         function = command_group.command(

@@ -362,7 +362,7 @@ class LoadBalancerListener(Model):
 
     @property
     def name(self):
-        return '{} ({})'.format(self.port, self.protocol)
+        return f'{self.port} ({self.protocol})'
 
     @property
     def arn(self):

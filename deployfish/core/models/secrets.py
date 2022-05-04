@@ -9,7 +9,7 @@ from .abstract import Manager, Model
 # Mixinx
 # ----------------------------------------
 
-class SecretsMixin(object):
+class SecretsMixin:
 
     @property
     def secrets_prefix(self):
@@ -25,7 +25,7 @@ class SecretsMixin(object):
 
     def write_secrets(self):
         # Add and update secrets we do need
-        for secret in self.secrets.values():
+        for secret in list(self.secrets.values()):
             try:
                 secret.save()
             except secret.ReadOnly:
@@ -33,7 +33,7 @@ class SecretsMixin(object):
         # now delete any secrets that we no longer need
         if self.secrets:
             aws_pks = Secret.objects.list_names(self.secrets_prefix)
-            our_pks = [s.pk for s in self.secrets.values()]
+            our_pks = [s.pk for s in list(self.secrets.values())]
             for_deletion = list(set(aws_pks) - set(our_pks))
             if for_deletion:
                 Secret.objects.delete_many_by_name(for_deletion)
@@ -52,11 +52,11 @@ class SecretsMixin(object):
         us = {}
         them = {}
         if isinstance(other, dict):
-            other = other.values()
+            other = list(other.values())
         if ignore_external:
             other = [s for s in other if not isinstance(s, ExternalSecret)]
         if self.secrets:
-            our_secrets = sorted(self.secrets.values(), key=lambda x: x.name)
+            our_secrets = sorted(list(self.secrets.values()), key=lambda x: x.name)
             if ignore_external:
                 our_secrets = [s for s in our_secrets if not isinstance(s, ExternalSecret)]
             us = {s.name: s.render_for_diff() for s in our_secrets}
@@ -149,7 +149,7 @@ class SecretManager(Manager):
             for p in params:
                 descriptions[p['Name']] = p
         secrets = []
-        for name, data in descriptions.items():
+        for name, data in list(descriptions.items()):
             if name in values:
                 data['ARN'] = values[name]['ARN']
                 data['Value'] = values[name]['Value']
@@ -244,7 +244,7 @@ class Secret(Model):
 
     @prefix.setter
     def prefix(self, value):
-        self.data['Name'] = '{}.{}'.format(value, self.secret_name)
+        self.data['Name'] = f'{value}.{self.secret_name}'
 
     @property
     def is_secure(self):
@@ -308,9 +308,9 @@ class Secret(Model):
         return obj
 
     def __str__(self):
-        line = '{}={}'.format(self.secret_name, self.value)
+        line = f'{self.secret_name}={self.value}'
         if self.data['Type'] == 'SecureString':
-            line += " [SECURE:{}]".format(self.kms_key_id)
+            line = f"{line} [SECURE:{self.kms_key_id}]"
         return line
 
 

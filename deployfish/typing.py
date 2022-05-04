@@ -2,7 +2,7 @@ import inspect2
 from pydoc import locate
 
 
-class FunctionTypeCommentParser(object):
+class FunctionTypeCommentParser:
 
     class TypeCommentParseError(Exception):
         pass
@@ -110,7 +110,7 @@ class FunctionTypeCommentParser(object):
                 response_kwargs[arg]['default'] = defaults[i]
             else:
                 response_args[arg] = arg_def
-        for k, v in help_strings.items():
+        for k, v in list(help_strings.items()):
             if k in response_kwargs:
                 response_kwargs[k]['help_str'] = v
         return response_args, response_kwargs

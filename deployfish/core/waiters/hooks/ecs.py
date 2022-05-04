@@ -61,7 +61,7 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
     def waiting(self, status, response, num_attempts, **kwargs):
         cluster = kwargs['cluster']
         service = kwargs['services'][0]
-        service = Service.objects.get('{}:{}'.format(cluster, service))
+        service = Service.objects.get(f'{cluster}:{service}')
         click.secho('\n\nDeployment status:', fg='cyan')
         click.secho('------------------\n', fg='cyan')
         self.display_deployments(service.deployments)
@@ -98,7 +98,8 @@ class ECSTaskStatusHook(AbstractWaiterHook):
         self.timestamp = self.start
 
     def waiting(self, status, response, num_attempts, **kwargs):
-        tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+        cluster = kwargs['cluster']
+        tasks = [InvokedTask.objects.get(f'{cluster}:{arn}') for arn in kwargs['tasks']]
         table = []
         print()
         for i, task in enumerate(tasks):
@@ -118,7 +119,8 @@ class ECSTaskStatusHook(AbstractWaiterHook):
         self.mark(status, response, num_attempts, **kwargs)
 
     def success(self, status, response, num_attempts, **kwargs):
-        tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+        cluster = kwargs['cluster']
+        tasks = [InvokedTask.objects.get(f'{cluster}:{arn}') for arn in kwargs['tasks']]
         click.secho('\n\nFinal Task status:', fg='cyan')
         click.secho('-----------------\n', fg='cyan')
         table = []
@@ -153,7 +155,8 @@ class ECSTaskLogsHook(AbstractWaiterHook):
         self.timestamp = self.start
 
     def waiting(self, status, response, num_attempts, **kwargs):
-        tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+        cluster = kwargs['cluster']
+        tasks = [InvokedTask.objects.get(f'{cluster}:{arn}') for arn in kwargs['tasks']]
         click.secho('\n\nTask status:', fg='cyan')
         click.secho('------------\n', fg='cyan')
         table = []
@@ -175,7 +178,8 @@ class ECSTaskLogsHook(AbstractWaiterHook):
         self.mark(status, response, num_attempts, **kwargs)
 
     def success(self, status, response, num_attempts, **kwargs):
-        tasks = [InvokedTask.objects.get('{}:{}'.format(kwargs['cluster'], arn)) for arn in kwargs['tasks']]
+        cluster = kwargs['cluster']
+        tasks = [InvokedTask.objects.get(f'{cluster}:{arn}') for arn in kwargs['tasks']]
         click.secho('\n\nTask status:', fg='cyan')
         click.secho('------------\n', fg='cyan')
         table = []

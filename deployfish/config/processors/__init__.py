@@ -4,7 +4,7 @@ from .environment import EnvironmentConfigProcessor
 from .terraform import TerraformStateConfigProcessor
 
 
-class ConfigProcessor(object):
+class ConfigProcessor:
 
     class ProcessingFailed(ConfigProcessingFailed):
         pass

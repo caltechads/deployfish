@@ -15,7 +15,7 @@ from deployfish.cli.adapters.utils import handle_model_exceptions, print_render_
 # ====================
 
 
-class GetSSHTargetMixin(object):
+class GetSSHTargetMixin:
 
     def get_ssh_target(self, obj, choose=False):
         target = None
@@ -43,7 +43,7 @@ class GetSSHTargetMixin(object):
         return target
 
 
-class GetExecTargetMixin(object):
+class GetExecTargetMixin:
 
     def get_ssh_exec_target(self, obj, choose=False):
         """
@@ -105,7 +105,7 @@ class GetExecTargetMixin(object):
         return task_arn, container_name
 
 
-class ClickSSHObjectCommandMixin(object):
+class ClickSSHObjectCommandMixin:
 
     @classmethod
     def add_ssh_click_command(cls, command_group):
@@ -162,7 +162,7 @@ to the container machine of a FARGATE {object_name}.
         target.ssh_interactive(verbose=verbose)
 
 
-class ClickExecObjectCommandMixin(object):
+class ClickExecObjectCommandMixin:
 
     @classmethod
     def add_exec_click_command(cls, command_group):
@@ -220,7 +220,7 @@ Exec into a container in a {object_name} in AWS.
             obj.docker_ssh_exec(ssh_target=target, container_name=container_name, verbose=verbose)
 
 
-class ClickTunnelObjectCommandMixin(object):
+class ClickTunnelObjectCommandMixin:
 
     @classmethod
     def add_tunnel_click_command(cls, command_group):
@@ -438,7 +438,7 @@ You can do this in two ways:
         target.tunnel(tunnel, verbose=verbose)
 
 
-class ClickRunCommandCommandMixin(object):
+class ClickRunCommandCommandMixin:
 
     @classmethod
     def add_run_command_click_command(cls, command_group):

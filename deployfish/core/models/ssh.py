@@ -79,7 +79,7 @@ class SSHTunnel(Model):
             self.cache['secrets'] = {}
         if name not in self.cache['secrets']:
             if "." not in name:
-                full_name = '{}{}'.format(self.service.secrets_prefix, name)
+                full_name = f'{self.service.secrets_prefix}{name}'
             else:
                 full_name = name
             self.cache['secrets'][name] = Secret.objects.get(full_name)
@@ -140,7 +140,7 @@ class SSHTunnel(Model):
             data = config.get_section_item('services', self.data['service'])
             # We actually want the live service here -- no point in tunneling to a service that doesn't
             # exist or is out of date with deployfish.yml
-            self.cache['service'] = Service.objects.get('{}:{}'.format(data['cluster'], data['name']))
+            self.cache['service'] = Service.objects.get(f'{data["cluster"]}:{data["name"]}')
         return self.cache['service']
 
     @service.setter

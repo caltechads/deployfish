@@ -1,5 +1,6 @@
 from copy import deepcopy
 import json
+from typing import Callable, List, Any, Dict
 
 from botocore import waiter, xform_name
 from jsondiff import diff
@@ -16,25 +17,25 @@ from deployfish.exceptions import (
 from deployfish.registry import importer_registry
 
 
-class LazyAttributeMixin(object):
+class LazyAttributeMixin:
 
-    def __init__(self):
-        self.cache = {}
-        super(LazyAttributeMixin, self).__init__()
+    def __init__(self) -> None:
+        self.cache: Dict[str, Any] = {}
+        super().__init__()
 
-    def get_cached(self, key, populator, args, kwargs=None):
+    def get_cached(self, key: str, populator: Callable, args: List[Any], kwargs: Dict[str, Any] = None) -> Any:
         kwargs = kwargs if kwargs else {}
         if key not in self.cache:
             self.cache[key] = populator(*args, **kwargs)
         return self.cache[key]
 
-    def purge_cache(self):
+    def purge_cache(self) -> None:
         self.cache = {}
 
 
-class Manager(object):
+class Manager:
 
-    service = None
+    service: str = None
 
     @property
     def client(self):
@@ -45,16 +46,16 @@ class Manager(object):
                 self._client = None
         return self._client
 
-    def get(self, pk, **kwargs):
+    def get(self, pk: str, **kwargs: Dict[str, Any]) -> "Model":
         raise NotImplementedError
 
     def get_many(self, pk, **kwargs):
         raise NotImplementedError
 
-    def save(self, obj, **kwargs):
+    def save(self, obj: "Model", **kwargs: Dict[str, Any]):
         raise NotImplementedError
 
-    def exists(self, pk):
+    def exists(self, pk: str) -> bool:
         try:
             self.get(pk)
         except ObjectDoesNotExist:
@@ -64,18 +65,18 @@ class Manager(object):
     def list(self, *args, **kwargs):
         raise NotImplementedError
 
-    def delete(self, obj, **kwargs):
+    def delete(self, obj: "Model", **kwargs: Dict[str, Any]):
         raise NotImplementedError
 
-    def diff(self, obj):
+    def diff(self, obj: "Model"):
         aws_obj = self.get(obj.pk)
         return obj.diff(aws_obj)
 
-    def needs_update(self, obj):
+    def needs_update(self, obj: "Model") -> bool:
         aws_obj = self.get(obj.pk)
         return obj == aws_obj
 
-    def get_waiter(self, waiter_name):
+    def get_waiter(self, waiter_name: str):
         config = self.client._get_waiter_config()
         if not config:
             raise ValueError("Waiter does not exist: %s" % waiter_name)
@@ -90,9 +91,9 @@ class Manager(object):
 
 class Model(LazyAttributeMixin):
 
-    objects = None
+    objects: Manager = None
     adapters = importer_registry
-    config_section = None
+    config_section: str = None
 
     class DoesNotExist(ObjectDoesNotExist):
         """
@@ -125,7 +126,7 @@ class Model(LazyAttributeMixin):
         pass
 
     @classmethod
-    def adapt(cls, obj, source, **kwargs):
+    def adapt(cls, obj: Dict[str, Any], source: str, **kwargs):
         """
         Given an appropriate bit of data `obj` from a data source `source`, return the appropriate args and kwargs to to
         the Model.new factory method so it can use them to construct the model instance.  This means:  take the
@@ -150,7 +151,7 @@ class Model(LazyAttributeMixin):
         return cls(data, **kwargs)
 
     def __init__(self, data):
-        super(Model, self).__init__()
+        super().__init__()
         self.data = data
 
     @property
@@ -203,7 +204,7 @@ class Model(LazyAttributeMixin):
         if not other:
             other = self.objects.get(self.pk)
         if self.__class__ != other.__class__:
-            raise ValueError('{} is not a {}'.format(str(other), self.__class__.__name__))
+            raise ValueError(f'{str(other)} is not a {self.__class__.__name__}')
         return json.loads(diff(other.render_for_diff(), self.render_for_diff(), syntax='explicit', dump=True))
 
     def reload_from_db(self):

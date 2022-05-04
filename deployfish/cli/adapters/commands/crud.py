@@ -15,7 +15,7 @@ from deployfish.cli.renderers import (
 # Command mixins
 # ====================
 
-class ClickListObjectsCommandMixin(object):
+class ClickListObjectsCommandMixin:
 
     list_ordering = None
     list_result_columns = {}
@@ -75,10 +75,10 @@ List {object_name} objects in AWS, possibly with filters.
 
         function = print_render_exception(list_objects)
         function = click.pass_context(function)
-        for key, kwarg in kwargs.items():
+        for key, kwarg in list(kwargs.items()):
             function = cls.add_option(key, kwarg, function)
         function = click.option('--display', **cls.list_display_option_kwargs())(function)
-        for key, arg in args.items():
+        for key, arg in list(args.items()):
             function = cls.add_argument(key, arg, function)
         function = command_group.command(
             'list',
@@ -110,7 +110,7 @@ List {object_name} objects in AWS, possibly with filters.
             return results
 
 
-class ClickObjectInfoCommandMixin(object):
+class ClickObjectInfoCommandMixin:
 
     info_includes = []
     info_excludes = []
@@ -230,7 +230,7 @@ Show info about a {object_name} object that exists in AWS.
         return '\n' + self.info_renderer_classes[display]().render(obj, context=context) + '\n'
 
 
-class ClickObjectExistsCommandMixin(object):
+class ClickObjectExistsCommandMixin:
 
     @classmethod
     def add_exists_click_command(cls, command_group):
@@ -279,7 +279,7 @@ Determine whether a {object_name} object exists in AWS or not.
             return click.style('{}(pk="{}") exists in AWS.'.format(self.model.__name__, pk), fg='green')
 
 
-class ClickCreateObjectCommandMixin(object):
+class ClickCreateObjectCommandMixin:
 
     @classmethod
     def add_create_click_command(cls, command_group):
@@ -335,7 +335,7 @@ class ClickCreateObjectCommandMixin(object):
         return click.style('\n\nCreated {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
 
 
-class ClickUpdateObjectCommandMixin(object):
+class ClickUpdateObjectCommandMixin:
 
     update_template = None
     update_extra_help = None
@@ -400,7 +400,7 @@ IDENTIFIER is a string that looks like one of:
         return click.style('Updated {}("{}"):'.format(self.model.__name__, obj.pk), fg='cyan')
 
 
-class ClickDeleteObjectCommandMixin(object):
+class ClickDeleteObjectCommandMixin:
 
     @classmethod
     def add_delete_click_command(cls, command_group):
