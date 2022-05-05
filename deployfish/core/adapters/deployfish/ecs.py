@@ -931,7 +931,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         if 'family' not in command:
             # Make the task definition family be named after our command
             command_name = command['name'].replace('_', '-')
-            command['family'] = f"{base_td['family']}-{command_name}"
+            command['family'] = f"{base_td.data['family']}-{command_name}"
         # Generate our overlay task definition
         command_td_overlay = TaskDefinition.new(command, 'deployfish', partial=True)
         # Use that to make our actual task definition
