@@ -77,7 +77,7 @@ class SecretManager(Manager):
     def __init__(self, model, readonly=False):
         self.model = model
         self.readonly = readonly
-        super(SecretManager, self).__init__()
+        super().__init__()
 
     def _describe_parameters(self, key, option='prefix'):
         if option == 'prefix':
@@ -178,8 +178,9 @@ class SecretManager(Manager):
             if not prefix.endswith('.'):
                 prefix = prefix + "."
         parameters = self._describe_parameters(prefix)
-        # We have to do two loops here, because describe_parameters gives us the KeyId for our KMS key, but does not
-        # give us Value or ARN, while get_parameters gives us Value and ARN but no KeyId
+        # We have to do two loops here, because describe_parameters gives us the
+        # KeyId for our KMS key, but does not give us Value or ARN, while
+        # get_parameters gives us Value and ARN but no KeyId
         names = [parameter['Name'] for parameter in parameters]
         values, _ = self._get_parameter_values(names)
         secrets = []
@@ -197,7 +198,14 @@ class SecretManager(Manager):
 
     def delete_many_by_name(self, pks):
         # hint: (list[str["{secret_pk}"]])
-        self.client.delete_parameters(Names=pks)
+        if len(pks) <= 10:
+            self.client.delete_parameters(Names=pks)
+        else:
+            # delete_parameters() will only take 10 params at a time, so we have
+            # to split it up if we have more than 10
+            chunks = [pks[i * 10:(i + 1) * 10] for i in range((len(pks) + 9) // 10)]
+            for chunk in chunks:
+                self.client.delete_parameters(Names=chunk)
 
     def delete(self, obj):
         if self.readonly:
