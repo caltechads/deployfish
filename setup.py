@@ -20,7 +20,6 @@ setup(name="deployfish",
       packages=find_packages(),
       include_package_data=True,
       install_requires=[
-          "awscli >= 1.22.7",
           "boto3 >= 1.17",
           "click >= 6.7",
           "PyYAML >= 5.1",
