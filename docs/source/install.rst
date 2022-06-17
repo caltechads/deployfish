@@ -20,8 +20,8 @@ Install via `setup.py`
 
 Download a release from `Github <https://github.com/caltechads/deployfish/releases>`_, then::
 
-    unzip deployfish-1.7.2.zip
-    cd deployfish-1.7.2
+    unzip deployfish-1.7.3.zip
+    cd deployfish-1.7.3
     python setup.py install
 
 Or::
