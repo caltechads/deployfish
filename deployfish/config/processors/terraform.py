@@ -96,7 +96,7 @@ class TerraformS3State(AbstractTerraformState):
                 region=self.terraform_config.get('region', None)
             )
             major, minor, patch = tfstate['terraform_version'].split('.')
-            if int(minor) >= 12:
+            if int(major) >= 1 or (int(major) == 0 and int(minor) >= 12):
                 self._load_post_version_12(tfstate)
             else:
                 self._load_pre_version_12(tfstate)
