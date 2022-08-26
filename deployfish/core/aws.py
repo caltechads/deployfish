@@ -1,12 +1,13 @@
-import boto3
 import os
+from typing import Dict, Any, Optional, cast
 
+import boto3
 import yaml
 
 from deployfish.exceptions import ConfigProcessingFailed
 
 
-boto3_session = None
+boto3_session: Optional[boto3.session.Session] = None
 
 
 class AWSSessionBuilder:
@@ -17,7 +18,7 @@ class AWSSessionBuilder:
     class ForbiddenAWSAccountId(Exception):
         pass
 
-    def load_config(self, filename):
+    def load_config(self, filename: str) -> Dict[str, Any]:
         """
         Read our deployfish.yml file from disk and return it as parsed YAML.
 
@@ -28,14 +29,14 @@ class AWSSessionBuilder:
         """
         if not os.path.exists(filename):
             return {}
-        elif not os.access(filename, os.R_OK):
+        if not os.access(filename, os.R_OK):
             raise ConfigProcessingFailed(
                 "Deployfish config file '{}' exists but is not readable".format(filename)
             )
-        with open(filename) as f:
+        with open(filename, encoding='utf-8') as f:
             return yaml.load(f, Loader=yaml.FullLoader)
 
-    def new(self, filename, use_aws_section=True):
+    def new(self, filename: str, use_aws_section: bool = True) -> boto3.session.Session:
         if not filename:
             filename = 'deployfish.yml'
         config = self.load_config(filename)
@@ -43,22 +44,22 @@ class AWSSessionBuilder:
             aws_config = config.get('aws', {})
         else:
             aws_config = {}
-        boto3_session = self.__get_boto3_session(config=aws_config)
+        sess = self.__get_boto3_session(config=aws_config)
         if ('allowed_account_ids' in aws_config or 'forbidden_account_ids' in aws_config):
-            account_id = boto3_session.client('sts').get_caller_identity().get('Account')
+            account_id = sess.client('sts').get_caller_identity().get('Account')
             if 'allowed_account_ids' in aws_config:
                 if account_id not in aws_config['allowed_account_ids']:
                     raise self.ForbiddenAWSAccountId(
-                        "Account ID {} is not in the list of allowed_account_ids".format(account_id)
+                        f"Account ID {account_id} is not in the list of allowed_account_ids"
                     )
             if 'forbidden_account_ids' in aws_config:
                 if account_id in aws_config['forbidden_account_ids']:
                     raise self.ForbiddenAWSAccountId(
-                        "Account ID {} is in the list of forbidden_account_ids".format(account_id)
+                        f"Account ID {account_id} is in the list of forbidden_account_ids"
                     )
-        return boto3_session
+        return sess
 
-    def __get_boto3_session(self, config=None):
+    def __get_boto3_session(self, config: Dict[str, Any] = None) -> boto3.session.Session:
         if config:
             # If an API access key pair is provided in the 'aws' section, that
             # has priority
@@ -89,23 +90,22 @@ class AWSSessionBuilder:
             session = boto3.session.Session()
         return session
 
-    def __get_account_id(self):
-        return self.boto3_session.client('sts').get_caller_identity().get('Account')
 
-
-def build_boto3_session(filename, boto3_session_override=None, use_aws_section=True):
-    global boto3_session
+def build_boto3_session(
+    filename: str,
+    boto3_session_override: boto3.session.Session = None,
+    use_aws_section: bool = True
+) -> None:
+    global boto3_session  # pylint: disable=global-statement
     if boto3_session_override:
         boto3_session = boto3_session_override
     else:
         boto3_session = AWSSessionBuilder().new(filename, use_aws_section=use_aws_section)
 
 
-def get_boto3_session(boto3_session_override=None):
+def get_boto3_session(boto3_session_override: boto3.session.Session = None) -> boto3.session.Session:
     if boto3_session_override:
         return boto3_session_override
-    global boto3_session
     if boto3_session:
         return boto3_session
-    else:
-        return boto3
+    return cast(boto3.session.Session, boto3)

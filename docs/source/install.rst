@@ -7,38 +7,41 @@ usual python ways.  For the following instructions, either install it into your
 global python install, or use a python `virtual environment <https://python-guide-pt-br.readthedocs.io/en/latest/dev/virtualenvs/>`_ to install it
 without polluting your global python environment.
 
-Install via pip
-===============
+Install deployfish
+==================
 
 ::
 
     pip install deployfish
 
 
-Install via `setup.py`
-======================
+Install AWS CLI v2
+==================
 
-Download a release from `Github <https://github.com/caltechads/deployfish/releases>`_, then::
+deployfish requries AWS CLI v2 for some of its functionality, notably EXEC'ing into FARGATE containers.  While AWS CLI v1
+was installable via `pip`, AWS CLI v2 is not, so we have to do the install manually.  Here's how to set that up on a Mac::
 
-    unzip deployfish-1.7.4.zip
-    cd deployfish-1.7.4
-    python setup.py install
+    # Uninstall any old versions of the cli
+    pip uninstall awscli
 
-Or::
+    # Deactivate any pyenv environment so we can be in the system-wide Python interpreter
+    cd ~
 
-    git clone https://github.com/caltechads/deployfish.git
-    cd deployfish
-    python setup.py install
+    # Install the new AWS CLI from brew -- it's no longer pip installable
+    brew update
+    brew install awscli
+
+    # Install the Session Manager plugin
+    curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
+    unzip sessionmanager-bundle.zip
+    sudo ./sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
 
 
-Using pyenv to install into a virtual environment
-=================================================
+If later on you have issues with EXEC'ing or with the `aws` command in general, check to ensure you're getting your
+global v2 version of `aws` instead of an old v1 one from your current virtual environment::
 
-(Recommended for Python programming)
+    aws --version
 
-If you use python and frequently need to install additional python modules,
-`pyenv <https://github.com/pyenv/pyenv>`_ and `pyenv-virtualenv <https://github.com/pyenv/pyenv-virtualenv>`_
-are extremely useful.  They allow some very useful things:
+If the version string shows version < 2::
 
-* Manage your virtualenvs easily on a per-project basis
-* Provide support for per-project Python versions.
+    pip uninstall awscli

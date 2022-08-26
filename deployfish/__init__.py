@@ -1,11 +1,8 @@
-from pathlib import Path
 
-from jinja2 import FileSystemLoader, Environment
+from cement.utils.version import get_version as cement_get_version
 
-__version__ = "1.7.4"
+VERSION = (1, 7, 4, 'final', 0)
 
-TEMPLATE_PATHS = [
-    Path(__file__).parent / 'cli' / 'templates'
-]
 
-jinja_env = Environment(loader=FileSystemLoader([str(p) for p in TEMPLATE_PATHS]))
+def get_version(version=VERSION):
+    return cement_get_version(version)

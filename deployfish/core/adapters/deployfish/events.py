@@ -1,20 +1,21 @@
 from ..abstract import Adapter
+from typing import Dict, Any, Tuple
 
 from deployfish.core.models import Cluster
 
 
 class EventTargetAdapter(Adapter):
 
-    def get_cluster_arn(self):
+    def get_cluster_arn(self) -> str:
         try:
             cluster = Cluster.objects.get(self.data['cluster'])
         except Cluster.DoesNotExist as e:
             raise self.SchemaException('EventTarget: {}'.format(str(e)))
         return cluster.arn
 
-    def get_vpc_configuration(self):
+    def get_vpc_configuration(self) -> Dict[str, Any]:
         # FIXME: use VpcConfigurationMixin for this
-        data = {}
+        data: Dict[str, Any] = {}
         source = self.data.get('vpc_configuration', None)
         if source:
             data['Subnets'] = source['subnets']
@@ -24,7 +25,7 @@ class EventTargetAdapter(Adapter):
                 data['AssignPublicIp'] = 'ENABLED' if source['public_ip'] else 'DISABLED'
         return data
 
-    def convert(self):
+    def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         data = {}
         data['Id'] = 'deployfish-' + self.data['name']
         data['Arn'] = self.get_cluster_arn()
@@ -47,7 +48,7 @@ class EventTargetAdapter(Adapter):
 
 class EventScheduleRuleAdapter(Adapter):
 
-    def convert(self):
+    def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         data = {}
         data['Name'] = 'deployfish-' + self.data['name']
         data['ScheduleExpression'] = self.data['schedule']

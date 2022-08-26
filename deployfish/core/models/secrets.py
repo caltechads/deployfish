@@ -1,29 +1,47 @@
 import json
+from typing import Dict, Any, Sequence, List, Union, Type, Tuple, Optional, Protocol
 
 from jsondiff import diff
 
+from deployfish.types import SupportsCache
+
 from .abstract import Manager, Model
+
+# ----------------------------------------
+# Protocols
+# ----------------------------------------
+
+class SupportsSecrets(SupportsCache, Protocol):
+
+    @property
+    def secrets_prefix(self) -> str:
+        ...
+
+    @property
+    def secrets(self) -> Dict[str, "Secret"]:
+        ...
+
 
 
 # ----------------------------------------
-# Mixinx
+# Mixins
 # ----------------------------------------
 
 class SecretsMixin:
 
     @property
-    def secrets_prefix(self):
+    def secrets_prefix(self) -> str:
         raise NotImplementedError
 
     @property
-    def secrets(self):
+    def secrets(self: SupportsSecrets) -> Dict[str, "Secret"]:
         return self.cache['secrets']
 
     @secrets.setter
-    def secrets(self, value):
+    def secrets(self: SupportsSecrets, value: Dict[str, "Secret"]) -> None:
         self.cache['secrets'] = value
 
-    def write_secrets(self):
+    def write_secrets(self: SupportsSecrets) -> None:
         # Add and update secrets we do need
         for secret in list(self.secrets.values()):
             try:
@@ -38,11 +56,11 @@ class SecretsMixin:
             if for_deletion:
                 Secret.objects.delete_many_by_name(for_deletion)
 
-    def reload_secrets(self):
+    def reload_secrets(self: SupportsSecrets) -> None:
         if 'secrets' in self.cache:
             del self.cache['secrets']
 
-    def diff_secrets(self, other, ignore_external=False):
+    def diff_secrets(self: SupportsSecrets, other: Sequence["Secret"], ignore_external: bool = False) -> Dict[str, Any]:
         """
         Diff our list of Secrets against `other`.
 
@@ -74,12 +92,12 @@ class SecretManager(Manager):
 
     service = 'ssm'
 
-    def __init__(self, model, readonly=False):
+    def __init__(self, model: Union[Type["Secret"], Type["ExternalSecret"]], readonly: bool = False) -> None:
         self.model = model
         self.readonly = readonly
         super().__init__()
 
-    def _describe_parameters(self, key, option='prefix'):
+    def _describe_parameters(self, key: str, option: str = 'prefix') -> List[Dict[str, Any]]:
         if option == 'prefix':
             option = 'BeginsWith'
         else:
@@ -95,7 +113,7 @@ class SecretManager(Manager):
             parameters.extend(page['Parameters'])
         return parameters
 
-    def _get_parameter_values(self, names):
+    def _get_parameter_values(self, names: List[str]) -> Tuple[Dict[str, Any], List[str]]:
         # get_parameters only accepts 10 or fewer names in the Names kwarg, so we have to
         # split names into sub lists of 10 of fewer names and iterate
         names_chunks = [names[i * 10:(i + 1) * 10] for i in range((len(names) + 9) // 10)]
@@ -111,11 +129,11 @@ class SecretManager(Manager):
             parameters.extend(response['Parameters'])
         return {p['Name']: p for p in parameters}, non_existant
 
-    def convert(self, parameter_data):
+    def convert(self, parameter_data: Dict[str, Any]) -> "Secret":
         name = parameter_data['Name'].split('.')[-1]
         return self.model(parameter_data, name=name)
 
-    def get(self, pk, **kwargs):
+    def get(self, pk: str, **_) -> "Secret":
         values, non_existant_parameters = self._get_parameter_values([pk])
         params = self._describe_parameters(pk, option='equals')
         if non_existant_parameters:
@@ -125,7 +143,7 @@ class SecretManager(Manager):
         data['Value'] = values[pk]['Value']
         return self.convert(data)
 
-    def get_many(self, pks, **kwargs):
+    def get_many(self, pks: List[str], **_) -> Sequence["Secret"]:
         """
 
         .. note::
@@ -164,7 +182,7 @@ class SecretManager(Manager):
             secrets.append(self.convert(data))
         return secrets
 
-    def list_names(self, prefix):
+    def list_names(self, prefix: str) -> List[str]:
         if prefix.endswith('*'):
             prefix = prefix[:-1]
             if not prefix.endswith('.'):
@@ -172,7 +190,7 @@ class SecretManager(Manager):
         parameters = self._describe_parameters(prefix)
         return [p['Name'] for p in parameters]
 
-    def list(self, prefix):
+    def list(self, prefix: str) -> Sequence["Secret"]:
         if prefix.endswith('*'):
             prefix = prefix[:-1]
             if not prefix.endswith('.'):
@@ -190,14 +208,13 @@ class SecretManager(Manager):
             secrets.append(self.convert(parameter))
         return secrets
 
-    def save(self, obj):
+    def save(self, obj: Model, **_) -> str:
         if not self.readonly:
             response = self.client.put_parameter(**obj.render_for_create())
             return response['Version']
         raise self.model.ReadOnly('This Secret is read only.')
 
-    def delete_many_by_name(self, pks):
-        # hint: (list[str["{secret_pk}"]])
+    def delete_many_by_name(self, pks: List[str]) -> None:
         if len(pks) <= 10:
             self.client.delete_parameters(Names=pks)
         else:
@@ -207,7 +224,7 @@ class SecretManager(Manager):
             for chunk in chunks:
                 self.client.delete_parameters(Names=chunk)
 
-    def delete(self, obj):
+    def delete(self, obj: Model, **_) -> None:
         if self.readonly:
             raise self.model.ReadOnly('This Secret is read only.')
         try:
@@ -225,65 +242,32 @@ class Secret(Model):
     An SSM Parameter Store Parameter.
     """
 
-    objects = None
+    objects: SecretManager
 
     class DecryptionFailed(Exception):
         pass
 
-    def __init__(self, data, name=None):
-        super(Secret, self).__init__(data)
+    def __init__(self, data: Dict[str, Any], name: str = ''):
+        super().__init__(data)
         self.secret_name = name
 
+    # ---------------------
+    # Model overrides
+    # ---------------------
+
     @property
-    def pk(self):
+    def pk(self) -> str:
         return self.data['Name']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.secret_name
 
     @property
-    def arn(self):
+    def arn(self) -> str:
         return self.data.get('ARN', None)
 
-    @property
-    def prefix(self):
-        return self.data['Name'].rsplit('.', 1)[0]
-
-    @prefix.setter
-    def prefix(self, value):
-        self.data['Name'] = f'{value}.{self.secret_name}'
-
-    @property
-    def is_secure(self):
-        return self.kms_key_id is not None
-
-    @property
-    def modified_username(self):
-        user = self.data.get('LastModifiedUser', None)
-        if user:
-            return user.rsplit('/', 1)[1]
-        else:
-            return None
-
-    @property
-    def kms_key_id(self):
-        return self.data.get('KeyId', None)
-
-    @kms_key_id.setter
-    def kms_key_id(self, value):
-        self.data['Type'] = 'SecureString'
-        self.data['KeyId'] = value
-
-    @property
-    def value(self):
-        return self.data['Value']
-
-    @value.setter
-    def value(self, value):
-        self.data['Value'] = value
-
-    def render_for_create(self):
+    def render_for_create(self) -> Dict[str, Any]:
         data = self.render()
         if 'ARN' in data:
             del data['ARN']
@@ -304,18 +288,61 @@ class Secret(Model):
             del data['Policies']
         return data
 
-    def copy(self):
+    # ----------------------------
+    # Secret-specific properties
+    # ----------------------------
+
+    @property
+    def prefix(self) -> str:
+        return self.data['Name'].rsplit('.', 1)[0]
+
+    @prefix.setter
+    def prefix(self, value: str) -> None:
+        self.data['Name'] = f'{value}.{self.secret_name}'
+
+    @property
+    def is_secure(self) -> bool:
+        return self.kms_key_id is not None
+
+    @property
+    def modified_username(self) -> Optional[str]:
+        user = self.data.get('LastModifiedUser', None)
+        if user:
+            return user.rsplit('/', 1)[1]
+        return None
+
+    @property
+    def kms_key_id(self) -> str:
+        return self.data.get('KeyId', None)
+
+    @kms_key_id.setter
+    def kms_key_id(self, value: str) -> None:
+        self.data['Type'] = 'SecureString'
+        self.data['KeyId'] = value
+
+    @property
+    def value(self) -> str:
+        return self.data['Value']
+
+    @value.setter
+    def value(self, value: str) -> None:
+        self.data['Value'] = value
+
+    # ------------------------
+    # Secret-specific actions
+    # ------------------------
+
+    def copy(self) -> "Secret":
         data = self.render()
         if 'ARN' in data:
             del data['ARN']
             del data['LastModifiedDate']
             del data['LastModifiedUser']
             del data['Version']
-        obj = self.__class__(data)
-        obj.secret_name = self.secret_name
+        obj = self.__class__(data, self.secret_name)
         return obj
 
-    def __str__(self):
+    def __str__(self) -> str:
         line = f'{self.secret_name}={self.value}'
         if self.data['Type'] == 'SecureString':
             line = f"{line} [SECURE:{self.kms_key_id}]"
@@ -324,7 +351,7 @@ class Secret(Model):
 
 class ExternalSecret(Secret):
 
-    objects = None
+    objects: SecretManager
 
 
 Secret.objects = SecretManager(Secret)

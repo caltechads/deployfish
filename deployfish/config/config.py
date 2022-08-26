@@ -1,11 +1,13 @@
-from copy import deepcopy, copy
+from copy import deepcopy
 import os
 import sys
+from typing import Dict, Any, List
 
+import boto3
 import click
 import yaml
 
-from deployfish.exceptions import ConfigProcessingFailed
+from deployfish.exceptions import ConfigProcessingFailed, NoSuchConfigSection, NoSuchConfigSectionItem
 from .processors import ConfigProcessor
 
 
@@ -27,22 +29,22 @@ class Config:
       the value of that environment variable.
     """
 
-    class NoSuchSectionError(Exception):
+    class NoSuchSectionError(NoSuchConfigSection):
         pass
 
-    class NoSuchSectionItemError(Exception):
+    class NoSuchSectionItemError(NoSuchConfigSectionItem):
         pass
 
-    DEFAULT_DEPLOYFISH_CONFIG_FILE = 'deployfish.yml'
+    DEFAULT_DEPLOYFISH_CONFIG_FILE: str = 'deployfish.yml'
 
-    processable_sections = [
+    processable_sections: List[str] = [
         'services',
         'tasks'
     ]
 
     @classmethod
-    def new(cls, **kwargs):
-        filename = kwargs.pop('filename', cls.DEFAULT_DEPLOYFISH_CONFIG_FILE)
+    def new(cls, **kwargs) -> "Config":
+        filename: str = kwargs.pop('filename', cls.DEFAULT_DEPLOYFISH_CONFIG_FILE)
         if filename is None:
             filename = cls.DEFAULT_DEPLOYFISH_CONFIG_FILE
         config = cls(filename=filename, raw_config=kwargs.pop('raw_config', None))
@@ -55,34 +57,40 @@ class Config:
                 sys.exit(1)
         return config
 
-    def __init__(self, filename, raw_config=None, boto3_session=None):
-        self.filename = filename
-        self.__raw = raw_config if raw_config else self.load_config(filename)
-        self.__cooked = deepcopy(self.__raw)
+    # FIXME: we're accepting boto3_session as a kwarg, but we never do anything with it
+    def __init__(
+        self,
+        filename: str,
+        raw_config: Dict[str, Any] = None,
+        boto3_session: boto3.session.Session = None
+    ) -> None:
+        self.filename: str = filename
+        self.__raw: Dict[str, Any] = raw_config if raw_config else self.load_config(filename)
+        self.__cooked: Dict[str, Any] = deepcopy(self.__raw)
 
     @property
-    def raw(self):
+    def raw(self) -> Dict[str, Any]:
         return self.__raw
 
     @property
-    def cooked(self):
+    def cooked(self) -> Dict[str, Any]:
         return self.__cooked
 
     @property
-    def tasks(self):
+    def tasks(self) -> List[Dict[str, Any]]:
         try:
             return self.cooked.get('tasks', [])
         except KeyError:
-            raise self.NoSuchSectionError('No tasks section in deployfish.yml')
+            raise self.NoSuchSectionError('tasks')
 
     @property
-    def services(self):
+    def services(self) -> List[Dict[str, Any]]:
         try:
             return self.cooked.get('services', [])
         except KeyError:
-            raise self.NoSuchSectionError('No services section in deployfish.yml')
+            raise self.NoSuchSectionError('services')
 
-    def load_config(self, filename):
+    def load_config(self, filename: str) -> Dict[str, Any]:
         """
         Read our deployfish.yml file from disk and return it as parsed YAML.
 
@@ -93,14 +101,14 @@ class Config:
         """
         if not os.path.exists(filename):
             raise ConfigProcessingFailed("Couldn't find deployfish config file '{}'".format(filename))
-        elif not os.access(filename, os.R_OK):
+        if not os.access(filename, os.R_OK):
             raise ConfigProcessingFailed(
                 "Deployfish config file '{}' exists but is not readable".format(filename)
             )
-        with open(filename) as f:
+        with open(filename, encoding='utf-8') as f:
             return yaml.load(f, Loader=yaml.FullLoader)
 
-    def get_service(self, service_name):
+    def get_service(self, service_name: str) -> Dict[str, Any]:
         """
         Get the full config for the service named ``service_name`` from our
         parsed YAML file.
@@ -112,7 +120,7 @@ class Config:
         """
         return self.get_section_item('services', service_name)
 
-    def get_section(self, section_name):
+    def get_section(self, section_name: str) -> List[Dict[str, Any]]:
         """
         Return the contents of a whole top level section from our deployfish.yml file.
 
@@ -122,7 +130,7 @@ class Config:
         """
         return self.cooked[section_name]
 
-    def get_section_item(self, section_name, item_name):
+    def get_section_item(self, section_name: str, item_name: str) -> Dict[str, Any]:
         """
         Get an item from a top level section with 'name' equal to ``item_name``
         from our parsed ``deployfish.yml`` file.
@@ -134,19 +142,18 @@ class Config:
 
         :rtype: dict
         """
+
         if section_name in self.cooked:
             for item in self.cooked[section_name]:
                 if item['name'] == item_name:
                     return item
-                elif 'environment' in item and item['environment'] == item_name:
+                if 'environment' in item and item['environment'] == item_name:
                     return item
         else:
-            raise self.NoSuchSectionError(f'No section named "{section_name}" in deployfish.yml')
-        raise self.NoSuchSectionItemError(
-            f'No item named "{item_name}" in the "{section_name}" section of deployfish.yml'
-        )
+            raise self.NoSuchSectionError(section_name)
+        raise self.NoSuchSectionItemError(section_name, item_name)
 
-    def get_raw_section_item(self, section_name, item_name):
+    def get_raw_section_item(self, section_name: str, item_name: str) -> Dict[str, Any]:
         """
         Get an item from a top level section of the raw config with 'name' equal to ``item_name``
         from our parsed ``deployfish.yml`` file.
@@ -162,16 +169,14 @@ class Config:
             for item in self.raw[section_name]:
                 if item['name'] == item_name:
                     return item
-                elif 'environment' in item and item['environment'] == item_name:
+                if 'environment' in item and item['environment'] == item_name:
                     return item
         else:
-            raise self.NoSuchSectionError(f'No section named "{section_name}" in deployfish.yml')
-        raise self.NoSuchSectionItemError(
-            f'No item named "{item_name}" in the "{section_name}" section of deployfish.yml'
-        )
+            raise self.NoSuchSectionError(section_name)
+        raise self.NoSuchSectionItemError(section_name, item_name)
 
-    def get_global_config(self, section):
+    def get_global_config(self, section: str) -> Dict[str, Any]:
         if 'deployfish' in self.cooked:
             if section in self.cooked['deployfish']:
                 return self.cooked['deployfish'][section]
-        return None
+        return {}

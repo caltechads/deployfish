@@ -1,0 +1,14 @@
+{% from 'macros/utils.jinja2' import heading, subsection, subobject, tags -%}
+{% from 'macros/target-group.jinja2' import tg_health_check -%}
+{{ subobject('Target Group', obj.name) }}
+  pk                  :     {{ obj.pk }}
+  name                :     {{ obj.name }}
+  port                :     {{ obj.port }}
+  protocol            :     {{ obj.protocol }}
+
+  {{ subsection('health check') }}
+{{ tg_health_check(obj)|indent(4)}}
+
+{{ heading('Targets') }}
+
+{{ obj.targets|tabular(Id='Id', health='health__State', Name='target__name', IP_Address='target__ip_address', Port='port')}}

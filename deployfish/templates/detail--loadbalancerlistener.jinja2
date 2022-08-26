@@ -1,0 +1,12 @@
+{% from 'macros/utils.jinja2' import heading, subsection, subobject, tags -%}
+{{ subobject('Load Balancer Listener', obj.name) }}
+  load_balancer       :     {{ obj.load_balancer.name }}
+  pk                  :     {{ obj.pk }}
+  arn                 :     {{ obj.arn }}
+  name                :     {{ obj.name }}
+  port                :     {{ obj.port }}
+  protocol            :     {{ obj.protocol }}
+{%- if obj.protocol in ['HTTPS', 'TLS'] %}
+  ssl certificates    :     {{ obj.ssl_certificates|join(',') }}
+  ssl policy          :     {{ obj.ssl_policy }}
+{%- endif %}

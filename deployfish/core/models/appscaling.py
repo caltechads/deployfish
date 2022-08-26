@@ -1,7 +1,12 @@
-from typing import Dict, List, Any
+from typing import Dict, Any, cast, Sequence, Optional
 
 from .abstract import Manager, Model
 from .cloudwatch import CloudwatchAlarm
+
+__all__ = [
+    'ScalingPolicy',
+    'ScalableTarget'
+]
 
 
 # ----------------------------------------
@@ -12,7 +17,7 @@ class ScalingPolicyManager(Manager):
 
     service = 'application-autoscaling'
 
-    def get(self, pk: str, **kwargs: Dict[str, Any]) -> "ScalingPolicy":
+    def get(self, pk: str, **_) -> "ScalingPolicy":
         response = self.client.describe_scaling_policies(PolicyNames=[pk], ServiceNamespace='ecs')
         if 'ScalingPolicies' in response and response['ScalingPolicies']:
             data = response['ScalingPolicies'][0]
@@ -38,17 +43,19 @@ class ScalingPolicyManager(Manager):
             policies.append(ScalingPolicy(data, alarm=alarm))
         return policies
 
-    def save(self, obj: "ScalingPolicy") -> str:
+    def save(self, obj: Model, **_) -> str:
         # NOTE: even though the operation is called put_scaling_policy, it can be used for both create
         # and update.  Thus we don't need to remove the existing ScalableTarget if we want to update it
-        # See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/application-autoscaling.html#ApplicationAutoScaling.Client.put_scaling_policy
+        obj = cast("ScalingPolicy", obj)
         response = self.client.put_scaling_policy(**obj.render_for_create())
         arn = response['PolicyARN']
-        obj.alarm.set_policy_arn(arn)
-        obj.alarm.save()
+        if obj.alarm:
+            obj.alarm.set_policy_arn(arn)
+            obj.alarm.save()
         return arn
 
-    def delete(self, obj):
+    def delete(self, obj: Model, **_) -> None:
+        obj = cast("ScalingPolicy", obj)
         if obj.alarm:
             obj.alarm.delete()
         try:
@@ -66,11 +73,9 @@ class ScalableTargetManager(Manager):
 
     service = 'application-autoscaling'
 
-    def get(self, pk: str, **kwargs: Dict[str, Any]) -> "ScalableTarget":
+    def get(self, pk: str, **kwargs) -> "ScalableTarget":
         """
         Get a single ScalableTarget.
-
-        :param
         """
         response = self.client.describe_scalable_targets(
             ResourceIds=[pk],
@@ -84,7 +89,7 @@ class ScalableTargetManager(Manager):
         policies = ScalingPolicy.objects.list(cluster, service)
         return ScalableTarget(data, policies=policies)
 
-    def list(self):
+    def list(self) -> Sequence["ScalableTarget"]:
         response = self.client.describe_scalable_targets(
             ServiceNamespace='ecs',
             ScalableDimension='ecs:service:DesiredCount'
@@ -93,18 +98,19 @@ class ScalableTargetManager(Manager):
         for data in response['ScalableTargets']:
             _, cluster, service = data['ResourceId'].split('/')
             policies = ScalingPolicy.objects.list(cluster, service)
-            targets.append(ScalingPolicy(data, policies=policies))
+            targets.append(ScalableTarget(data, policies=policies))
         return targets
 
-    def save(self, obj):
+    def save(self, obj: Model, **_) -> None:
         # NOTE: even though the operation is called register_scalable_target, it can be used for both create
         # and update.  Thus we don't need to remove the existing ScalableTarget if we want to update it
-        # See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/application-autoscaling.html#ApplicationAutoScaling.Client.register_scalable_target
+        obj = cast("ScalableTarget", obj)
         self.client.register_scalable_target(**obj.render_for_create())
         for policy in obj.policies:
             policy.save()
 
-    def delete(self, obj):
+    def delete(self, obj: Model, **_) -> None:
+        obj = cast("ScalableTarget", obj)
         for policy in obj.policies:
             policy.delete()
         try:
@@ -125,23 +131,23 @@ class ScalingPolicy(Model):
 
     objects = ScalingPolicyManager()
 
-    def __init__(self, data, alarm=None):
+    def __init__(self, data: Dict[str, Any], alarm: CloudwatchAlarm = None):
         super().__init__(data)
-        self.alarm = alarm
+        self.alarm: Optional[CloudwatchAlarm] = alarm
 
     @property
-    def pk(self):
+    def pk(self) -> str:
         return self.data['PolicyName']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.data['PolicyName']
 
     @property
-    def arn(self):
+    def arn(self) -> str:
         return self.data.get('PolicyARN', None)
 
-    def render_for_diff(self):
+    def render_for_diff(self) -> Dict[str, Any]:
         data = self.render()
         if 'PolicyARN' in data:
             del data['PolicyARN']
@@ -156,21 +162,21 @@ class ScalableTarget(Model):
 
     objects = ScalableTargetManager()
 
-    def __init__(self, data, policies=None):
+    def __init__(self, data, policies: Sequence[ScalingPolicy] = None):
         super().__init__(data)
         if not policies:
             policies = []
-        self.policies = policies
+        self.policies: Sequence[ScalingPolicy] = policies
 
     @property
-    def pk(self):
+    def pk(self) -> str:
         return self.data['ResourceId']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.data['ResourceId']
 
-    def render_for_diff(self):
+    def render_for_diff(self) -> Dict[str, Any]:
         data = self.render()
         # RoleARN gets set however AWS wants it instead of what we tell it, so ignore that for comparison
         del data['RoleARN']
@@ -185,7 +191,7 @@ class ScalableTarget(Model):
         data['scaling_policies'] = [p.render_for_diff() for p in sorted(self.policies, key=lambda x: x.pk)]
         return data
 
-    def render_for_create(self):
+    def render_for_create(self) -> Dict[str, Any]:
         data = self.render()
         if 'CreationTime' in data:
             del data['CreationTime']

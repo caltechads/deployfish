@@ -1,0 +1,6 @@
+{% from 'macros/utils.jinja2' import heading, subsection, subobject, tags -%}
+{{ subobject(obj.__class__.__name__, obj.name) }}
+  pk                  :     {{ obj.pk }}
+  name                :     {{ obj.name }}
+  arn                 :     {{ obj.arn }}
+

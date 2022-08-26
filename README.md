@@ -86,33 +86,37 @@ usual python ways.  For the following instructions, either install it into your
 global python install, or use a python [virtual environment](https://python-guide-pt-br.readthedocs.io/en/latest/dev/virtualenvs/) to install it
 without polluting your global python environment.
 
-### Install via pip
+### Install deployfish
 
     pip install deployfish
 
-### Install via `setup.py`
+### Install AWS CLI v2
 
-Download a release from [Github](https://github.com/caltechads/deployfish/releases), then:
+deployfish requries AWS CLI v2 for some of its functionality, notably EXEC'ing into FARGATE containers.  While AWS CLI
+v1 was installable via `pip`, AWS CLI v2 is not, so we have to do the install manually.  Here's how to set that up on a
+Mac:
 
-    unzip deployfish-deployfish-1.7.4.zip
-    cd deployfish-deployfish-1.7.4
-    python setup.py install
+    # Uninstall any old versions of the cli
+    pip uninstall awscli
 
-Or:
+    # Deactivate any pyenv environment so we can be in the system-wide Python interpreter
+    cd ~
 
-    git clone https://github.com/caltechads/deployfish.git
-    cd deployfish
-    python setup.py install
+    # Install the new AWS CLI from brew -- it's no longer pip installable
+    brew update
+    brew install awscli
 
-### Using pyenv to install into a virtual environment (Recommended)
+    # Install the Session Manager plugin
+    curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
+    unzip sessionmanager-bundle.zip
+    sudo ./sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
 
-If you use python and frequently need to install additional python modules,
-[pyenv](https://github.com/pyenv/pyenv) and [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv)
-are extremely useful.  They allow some very useful things:
 
-* Manage your virtualenvs easily on a per-project basis
-* Provide support for per-project Python versions.
+If later on you have issues with EXEC'ing or with the `aws` command in general, check to ensure you're getting your
+global version of `aws` instead of an old one in your current virtual environment:
 
-To install `pyenv` and `pyenv-virtualenv` and set up your environment for the
-first time
+    aws --version
 
+If the version string shows version < 2:
+
+    pip uninstall awscli

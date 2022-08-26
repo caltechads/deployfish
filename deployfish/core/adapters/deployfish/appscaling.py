@@ -1,4 +1,4 @@
-import re
+from typing import Dict, Any, Tuple, Optional
 
 from ..abstract import Adapter
 from deployfish.core.models import CloudwatchAlarm, ScalingPolicy
@@ -19,39 +19,39 @@ class ECSServiceScalingPolicyAdapter(Adapter):
         }
     """
 
-    def __init__(self, data, **kwargs):
+    def __init__(self, data: Dict[str, Any], **kwargs) -> None:
         self.cluster = kwargs.pop('cluster', None)
         self.service = kwargs.pop('service', None)
-        super(ECSServiceScalingPolicyAdapter, self).__init__(data, **kwargs)
+        super().__init__(data, **kwargs)
 
-    def get_PolicyName(self):
+    def get_PolicyName(self) -> str:
         if int(self.data['scale_by']) < 0:
             direction = 'scale-down'
         else:
             direction = 'scale-up'
         return '{}-{}-{}'.format(self.cluster, self.service, direction)
 
-    def get_ResourceId(self):
+    def get_ResourceId(self) -> str:
         return 'service/{}/{}'.format(self.cluster, self.service)
 
-    def get_MetricIntervalLowerBound(self):
+    def get_MetricIntervalLowerBound(self) -> Optional[float]:
         if '>' in self.data['cpu']:
             return 0.0
         return None
 
-    def get_MetricIntervalUpperBound(self):
+    def get_MetricIntervalUpperBound(self) -> Optional[float]:
         if '<' in self.data['cpu']:
             return 0.0
         return None
 
-    def convert(self):
-        data = {}
+    def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        data: Dict[str, Any] = {}
         data['PolicyName'] = self.get_PolicyName()
         data['ServiceNamespace'] = 'ecs'
         data['ResourceId'] = self.get_ResourceId()
         data['ScalableDimension'] = 'ecs:service:DesiredCount'
         data['PolicyType'] = 'StepScaling'
-        adjustment = {'ScalingAdjustment': int(self.data['scale_by'])}
+        adjustment: Dict[str, Any] = {'ScalingAdjustment': int(self.data['scale_by'])}
         lower_bound = self.get_MetricIntervalLowerBound()
         if lower_bound is not None:
             adjustment['MetricIntervalLowerBound'] = lower_bound
@@ -97,15 +97,15 @@ class ECSServiceScalableTargetAdapter(Adapter):
         }
     """
 
-    def __init__(self, data, **kwargs):
+    def __init__(self, data: Dict[str, Any], **kwargs):
         self.cluster = kwargs.pop('cluster', None)
         self.service = kwargs.pop('service', None)
-        super(ECSServiceScalableTargetAdapter, self).__init__(data, **kwargs)
+        super().__init__(data, **kwargs)
 
-    def get_ResourceId(self):
+    def get_ResourceId(self) -> str:
         return 'service/{}/{}'.format(self.cluster, self.service)
 
-    def convert(self):
+    def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         data = {}
         data['ServiceNamespace'] = 'ecs'
         data['ResourceId'] = self.get_ResourceId()

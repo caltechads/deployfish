@@ -1,16 +1,17 @@
-from datetime import datetime, timezone
+from typing import List, Dict, Sequence, Any, Optional
+from datetime import datetime
 import time
 
 from deployfish.core.aws import get_boto3_session
 from .abstract import Manager, Model
 
 
-class CloudWatchLogStreamIterator(object):
+class CloudWatchLogStreamIterator:
     """
     An iterator class that allows you to iterate through your cloudwatch logs from a log stream.
     """
 
-    def __init__(self, stream, sleep=5, start_time=None):
+    def __init__(self, stream: "CloudWatchLogStream", sleep: int = 5, start_time: datetime = None):
         """
         :param start_time datetime: a timezone aware, UTC datetime
         """
@@ -22,10 +23,10 @@ class CloudWatchLogStreamIterator(object):
         }
         self.sleep = sleep
 
-    def __iter__(self):
+    def __iter__(self) -> "CloudWatchLogStreamIterator":
         return self
 
-    def __next__(self):
+    def __next__(self) -> List[Dict[str, Any]]:
         if 'nextToken' in self.kwargs:
             # Don't sleep on the first iteration
             time.sleep(self.sleep)
@@ -42,14 +43,21 @@ class CloudWatchLogStreamIterator(object):
         return events
 
 
-class CloudWatchLogGroupTailer(object):
+class CloudWatchLogGroupTailer:
     """
     An iterator class that allows you to tail live logs from a CloudWatchLogStream.
     """
 
-    def __init__(self, group, stream_prefix=None, sleep=5, filter_pattern=None, start_time=None):
+    def __init__(
+        self,
+        group: "CloudWatchLogGroup",
+        stream_prefix: str = None,
+        sleep: int = 5,
+        filter_pattern: str = None,
+        start_time: int = None
+    ):
         self.client = get_boto3_session().client('logs')
-        self.kwargs = {'logGroupName': group.name}
+        self.kwargs: Dict[str, Any] = {'logGroupName': group.name}
         if stream_prefix:
             self.kwargs['logStreamNamePrefix'] = stream_prefix
         if filter_pattern:
@@ -59,14 +67,14 @@ class CloudWatchLogGroupTailer(object):
             self.kwargs['startTime'] = start_time - (1000 * sleep)
         else:
             self.kwargs['startTime'] = int(((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() - sleep) * 1000)
-        self.sleep = sleep
-        self.last_event_ids = []
-        self.started = False
+        self.sleep: int = sleep
+        self.last_event_ids: List[str] = []
+        self.started: bool = False
 
-    def __iter__(self):
+    def __iter__(self) -> "CloudWatchLogGroupTailer":
         return self
 
-    def __next__(self):
+    def __next__(self) -> List[Dict[str, Any]]:
         if not self.started:
             # Don't sleep on the first iteration
             self.started = True
@@ -90,17 +98,17 @@ class CloudWatchLogGroupTailer(object):
         return events
 
 
-class CloudWatchLogStreamTailer(object):
+class CloudWatchLogStreamTailer:
     """
     An iterator class that allows you to tail live logs from a CloudWatchLogStream.
     """
 
-    def __init__(self, stream, sleep=5):
+    def __init__(self, stream: "CloudWatchLogStream", sleep: int = 5):
         """
         :param start_time datetime: a timezone aware, UTC datetime
         """
         self.client = get_boto3_session().client('logs')
-        self.kwargs = {
+        self.kwargs: Dict[str, Any] = {
             'logGroupName': stream.data['logGroupName'],
             'logStreamName': stream.name,
         }
@@ -109,13 +117,13 @@ class CloudWatchLogStreamTailer(object):
             self.kwargs['startTime'] = stream.data['lastEventTimestamp'] - (1000 * sleep)
         else:
             self.kwargs['startTime'] = int(((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() - sleep) * 1000)
-        self.sleep = sleep
-        self.last_event = None
+        self.sleep: int = sleep
+        self.last_event: Optional[Dict[str, Any]] = None
 
-    def __iter__(self):
+    def __iter__(self) -> "CloudWatchLogStreamTailer":
         return self
 
-    def __next__(self):
+    def __next__(self) -> List[Dict[str, Any]]:
         if self.last_event:
             # Don't sleep on the first iteration
             time.sleep(self.sleep)
@@ -143,8 +151,7 @@ class CloudWatchLogGroupManager(Manager):
 
     service = 'logs'
 
-    def get(self, pk):
-        # hint: (str["{log group name}"])
+    def get(self, pk: str, **_) -> "CloudWatchLogGroup":
         response = self.client.describe_log_groups(
             logGroupNamePrefix=pk
         )
@@ -155,14 +162,13 @@ class CloudWatchLogGroupManager(Manager):
                     ", ".join([group['logGroupName'] for group in response['logGroups']])
                 )
             )
-        elif len(response['logGroups']) == 0:
+        if len(response['logGroups']) == 0:
             raise CloudWatchLogGroup.DoesNotExist(
                 "No CloudWatchLogGroup matching pk={} exists in AWS.".format(pk)
             )
         return CloudWatchLogGroup(response['logGroups'][0])
 
-    def list(self, prefix=None):
-        # hint: (str)
+    def list(self, prefix: str = None) -> Sequence["CloudWatchLogGroup"]:
         paginator = self.client.get_paginator('describe_log_groups')
         kwargs = {}
         if prefix:
@@ -173,21 +179,15 @@ class CloudWatchLogGroupManager(Manager):
             group_data.extend(response['logGroups'])
         return [CloudWatchLogGroup(data) for data in group_data]
 
-    def save(self, obj):
-        raise CloudWatchLogGroup.ReadOnly('Cannot modify Application Load Balancers with deployfish')
-
-    def delete(self, pk):
-        raise CloudWatchLogGroup.ReadOnly('Cannot modify Application Load Balancers with deployfish')
-
 
 class CloudWatchLogStreamManager(Manager):
 
     service = 'logs'
 
-    def __get_group_and_stream_from_pk(self, pk):
+    def __get_group_and_stream_from_pk(self, pk: str) -> List[str]:
         return pk.split(':', 1)
 
-    def get(self, pk):
+    def get(self, pk: str, **_) -> "CloudWatchLogStream":
         # hint: (str["{log group name}:{log stream name}"])
         group_name, stream_name = self.__get_group_and_stream_from_pk(pk)
         response = self.client.describe_log_streams(
@@ -196,12 +196,9 @@ class CloudWatchLogStreamManager(Manager):
         )
         if len(response['logStreams']) > 1:
             raise CloudWatchLogStream.MultipleObjectsReturned(
-                "Got more than one log stream when searching for pk={}".format(
-                    pk,
-                    ", ".join([group for group in response['logGroups']])
-                )
+                "Got more than one log stream when searching for pk={}".format(pk)
             )
-        elif len(response['logStreams']) == 0:
+        if len(response['logStreams']) == 0:
             raise CloudWatchLogStream.DoesNotExist(
                 "No CloudWatchLogStream matching pk={} exists in AWS.".format(pk)
             )
@@ -209,8 +206,7 @@ class CloudWatchLogStreamManager(Manager):
         data['logGroupName'] = group_name
         return CloudWatchLogStream(data)
 
-    def list(self, log_group_name, prefix=None, maxitems=None):
-        # hint: (str, str, int)
+    def list(self, log_group_name: str, prefix: str = None, limit: int = None) -> Sequence["CloudWatchLogStream"]:
         """
         .. note::
 
@@ -218,7 +214,7 @@ class CloudWatchLogStreamManager(Manager):
             have a bajillion groups and streams and that might be untenable to actually work with.
         """
         paginator = self.client.get_paginator('describe_log_streams')
-        kwargs = {'logGroupName': log_group_name}
+        kwargs: Dict[str, Any] = {'logGroupName': log_group_name}
         if prefix:
             kwargs['logStreamNamePrefix'] = prefix
         else:
@@ -230,20 +226,14 @@ class CloudWatchLogStreamManager(Manager):
             for stream in response['logStreams']:
                 stream['logGroupName'] = log_group_name
             stream_data.extend(response['logStreams'])
-            if maxitems and len(stream_data) > maxitems:
-                stream_data = stream_data[:maxitems]
+            if limit and len(stream_data) > limit:
+                stream_data = stream_data[:limit]
                 break
         streams = [CloudWatchLogStream(data) for data in stream_data]
         if prefix:
             streams = sorted(streams, key=lambda x: x.data.get('lastEventTimestamp', -1))
             streams.reverse()
         return streams
-
-    def save(self, obj):
-        raise CloudWatchLogGroup.ReadOnly('Cannot modify Application Load Balancers with deployfish')
-
-    def delete(self, pk):
-        raise CloudWatchLogGroup.ReadOnly('Cannot modify Application Load Balancers with deployfish')
 
 
 # ----------------------------------------
@@ -255,18 +245,18 @@ class CloudWatchLogGroup(Model):
     objects = CloudWatchLogGroupManager()
 
     @property
-    def pk(self):
+    def pk(self) -> str:
         return self.data['logGroupName']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.data['logGroupName']
 
     @property
-    def arn(self):
+    def arn(self) -> str:
         return self.data['arn']
 
-    def newest_stream(self, prefix=None):
+    def newest_stream(self, prefix: str = None) -> Optional["CloudWatchLogStream"]:
         """
         Look through all our streams and return the one that has the most recent message.  If there is no
         such stream, return None.
@@ -280,7 +270,12 @@ class CloudWatchLogGroup(Model):
         except IndexError:
             return None
 
-    def get_event_tailer(self, stream_prefix=None, sleep=10, filter_pattern=None):
+    def get_event_tailer(
+        self,
+        stream_prefix: str = None,
+        sleep: int = 10,
+        filter_pattern: str = None
+    ) -> CloudWatchLogGroupTailer:
         # hint: (str["{log_stream_prefix}"], int, str["{filter_pattern}"])
         # help_str:stream_prefix:Filter log events to those from streams matching this prefix
         # help_str:sleep:Sleep for this many seconds between polls
@@ -297,15 +292,22 @@ class CloudWatchLogGroup(Model):
 
         :rtype: CloudWatchLogGroupTailer
         """
+        newest_stream = self.newest_stream(prefix=stream_prefix)
+        start_time = None
+        if newest_stream:
+            try:
+                start_time = newest_stream.data['lastEventTimestamp']
+            except KeyError:
+                pass
         return CloudWatchLogGroupTailer(
             self,
             stream_prefix=stream_prefix,
             sleep=sleep,
             filter_pattern=filter_pattern,
-            start_time=self.newest_stream(prefix=stream_prefix).data['lastEventTimestamp']
+            start_time=start_time
         )
 
-    def log_streams(self, stream_prefix=None, maxitems=None):
+    def log_streams(self, stream_prefix: str = None, maxitems: int = None) -> Sequence["CloudWatchLogStream"]:
         """
         Retrun a list of all our log streams.
 
@@ -318,7 +320,7 @@ class CloudWatchLogGroup(Model):
         return CloudWatchLogStream.objects.list(
             self.pk,
             prefix=stream_prefix,
-            maxitems=maxitems
+            limit=maxitems
         )
 
 
@@ -327,19 +329,19 @@ class CloudWatchLogStream(Model):
     objects = CloudWatchLogStreamManager()
 
     @property
-    def pk(self):
+    def pk(self) -> str:
         return f"{self.data['logGroupName']}:{self.data['logStreamName']}"
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.data['logStreamName']
 
     @property
-    def arn(self):
+    def arn(self) -> str:
         return self.data['arn']
 
     @property
-    def log_group(self):
+    def log_group(self) -> CloudWatchLogGroup:
         """
         Return the ``CloudWatchLogGroup`` that we belong to.
 
@@ -347,7 +349,7 @@ class CloudWatchLogStream(Model):
         """
         return self.get_cached('log_group', CloudWatchLogGroup.objects.get, [self.data['logGroupName']])
 
-    def get_event_tailer(self, sleep=10):
+    def get_event_tailer(self, sleep: int = 10) -> CloudWatchLogStreamTailer:
         # hint: (int)
         """
         Return a properly configured iterator that will eternally poll our log stream for new messages.
@@ -358,7 +360,7 @@ class CloudWatchLogStream(Model):
         """
         return CloudWatchLogStreamTailer(self, sleep)
 
-    def events(self, sleep=10):
+    def events(self, sleep: int = 10) -> CloudWatchLogStreamIterator:
         # hint: (int)
         """
         Return a properly configured iterator that will page through all the events in a stream, starting
@@ -368,5 +370,4 @@ class CloudWatchLogStream(Model):
 
         :rtype: CloudWatchLogStreamTailer
         """
-        return CloudWatchLogStreamTailer(self, sleep)
         return CloudWatchLogStreamIterator(self, sleep)

@@ -40,11 +40,8 @@ Classes derived from `deployfish.core.models.abstract.Model` can be configured f
     necessary, while the @property.setter circumvents the AWS loading.
 
 1. Create a subclass of `deployfish.core.adapters.abstract.Adapter`
-   * The ``.__init__()`` for your subclass will get passed the deployfish.yml configuration for your object, and will
-     store it as `self.data`
-   * Override `.convert()` on that subclass to use `self.data` to generate `data`, a dict that replicates what boto3
-     would return were we to call the `describe_*` method for that object, and `kwargs`, keyword arguments for the
-     object's `.new()` factory method (described below)
+   * The ``.__init__()`` for your subclass will get passed the deployfish.yml configuration for your object, and will store it as `self.data`
+   * Override `.convert()` on that subclass to use `self.data` to generate `data`, a dict that replicates what boto3 would return were we to call the `describe_*` method for that object, and `kwargs`, keyword arguments for the object's `.new()` factory method (described below)
 
 ...
 

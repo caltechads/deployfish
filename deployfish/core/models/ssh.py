@@ -1,7 +1,10 @@
+from typing import Sequence, cast, Any
+
 from deployfish.config import get_config
 
 from .abstract import Manager, Model
 from .secrets import Secret
+from .ec2 import Instance
 
 
 # ----------------------------------------
@@ -10,36 +13,27 @@ from .secrets import Secret
 
 class SSHTunnelManager(Manager):
 
-    def get(self, pk):
-        # hint: (str["{tunnel_name}"])
+    def get(self, pk: str, **_) -> "SSHTunnel":
         config = get_config()
         section = config.get_section('tunnels')
         tunnels = {}
         for tunnel in section:
             tunnels[tunnel['name']] = tunnel
         if pk in tunnels:
-            return SSHTunnel.new(tunnels[pk], 'deployfish')
-        else:
-            raise SSHTunnel.DoesNotExist(
-                'Could not find an ssh tunnel config named "{}" indeployfish.yml:tunnels'.format(pk)
-            )
+            return cast("SSHTunnel", SSHTunnel.new(tunnels[pk], 'deployfish'))
+        raise SSHTunnel.DoesNotExist(
+            f'Could not find an ssh tunnel config named "{pk}" indeployfish.yml:tunnels'
+        )
 
-    def list(self, service_name=None, port=None):
-        # hint: (str["{service_name}"], int)
+    def list(self, service_name: str = None, port: int = None) -> Sequence["SSHTunnel"]:
         config = get_config()
         section = config.get_section('tunnels')
-        tunnels = [SSHTunnel.new(tunnel, 'deployfish') for tunnel in section]
+        tunnels = [cast("SSHTunnel", SSHTunnel.new(tunnel, 'deployfish')) for tunnel in section]
         if service_name:
             tunnels = [tunnel for tunnel in tunnels if tunnel.data['service'] == service_name]
         elif port:
             tunnels = [tunnel for tunnel in tunnels if tunnel.data['port'] == port]
         return tunnels
-
-    def delete(self, obj):
-        raise self.ReadOnly('SSH Tunnel objects are read only.')
-
-    def save(self, obj):
-        raise self.ReadOnly('SSH Tunnel objects are read only.')
 
 
 # ----------------------------------------
@@ -62,19 +56,31 @@ class SSHTunnel(Model):
     objects = SSHTunnelManager()
     config_section = 'tunnels'
 
+    # ---------------------
+    # Model overrides
+    # ---------------------
+
     @property
-    def pk(self):
+    def pk(self) -> str:
         return self.data['name']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.data['name']
 
     @property
-    def local_port(self):
+    def arn(self) -> None:
+        return None
+
+    # -----------------------------
+    # SSHTunnel-specific properties
+    # -----------------------------
+
+    @property
+    def local_port(self) -> int:
         return self.data['local_port']
 
-    def secret(self, name):
+    def secret(self, name: str) -> Secret:
         if 'secrets' not in self.cache:
             self.cache['secrets'] = {}
         if name not in self.cache['secrets']:
@@ -85,7 +91,7 @@ class SSHTunnel(Model):
             self.cache['secrets'][name] = Secret.objects.get(full_name)
         return self.cache['secrets'][name]
 
-    def parse(self, key):
+    def parse(self, key: str) -> Any:
         """
         deployfish supports putting 'config.KEY' as the value for the host and port keys in self.data
 
@@ -108,24 +114,20 @@ class SSHTunnel(Model):
         return self.data[key]
 
     @property
-    def host(self):
+    def host(self) -> str:
         if 'host' not in self.cache:
             self.cache['host'] = self.parse('host')
         return self.cache['host']
 
     @property
-    def host_port(self):
+    def host_port(self) -> int:
         if 'host_port' not in self.cache:
             self.cache['host_port'] = self.parse('port')
         return self.cache['host_port']
 
-    @property
-    def ssh_target(self):
-        return self.service.ssh_target
-
-    @property
-    def ssh_targets(self):
-        return self.service.ssh_targets
+    # ------------------------------
+    # Related objects
+    # ------------------------------
 
     @property
     def service(self):
@@ -150,3 +152,19 @@ class SSHTunnel(Model):
     @property
     def cluster(self):
         return self.service.cluster
+
+    # ---------------------
+    # Network
+    # ---------------------
+
+    @property
+    def ssh_target(self) -> Instance:
+        return self.service.ssh_target
+
+    @property
+    def ssh_targets(self) -> Sequence[Instance]:
+        return self.service.ssh_targets
+
+    @property
+    def tunnel_target(self) -> Instance:
+        return self.service.tunnel_target

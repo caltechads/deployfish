@@ -1,25 +1,33 @@
-from deployfish.exceptions import ConfigProcessingFailed, SkipConfigProcessing
+from typing import Dict, Any, List, Union, TYPE_CHECKING
+
+from deployfish.exceptions import (
+    ConfigProcessingFailed,
+    SkipConfigProcessing as BaseSkipConfigProcessing
+)
+
+if TYPE_CHECKING:
+    from deployfish.config import Config
 
 
 class AbstractConfigProcessor:
 
-    class SkipConfigProcessing(SkipConfigProcessing):
+    class SkipConfigProcessing(BaseSkipConfigProcessing):
         pass
 
     class ProcessingFailed(ConfigProcessingFailed):
         pass
 
-    REPLACEMENTS = [
+    REPLACEMENTS: List[str] = [
         '{name}',
         '{environment}',
         '{service-name}'
         '{cluster-name}'
     ]
 
-    def __init__(self, config, context):
+    def __init__(self, config: "Config", context: Dict[str, Any]):
         self.config = config
         self.context = context
-        self.deployfish_lookups = {}
+        self.deployfish_lookups: Dict[str, Any] = {}
         for section_name in self.config.processable_sections:
             self.deployfish_lookups[section_name] = {}
             section = self.config.cooked.get(section_name, {})
@@ -31,13 +39,13 @@ class AbstractConfigProcessor:
                 if 'cluster' in item:
                     self.deployfish_lookups[section_name][item['name']]['{cluster-name}'] = item['cluster']
 
-    def get_deployfish_replacements(self, section_name, item_name):
+    def get_deployfish_replacements(self, section_name: str, item_name: str) -> Dict[str, str]:
         return self.deployfish_lookups[section_name][item_name]
 
-    def replace(self, obj, key, value, section_name, item_name):
+    def replace(self, obj: Any, key: Union[str, int], value: Any, section_name: str, item_name: str) -> None:
         raise NotImplementedError
 
-    def __process(self, obj, key, value, section_name, item_name):
+    def __process(self, obj: Any, key: Union[str, int], value: Any, section_name: str, item_name: str) -> None:
         if isinstance(value, dict):
             self.__process_dict(value, section_name, item_name)
         elif any(isinstance(value, t) for t in (list, tuple)):
@@ -45,11 +53,11 @@ class AbstractConfigProcessor:
         elif isinstance(value, str):
             self.replace(obj, key, value, section_name, item_name)
 
-    def __process_list(self, obj, section_name, item_name):
+    def __process_list(self, obj: List[Any], section_name: str, item_name: str) -> None:
         for i, value in enumerate(obj):
             self.__process(obj, i, value, section_name, item_name)
 
-    def __process_dict(self, obj, section_name, item_name):
+    def __process_dict(self, obj: Dict[str, Any], section_name: str, item_name: str) -> None:
         for key, value in list(obj.items()):
             self.__process(obj, key, value, section_name, item_name)
 

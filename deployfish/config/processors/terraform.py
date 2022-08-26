@@ -2,45 +2,48 @@ import json
 import os
 import os.path
 import re
+from typing import Dict, Any, Union, TYPE_CHECKING, cast
 
 import boto3
 import botocore
 import requests
 
-from deployfish.exceptions import NoSuchTerraformStateFile, SchemaException
+from deployfish.exceptions import NoSuchTerraformStateFile, SchemaException, ConfigProcessingFailed
 from deployfish.core.aws import get_boto3_session
 
 from .abstract import AbstractConfigProcessor
+
+if TYPE_CHECKING:
+    from deployfish.config import Config
 
 
 class TerraformStateFactory:
 
     @staticmethod
-    def new(terraform_config, context):
+    def new(terraform_config: Dict[str, Any], context: Dict[str, Any]) -> "AbstractTerraformState":
         if 'organization' in terraform_config:
             return TerraformEnterpriseState(terraform_config, context)
-        elif 'statefile' in terraform_config:
+        if 'statefile' in terraform_config:
             return TerraformS3State(terraform_config, context)
-        else:
-            raise SchemaException(
-                'Could not determine location of the Terraform statefile. Ensure that you define either '
-                '"organization" and "workspace" (for Terraform Enterprise) or "statefile" (for S3 hosted '
-                'Terraform state) in your "terraform:" section of deployfish.yml'
-            )
+        raise SchemaException(
+            'Could not determine location of the Terraform statefile. Ensure that you define either '  # noqa:E113
+            '"organization" and "workspace" (for Terraform Enterprise) or "statefile" (for S3 hosted '
+            'Terraform state) in your "terraform:" section of deployfish.yml'
+        )
 
 
 class AbstractTerraformState:
 
-    def __init__(self, terraform_config, context):
-        self.context = context
-        self.terraform_config = terraform_config
-        self.loaded = False
-        self.terraform_lookups = {}
+    def __init__(self, terraform_config: Dict[str, Any], context: Dict[str, Any]) -> None:
+        self.context: Dict[str, Any] = context
+        self.terraform_config: Dict[str, Any] = terraform_config
+        self.loaded: bool = False
+        self.terraform_lookups: Dict[str, Dict[str, str]] = {}
 
-    def load(self, replacements):
+    def load(self, replacements: Dict[str, str]) -> None:
         raise NotImplementedError
 
-    def lookup(self, attr, replacements):
+    def lookup(self, attr: str, replacements: Dict[str, str]) -> str:
         lookup_key = self.terraform_config['lookups'][attr]
         for key, value in list(replacements.items()):
             lookup_key = lookup_key.replace(key, value)
@@ -49,11 +52,11 @@ class AbstractTerraformState:
 
 class TerraformS3State(AbstractTerraformState):
 
-    def __init__(self, terraform_config, context):
-        super(TerraformS3State, self).__init__(terraform_config, context)
-        self.replacements = None
+    def __init__(self, terraform_config: Dict[str, Any], context: Dict[str, Any]) -> None:
+        super().__init__(terraform_config, context)
+        self.replacements: Dict[str, str] = {}
 
-    def _get_state_file_from_s3(self, state_file_url, profile=None, region=None):
+    def _get_state_file_from_s3(self, state_file_url: str, profile: str = None, region: str = None) -> Dict[str, Any]:
         if profile:
             session = boto3.session.Session(profile_name=profile, region_name=region)
         else:
@@ -68,21 +71,20 @@ class TerraformS3State(AbstractTerraformState):
         except botocore.exceptions.ClientError as ex:
             if ex.response['Error']['Code'] == 'NoSuchKey':
                 raise NoSuchTerraformStateFile("Could not find Terraform state file {}".format(state_file_url))
-            else:
-                raise ex
+            raise ex
         return json.loads(state_file)
 
-    def _load_pre_version_12(self, tfstate):
+    def _load_pre_version_12(self, tfstate: Dict[str, Any]) -> None:
         for i in tfstate['modules']:
             if i['path'] == ['root']:
                 for key, value in list(i['outputs'].items()):
                     self.terraform_lookups[key] = value
 
-    def _load_post_version_12(self, tfstate):
+    def _load_post_version_12(self, tfstate: Dict[str, Any]) -> None:
         for key, value in list(tfstate['outputs'].items()):
             self.terraform_lookups[key] = value
 
-    def load(self, replacements):
+    def load(self, replacements: Dict[str, str]) -> None:
         if replacements == self.replacements:
             return
         self.replacements = replacements
@@ -101,29 +103,29 @@ class TerraformS3State(AbstractTerraformState):
             else:
                 self._load_pre_version_12(tfstate)
             # If our statefile URL has no replacments in it, we don't need to load this again
-            self.loaded = not any([
+            self.loaded = not any(
                 r in self.terraform_config['statefile'] for r in AbstractConfigProcessor.REPLACEMENTS
-            ])
+            )
 
 
 class TerraformEnterpriseState(AbstractTerraformState):
 
-    TERRAFORM_API_ENDPOINT = 'https://app.terraform.io/api/v2'
+    TERRAFORM_API_ENDPOINT: str = 'https://app.terraform.io/api/v2'
 
-    def __init__(self, terraform_config, context):
-        super(TerraformEnterpriseState, self).__init__(terraform_config, context)
+    def __init__(self, terraform_config: Dict[str, Any], context: Dict[str, Any]) -> None:
+        super().__init__(terraform_config, context)
         if 'workspace' not in self.terraform_config:
             raise SchemaException(
                 'In the "terraform:" section, if you define "organization", you must also define "workspace"'
             )
         if 'tfe_token' in self.context:
-            self.api_token = self.context['tfe_token']
+            self.api_token: str = self.context['tfe_token']
         if 'ATLAS_TOKEN' in os.environ:
-            self.api_token = os.getenv('ATLAS_TOKEN')
+            self.api_token = cast(str, os.getenv('ATLAS_TOKEN'))
         if not hasattr(self, 'tfe_token'):
-            raise self.ProcessingFailed("Terraform Enterprise State: No Terraform Enterprise API token provided!")
+            raise ConfigProcessingFailed("Terraform Enterprise State: No Terraform Enterprise API token provided!")
 
-    def get_terraform_state_download_url(self):
+    def get_terraform_state_download_url(self) -> str:
         endpoint = self.TERRAFORM_API_ENDPOINT + "/state-versions?"
         org_filter = "filter[organization][name]=" + self.terraform_config['organization']
         workspace_filter = "filter[workspace][name]=" + self.terraform_config['workspace']
@@ -136,7 +138,7 @@ class TerraformEnterpriseState(AbstractTerraformState):
         data = json.loads(response.text)
         return data['data'][0]['attributes']['hosted-state-download-url']
 
-    def load(self, replacements):
+    def load(self, _: Dict[str, str]) -> None:
         if not self.loaded:
             state_download_url = self.get_terraform_state_download_url()
             response = requests.get(state_download_url)
@@ -152,14 +154,14 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
 
     TERRAFORM_RE = re.compile(r'\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}')
 
-    def __init__(self, config, context):
+    def __init__(self, config: "Config", context: Dict[str, Any]) -> None:
         super(TerraformStateConfigProcessor, self).__init__(config, context)
         try:
             self.terraform = TerraformStateFactory.new(config.raw['terraform'], context)
         except KeyError:
             raise self.SkipConfigProcessing('Skipping terraform state processing: no "terraform" section')
 
-    def replace(self, obj, key, value, section_name, item_name):
+    def replace(self, obj: Any, key: Union[str, int], value: Any, section_name: str, item_name: str) -> None:
         m = self.TERRAFORM_RE.search(value)
         if m:
             replacers = self.get_deployfish_replacements(section_name, item_name)

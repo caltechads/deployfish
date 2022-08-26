@@ -17,3 +17,4 @@ real_tests
 .python-version
 
 .mypy_cache
+*.code-workspace

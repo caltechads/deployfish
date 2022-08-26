@@ -1,3 +1,5 @@
+from typing import Dict, Any, Tuple
+
 from ..abstract import Adapter
 
 
@@ -15,7 +17,7 @@ class ServiceDiscoveryServiceAdapter(Adapter):
         }
     """
 
-    def convert(self):
+    def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         data = {}
         data['Name'] = self.data['name']
         data['DnsConfig'] = {}

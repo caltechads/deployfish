@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+from typing import Sequence
 
 import botocore
 
 from .abstract import Manager, Model
 from .mixins import TagsManagerMixin, TagsMixin
+
 
 # ----------------------------------------
 # Managers
@@ -12,26 +14,20 @@ from .mixins import TagsManagerMixin, TagsMixin
 
 class EFSFileSystemManager(TagsManagerMixin, Manager):
 
-    service = 'efs'
+    service: str = 'efs'
 
-    def get(self, pk, **kwargs):
+    def get(self, pk: str, **_) -> "EFSFileSystem":
         try:
             response = self.client.describe_file_systems(FileSystemId=pk)
         except botocore.exceptions.ClientError:
             raise EFSFileSystem.DoesNotExist(
-                'No EFS file system with id "{}" exists in AWS'.format(pk)
+                f'No EFS file system with id "{pk}" exists in AWS'
             )
         return EFSFileSystem(response['FileSystems'][0])
 
-    def list(self):
+    def list(self) -> Sequence["EFSFileSystem"]:
         response = self.client.describe_file_systems()
         return [EFSFileSystem(group) for group in response['FileSystems']]
-
-    def save(self, obj):
-        raise EFSFileSystem.ReadOnly('Cannot create or update EFS file systems with deployfish')
-
-    def delete(self, pk):
-        raise EFSFileSystem.ReadOnly('Cannot delete EFS file systems with deployfish')
 
 
 # ----------------------------------------
@@ -43,21 +39,21 @@ class EFSFileSystem(TagsMixin, Model):
     objects = EFSFileSystemManager()
 
     @property
-    def pk(self):
+    def pk(self) -> str:
         return self.data['FileSystemId']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.data['Name']
 
     @property
-    def arn(self):
+    def arn(self) -> str:
         return self.data['FileSystemArn']
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self.data['SizeInBytes']['Value']
 
     @property
-    def state(self):
+    def state(self) -> str:
         return self.data['LifeCycleState']

@@ -40,6 +40,30 @@ class OperationFailed(Exception):
     pass
 
 
+class NoSuchConfigSection(Exception):
+    """
+    We looked in our deployfish.yml for a section, but it was not present.
+    """
+    def __init__(self, section: str):
+        super().__init__()
+        self.section = section
+
+    def __str__(self) -> str:
+        return f"No such deployfish.yml section: {self.section}"
+
+
+class NoSuchConfigSectionItem(Exception):
+    """
+    We looked an existing deployfish.yml section for a named item, but it was not present.
+    """
+    def __init__(self, section: str, name: str):
+        super().__init__()
+        self.section = section
+        self.name = name
+
+    def __str__(self) -> str:
+        return f'No item named "{self.name}" deployfish.yml section "{self.section}"'
+
 class RenderException(Exception):
     """
     This is used for click commands, and gets re-raised when we get other exceptions so we can
@@ -47,9 +71,14 @@ class RenderException(Exception):
     to catch every exception separately.
     """
 
-    def __init__(self, msg, exit_code=1):
+    def __init__(self, msg: str, exit_code: int = 1):
         self.msg = msg
         self.exit_code = exit_code
+
+
+class DeployfishAppError(Exception):
+    """Generic errors."""
+    pass
 
 
 class NoSuchTerraformStateFile(Exception):
