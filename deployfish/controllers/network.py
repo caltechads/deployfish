@@ -1,7 +1,7 @@
 from itertools import cycle
 from typing import Optional, List, Sequence, Tuple, Type, cast
 
-from cement import ex, shell
+from cement import ex, shell, App
 import click
 from tabulate import tabulate
 
@@ -11,6 +11,55 @@ from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Contr
 from deployfish.types import SupportsSSHModel, SupportsService
 
 from .utils import handle_model_exceptions
+
+def get_ssh_target(app: App, obj: SupportsSSHModel, choose: bool = False) -> Instance:
+    """
+    Return an ``Instance`` object to which the user can ssh.
+
+    If ``choose`` is ``False``, return the first `Instance`` of the
+    available ssh targets for ``obj``.
+
+    If ``choose`` is ``True``, prompt the user to choose one of the
+    available ssh targets for this object.
+
+    Args:
+        obj: an instance of ``self.model``
+
+    Keyword Arguments:
+        choose: if ``True``, prompt the user to choose one of the available instances
+
+    Raises:
+        Instance.DoesNotExist: if there are no available ssh targets
+
+    Returns:
+        An Instance object.
+    """
+    assert hasattr(obj, 'ssh_targets'), \
+        f'{obj.__class__.__name__} objects do not have the .ssh_targets attribute'
+    target = None
+    if choose:
+        if obj.ssh_targets:
+            rows = []
+            click.secho('\nAvailable ssh targets:', fg='green')
+            click.secho('----------------------\n', fg='green')
+            for i, entry in enumerate(obj.ssh_targets):
+                rows.append([
+                    i + 1,
+                    click.style(entry.name, fg='cyan'),
+                    entry.pk,
+                    entry.ip_address
+                ])
+            app.print(tabulate(rows, headers=['#', 'Name', 'Instance Id', 'IP']))
+            p = shell.Prompt("\nEnter the number of the instance you want: ", default=1)
+            choice = p.prompt()
+            target = obj.ssh_targets[int(choice) - 1]
+    else:
+        target = obj.ssh_target
+    if not target:
+        raise Instance.DoesNotExist(
+            '{}(pk="{}") has no ssh targets available'.format(obj.__class__.__name__, obj.pk)
+        )
+    return target
 
 
 class ObjectSSHController(Controller):
@@ -33,55 +82,6 @@ class ObjectSSHController(Controller):
         'bright_magenta',
         'bright_white'
     ]
-
-    def get_ssh_target(self, obj: SupportsSSHModel, choose: bool = False) -> Instance:
-        """
-        Return an ``Instance`` object to which the user can ssh.
-
-        If ``choose`` is ``False``, return the first `Instance`` of the
-        available ssh targets for ``obj``.
-
-        If ``choose`` is ``True``, prompt the user to choose one of the
-        available ssh targets for this object.
-
-        Args:
-            obj: an instance of ``self.model``
-
-        Keyword Arguments:
-            choose: if ``True``, prompt the user to choose one of the available instances
-
-        Raises:
-            Instance.DoesNotExist: if there are no available ssh targets
-
-        Returns:
-            An Instance object.
-        """
-        assert hasattr(obj, 'ssh_targets'), \
-            f'{obj.__class__.__name__} objects do not have the .ssh_targets attribute'
-        target = None
-        if choose:
-            if obj.ssh_targets:
-                rows = []
-                click.secho('\nAvailable ssh targets:', fg='green')
-                click.secho('----------------------\n', fg='green')
-                for i, entry in enumerate(obj.ssh_targets):
-                    rows.append([
-                        i + 1,
-                        click.style(entry.name, fg='cyan'),
-                        entry.pk,
-                        entry.ip_address
-                    ])
-                self.app.print(tabulate(rows, headers=['#', 'Name', 'Instance Id', 'IP']))
-                p = shell.Prompt("\nEnter the number of the instance you want: ", default=1)
-                choice = p.prompt()
-                target = obj.ssh_targets[int(choice) - 1]
-        else:
-            target = obj.ssh_target
-        if not target:
-            raise Instance.DoesNotExist(
-                '{}(pk="{}") has no ssh targets available'.format(obj.__class__.__name__, obj.pk)
-            )
-        return target
 
     @ex(
         help="SSH into a container machine running one of the tasks for this object.",
@@ -118,7 +118,7 @@ class ObjectSSHController(Controller):
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         assert hasattr(obj, 'ssh_target'), f'Objects of type {obj.__class__.__name__} do not support SSH actions'
-        target = self.get_ssh_target(obj, choose=self.app.pargs.choose)
+        target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
         target.ssh_interactive(verbose=self.app.pargs.verbose)
 
     @ex(
@@ -172,7 +172,7 @@ class ObjectSSHController(Controller):
         assert hasattr(obj, 'ssh_target'), f'Objects of type {obj.__class__.__name__} do not support SSH actions'
         command = ' '.join(self.app.pargs.command)
         if not self.app.pargs.all:
-            targets: Sequence[Instance] = [self.get_ssh_target(obj, choose=self.app.pargs.choose)]
+            targets: Sequence[Instance] = [get_ssh_target(self.app, obj, choose=self.app.pargs.choose)]
         else:
             targets = obj.ssh_targets
         for target in targets:
