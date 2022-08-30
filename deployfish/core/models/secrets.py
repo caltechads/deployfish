@@ -1,11 +1,18 @@
+import sys
 import json
-from typing import Dict, Any, Sequence, List, Union, Type, Tuple, Optional, Protocol
+from typing import Dict, Any, Sequence, List, Union, Type, Tuple, Optional
 
 from jsondiff import diff
 
 from deployfish.types import SupportsCache
 
 from .abstract import Manager, Model
+
+if sys.version_info >= (3, 8):
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol
+
 
 # ----------------------------------------
 # Protocols

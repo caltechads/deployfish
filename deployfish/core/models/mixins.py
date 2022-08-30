@@ -1,6 +1,13 @@
-from typing import List, Dict, TYPE_CHECKING, cast, Any, Optional, Protocol
-from deployfish.types import SupportsModel, SupportsTaskDefinition
+import sys
+from typing import List, Dict, TYPE_CHECKING, cast, Any, Optional
+from deployfish.types import SupportsModel
 from deployfish.exceptions import SchemaException
+
+if sys.version_info >= (3, 8):
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol
+
 
 if TYPE_CHECKING:
     from .abstract import Model, Manager
