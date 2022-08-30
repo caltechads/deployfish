@@ -188,7 +188,6 @@ class CloudWatchLogStreamManager(Manager):
         return pk.split(':', 1)
 
     def get(self, pk: str, **_) -> "CloudWatchLogStream":
-        # hint: (str["{log group name}:{log stream name}"])
         group_name, stream_name = self.__get_group_and_stream_from_pk(pk)
         response = self.client.describe_log_streams(
             logGroupName=group_name,
@@ -276,9 +275,6 @@ class CloudWatchLogGroup(Model):
         sleep: int = 10,
         filter_pattern: str = None
     ) -> CloudWatchLogGroupTailer:
-        # hint: (str["{log_stream_prefix}"], int, str["{filter_pattern}"])
-        # help_str:stream_prefix:Filter log events to those from streams matching this prefix
-        # help_str:sleep:Sleep for this many seconds between polls
         """
         Return a properly configured iterator that will eternally poll our log group (note -- not stream) for new
         messages in any of its streams, possibly filtering by log stream prefix and filter pattern.
@@ -350,7 +346,6 @@ class CloudWatchLogStream(Model):
         return self.get_cached('log_group', CloudWatchLogGroup.objects.get, [self.data['logGroupName']])
 
     def get_event_tailer(self, sleep: int = 10) -> CloudWatchLogStreamTailer:
-        # hint: (int)
         """
         Return a properly configured iterator that will eternally poll our log stream for new messages.
 
@@ -361,7 +356,6 @@ class CloudWatchLogStream(Model):
         return CloudWatchLogStreamTailer(self, sleep)
 
     def events(self, sleep: int = 10) -> CloudWatchLogStreamIterator:
-        # hint: (int)
         """
         Return a properly configured iterator that will page through all the events in a stream, starting
         from the oldest event and ending with the most recent event.
