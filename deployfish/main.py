@@ -84,8 +84,9 @@ class DeployfishApp(App):
             'print',
             'tabulate',
             # deployfish extensions
+            'deployfish.ext.ext_df_argparse',
             'deployfish.ext.ext_df_jinja2',
-            'deployfish.ext.ext_df_argparse'
+            'deployfish.ext.ext_df_plugin',
         ]
 
         # configuration handler
@@ -97,6 +98,7 @@ class DeployfishApp(App):
         # handlers
         log_handler = 'colorlog'
         output_handler = 'df_jinja2'
+        plugin_handler = 'df_plugin'
 
         # where do our templates live?
         template_module = 'deployfish.templates'
