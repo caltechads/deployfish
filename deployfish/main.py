@@ -1,12 +1,17 @@
 from typing import Optional, Dict
+
 from cement import App, init_defaults
 from cement.core.exc import CaughtSignal
-from deployfish.controllers.base import BaseService, BaseServiceDockerExec, BaseServiceSSH, BaseServiceSecrets
 
 import deployfish.core.adapters  # noqa:F401,F403  # pylint:disable=unused-import
-from .exceptions import DeployfishAppError
+
+from .config import Config, set_config
 from .controllers import (
     Base,
+    BaseService,
+    BaseServiceDockerExec,
+    BaseServiceSSH,
+    BaseServiceSecrets,
     BaseTunnel,
     EC2ClassicLoadBalancer,
     EC2LoadBalancer,
@@ -31,18 +36,22 @@ from .controllers import (
     LogsCloudWatchLogStream,
     Tunnels,
 )
-from .config import Config, set_config
 from .core.aws import build_boto3_session
+from .exceptions import DeployfishAppError
 
 # configuration defaults
 CONFIG = init_defaults('deployfish')
 META = init_defaults('log.logging')
 META['log.logging']['log_level_argument'] = ['-l', '--level']
 
-def post_arg_parse_build_boto3_session(app: App) -> None:
+
+def post_arg_parse_build_boto3_session(app: "DeployfishApp") -> None:
     """
     After parsing arguments but before doing any other actions, build a properly
-    configured boto3.session.Session object for us to use in our AWS work.
+    configured ``boto3.session.Session`` object for us to use in our AWS work.
+
+    Args:
+        app: our DeployfishApp object
     """
     app.log.debug('building boto3 session')
     build_boto3_session(
@@ -138,8 +147,11 @@ class DeployfishApp(App):
     @property
     def deployfish_config(self) -> Config:
         """
-        Lazy load the deployfish.yml file.  We only load it on request because most
+        Lazy load the ``deployfish.yml`` file.  We only load it on request because most
         deployfish commands don't need it.
+
+        Returns:
+            The fully interpolated Config object.
         """
         if not self._deployfish_config:
             config_kwargs: Dict[str, str] = {

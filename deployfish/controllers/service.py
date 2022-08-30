@@ -286,6 +286,7 @@ class ECSService(CrudBase):
         )
         self.app.print(renderer.render(results))
 
+
 class ECSServiceStandaloneTasks(Controller):
 
     class Meta:

@@ -79,7 +79,7 @@ class Manager:
         return obj == aws_obj
 
     def get_waiter(self, waiter_name: str):
-        config = self.client._get_waiter_config()
+        config = self.client._get_waiter_config()  # pylint:disable=protected-access
         if not config:
             raise ValueError("Waiter does not exist: %s" % waiter_name)
         model = waiter.WaiterModel(config)

@@ -207,7 +207,7 @@ class TaskDefinitionFARGATEMixin:
         if cpu is not None:
             if cpu_required > cpu:
                 raise SchemaException(
-                    'You set task cpu to {} but your container cpu sums to {}. Task cpu must be greater than the sum of container cpu.'.format(
+                    'You set task cpu to {} but your container cpu sums to {}. Task cpu must be greater than the sum of container cpu.'.format(  # pylint:disable=line-too-long
                         cpu,
                         cpu_required
                     )
@@ -285,7 +285,7 @@ class TaskDefinitionFARGATEMixin:
                 cpu_index = self.VALID_FARGATE_CPU.index(cpu) + 1
                 # FIXME: find the lowest valid fargate CPU level that supports the amount of memory we need
                 raise SchemaException(
-                    'When using the FARGATE launch_type with task cpu={}, the maximum memory available is {}MB, but your containers need a minimum of {}MB. Set your task cpu to one of {}.'.format(   # noqa:E501
+                    'When using the FARGATE launch_type with task cpu={}, the maximum memory available is {}MB, but your containers need a minimum of {}MB. Set your task cpu to one of {}.'.format(   # noqa:E501  # pylint:disable=line-too-long
                         cpu,
                         self.VALID_FARGATE_MEMORY[cpu][-1],
                         memory_required,
@@ -299,7 +299,7 @@ class TaskDefinitionFARGATEMixin:
                 raise SchemaException('Task memory must be an integer')
             if memory not in self.VALID_FARGATE_MEMORY[cpu]:
                 raise SchemaException(
-                    'When using the FARGATE launch_type with task cpu={}, your requested task memory of {}MB is not valid. Valid task memory values for that cpu level are: {}'.format(  # noqa:E501
+                    'When using the FARGATE launch_type with task cpu={}, your requested task memory of {}MB is not valid. Valid task memory values for that cpu level are: {}'.format(  # noqa:E501  # pylint:disable=line-too-long
                         cpu,
                         memory,
                         ', '.join([str(m) for m in self.VALID_FARGATE_MEMORY[cpu]])
@@ -345,7 +345,7 @@ class TaskDefinitionFARGATEMixin:
         if memory is not None:
             if memory_required > 0 and memory < memory_required:
                 raise SchemaException(
-                    'Task memory is {}MB but your container memory sums to {}MB. Task memory must be greater than the sum of container memory.'.format(  # noqa:E501
+                    'Task memory is {}MB but your container memory sums to {}MB. Task memory must be greater than the sum of container memory.'.format(  # noqa:E501  # pylint:disable=line-too-long
                         memory,
                         memory_required
                     )
