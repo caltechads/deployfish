@@ -19,6 +19,7 @@ setup(
     ],
     packages=find_packages(),
     include_package_data=True,
+    package_data={'deployfish': ["py.typed"]},
     install_requires=[
         "boto3 >= 1.17",
         "cement>=3.0.0",
