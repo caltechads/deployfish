@@ -1,4 +1,10 @@
-from .base import Base
+from .base import (  # noqa:F401,F403
+    Base,
+    BaseService,
+    BaseServiceDockerExec,
+    BaseServiceSSH,
+    BaseServiceSecrets
+)
 from .commands import (  # noqa:F401,F403
     ECSServiceCommands,
     ECSServiceCommandLogs
