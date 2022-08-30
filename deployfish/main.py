@@ -1,4 +1,5 @@
-from typing import Optional, Dict
+import os
+from typing import Any, Optional, Dict
 
 from cement import App, init_defaults
 from cement.core.exc import CaughtSignal
@@ -156,11 +157,17 @@ class DeployfishApp(App):
             The fully interpolated Config object.
         """
         if not self._deployfish_config:
-            config_kwargs: Dict[str, str] = {
+            ignore_missing_environment = False
+            if (
+                self.pargs.ignore_missing_environment or
+                os.environ.get('DEPLOYFISH_IGNORE_MISSING_ENVIRONMENT', 'false').lower() == 'true'
+            ):
+                ignore_missing_environment = True
+            config_kwargs: Dict[str, Any] = {
                 'filename': self.pargs.filename,
                 'env_file': self.pargs.env_file,
                 'tfe_token': self.pargs.tfe_token,
-                'ignore_missing_environment': self.pargs.ignore_missing_environment
+                'ignore_missing_environment': ignore_missing_environment
             }
             self._deployfish_config = Config.new(**config_kwargs)
             set_config(self._deployfish_config)
