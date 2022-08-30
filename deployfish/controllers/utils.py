@@ -61,7 +61,7 @@ def handle_model_exceptions(func: Callable) -> Callable:  # noqa:C901
                 lines.append(click.style('\nAvailable environments:', fg='cyan'))
                 lines.extend(environments)
             lines.append('')
-            raise self.app.print('\n'.join(lines))
+            self.app.print('\n'.join(lines))
         else:
             return obj
     return inner
