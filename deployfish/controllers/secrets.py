@@ -91,7 +91,7 @@ class ObjectSecretsController(Controller):
         we changed our ``.env`` file, or we update terraform.
         """
         loader = self.loader(self)
-        raw = loader.get_object_from_aws(self.app.pargs.pk)
+        raw = loader.get_object_from_deployfish(self.app.pargs.pk)
         assert hasattr(raw, 'secrets_prefix'), f'Models of type "{raw.__class__.__name__} do not have secrets.'
         obj = cast(SupportsModelWithSecrets, raw)
         other = Secret.objects.list(obj.secrets_prefix)
@@ -100,14 +100,13 @@ class ObjectSecretsController(Controller):
         self.app.print("=" * len(title))
         changes = obj.diff_secrets(other, ignore_external=True)
         if not changes:
-
             self.app.print(
                 click.style(
                     'The AWS secrets for {}("{}") are up to date.\n'.format(self.model.__name__, obj.pk),
                     fg='green'
                 )
             )
-        self.app.render({'changes': changes}, template=self.diff_template)
+        self.app.render({'obj': changes}, template=self.diff_template)
 
     @ex(
         help="Show all AWS SSM Parameter Store secrets for an object",
@@ -147,7 +146,7 @@ class ObjectSecretsController(Controller):
             self.app.print(
                 click.style('\nChanges to be applied to secrets for {}("{}"):\n'.format(self.model.__name__, obj.pk))
             )
-            self.app.render({'changes': changes}, template=self.diff_template)
+            self.app.render({'obj': changes}, template=self.diff_template)
             self.app.print(click.style("\nIf you really want to do this, answer \"yes\" to the question below.\n"))
             p = shell.Prompt("Apply the above changes to AWS?")
             value = p.prompt()

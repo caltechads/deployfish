@@ -269,13 +269,6 @@ class Tunnels(ReadOnlyCrudBase):
         'Host Port': 'host_port'
     }
 
-    def _post_argument_parsing(self):
-        # We do the following just to load the Config, which we need to work with SSHTunnel
-        # objects
-        self.app.deployfish_config  # pylint:disable=pointless-statement
-        return super()._post_argument_parsing()
-
-
     @ex(
         help="List available SSH Tunnels",
         arguments=[
