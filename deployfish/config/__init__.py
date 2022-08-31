@@ -1,14 +1,16 @@
 from typing import Optional
 
+from cement import App
+
 from .config import Config
 
 
-config: Optional[Config] = None
+MAIN_APP: Optional[App] = None
 
-def set_config(c: Config) -> None:
-    global config  # pylint:disable=global-statement
-    config = c
+def set_app(app: App) -> None:
+    global MAIN_APP  # pylint:disable=global-statement
+    MAIN_APP = app
 
-def get_config(**kwargs) -> Config:
-    assert config is not None,  'Config() has not been configured yet.'
-    return config
+def get_config() -> Config:
+    assert MAIN_APP is not None, 'get_config() called before set_app()'
+    return MAIN_APP.deployfish_config

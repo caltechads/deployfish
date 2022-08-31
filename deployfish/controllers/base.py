@@ -45,7 +45,7 @@ def maybe_rename_existing_file(env_file: str, obj: SupportsModelWithSecrets) -> 
         os.rename(env_file, new_filename)
         click.secho('{}("{}"): renamed existing env_file to {}'.format(
             obj.__class__.__name__,
-            obj.pk,
+            obj.name,
             new_filename
         ), fg='yellow')
 
@@ -143,7 +143,11 @@ class BaseServiceSecrets(ECSServiceSecrets):
             model: the type of the Model object named by ``name``
         """
         loader = self.loader(self)
-        raw = loader.get_object_from_deployfish(name, model=model, factory_kwargs={'load_secrets': False})
+        raw = loader.get_object_from_deployfish(
+            name,
+            model=model,
+            factory_kwargs={'load_secrets': False}
+        )
         assert hasattr(raw, 'secrets_prefix'), f'Models of type "{raw.__class__.__name__} do not have secrets.'
         obj = cast(SupportsModelWithSecrets, raw)
         maybe_rename_existing_file(env_file, obj)
@@ -152,7 +156,7 @@ class BaseServiceSecrets(ECSServiceSecrets):
             fd.write(contents)
             click.secho('{}("{}"): exported live secrets to env_file {}'.format(
                 obj.__class__.__name__,
-                obj.pk,
+                obj.name,
                 env_file
             ), fg='green')
 
@@ -168,7 +172,7 @@ class BaseServiceSecrets(ECSServiceSecrets):
         # Always ignore missing environment here -- the whole purpose of the command is to
         # fix missing environment variables
         self.app.pargs.ignore_missing_environment = True
-        config = self.app.deployfish_config
+        config = self.app.raw_deployfish_config
         services = {item['name']: item['env_file'] for item in config.services if 'env_file' in item}
         tasks = {item['name']: item['env_file'] for item in config.tasks if 'env_file' in item}
         for service, env_file in list(services.items()):

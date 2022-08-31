@@ -6,7 +6,7 @@ from cement.core.exc import CaughtSignal
 
 import deployfish.core.adapters  # noqa:F401,F403  # pylint:disable=unused-import
 
-from .config import Config, set_config
+from .config import Config, set_app
 from .controllers import (
     Base,
     BaseService,
@@ -146,6 +146,7 @@ class DeployfishApp(App):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._deployfish_config: Optional[Config] = None
+        self._raw_deployfish_config: Optional[Config] = None
 
     @property
     def deployfish_config(self) -> Config:
@@ -170,9 +171,25 @@ class DeployfishApp(App):
                 'ignore_missing_environment': ignore_missing_environment
             }
             self._deployfish_config = Config.new(**config_kwargs)
-            set_config(self._deployfish_config)
         return self._deployfish_config
 
+    @property
+    def raw_deployfish_config(self) -> Config:
+        """
+        Lazy load the ``deployfish.yml`` file into a ``Config`` object, but don't run any
+        interpolations.
+
+        Returns:
+            The un-interpolated Config object.
+        """
+        if not self._raw_deployfish_config:
+            config_kwargs: Dict[str, Any] = {
+                'filename': self.pargs.filename,
+                'ignore_missing_environment': True,
+                'interpolate': False
+            }
+            self._raw_deployfish_config = Config.new(**config_kwargs)
+        return self._raw_deployfish_config
 
 
 # ==========================================
@@ -182,6 +199,7 @@ class DeployfishApp(App):
 
 def main():
     with DeployfishApp() as app:
+        set_app(app)
         try:
             app.run()
 

@@ -57,13 +57,13 @@ class Config:
                 sys.exit(1)
         return config
 
-    # FIXME: we're accepting boto3_session as a kwarg, but we never do anything with it
     def __init__(
         self,
         filename: str,
         raw_config: Dict[str, Any] = None,
         boto3_session: boto3.session.Session = None
     ) -> None:
+        # FIXME: we're accepting boto3_session as a kwarg, but we never do anything with it
         self.filename: str = filename
         self.__raw: Dict[str, Any] = raw_config if raw_config else self.load_config(filename)
         self.__cooked: Dict[str, Any] = deepcopy(self.__raw)

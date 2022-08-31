@@ -97,7 +97,7 @@ class ObjectLoader:
             model = self.controller.model
         model = cast(Type[Model], model)
         if model.config_section != 'NO_SECTION':
-            return self.factory(identifier, factory_kwargs, model=model)
+            return self.factory(identifier, factory_kwargs=factory_kwargs, model=model)
         raise self.ObjectNotManaged(f'{model.__name__} objects are not managed in deployfish.yml')
 
     def factory(
@@ -123,6 +123,7 @@ class ObjectLoader:
         """
         if factory_kwargs is None:
             factory_kwargs = {}
+        config = self.controller.app.deployfish_config
         if not model:
             model = self.controller.model
         model = cast(Type[Model], model)
@@ -130,11 +131,11 @@ class ObjectLoader:
             factory_kwargs = {}
         if model.config_section != 'NO_SECTION':
             try:
-                self.controller.app.deployfish_config.get_section(model.config_section)
+                config.get_section(model.config_section)
             except KeyError:
                 raise self.DeployfishSectionDoesNotExist(model.config_section)
             try:
-                data = self.controller.app.deployfish_config.get_section_item(model.config_section, identifier)
+                data = config.get_section_item(model.config_section, identifier)
                 return model.new(data, 'deployfish', **factory_kwargs)
             except KeyError:
                 raise self.DeployfishObjectDoesNotExist(model.config_section, identifier)
