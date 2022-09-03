@@ -1,3 +1,4 @@
+from typing import List, Dict, Any
 from datetime import datetime
 from textwrap import wrap
 
@@ -16,12 +17,12 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
     """
 
     def __init__(self, obj):
-        super(ECSDeploymentStatusWaiterHook, self).__init__(obj)
+        super().__init__(obj)
         self.our_timezone = get_localzone()
         self.start = datetime.now().replace(tzinfo=self.our_timezone)
         self.timestamp = self.start
 
-    def display_deployments(self, deployments):
+    def display_deployments(self, deployments: List[Dict[str, Any]]) -> None:
         rows = []
         for d in deployments:
             if d['status'] == 'PRIMARY':
@@ -39,18 +40,17 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
             ])
         click.secho(tabulate(rows, headers=['Status', 'Task def', 'Desired', 'Pending', 'Running']))
 
-    def display_events(self, events):
+    def display_events(self, events: List[Dict[str, Any]]) -> None:
         rows = []
         events = sorted(events, key=lambda x: x['createdAt'])
         events.reverse()
-        for i, e in enumerate(events):
+        for e in events:
             if e['createdAt'] < self.timestamp:
                 fg = 'white'
             else:
                 fg = 'yellow'
             if e['createdAt'] < self.start:
                 break
-            # FIXME: make the time display be "N sec ago"
             timestamp = e['createdAt']
             rows.append([
                 click.style(timestamp.strftime('%Y-%m-%d %H:%M:%S'), fg=fg),
@@ -92,7 +92,7 @@ class ECSTaskStatusHook(AbstractWaiterHook):
     """
 
     def __init__(self, obj):
-        super(ECSTaskStatusHook, self).__init__(obj)
+        super().__init__(obj)
         self.our_timezone = get_localzone()
         self.start = datetime.now().replace(tzinfo=self.our_timezone)
         self.timestamp = self.start
@@ -149,7 +149,7 @@ class ECSTaskLogsHook(AbstractWaiterHook):
     """
 
     def __init__(self, obj):
-        super(ECSTaskStatusHook, self).__init__(obj)
+        super().__init__(obj)
         self.our_timezone = get_localzone()
         self.start = datetime.now().replace(tzinfo=self.our_timezone)
         self.timestamp = self.start

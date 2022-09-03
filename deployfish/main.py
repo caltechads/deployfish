@@ -138,6 +138,22 @@ class DeployfishApp(App):
             Tunnels
         ]
 
+        # define hooks
+        define_hooks = [
+            'pre_object_create',    # hook(app: App, obj: Model)
+            'post_object_create',   # hook(app: App, obj: Model, success: bool = True, reason: str = None)
+            'pre_object_update',    # hook(app: App, obj: Model)
+            'post_object_update',   # hook(app: App, obj: Model, success: bool = True, reason: str = None)
+            'pre_object_delete',    # hook(app: App, obj: Model)
+            'post_object_delete',   # hook(app: App, obj: Model, success: bool =  True, reason: str = None)
+            'pre_service_scale',     # hook(app: App, obj: Service, count: int)
+            'post_service_scale',    # hook(app: App, obj: Service, count: int)
+            'pre_service_restart',   # hook(app: App, obj: Service)
+            'post_service_restart',  # hook(app: App, obj: Service)
+            'pre_cluster_scale',     # hook(app: App, obj: Cluster, count: int)
+            'post_cluster_scale',    # hook(app: App, obj: Cluster, count: int)
+        ]
+
         # register hooks
         hooks = [
             ('post_argument_parsing', post_arg_parse_build_boto3_session)

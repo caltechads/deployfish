@@ -241,9 +241,15 @@ class ECSService(CrudBase):
         obj = cast(Service, obj)
         count = self.app.pargs.count
         click.secho('Updating desiredCount to "{}" on Service(pk="{}")'.format(count, obj.pk))
+        for _ in self.app.hook.run('pre_service_scale', self.app, obj, count):
+            pass
         obj.scale(count)
         self.scale_services_waiter(obj)  # type: ignore
-        return click.style('\n\nScaled {}("{}") to {} tasks.'.format(self.model.__name__, obj.pk, count), fg='green')
+        self.app.print(
+            click.style('\n\nScaled {}("{}") to {} tasks.'.format(self.model.__name__, obj.pk, count), fg='green')
+        )
+        for _ in self.app.hook.run('post_service_scale', self.app, obj, count):
+            pass
 
 
     @ex(

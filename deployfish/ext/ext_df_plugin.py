@@ -87,12 +87,13 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
 
     def load_plugin(self, plugin_name: str) -> None:  # pylint: disable=arguments-differ
         LOG.debug("loading application plugin '%s'" % plugin_name)
-        if plugin_name in self.entrypoints:
+        if plugin_name in self.entrypoints and plugin_name not in self.get_loaded_plugins():
             self._loaded_plugins.append(plugin_name)
             self.entrypoints[plugin_name].load()
             module_name = self.entrypoints[plugin_name].module_name
             if hasattr(sys.modules[module_name], 'load'):
                 sys.modules[module_name].load(self.app)
+            self._loaded_plugins.append(plugin_name)
         else:
             LOG.debug(
                 "no plugin named '%s' exists among the known 'deployfish.plugins' entrypoints"

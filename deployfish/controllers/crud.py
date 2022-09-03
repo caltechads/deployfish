@@ -1,5 +1,6 @@
 from typing import Sequence, Type, Optional, Dict, Any
 
+import botocore
 from cement import ex, shell
 import click
 
@@ -186,11 +187,21 @@ class CrudBase(ReadOnlyCrudBase):
                 click.style('{}(pk={}) already exists in AWS!'.format(self.model.__name__, obj.pk), fg='red')
             )
             return
+        for _ in self.app.hook.run('pre_object_create', self.app, obj):
+            pass
         click.secho('\n\nCreating {}("{}"):\n\n'.format(self.model.__name__, obj.pk), fg='yellow')
         self.app.render({'obj': obj}, template=self.create_template)
         obj.save()
-        self.create_waiter(obj)
-        return click.style('\n\nCreated {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
+        try:
+            self.create_waiter(obj)
+        except botocore.exceptions.WaiterError as e:
+            for _ in self.app.hook.run('post_object_create', self.app, obj, success=False, reason=e.kwargs['reason']):
+                pass
+            raise
+        else:
+            for _ in self.app.hook.run('post_object_create', self.app):
+                pass
+        self.app.print(click.style('\n\nCreated {}("{}").'.format(self.model.__name__, obj.pk), fg='green'))
 
     # Update
 
@@ -218,7 +229,15 @@ class CrudBase(ReadOnlyCrudBase):
         )
         self.app.render({'obj': obj}, template=self.update_template)
         obj.save()
-        self.update_waiter(obj)
+        try:
+            self.update_waiter(obj)
+        except botocore.exceptions.WaiterError as e:
+            for _ in self.app.hook.run('post_object_update', self.app, obj, success=False, reason=e.kwargs['reason']):
+                pass
+            raise
+        else:
+            for _ in self.app.hook.run('post_object_update', self.app):
+                pass
         self.app.print(click.style('\n\nUpdated {}("{}").'.format(self.model.__name__, obj.pk), fg='green'))
 
     # Delete
@@ -252,5 +271,13 @@ class CrudBase(ReadOnlyCrudBase):
             obj.delete()
         else:
             self.app.print(click.style('ABORTED: not deleting {}({}).'.format(self.model.__name__, obj.pk)))
-        self.delete_waiter(obj)  # type: ignore
+        try:
+            self.delete_waiter(obj)  # type: ignore
+        except botocore.exceptions.WaiterError as e:
+            for _ in self.app.hook.run('post_object_delete', self.app, obj, success=False, reason=e.kwargs['reason']):
+                pass
+            raise
+        else:
+            for _ in self.app.hook.run('post_object_delete', self.app):
+                pass
         self.app.print(click.style('Deleted {}("{}")'.format(self.model.__name__, obj.pk), fg='cyan'))
