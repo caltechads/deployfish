@@ -75,7 +75,7 @@ class Base(Controller):
                 ['--no-use-aws-section'],
                 {
                     'action' : 'store_false',
-                    'dest': 'use_aws_section',
+                    'dest': 'no_use_aws_section',
                     'default': False,
                     'help': 'Ignore the aws: section in deployfish.yml'
                 }

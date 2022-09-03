@@ -57,7 +57,7 @@ def post_arg_parse_build_boto3_session(app: "DeployfishApp") -> None:
     app.log.debug('building boto3 session')
     build_boto3_session(
         app.pargs.filename,
-        use_aws_section=app.pargs.use_aws_section
+        use_aws_section=not app.pargs.no_use_aws_section
     )
 
 # ------------------
