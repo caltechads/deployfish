@@ -200,7 +200,7 @@ class DeployfishApp(App):
         """
         if not self._raw_deployfish_config:
             config_kwargs: Dict[str, Any] = {
-                'filename': self.pargs.filename,
+                'filename': self.pargs.deployfish_filename,
                 'ignore_missing_environment': True,
                 'interpolate': False
             }

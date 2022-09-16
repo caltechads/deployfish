@@ -22,10 +22,12 @@ class AWSSessionBuilder:
         """
         Read our deployfish.yml file from disk and return it as parsed YAML.
 
-        :param filename: the path to our deployfish.yml file
-        :type filename: string
+        Args:
+            filename: the path to our deployfish.yml file
 
-        :rtype: dict
+        Returns:
+            The data loaded from the YAML file.  This will not have any of the
+            interpolations done.
         """
         if not os.path.exists(filename):
             return {}
@@ -37,6 +39,23 @@ class AWSSessionBuilder:
             return yaml.load(f, Loader=yaml.FullLoader)
 
     def new(self, filename: str, use_aws_section: bool = True) -> boto3.session.Session:
+        """
+        Build and return a properly configured boto3 ``Session`` object.
+
+        Args:
+            filename: the path to our deployfish.yml file
+
+        Keyword Args:
+            use_aws_section: if ``False``, ignore any ``aws:`` section in deployfish.yml
+
+        Raises:
+            AWSSessionBuilder.NoSuchAWSProfile: the reqeusted profile is not in ``~/.aws/config``
+            AWSSessionBuilder.ForbiddenAWSAccountId: the account id used by our profile is not allowed by
+                our ``aws:`` section
+
+        Returns:
+            A configured boto3 ``Session`` object.
+        """
         if not filename:
             filename = 'deployfish.yml'
         config = self.load_config(filename)
