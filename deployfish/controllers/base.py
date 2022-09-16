@@ -64,7 +64,7 @@ class Base(Controller):
             (
                 ['-f', '--filename'],
                 {
-                    'dest': 'filename',
+                    'dest': 'deployfish_filename',
                     'action': 'store',
                     'default': 'deployfish.yml',
                     'help': 'Path to the deployfish config file',
