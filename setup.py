@@ -6,7 +6,7 @@ with open("README.md", "r", encoding='utf-8') as fh:
 
 setup(
     name="deployfish",
-    version="1.9.3",
+    version="1.9.4",
     description="AWS ECS related deployment tools",
     author="Caltech IMSS ADS",
     author_email="imss-ads-staff@caltech.edu",
