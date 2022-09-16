@@ -56,7 +56,7 @@ def post_arg_parse_build_boto3_session(app: "DeployfishApp") -> None:
     """
     app.log.debug('building boto3 session')
     build_boto3_session(
-        app.pargs.filename,
+        app.pargs.deployfish_filename,
         use_aws_section=not app.pargs.no_use_aws_section
     )
 
@@ -181,7 +181,7 @@ class DeployfishApp(App):
             ):
                 ignore_missing_environment = True
             config_kwargs: Dict[str, Any] = {
-                'filename': self.pargs.filename,
+                'filename': self.pargs.deployfish_filename,
                 'env_file': self.pargs.env_file,
                 'tfe_token': self.pargs.tfe_token,
                 'ignore_missing_environment': ignore_missing_environment
