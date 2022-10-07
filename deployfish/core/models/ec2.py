@@ -44,6 +44,7 @@ class VPCManager(Manager):
         except botocore.exceptions.ClientError as e:
             if 'InvalidVpcId.NotFound' in str(e):
                 raise VPC.DoesNotExist(str(e))
+            raise
         return [VPC(data) for data in vpcs]
 
     def list(self, name: str = None) -> Sequence["VPC"]:
@@ -77,6 +78,7 @@ class SubnetManager(Manager):
         except botocore.exceptions.ClientError as e:
             if 'InvalidSubnetId.NotFound' in str(e):
                 raise Subnet.DoesNotExist(str(e))
+            raise
         return Subnet(response['Subnets'][0])
 
     def list(self, vpc_id: str = None) -> "List[Subnet]":
@@ -114,6 +116,7 @@ class SecurityGroupManager(Manager):
         except botocore.exceptions.ClientError as e:
             if 'InvalidGroup.NotFound' in str(e):
                 raise SecurityGroup.DoesNotExist(str(e))
+            raise
         return SecurityGroup(response['SecurityGroups'][0])
 
     def list(self, vpc_id: str = None) -> List["SecurityGroup"]:
@@ -138,6 +141,8 @@ class AutoscalingGroupManager(Manager):
                 AutoScalingGroupNames=[pk]
             )
         except botocore.exceptions.ClientError:
+            # FIXME: there are other ClientErrors.  This may say we have other
+            # issues than the group doesn't exist
             raise AutoscalingGroup.DoesNotExist(
                 'No Autoscaling Group named "{}" exists in AWS'.format(pk)
             )
@@ -195,6 +200,8 @@ class InstanceManager(TagsManagerMixin, Manager):
                 for reservation in response['Reservations']:
                     instances.extend(reservation['Instances'])
         except botocore.exceptions.ClientError as e:
+            # FIXME: we may get ClientError for other reasons than the instance
+            # doesn't exist
             raise Instance.DoesNotExist(str(e))
         return [Instance(instance) for instance in instances]
 
