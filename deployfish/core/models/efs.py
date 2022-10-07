@@ -20,6 +20,8 @@ class EFSFileSystemManager(TagsManagerMixin, Manager):
         try:
             response = self.client.describe_file_systems(FileSystemId=pk)
         except botocore.exceptions.ClientError:
+            # FIXME: can we get ClientError for reasons other than the filesystem does
+            # not exist?
             raise EFSFileSystem.DoesNotExist(
                 f'No EFS file system with id "{pk}" exists in AWS'
             )
