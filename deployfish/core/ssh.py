@@ -288,11 +288,17 @@ class SSHMixin(SupportsCache, SupportsModel):
                 command,
                 stdout=stdout,
                 stdin=stdin,
+                stderr=stdout,
                 shell=True,
                 universal_newlines=True
             )
         except subprocess.CalledProcessError as err:
-            return False, err.output
+            output = ''
+            if err.output:
+                output += err.output
+            if err.stderr:
+                output += err.stderr
+            return False, output
         else:
             stdout_output, _ = p.communicate(input_string)
             return p.returncode == 0, stdout_output
