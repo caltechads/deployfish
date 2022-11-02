@@ -2579,6 +2579,9 @@ class Service(
     @property
     def ssh_target(self) -> Optional[Instance]:
         if self.task_definition.is_fargate():
+            if self.vpc_configuration is not None:
+                vpc = self.vpc_configuration['subnets'][0].vpc
+                return vpc.provisioner
             return None
         if self.container_instances:
             return self.container_instances[0].ec2_instance
