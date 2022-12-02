@@ -2,7 +2,7 @@ import json
 import os
 import os.path
 import re
-from typing import Dict, Any, Union, TYPE_CHECKING, cast
+from typing import Dict, List, Any, Union, TYPE_CHECKING, cast
 
 import boto3
 import botocore
@@ -56,7 +56,15 @@ class TerraformS3State(AbstractTerraformState):
         super().__init__(terraform_config, context)
         self.replacements: Dict[str, str] = {}
 
-    def _get_state_file_from_s3(self, state_file_url: str, profile: str = None, region: str = None) -> Dict[str, Any]:
+    def _get_state_file_from_s3(
+        self,
+        state_file_url: str,
+        profile: str = None,
+        region: str = None
+    ) -> Dict[str, Any]:
+        """
+        Retrive our statefile from S3
+        """
         if profile:
             session = boto3.session.Session(profile_name=profile, region_name=region)
         else:
@@ -89,7 +97,7 @@ class TerraformS3State(AbstractTerraformState):
             return
         self.replacements = replacements
         statefile_url = self.terraform_config['statefile']
-        for key, value in list(replacements.items()):
+        for key, value in replacements.items():
             statefile_url = statefile_url.replace(key, value)
         if not self.loaded:
             tfstate = self._get_state_file_from_s3(
@@ -97,7 +105,7 @@ class TerraformS3State(AbstractTerraformState):
                 profile=self.terraform_config.get('profile', None),
                 region=self.terraform_config.get('region', None)
             )
-            major, minor, patch = tfstate['terraform_version'].split('.')
+            major, minor, _ = tfstate['terraform_version'].split('.')
             if int(major) >= 1 or (int(major) == 0 and int(minor) >= 12):
                 self._load_post_version_12(tfstate)
             else:
@@ -151,20 +159,85 @@ class TerraformEnterpriseState(AbstractTerraformState):
 
 
 class TerraformStateConfigProcessor(AbstractConfigProcessor):
+    """
+    Process our deployfish.yml file, replacing any strings that look like
+    ``${terraform.KEY}`` with the value from the ``terraform:`` section.  This
+    means the key to which we assign the value from the state file.
 
+    Example:
+
+        If our terraform section looks like this::
+
+            terraform:
+                statefile: s3://my-statefile
+                lookups:
+                    cluster_name: 'prod-cluster-name'
+
+
+        Then ``${terraform.cluster_name}`` will be replace by the value of the
+        ``prod-cluster-name`` output from the the statefile
+        ``s3://my-statefile``.
+
+    Args:
+        config: the :py:class:`deployfish.config.Config` object we're working
+            with
+        context: a dict of additional data that we might use when processing the
+            config
+    """
+
+    #: The
     TERRAFORM_RE = re.compile(r'\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}')
 
     def __init__(self, config: "Config", context: Dict[str, Any]) -> None:
-        super(TerraformStateConfigProcessor, self).__init__(config, context)
+        super().__init__(config, context)
         try:
             self.terraform = TerraformStateFactory.new(config.raw['terraform'], context)
         except KeyError:
             raise self.SkipConfigProcessing('Skipping terraform state processing: no "terraform" section')
 
-    def replace(self, obj: Any, key: Union[str, int], value: Any, section_name: str, item_name: str) -> None:
+    def replace(
+        self,
+        obj: Union[List, Dict],
+        key: Any,
+        value: str,
+        section_name: str,
+        item_name: str
+    ) -> None:
+        """
+        Perform string replacements on ``value``, a string value in our
+        ``deployfish.yml`` item, replacing any strings that look like
+        ``${terraform.KEY}`` with the value from the ``terraform:`` section.  This
+        means the key to which we assign the value from the state file.
+
+        Example:
+
+            If our terraform section looks like this::
+
+                terraform:
+                    statefile: s3://my-statefile
+                    lookups:
+                        cluster_name: 'prod-cluster-name'
+
+
+            Then ``${terraform.cluster_name}`` will be replaced by the value of the
+            ``prod-cluster-name`` output from the the statefile
+            ``s3://my-statefile``.
+
+        Args:
+            obj: a list or dict from an item from a ``deployfish.yml``
+            key: the name of the key (if ``obj`` is a dict) or index (if ``obj``
+                is a list``) in ``obj``
+            value: our string value from ``obj[key]``
+            section_name: the section name ``obj`` came from
+            item_name: the name of the item in ``section_name`` that ``obj``
+                came from
+        """
         m = self.TERRAFORM_RE.search(value)
         if m:
-            replacers = self.get_deployfish_replacements(section_name, item_name)
+            if section_name == 'tunnels':
+                replacers = self.get_deployfish_replacements('services', cast(Dict, obj)['service'])
+            else:
+                replacers = self.get_deployfish_replacements(section_name, item_name)
             try:
                 self.terraform.load(replacers)
             except NoSuchTerraformStateFile as e:

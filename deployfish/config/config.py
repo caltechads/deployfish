@@ -1,7 +1,7 @@
 from copy import deepcopy
 import os
 import sys
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Final
 
 import boto3
 import click
@@ -12,11 +12,10 @@ from .processors import ConfigProcessor
 
 
 class Config:
-
     """
     This class reads our ``deployfish.yml`` file and handles the allowed
     variable substitutions in string values for service entries under the
-    ``services:`` section.
+    the sections named in :py:attr:`processable_sections`.
 
     Allowed variable substitutions:
 
@@ -27,6 +26,13 @@ class Config:
     * ``${env.<environment var>}```:  If the environment variable
       ``<environment var>`` exists in our environment, replace this with
       the value of that environment variable.
+
+    Args:
+        filename: the path to our config file
+
+    Keyword Args:
+        raw_config: if, supplied, use this as our config data instead of loading
+            if from ``filename``
     """
 
     class NoSuchSectionError(NoSuchConfigSection):
@@ -35,15 +41,21 @@ class Config:
     class NoSuchSectionItemError(NoSuchConfigSectionItem):
         pass
 
-    DEFAULT_DEPLOYFISH_CONFIG_FILE: str = 'deployfish.yml'
+    #: The default name of our config file
+    DEFAULT_DEPLOYFISH_CONFIG_FILE: Final[str] = 'deployfish.yml'
 
+    #: The list of sections in our config file that will be processed
+    #: by our :py:class:`deployfish.config.processors.ConfigProcessor`
     processable_sections: List[str] = [
         'services',
-        'tasks'
+        'tasks',
+        'tunnels'
     ]
 
     @classmethod
     def new(cls, **kwargs) -> "Config":
+        # FIXME: Why are we doing this as a classmethod instead of just
+        # doing it all in __init__?
         filename: str = kwargs.pop('filename', cls.DEFAULT_DEPLOYFISH_CONFIG_FILE)
         if filename is None:
             filename = cls.DEFAULT_DEPLOYFISH_CONFIG_FILE
@@ -70,10 +82,22 @@ class Config:
 
     @property
     def raw(self) -> Dict[str, Any]:
+        """
+        Return the pre-interpolated version of the raw YAML.
+
+        Returns:
+            The pre-interpolated version of the raw YAML.
+        """
         return self.__raw
 
     @property
     def cooked(self) -> Dict[str, Any]:
+        """
+        Return the post-interpolated version of the raw YAML.
+
+        Returns:
+            The post-interpolated version of the raw YAML.
+        """
         return self.__cooked
 
     @property
@@ -113,9 +137,16 @@ class Config:
         Get the full config for the service named ``service_name`` from our
         parsed YAML file.
 
-        :param service_name string: the name of an ECS service listed in our YAML
-                             file under the ``services:`` section
+        Args:
+            service_name: the name of an ECS service listed in our YAML file under
+                the ``services:`` section
 
+        Raises:
+            Config.NoSuchSectionItemError: no service named ``service_name`` existed
+                in our ``services:`` section.
+
+        Returns:
+            The service config for the service named ``service_name``.
         :rtype: dict
         """
         return self.get_section_item('services', service_name)

@@ -76,7 +76,7 @@ class SubnetManager(Manager):
         try:
             response = self.client.describe_subnets(SubnetIds=[pk])
         except botocore.exceptions.ClientError as e:
-            if 'InvalidSubnetId.NotFound' in str(e):
+            if 'InvalidSubnetID.NotFound' in str(e):
                 raise Subnet.DoesNotExist(str(e))
             raise
         return Subnet(response['Subnets'][0])
@@ -104,7 +104,7 @@ class SubnetManager(Manager):
 
 class SecurityGroupManager(Manager):
 
-    service = 'ec2'
+    service: str = 'ec2'
 
     def get(self, pk: str, **_) -> "SecurityGroup":
         if pk.startswith('sg-'):

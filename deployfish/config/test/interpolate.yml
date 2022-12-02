@@ -8,6 +8,15 @@ terraform:
     iam_task_role: 'iam-role-{environment}-task'
     security_group_list: 'security-group-list'
     vpc_configuration: 'vpc-configuration'
+    rds_address: '{environment}-rds-address'
+    rds_port: '{environment}-rds-address'
+
+tunnels:
+  - name: mysql-prod
+    service: foobar-prod
+    host: ${terraform.rds_address}
+    port: ${terraform.rds_port}
+    local_port: 8888
 
 services:
   - name: foobar-prod

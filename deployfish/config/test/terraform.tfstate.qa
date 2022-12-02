@@ -17,22 +17,22 @@
                 "root"
             ],
             "outputs": {
-                "qa-elb-id": {
+                "elb-id": {
                     "sensitive": false,
                     "type": "string",
                     "value": "foobar-qa-elb"
                 },
-                "iam-role-qa-task": {
+                "iam-role-task": {
                     "sensitive": false,
                     "type": "string",
                     "value": "arn:aws:iam::324958023459:role/foobar-qa-task"
                 },
-                "qa-autoscalinggroup-name": {
+                "autoscalinggroup-name": {
                     "sensitive": false,
                     "type": "string",
                     "value": "foobar-asg-qa"
                 },
-                "qa-cluster-name": {
+                "cluster-name": {
                     "sensitive": false,
                     "type": "string",
                     "value": "foobar-cluster-qa"
@@ -54,6 +54,14 @@
                         "security_groups": ["sg-1234567"],
                         "public_ip": "DISABLED"
                     }
+                },
+                "rds-address": {
+                    "value": "foo-qa.c970jsizrrcy.us-west-2.rds.amazonaws.com",
+                    "type": "string"
+                },
+                "rds-port": {
+                    "value": 3306,
+                    "type": "number"
                 }
             }
         }

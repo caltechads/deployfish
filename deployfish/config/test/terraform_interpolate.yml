@@ -1,12 +1,27 @@
 terraform:
   statefile: s3://my-{environment}-statefile
   lookups:
-    cluster_name: '{environment}-cluster-name'
-    autoscalinggroup_name: '{environment}-autoscalinggroup-name'
-    elb_id: '{environment}-elb-id'
-    iam_task_role: 'iam-role-{environment}-task'
+    cluster_name: 'cluster-name'
+    autoscalinggroup_name: 'autoscalinggroup-name'
+    elb_id: 'elb-id'
+    iam_task_role: 'iam-role-task'
     security_group_list: 'security-group-list'
     vpc_configuration: 'vpc-configuration'
+    rds_address: 'rds-address'
+    rds_port: 'rds-port'
+
+tunnels:
+  - name: mysql-qa
+    service: foobar-qa
+    host: ${terraform.rds_address}
+    port: ${terraform.rds_port}
+    local_port: 8888
+
+  - name: mysql-prod
+    service: foobar-prod
+    host: ${terraform.rds_address}
+    port: ${terraform.rds_port}
+    local_port: 8888
 
 services:
   - name: foobar-qa
