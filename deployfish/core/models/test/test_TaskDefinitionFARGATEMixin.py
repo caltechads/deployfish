@@ -81,7 +81,7 @@ class TestTaskDefinitionFARGATEMixin_EC2(unittest.TestCase):
         mixin.data = data
         container_data = deepcopy(self.CONTAINER_DATA)
         mixin.set_task_cpu(data, container_data)
-        self.assertEqual(data['cpu'], 1024)
+        self.assertEqual(data['cpu'], '1024')
 
     def test_cpu_too_small_raises_SchemaException(self):
         data = deepcopy(self.TASK_DATA)
@@ -103,12 +103,12 @@ class TestTaskDefinitionFARGATEMixin_EC2(unittest.TestCase):
 
     def test_can_set_task_memory(self):
         data = deepcopy(self.TASK_DATA)
-        data['memory'] = 512
+        data['memory'] = '512'
         mixin = TaskDefinitionFARGATEMixin()
         mixin.data = data
         container_data = deepcopy(self.CONTAINER_DATA)
         mixin.set_task_memory(data, container_data)
-        self.assertEqual(data['memory'], 512)
+        self.assertEqual(data['memory'], '512')
 
     def test_memory_too_small_for_container_memory_raises_SchemaException(self):
         data = deepcopy(self.TASK_DATA)
@@ -197,7 +197,7 @@ class TestTaskDefinitionFARGATEMixin_FARGATE(unittest.TestCase):
         mixin.data = data
         container_data = deepcopy(self.CONTAINER_DATA)
         mixin.set_task_cpu(data, container_data)
-        self.assertEqual(data['cpu'], 512)
+        self.assertEqual(data['cpu'], '512')
 
     def test_can_set_task_cpu(self):
         data = deepcopy(self.TASK_DATA)
@@ -206,7 +206,7 @@ class TestTaskDefinitionFARGATEMixin_FARGATE(unittest.TestCase):
         mixin.data = data
         container_data = deepcopy(self.CONTAINER_DATA)
         mixin.set_task_cpu(data, container_data)
-        self.assertEqual(data['cpu'], 1024)
+        self.assertEqual(data['cpu'], '1024')
 
     def test_invalid_cpu_raises_SchemaException(self):
         data = deepcopy(self.TASK_DATA)
@@ -236,7 +236,7 @@ class TestTaskDefinitionFARGATEMixin_FARGATE(unittest.TestCase):
         mixin.data = data
         container_data = deepcopy(self.CONTAINER_DATA)
         mixin.set_task_memory(data, container_data)
-        self.assertEqual(data['memory'], 1024)
+        self.assertEqual(data['memory'], '1024')
 
     def test_memory_is_set_based_on_container_memoryReservation_if_not_provided(self):
         data = deepcopy(self.TASK_DATA)
@@ -248,7 +248,7 @@ class TestTaskDefinitionFARGATEMixin_FARGATE(unittest.TestCase):
         mixin = TaskDefinitionFARGATEMixin()
         mixin.data = data
         mixin.set_task_memory(data, container_data)
-        self.assertEqual(data['memory'], 1024)
+        self.assertEqual(data['memory'], '1024')
 
     def test_can_set_memory(self):
         data = deepcopy(self.TASK_DATA)
@@ -259,7 +259,7 @@ class TestTaskDefinitionFARGATEMixin_FARGATE(unittest.TestCase):
         mixin.data = data
         container_data = deepcopy(self.CONTAINER_DATA)
         mixin.set_task_memory(data, container_data)
-        self.assertEqual(data['memory'], 1024)
+        self.assertEqual(data['memory'], '1024')
 
     def test_invalid_memory_for_cpu_raises_SchemaException(self):
         data = deepcopy(self.TASK_DATA)
