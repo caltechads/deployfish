@@ -1,8 +1,11 @@
 from copy import deepcopy
 import os
 import sys
-from typing import Dict, Any, List, Final
-
+from typing import Dict, Any, List
+try:
+    from typing import Final
+except ImportError:
+    from typing_extensions import Final  # type: ignore
 import boto3
 import click
 import yaml
