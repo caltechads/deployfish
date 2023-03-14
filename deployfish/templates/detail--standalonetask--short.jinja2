@@ -1,6 +1,6 @@
-{% from 'macros/task-definition.tpl' import task_definition -%}
-{% from 'macros/secrets.tpl' import secrets_table -%}
-{% from 'macros/task.tpl' import vpc_configuration -%}
+{% from 'macros/task-definition.jinja2' import task_definition -%}
+{% from 'macros/secrets.jinja2' import secrets_table -%}
+{% from 'macros/task.jinja2' import vpc_configuration -%}
 {% filter color(fg='green') %}Task: {% endfilter %}{{ obj.name|color(fg='cyan', bold=True) }}
   pk                  :     {{ obj.pk }}
 {%- if 'service' in obj.data %}

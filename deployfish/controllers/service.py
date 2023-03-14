@@ -96,7 +96,7 @@ class ECSService(CrudBase):
     @ex(
         help="Show about an existing ECS Service in AWS",
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the ECS Service'}),
+            (['pk'], {'help': 'The primary key for the ECS Service'}),
             (
                 ['--includes'],
                 {
@@ -131,7 +131,6 @@ class ECSService(CrudBase):
             'excludes': self.app.pargs.excludes if self.app.pargs.excludes else [],
         }
         self.app.render(context, template=self.info_template)
-
 
     @ex(
         help="List ECS Services from AWS",

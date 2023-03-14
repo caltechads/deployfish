@@ -56,6 +56,7 @@ __all__ = [
     'TaskDefinitionManager',
 ]
 
+
 # ----------------------------------------
 # Mixins
 # ----------------------------------------
@@ -1378,15 +1379,17 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
 
     @property
     def revision(self) -> str:
-        return self.data.get('revsion', None)
+        return self.data.get('revision', None)
 
     @property
     def version(self) -> str:
         """
-        Return the version for the task definition.  We're cheating here by just returning the version of the first
-        container image, assuming that the first container will be the primary container for the TaskDefinition.
+        Return the version for the task definition.  We're cheating here by just
+        returning the version of the first container image, assuming that the
+        first container will be the primary container for the TaskDefinition.
 
-        :rtype: str
+        Returns:
+            The version number for the container image
         """
         return self.containers[0].version
 

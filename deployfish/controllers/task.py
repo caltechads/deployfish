@@ -1,4 +1,6 @@
 import argparse
+from pprint import pprint
+import sys
 from typing import Any, Sequence, Type, Dict, cast
 
 from cement import ex
@@ -60,7 +62,7 @@ class ECSStandaloneTask(CrudBase):
     @ex(
         help="Show about an existing ECS Standalone Task in AWS",
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the ECS Service'}),
+            (['pk'], {'help': 'The primary key for the ECS Service'}),
             (
                 ['--includes'],
                 {
@@ -69,6 +71,17 @@ class ECSStandaloneTask(CrudBase):
                     'default': None,
                     'choices': ['secrets'],
                     'dest': 'includes',
+                    'nargs': "+"
+                }
+            ),
+            (
+                ['--excludes'],
+                {
+                    'help': 'Exclude optional information normally shown.',
+                    'action': 'store',
+                    'default': None,
+                    'choices': ['events'],
+                    'dest': 'excludes',
                     'nargs': "+"
                 }
             )
@@ -81,7 +94,7 @@ class ECSStandaloneTask(CrudBase):
         context = {
             'obj': obj,
             'includes': self.app.pargs.includes if self.app.pargs.includes else [],
-            'excludes': self.app.pargs.excludes if self.app.pargs.excludes else [],
+            #'excludes': self.app.pargs.excludes if self.app.pargs.excludes else [],
         }
         self.app.render(context, template=self.info_template)
 
@@ -185,7 +198,7 @@ class ECSStandaloneTask(CrudBase):
     @ex(
         help='Enable the schedule for a Standalone Task.',
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the StandaloneTask in AWS'}),
+            (['pk'], {'help': 'The primary key for the StandaloneTask in AWS'}),
         ],
         description="""
 If a StandaloneTask has a schedule rule and that rule is currently disabled in AWS, enable it.
@@ -221,7 +234,7 @@ If a StandaloneTask has a schedule rule and that rule is currently disabled in A
     @ex(
         help='Disable the schedule for a command for a StandaloneTask.',
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the ECS StandaloneTask in AWS'}),
+            (['pk'], {'help': 'The primary key for the ECS StandaloneTask in AWS'}),
         ],
         description="""
 If a StandaloneTask has a schedule rule and that rule is currently enabled in AWS, disable it.
@@ -251,8 +264,6 @@ If a StandaloneTask has a schedule rule and that rule is currently enabled in AW
                 click.style(f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.', fg='red')
             )
 
-
-
     # Run
 
     def run_task_waiter(self, tasks: Sequence[InvokedTask], **kwargs) -> None:
@@ -264,7 +275,7 @@ If a StandaloneTask has a schedule rule and that rule is currently enabled in AW
     @ex(
         help='Run one of a service\'s helper tasks',
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the StandaloneTask in AWS'}),
+            (['pk'], {'help': 'The primary key for the StandaloneTask in AWS'}),
             (
                 ['--wait'],
                 {
@@ -329,7 +340,7 @@ class ECSStandaloneTaskLogs(Controller):
     @ex(
         help='Tail logs for a StandaloneTask.',
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the ECS StandaloneTask in AWS'}),
+            (['pk'], {'help': 'The primary key for the ECS StandaloneTask in AWS'}),
             (
                 ['--mark'],
                 {
@@ -386,7 +397,7 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
     @ex(
         help='List log streams for a StandaloneTask.',
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the ECS StandaloneTask in AWS'}),
+            (['pk'], {'help': 'The primary key for the ECS StandaloneTask in AWS'}),
             (
                 ['--limit'],
                 {
@@ -401,7 +412,7 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
 If a command for a StandaloneTask uses "awslogs" as its logDriver, list the available
 log streams for that StandaloneTask.
 
-This can be useful when you have a command with a schedule to look at the dates on 
+This can be useful when you have a command with a schedule to look at the dates on
 the streams to ensure that your command is actually running periodically.
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter
