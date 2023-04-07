@@ -576,7 +576,7 @@ class ContainerDefinitionAdapter(Adapter):
         if 'ports' in self.data:
             data['portMappings'] = self.get_ports()
         self.set(data, 'command', optional=True, convert=shlex.split)
-        self.set(data, 'entrypoint', optional=True, convert=shlex.split)
+        self.set(data, 'entrypoint', dest_key='entryPoint', optional=True, convert=shlex.split)
         if 'ulimits' in self.data:
             data['ulimits'] = self.get_ulimits()
         if 'environment' in self.data:
