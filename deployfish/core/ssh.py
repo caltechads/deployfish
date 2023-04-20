@@ -10,6 +10,7 @@ from deployfish.types import SupportsCache, SupportsModel, SupportsService
 from deployfish.exceptions import ConfigProcessingFailed
 from deployfish.config import get_config
 
+from .aws import get_boto3_session
 if TYPE_CHECKING:
     from .models import (  # noqa:F401
         Instance,
@@ -432,7 +433,11 @@ class DockerMixin(SSHMixin, SupportsService):
                 container_name = self.running_tasks[0].containers[0].name
         else:
             raise self.NoRunningTasks(f'{self.__class__.__name__}(pk={self.pk}) has no running tasks.')
-        cmd = "aws ecs execute-command"
+        profile_name = get_boto3_session().profile_name
+        if profile_name:
+            cmd = f"aws --profile {profile_name} ecs execute-command"
+        else:
+            cmd = "aws ecs execute-command"
         cmd += f" --cluster {self.cluster.name} --task={task_arn} --container={container_name}"
         cmd += " --interactive --command \"/bin/sh\""
         subprocess.call(cmd, shell=True)
