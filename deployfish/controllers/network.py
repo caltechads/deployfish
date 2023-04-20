@@ -317,7 +317,7 @@ class ObjectDockerExecController(Controller):
     @ex(
         help="Exec into a container in AWS",
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the object in AWS'}),
+            (['pk'], {'help': 'The primary key for the object in AWS'}),
             (
                 ["--verbose"],
                 {

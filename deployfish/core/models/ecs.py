@@ -1851,7 +1851,7 @@ class InvokedTask(DockerMixin, Model):
 
     @property
     def availability_zone(self) -> str:
-        return self.data['AvailabilityZone']
+        return self.data['availabilityZone']
 
     # ------------------------------
     # Related objects
