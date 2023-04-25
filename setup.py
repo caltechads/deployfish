@@ -15,13 +15,13 @@ setup(
     long_description_content_type="text/markdown",
     keywords=['aws', 'ecs', 'docker', 'devops'],
     classifiers=[
-       "Programming Language :: Python :: 3"
+        "Programming Language :: Python :: 3"
     ],
     packages=find_packages(),
     include_package_data=True,
     package_data={'deployfish': ["py.typed"]},
     install_requires=[
-        "boto3 >= 1.17",
+        "boto3 >= 1.26.36",
         "cement>=3.0.0",
         "click >= 6.7",
         "colorlog",

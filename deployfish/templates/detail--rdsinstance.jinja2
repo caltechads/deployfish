@@ -1,0 +1,26 @@
+{% from 'macros/utils.jinja2' import heading, subsection, subobject, tags -%}
+{{ subobject('RDS instance', obj.name) }}
+  pk                  :     {{ obj.pk }}
+  name                :     {{ obj.name }}
+  arn                 :     {{ obj.arn }}
+  engine              :     {{ obj.engine }}
+  engine version      :     {{ obj.version }}
+  instance type       |     {{ obj.data['DBInstanceClass'] }}
+  Multi AZ?           :     {{ obj.multi_az }}
+  hostname            :     {{ obj.hostname }}
+  port                :     {{ obj.port }}
+  root username       :     {{ obj.root_user }}
+{%- if obj.secret_enabled %}
+  secret ARN          :     {{ obj.secret_arn }}
+{%- endif %}
+
+  {{ subsection('networking') }}
+    VPC               :     {{ obj.vpc.pk }} ({{ obj.vpc.name }})
+    subnet group      :     {{ obj.data['DBSubnetGroup']['DBSubnetGroupName']}}
+
+    subnets
+{% for subnet in obj.subnets %}        {{ subnet.name|color(fg='green') }} [{{ subnet.pk }}] {{ subnet.cidr_block|color(fg='cyan') }}
+{% endfor %}
+    security_groups
+{% for sg in obj.security_groups %}        {{sg.name|color(fg='green')}} [{{sg.pk}}]
+{% endfor -%}

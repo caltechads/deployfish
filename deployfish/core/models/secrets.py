@@ -96,6 +96,12 @@ class SecretsMixin:
 # ----------------------------------------
 
 class SecretManager(Manager):
+    """
+    Manage our SSM Parameter Store parameters.   This differs from
+    :py:class:`deployfish.core.models.secrets_manager.SecretManager`  in that
+    that manager manages Secrets Manager secrets, not SSM Parameter Store
+    parameters.
+    """
 
     service = 'ssm'
 

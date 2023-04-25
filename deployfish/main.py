@@ -35,6 +35,7 @@ from .controllers import (
     Logs,
     LogsCloudWatchLogGroup,
     LogsCloudWatchLogStream,
+    RDSRDSInstance,
     Tunnels,
 )
 from .core.aws import build_boto3_session
@@ -135,6 +136,7 @@ class DeployfishApp(App):
             Logs,
             LogsCloudWatchLogGroup,
             LogsCloudWatchLogStream,
+            RDSRDSInstance,
             Tunnels
         ]
 

@@ -37,6 +37,9 @@ from .service import (  # noqa:F401,F403
     ECSServiceStandaloneTasks,
     ECSServiceTunnel
 )
+from .rds import (  # noqa:F401,F403
+    RDSRDSInstance,
+)
 from .task import (  # noqa:F401,F403
     ECSStandaloneTask ,
     ECSStandaloneTaskLogs,

@@ -250,7 +250,6 @@ class LogsCloudWatchLogStream(ReadOnlyCrudBase):
         'lastEventTimestamp': {'key': 'lastEventTimestamp', 'datatype': 'timestamp', 'default': ''},
     }
 
-
     @ex(
         help="List CloudWatch Log Groups in AWS",
         arguments=[
