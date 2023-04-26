@@ -95,9 +95,11 @@ class EventScheduleRuleManager(Manager):
 
     def enable(self, obj: "EventScheduleRule") -> None:
         """
-        If `obj` is disabled, change its state of 'ENABLED'. Otherwise, do nothing.
+        If ``obj`` is disabled, change its state of "ENABLED". Otherwise, do nothing.
 
-        :param obj EventScheduleRule: the rule to enable
+        Args:
+            obj: the rule to enable
+
         """
         if not obj.enabled:
             self.client.enable_rule(
@@ -107,9 +109,11 @@ class EventScheduleRuleManager(Manager):
 
     def disable(self, obj: "EventScheduleRule") -> None:
         """
-        If `obj` is enabled, change the its state to 'DISABLED'. Otherwise, do nothing.
+        If ``obj`` is enabled, change the its state to "DISABLED". Otherwise, do
+        nothing.
 
-        :param obj EventScheduleRule: the rule to disable
+        Args:
+            obj: the rule to disable
         """
         if obj.enabled:
             self.client.disable_rule(
@@ -124,11 +128,12 @@ class EventScheduleRuleManager(Manager):
 
 class EventTarget(Model):
     """
-    self.data here has the same structure as what is returned by client('events').list_targets_for_rule():
+    self.data here has the same structure as what is returned by
+    ``client('events').list_targets_for_rule()``::
 
         {
             'Id': 'string',
-            'Arn': 'string',                    # Note: this is the CLUSTER Arn, not the Target arn
+            'Arn': 'string', # Note: this is the CLUSTER Arn, not the Target arn
             'RoleArn': 'string',
             'Input': 'string',
             'InputPath': 'string',
@@ -210,10 +215,10 @@ class EventTarget(Model):
 
 class EventScheduleRule(Model):
     """
-    An EventScheduleRule is an AWS cron job.  We use them to run ECS tasks periodically.
+    This is an AWS cron job.  We use them to run ECS tasks periodically.
 
-    If the task has a schedule defined, manage an ECS cloudwatch event with the corresponding
-    schedule, with the task as an event target.
+    If the task has a schedule defined, manage an ECS CloudWatch event with the
+    corresponding schedule, with the task as an event target.
     """
 
     objects = EventScheduleRuleManager()
@@ -250,8 +255,9 @@ class EventScheduleRule(Model):
 
         .. note::
 
-            Ideally here we would compare the full task definition attached to the EventTarget via its taskDefinitionArn
-            to the task definition we have in deployfish.yml.
+            Ideally here we would compare the full task definition attached to
+            the :py:class:`EventTarget` via its ``taskDefinitionArn`` to the
+            task definition we have in deployfish.yml.
         """
         data = copy(self.data)
         data['Target'] = {}

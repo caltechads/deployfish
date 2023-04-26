@@ -33,7 +33,7 @@ class DeployfishArgparseController(ArgparseController):
                 class Meta:
                     label = "subclass-commands"
                     stacked_type = 'nested'
-                
+
                 help_overrides = {
                     'info': 'My subclass info help'
                 }

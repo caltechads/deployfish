@@ -49,9 +49,10 @@ class AWSSessionBuilder:
             use_aws_section: if ``False``, ignore any ``aws:`` section in deployfish.yml
 
         Raises:
-            AWSSessionBuilder.NoSuchAWSProfile: the reqeusted profile is not in ``~/.aws/config``
-            AWSSessionBuilder.ForbiddenAWSAccountId: the account id used by our profile is not allowed by
-                our ``aws:`` section
+            AWSSessionBuilder.NoSuchAWSProfile: the reqeusted profile is not in
+                ``~/.aws/config``
+            AWSSessionBuilder.ForbiddenAWSAccountId: the account id used by our
+                profile is not allowed by our ``aws:`` section
 
         Returns:
             A configured boto3 ``Session`` object.

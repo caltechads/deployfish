@@ -29,7 +29,6 @@ class SupportsSecrets(SupportsCache, Protocol):
         ...
 
 
-
 # ----------------------------------------
 # Mixins
 # ----------------------------------------

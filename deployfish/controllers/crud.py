@@ -24,23 +24,23 @@ class ReadOnlyCrudBase(Controller):
     model: Type[Model] = Model
     loader: Type[ObjectLoader] = ObjectLoader
 
-    # The keys of this dict are method names, and the value is the string
-    # with which to replace the "help" string for that method name with
+    #: The keys of this dict are method names, and the value is the string
+    #: with which to replace the "help" string for that method name with
     help_overrides: Dict[str, str] = {}
 
     # --------------------
     # .info() related vars
     # --------------------
-    # Which template should we use when showing .info() output?
+    #: Which template should we use when showing :py:meth:`info` output?
     info_template: str = 'detail.jinja2'
 
     # --------------------
     # .list() related vars
     # --------------------
-    # The name of the column HEADER by which to order the output table
+    #: The name of the column HEADER by which to order the output table
     list_ordering: Optional[str] = None
-    # Configuration for TableRenderer.  See the help for deployfish.renderers.table.TableRenderer
-    # for instructions.
+    #: Configuration for :py:class:`deployfish.renderers.table.TableRenderer`, which
+    #: we use to render our tabular output.
     list_result_columns: Dict[str, Any] = {}
 
     def _default(self):
@@ -54,7 +54,7 @@ class ReadOnlyCrudBase(Controller):
     @ex(
         help='Show whether an object exists in AWS',
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the object in AWS'})
+            (['pk'], {'help': 'The primary key for the object in AWS'})
         ],
     )
     @handle_model_exceptions
@@ -75,7 +75,7 @@ class ReadOnlyCrudBase(Controller):
     @ex(
         help='Show info about an object in AWS',
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the object in AWS'})
+            (['pk'], {'help': 'The primary key for the object in AWS'})
         ],
     )
     @handle_model_exceptions
@@ -111,6 +111,7 @@ class ReadOnlyCrudBase(Controller):
         results = self.model.objects.list()
         self.render_list(results)
 
+
 class CrudBase(ReadOnlyCrudBase):
 
     class Meta:
@@ -119,28 +120,28 @@ class CrudBase(ReadOnlyCrudBase):
     model: Type[Model] = Model
     loader: Type[ObjectLoader] = ObjectLoader
 
-    # The keys of this dict are method names, and the value is the string
-    # with which to replace the "help" string for that method name with
+    #: The keys of this dict are method names, and the value is the string
+    #: with which to replace the "help" string for that method name with
     help_overrides: Dict[str, str] = {}
 
     # --------------------
     # .create() related vars
     # --------------------
-    # Which template should we use when showing .create() output?
+    #: Which template should we use when showing :py:meth:`create` output?
     create_template: str = 'detail.jinja2'
     create_kwargs: Dict[str, Any] = {}
 
     # --------------------
     # .update() related vars
     # --------------------
-    # Which template should we use when showing .update() output?
+    #: Which template should we use when showing :py:meth:`update` output?
     update_template: str = 'detail.jinja2'
     update_kwargs: Dict[str, Any] = {}
 
     # --------------------
-    # .update() related vars
+    # .delete() related vars
     # --------------------
-    # Which template should we use when showing .update() output?
+    #: Which template should we use when showing :py:meth:`delete` output?
     delete_template: str = 'detail.jinja2'
     delete_kwargs: Dict[str, Any] = {}
 
@@ -152,14 +153,15 @@ class CrudBase(ReadOnlyCrudBase):
 
     def wait(self, operation: str, **kwargs) -> None:
         """
-        Build a ``deployfish.core.waiters.HookedWaiter`` for the operation named ``operation`` and with configuration
-        ``kwargs``, and then run it.
+        Build a :py:class:`deployfish.core.waiters.HookedWaiter` for the
+        operation named ``operation`` and with configuration ``kwargs``, and
+        then run it.
 
-        ``operation`` can be any waiter operation that boto3 supports for ``self.model`` type objects.
+        ``operation`` can be any waiter operation that boto3 supports for
+        :py:attr:`model` type objects.
         """
         waiter = self.model.objects.get_waiter(operation)
         waiter.wait(**kwargs)
-
 
     # Create
 

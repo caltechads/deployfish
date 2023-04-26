@@ -20,10 +20,11 @@ from deployfish.exceptions import (
 
 def handle_model_exceptions(func: Callable) -> Callable:  # noqa:C901
     """
-    We use this decorator to wrap cement command methods on Controller classes.
+    This decorator cathces all the kinds of execptions we expect to see in normal
+    operation while letting others display their stack traces normally.
 
-    We're catching all the kinds of execptions we expect to see in normal operation while letting others
-    display their stack traces normally.
+    We use this decorator to wrap cement command methods on
+    :py:class:`cement.ext.ext_argparse.ArgparseController` subclasses.
     """
 
     @wraps(func)

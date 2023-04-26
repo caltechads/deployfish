@@ -13,12 +13,13 @@ if TYPE_CHECKING:
     from .abstract import Model, Manager
     from .ecs import ContainerDefinition
 
+
 # ----------------------
 # Protocols
 # ----------------------
 
-# It is so stupid that I have to do these protocols to make type checking happy on mixins
-# We really want an Intersection[] type, but one does not exist yet.
+# It is so stupid that I have to do these protocols to make type checking happy
+# on mixins We really want an Intersection[] type, but one does not exist yet.
 
 class SupportsTags(SupportsModel, Protocol):
 
@@ -108,25 +109,29 @@ class TaskDefinitionFARGATEMixin:
 
     def is_fargate(self) -> bool:
         """
-        If this is a FARGATE task definition, return True.  Otherwise return False.
-
-        :rtype: bool
+        If this is a FARGATE task definition, return ``True``.  Otherwise return
+        ``False``.
         """
         return 'requiresCompatibilities' in self.data and self.data['requiresCompatibilities'] == ['FARGATE']
 
     def _get_container_cpu_usage(self, container_data: List[Dict[str, Any]]) -> int:
         """
-        Return the minimum necessary cpu for our task by summing up 'cpu' from each of our task's containers.
+        Return the minimum necessary cpu for our task by summing up 'cpu' from
+        each of our task's containers.
 
-        :param container_data list(dict(str, *)): the list of ContainerDefinition.data dicts to parse
+        Args:
+            container_data: the list of
+                :py:attr:`deployfish.core.models.ecs.ContainerDefinition.data`
+                dicts to parse
 
-        :rtype: int
+        Returns:
+            The minimum required task level ``cpu`` for all the containers in
+            the task.
         """
         max_container_cpu: int = 0
         for c in container_data:
             if 'cpu' in c:
                 max_container_cpu += cast(int, c['cpu'])
-        # Now find the smallest memory size for our CPU class that fits container_memory
         return max_container_cpu
 
     def _set_fargate_task_cpu(
@@ -135,13 +140,25 @@ class TaskDefinitionFARGATEMixin:
         source: Dict[str, Any] = None
     ) -> Optional[int]:
         """
-        For FARGATE tasks, task cpu is required and must be one of the values listed in self.VALID_FARGATE_CPU.  In this
-        case, if 'cpu' is not provided by upstream, add up all the 'cpu' on the task's containers and choose the next
-        biggest value from self.VALID_FARGATE_CPU.  If 'cpu' is provided but is not one of the valid values, raise
-        self.SchemaException.
+        For FARGATE tasks, task cpu is required and must be one of the values
+        listed in self.VALID_FARGATE_CPU.  In this case, if ``cpu`` is not
+        provided by upstream, add up all the ``cpu`` on the task's containers and
+        choose the next biggest value from :py:attr:`VALID_FARGATE_CPU`.
 
-        :param cpu_required int: the minimum amount of cpu required to run all containers, in MB
-        :param source dict(str, *): (optional) the data source for computing task memory.  If None, use self.data
+        Args:
+            cpu_required: the minimum amount of cpu required to run all
+            containers, in cpu units
+
+        Keyword Args:
+            source:  the data source for computing task memory.  If ``None``, use
+                :py:attr:`data`
+
+        Raises:
+            deployfish.exceptions.SchemaException: the cpu provided is not a valid
+                FARGATE cpu choice
+
+        Returns:
+            A valid CPU value for a FARGATE task
         """
         if not source:
             source = self.data
@@ -172,8 +189,8 @@ class TaskDefinitionFARGATEMixin:
         """
         For EC2 tasks, set task cpu if 'cpu' is provided, don't set otherwise.
 
-        If 'cpu' was supplied by the user but it is less than the sum of the container 'cpu' settings, raise
-        self.SchemaException.
+        If 'cpu' was supplied by the user but it is less than the sum of the
+        container 'cpu' settings, raise self.SchemaException.
 
         :param data dict(str, *): the TaskDefinition.data dict to modify
         :param cpu_required int: the minimum amount of cpu required to run all containers, in MB
@@ -198,11 +215,20 @@ class TaskDefinitionFARGATEMixin:
         source: Dict[str, Any] = None
     ) -> None:
         """
-        Set data['cpu'], the task level cpu requirement, based on whether this is a FARGATE task or an EC2 task.
+        Set task cpu requirement, based on whether this is a FARGATE task or an
+        EC2 task.
 
-        :param data dict(str, *): the TaskDefinition.data dict to modify
-        :param container_data list(dict(str, *)): the list of ContainerDefinition.data dicts to parse
-        :param source dict(str, *): (optional) the data source for computing task cpu.  If None, use self.data.
+        Args:
+
+            data : the :py:attr:`deployfish.core.models.ecs.TaskDefinition.data`
+                dict to modify
+            container_data: the list of
+                :py:attr:`deployfish.core.modeles.ecs.ContainerDefinition.data`
+                dicts to parse
+
+        Keyword Args:
+            source: the data source for computing task cpu.  If None, use
+            :py:attr:`data`.
         """
         if not source:
             source = self.data
@@ -214,24 +240,27 @@ class TaskDefinitionFARGATEMixin:
         if cpu is not None:
             if cpu_required > cpu:
                 raise SchemaException(
-                    'You set task cpu to {} but your container cpu sums to {}. Task cpu must be greater than the sum of container cpu.'.format(  # pylint:disable=line-too-long
-                        cpu,
-                        cpu_required
-                    )
+                    f'You set task cpu to {cpu} but your container cpu sums to {cpu_required}.'
+                    'Task cpu must be greater than the sum of container cpu.'
                 )
             # we calculate cpu as an int, but register_task_definition wants a str
             data['cpu'] = str(cpu)
 
     def _get_container_memory_usage(self, container_data: List[Dict[str, Any]]) -> int:
         """
-        Find the minimum necessary memory and maximum necessary memory for our task by looking at
-        'memoryReservation' and 'memory' (respectively) on each of our task's containers.
+        Find the minimum necessary memory and maximum necessary memory for our
+        task by looking at ``memoryReservation`` and ``memory`` (respectively) on
+        each of our task's containers.
 
         Return the maximum of the two sums.
 
-        :param container_data list(dict(str, *)): the list of ContainerDefinition.data dicts to parse
+        Args:
+            container_data: the list of
+                :py:attr:`deployfish.core.modeles.ecs.ContainerDefinition.data`
+                dicts to parse
 
-        :rtype: int
+        Returns:
+            The minimum memory required to run all our containers, in MB.
         """
         min_container_memory = 0
         max_container_memory = 0
@@ -240,7 +269,6 @@ class TaskDefinitionFARGATEMixin:
                 max_container_memory += c['memory']
             if 'memoryReservation' in c:
                 min_container_memory += c['memoryReservation']
-        # Now find the smallest memory size for our CPU class that fits container_memory
         return max(min_container_memory, max_container_memory)
 
     def _set_fargate_task_memory(
@@ -250,31 +278,35 @@ class TaskDefinitionFARGATEMixin:
         source: Dict[str, Any] = None
     ) -> Optional[int]:
         """
-        Return the value we should set for our ``TaskDefintion`` memory.
+        Return the value we should set for our
+        :py:class:`deployfish.core.models.ecs.TaskDefintion` memory.
 
         Given ``memory_required`` in MB, figure out what FARGATE memory value
         is most appropriate given the value of ``cpu`` in ``data``.
 
         For FARGATE tasks, AWS requires this to be one of the values listed in
-        ``self.VALID_FARGATE_MEMORY[data['cpu']]``.  In this case, if ``memory``
-        is not in ``data``, figure out what the maximum required memory is by
-        adding up memory requirements for our containers and choosing the next
-        largest memory value from ``self.VALID_FARGATE_MEMORY[data['cpu']]``.
+        :py:attr:`VALID_FARGATE_MEMORY` for the task cpu selected.  In this
+        case, if ``memory`` is not in :py:attr:`data`, figure out what the
+        maximum required memory is by adding up memory requirements for our
+        containers and choosing the next largest memory value from
+        :py:attr:`VALID_FARGATE_MEMORY`` for our task cpu.
 
         Args:
-            data: the ``TaskDefinition.data`` dict to modify
-            memory_required: the minimum amount of memory required to hold all containers, in MB
+            data: the :py:attr:`deployfish.core.models.ecs.TaskDefinition.data`
+                dict to modify
+            memory_required: the minimum amount of memory required to hold all
+            containers, in MB
 
         Keyword Arguments:
-            source: the data source for computing task memory.  If None, use ``data``
+            source: the data source for computing task memory.  If None, use
+                :py:attr:`data`
 
         Raises:
-            AbstractAdapter.SchemaException: If ``memory`` is in ``data`` but is
-                not one of the valid values
+            deployfish.exceptions.SchemaException: If ``memory`` is in ``data``
+                but is not one of the valid values
 
         Returns:
             The FARGATE memory setting
-        :rtype: int
         """
         if not source:
             source = self.data
@@ -290,7 +322,8 @@ class TaskDefinitionFARGATEMixin:
                         break
             if memory is None:
                 cpu_index = self.VALID_FARGATE_CPU.index(cpu) + 1
-                # FIXME: find the lowest valid fargate CPU level that supports the amount of memory we need
+                # FIXME: find the lowest valid fargate CPU level that supports
+                # the amount of memory we need
                 raise SchemaException(
                     'When using the FARGATE launch_type with task cpu={}, the maximum memory available is {}MB, but your containers need a minimum of {}MB. Set your task cpu to one of {}.'.format(   # noqa:E501  # pylint:disable=line-too-long
                         cpu,
@@ -335,12 +368,23 @@ class TaskDefinitionFARGATEMixin:
         source: Dict[str, Any] = None
     ) -> None:
         """
-        Set data['memory'], the task level memory requirement.
+        Set the task level "memory" setting.
+
+        Args:
+            data: the :py:attr:`deployfish.core.models.ecs.TaskDefinition.data`
+                dict to modify
+            memory_required: the minimum amount of memory required to hold all
+            containers, in MB
+
+        Keyword Arguments:
+            source: the data source for computing task memory.  If None, use
+                :py:attr:`data`
 
         .. note::
 
-            If this is a FARGATE task, before calling this method you must first have set data['cpu'] to a valid value
-            for FARGATE tasks.
+            If this is a FARGATE task, before calling this method you must first
+            have set the task level "cpu" requirement to a valid value for
+            FARGATE tasks.
         """
         if not source:
             source = self.data

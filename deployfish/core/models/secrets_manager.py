@@ -14,7 +14,7 @@ from .mixins import TagsManagerMixin, TagsMixin
 class SMSecretManager(TagsManagerMixin, Manager):
     """
     Manage our Secrets Manager secrets.   This differs from
-    :py:class:`deployfish.core.models.secrets.SecretManager`  in that that manager
+    :py:class:`deployfish.core.models.secrets.SecretManager` in that that manager
     manages SSM Parameter Store secrets, not Secrets Manager secrets.
     """
 

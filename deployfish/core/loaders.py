@@ -16,7 +16,8 @@ class ServiceDereferenceMixin:
         "{cluster_name}:{service_name}" primary key.
 
         Args:
-            identifier: the name of the item to load from the section named by `self.model.config_section`
+            identifier: the name of the item to load from the section named by
+                `self.model.config_section`
 
         Returns:
             A ``{cluster_name}:{service_name}`` string
@@ -50,10 +51,12 @@ class ObjectLoader:
 
     def get_object_from_aws(self, identifier: str, model: Optional[Type[Model]] = None) -> Model:
         """
-        Get an object from AWS directly, and don't look at our config in deployfish.yml.
+        Get an object from AWS directly, and don't look at our config in
+        deployfish.yml.
 
         Args:
-            identifier: the name of the item to load from the section named by `self.model.config_section`
+            identifier: the name of the item to load from the section named by
+                `self.model.config_section`
 
         Keyword Arguments:
             model: Override the model on self.controller with this class
@@ -75,18 +78,21 @@ class ObjectLoader:
         model: Optional[Type[Model]] = None
     ) -> Model:
         """
-        Load an object from deployfish.yml.  This may differ from the object in AWS.  If you want
-        the object from AWS, use ``self.get_object_from_aws()``.
+        Load an object from deployfish.yml.  This may differ from the object in
+        AWS.  If you want the object from AWS, use
+        ``self.get_object_from_aws()``.
 
         Args:
             identifier: the name of the object in deployfish.yml
 
         Keyword Arguments:
-            factory_kwargs: A dict of additional kwargs to pass to ObjectLoader.factory()
+            factory_kwargs: A dict of additional kwargs to pass to
+                ObjectLoader.factory()
             model: Override the model on self.controller with this class
 
         Raises:
-            ObjectLoader.ObjectNotManaged: if this type of object never gets defined in deployfish.yml
+            ObjectLoader.ObjectNotManaged: if this type of object never gets
+                defined in deployfish.yml
 
         Returns:
             A Model instance
@@ -112,10 +118,11 @@ class ObjectLoader:
         return a fully configured self.model object.
 
         Args:
-            identifier: the name of the item to load from the section named by ``self.model.config_section``
+            identifier: the name of the item to load from the section named by
+                ``self.model.config_section``
 
         Keyword Arguments:
-            factory_kwargs: kwargs to pass into `self.model.new()`
+            factory_kwargs: kwargs to pass into ``self.model.new()``
             model: Override the model on self.controller with this class
 
         Returns:
