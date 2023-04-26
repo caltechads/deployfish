@@ -72,6 +72,19 @@ class Config:
                 sys.exit(1)
         return config
 
+    @classmethod
+    def add_processable_section(cls, section_name: str) -> None:
+        """
+        Add the name of a processable section -- one in which we can do
+        intepolations.   This exists so that plugins can add their sections
+        to those that are processable.
+
+        Args:
+            section_name: the name of the section to add
+        """
+        if section_name not in cls.processable_sections:
+            cls.processable_sections.append(section_name)
+
     def __init__(
         self,
         filename: str,
@@ -86,8 +99,6 @@ class Config:
     @property
     def raw(self) -> Dict[str, Any]:
         """
-        Return the pre-interpolated version of the raw YAML.
-
         Returns:
             The pre-interpolated version of the raw YAML.
         """
@@ -96,8 +107,6 @@ class Config:
     @property
     def cooked(self) -> Dict[str, Any]:
         """
-        Return the post-interpolated version of the raw YAML.
-
         Returns:
             The post-interpolated version of the raw YAML.
         """
@@ -105,26 +114,21 @@ class Config:
 
     @property
     def tasks(self) -> List[Dict[str, Any]]:
-        try:
-            return self.cooked.get('tasks', [])
-        except KeyError:
-            raise self.NoSuchSectionError('tasks')
+        return self.cooked.get('tasks', [])
 
     @property
     def services(self) -> List[Dict[str, Any]]:
-        try:
-            return self.cooked.get('services', [])
-        except KeyError:
-            raise self.NoSuchSectionError('services')
+        return self.cooked.get('services', [])
 
     def load_config(self, filename: str) -> Dict[str, Any]:
         """
         Read our deployfish.yml file from disk and return it as parsed YAML.
 
-        :param filename: the path to our deployfish.yml file
-        :type filename: string
+        Args:
+            filename: the path to our deployfish.yml file
 
-        :rtype: dict
+        Return:
+            The raw contents of the deployfish.yml file decoded to a dict
         """
         if not os.path.exists(filename):
             raise ConfigProcessingFailed("Couldn't find deployfish config file '{}'".format(filename))
@@ -141,40 +145,60 @@ class Config:
         parsed YAML file.
 
         Args:
-            service_name: the name of an ECS service listed in our YAML file under
-                the ``services:`` section
+            service_name: the name of an ECS service listed in our YAML file
+                under the ``services:`` section
 
         Raises:
-            Config.NoSuchSectionItemError: no service named ``service_name`` existed
-                in our ``services:`` section.
+            Config.NoSuchSectionItemError: no service named ``service_name``
+                existed in our ``services:`` section.
 
         Returns:
             The service config for the service named ``service_name``.
-        :rtype: dict
         """
         return self.get_section_item('services', service_name)
 
     def get_section(self, section_name: str) -> List[Dict[str, Any]]:
         """
-        Return the contents of a whole top level section from our deployfish.yml file.
+        Return the contents of a whole top level section from our deployfish.yml
+        file.
 
-        :param section_name string: The name of the top level section to search
+        Args:
+            section_name: The name of the top level section to retrieve
 
-        :rtype: dict
+        Raises:
+            KeyError: no section named ``section_name`` exists in the config.
+
+        Returns:
+            The post-interpolation contents of the section named ``section_name``.
         """
         return self.cooked[section_name]
 
     def get_section_item(self, section_name: str, item_name: str) -> Dict[str, Any]:
         """
-        Get an item from a top level section with 'name' equal to ``item_name``
-        from our parsed ``deployfish.yml`` file.
+        Get an item from a top level section with ``name`` equal to
+        ``item_name`` from our INTERPOLATED deployfish.yml file.
 
-        :param section_name string: The name of the top level section to search
+        Item name can be either the ``name`` of the item, or the ``environment``
+        of the item.
 
-        :param item_name: The name of the instance of the section
-        :type item_name: string
+        .. note::
+            If you have several items with the same ``environment``, and you ask
+            for the config for the item with ``item_name`` set to that
+            environment, you'll get the first one in the file.
 
-        :rtype: dict
+        Args:
+            section_name: The name of the top level section to retrieve
+            item_name: The name of the instance of the section
+
+        Raises:
+            Config.NoSuchSectionError: no section named ``section_name`` exists
+                in the config
+            Config.NoSuchSectionItemError: no item named  ``item_name`` exists
+                in the section named ``section_name``
+
+        Returns:
+            The contents of the entry named ``item_name`` in the section named
+            ``section_name`` from the post-interpolation version of the config.
         """
 
         if section_name in self.cooked:
@@ -189,16 +213,32 @@ class Config:
 
     def get_raw_section_item(self, section_name: str, item_name: str) -> Dict[str, Any]:
         """
-        Get an item from a top level section of the raw config with 'name' equal to ``item_name``
-        from our parsed ``deployfish.yml`` file.
+        Get an item from a top level section with ``name`` equal to
+        ``item_name`` from our RAW deployfish.yml file.
 
-        :param section_name string: The name of the top level section to search
+        Item name can be either the ``name`` of the item, or the ``environment``
+        of the item.
 
-        :param item_name: The name of the instance of the section
-        :type item_name: string
+        .. note::
+            If you have several items with the same ``environment``, and you ask
+            for the config for the item with ``item_name`` set to that
+            environment, you'll get the first one in the file.
 
-        :rtype: dict
+        Args:
+            section_name: The name of the top level section to retrieve
+            item_name: The name of the instance of the section
+
+        Raises:
+            Config.NoSuchSectionError: no section named ``section_name`` exists
+                in the config
+            Config.NoSuchSectionItemError: no item named  ``item_name`` exists
+                in the section named ``section_name``
+
+        Returns:
+            The contents of the entry named ``item_name`` in the section named
+            ``section_name`` from the pre-interpolation version of the config.
         """
+
         if section_name in self.raw:
             for item in self.raw[section_name]:
                 if item['name'] == item_name:
