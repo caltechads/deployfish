@@ -144,18 +144,19 @@ class DeployfishApp(App):
 
         # define hooks
         define_hooks = [
-            'pre_object_create',    # hook(app: App, obj: Model)
-            'post_object_create',   # hook(app: App, obj: Model, success: bool = True, reason: str = None)
-            'pre_object_update',    # hook(app: App, obj: Model)
-            'post_object_update',   # hook(app: App, obj: Model, success: bool = True, reason: str = None)
-            'pre_object_delete',    # hook(app: App, obj: Model)
-            'post_object_delete',   # hook(app: App, obj: Model, success: bool =  True, reason: str = None)
-            'pre_service_scale',     # hook(app: App, obj: Service, count: int)
-            'post_service_scale',    # hook(app: App, obj: Service, count: int)
-            'pre_service_restart',   # hook(app: App, obj: Service)
-            'post_service_restart',  # hook(app: App, obj: Service)
-            'pre_cluster_scale',     # hook(app: App, obj: Cluster, count: int)
-            'post_cluster_scale',    # hook(app: App, obj: Cluster, count: int)
+            'pre_config_interpolate',    # hook(app: App, obj: Type[Config])
+            'pre_object_create',         # hook(app: App, obj: Model)
+            'post_object_create',        # hook(app: App, obj: Model, success: bool = True, reason: str = None)
+            'pre_object_update',         # hook(app: App, obj: Model)
+            'post_object_update',        # hook(app: App, obj: Model, success: bool = True, reason: str = None)
+            'pre_object_delete',         # hook(app: App, obj: Model)
+            'post_object_delete',        # hook(app: App, obj: Model, success: bool =  True, reason: str = None)
+            'pre_service_scale',         # hook(app: App, obj: Service, count: int)
+            'post_service_scale',        # hook(app: App, obj: Service, count: int)
+            'pre_service_restart',       # hook(app: App, obj: Service)
+            'post_service_restart',      # hook(app: App, obj: Service)
+            'pre_cluster_scale',         # hook(app: App, obj: Cluster, count: int)
+            'post_cluster_scale',        # hook(app: App, obj: Cluster, count: int)
         ]
 
         # register hooks
@@ -171,12 +172,15 @@ class DeployfishApp(App):
     @property
     def deployfish_config(self) -> Config:
         """
-        Lazy load the ``deployfish.yml`` file.  We only load it on request because most
-        deployfish commands don't need it.
+        Lazy load the deployfish.yml file.  We only load it on request
+        because most deployfish commands don't need it.
 
         Returns:
-            The fully interpolated Config object.
+            The fully interpolated :py:class:`deployfish.config.Config` object.
         """
+        # Allow our plugins to modify Config before our import
+        for _ in self.hook.run('pre_config_interpolate', self, Config):
+            pass
         if not self._deployfish_config:
             ignore_missing_environment = False
             if (
@@ -202,7 +206,8 @@ class DeployfishApp(App):
     @property
     def raw_deployfish_config(self) -> Config:
         """
-        Lazy load the ``deployfish.yml`` file into a ``Config`` object, but don't run any
+        Lazy load the deployfish.yml file into a
+        :py:class:`deployfish.config.Config` object, but don't run any
         interpolations.
 
         Returns:
