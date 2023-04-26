@@ -89,15 +89,32 @@ class AbstractSSHProvider:
 
 class SSMSSHProvider(AbstractSSHProvider):
     """
-    Implement our SSH commands via AWS Systems Manager SSH connections directly to ``self.instance``.
+    Implement our SSH commands via AWS Systems Manager SSH connections directly
+    to ``self.instance``.
+
+    For SSM ssh to work for your non-default AWS profiles, add a stanza to your
+    ``~/.ssh/config`` that looks like this::
+
+        Host *.{the profile name}
+            IdentitiesOnly yes
+            User ec2-user
+            Port 22
+            ProxyCommand sh -c "/usr/local/bin/aws-gate ssh-proxy -p {the profile name} -r us-west-2 `echo %h | sed -Ee 's/\.([^.])+$//g'`"
+
+    Where ``{the profile name}`` is the name of your non-default profile.
     """
 
     def ssh(self, command: str = None) -> str:
-        # If the caller specified --verbose, have SSH print everything. Otherwise, have SSH print nothing.
+        # If the caller specified --verbose, have SSH print everything.
+        # Otherwise, have SSH print nothing.
         flags = self.ssh_verbose_flag if self.ssh_verbose_flag else '-q'
         if not command:
             command = ''
-        return 'ssh -t {} ec2-user@{} {}'.format(flags, self.instance.pk, shellescape.quote(command))
+        profile_name = get_boto3_session().profile_name
+        ssh_target = self.instance.pk
+        if profile_name:
+            ssh_target = f'{self.instance.pk}.{profile_name}'
+        return 'ssh -t {} ec2-user@{} {}'.format(flags, ssh_target, shellescape.quote(command))
 
     def tunnel(self, local_port: int, target_host: str, host_port: int) -> str:
         cmd = 'ssh {} -N -L {}:{}:{} {}'.format(
