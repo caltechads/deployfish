@@ -43,6 +43,7 @@ from .exceptions import DeployfishAppError
 
 # configuration defaults
 CONFIG = init_defaults('deployfish')
+CONFIG['deployfish']['ssh'] = os.environ.get('DEPLOYFISH_SSH_PROVIDER', 'bastion')
 META = init_defaults('log.logging')
 META['log.logging']['log_level_argument'] = ['-l', '--level']
 
@@ -60,6 +61,7 @@ def post_arg_parse_build_boto3_session(app: "DeployfishApp") -> None:
         app.pargs.deployfish_filename,
         use_aws_section=not app.pargs.no_use_aws_section
     )
+
 
 # ------------------
 # The cement app
@@ -189,6 +191,12 @@ class DeployfishApp(App):
                 'ignore_missing_environment': ignore_missing_environment
             }
             self._deployfish_config = Config.new(**config_kwargs)
+            if 'proxy' not in self._deployfish_config.get_global_config('ssh'):
+                self._deployfish_config.set_global_config(
+                    'ssh',
+                    'proxy',
+                    self.config.get('deployfish', 'ssh_provider')
+                )
         return self._deployfish_config
 
     @property

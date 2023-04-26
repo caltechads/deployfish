@@ -214,3 +214,10 @@ class Config:
             if section in self.cooked['deployfish']:
                 return self.cooked['deployfish'][section]
         return {}
+
+    def set_global_config(self, section: str, key: str, value: Any) -> None:
+        if 'deployfish' not in self.cooked:
+            self.cooked['deployfish'] = {}
+        if section not in self.cooked['deployfish']:
+            self.cooked['deployfish'][section] = {}
+        self.cooked['deployfish'][section][key] = value
