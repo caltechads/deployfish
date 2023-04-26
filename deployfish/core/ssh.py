@@ -1,8 +1,9 @@
 from io import IOBase
 import os
 import random
+import signal
 import subprocess
-from typing import Dict, Type, Any, Tuple, TYPE_CHECKING, Optional, cast, Sequence
+from typing import Dict, Type, Any, Tuple, TYPE_CHECKING, Optional, cast, Sequence, Callable
 
 import shellescape
 
@@ -17,6 +18,37 @@ if TYPE_CHECKING:
         InvokedTask,
         SSHTunnel,
     )
+
+
+def build_sigint_handler(p: subprocess.Popen) -> Callable:
+    """
+    This builds a signal handler for catching SIGINT (Control-C) while we are
+    exec'ed into a FARGATE container.  We want that signal to go to the remote
+    process and not be turned into KeyboardInterrupt here in our python process.
+    If we don't forward SIGINT, we kill our python process but leave the remote
+    ECS Exec shell running.
+
+    Use this like so:
+
+    .. code-block:: python
+
+        p = subprocess.Popen(cmd, shell=True)
+        # Register our handler
+        signal.signal(signal.SIGINT, build_sigint_handler(p))
+        # Wait for our subprocess to die
+        p.wait()
+        # Restore the default behavior of SIGINT
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    Args:
+        p: the subprcess object running our interactive session
+
+    Returns:
+        A function suitable for registering with :py:func:`signal.signal`.
+    """
+    def sigint_handler(signum, frame):
+        p.send_signal(signal.SIGINT)
+    return sigint_handler
 
 
 class AbstractSSHProvider:
@@ -429,20 +461,27 @@ class DockerMixin(SSHMixin, SupportsService):
         container_name: str = None
     ) -> None:
         """
-        Exec into a container using the ECS Exec capability of AWS Systems Manager.  This is what we use for FARGATE
-        tasks.
+        Exec into a container using the ECS Exec capability of AWS Systems
+        Manager.  This is what we use for FARGATE tasks.
 
         .. warning::
             In order for ECS Exec to work, you'll need to configure your cluster, task role and the system on which you
             run deployfish as described here:
             `<https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html>`_.
 
-        If ``ssh_target`` is not provided, use ``self.ssh_target`` instead.
-        If ``container_name`` is not provided, use the name of the first container in the first running task.
+        If ``task_arn`` is not provided, use the first task listed in the
+        running tasks for the object.
 
-        :param ssh_target: If provided, the Instance object to which to ssh
-        :param container_name: the name of the container to exec into
+        If ``container_name`` is not provided, use the name of the first
+        container in the first running task.
+
+        Keyword Args:
+            task_arn: the ARN of the particular
+                :py:class:`deployfish.core.models.ecs.InvokedTask` that we want to
+                exec into
+            container_name: the name of the container to exec into
         """
+
         if self.running_tasks:
             if task_arn is None:
                 task_arn = self.running_tasks[0].arn
@@ -458,4 +497,12 @@ class DockerMixin(SSHMixin, SupportsService):
             cmd = "aws ecs execute-command"
         cmd += f" --cluster {self.cluster.name} --task={task_arn} --container={container_name}"
         cmd += " --interactive --command \"/bin/sh\""
-        subprocess.call(cmd, shell=True)
+        p = subprocess.Popen(cmd, shell=True)
+        # Catch SIGINT and pass it to our subprocess so we don't die, leaving
+        # our ECS Exec session still running
+        signal.signal(signal.SIGINT, build_sigint_handler(p))
+        # Wait for our subprocess to die
+        p.wait()
+        # Restore the default behavior of SIGINT
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+
