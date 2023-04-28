@@ -43,7 +43,7 @@ from .exceptions import DeployfishAppError
 
 # configuration defaults
 CONFIG = init_defaults('deployfish')
-CONFIG['deployfish']['ssh'] = os.environ.get('DEPLOYFISH_SSH_PROVIDER', 'bastion')
+CONFIG['deployfish']['ssh_provider'] = os.environ.get('DEPLOYFISH_SSH_PROVIDER', 'bastion')
 META = init_defaults('log.logging')
 META['log.logging']['log_level_argument'] = ['-l', '--level']
 
