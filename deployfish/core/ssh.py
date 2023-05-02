@@ -149,12 +149,16 @@ class SSMSSHProvider(AbstractSSHProvider):
         return 'ssh -t {} ec2-user@{} {}'.format(flags, ssh_target, shellescape.quote(command))
 
     def tunnel(self, local_port: int, target_host: str, host_port: int) -> str:
+        profile_name = get_boto3_session().profile_name
+        ssh_target = self.instance.pk
+        if profile_name:
+            ssh_target = f'{self.instance.pk}.{profile_name}'
         cmd = 'ssh {} -N -L {}:{}:{} {}'.format(
             self.ssh_verbose_flag,
             local_port,
             target_host,
             host_port,
-            self.instance.pk,
+            ssh_target
         )
         return cmd
 
@@ -505,4 +509,3 @@ class DockerMixin(SSHMixin, SupportsService):
         p.wait()
         # Restore the default behavior of SIGINT
         signal.signal(signal.SIGINT, signal.SIG_DFL)
-
