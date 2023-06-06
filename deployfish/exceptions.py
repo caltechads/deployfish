@@ -64,6 +64,7 @@ class NoSuchConfigSectionItem(Exception):
     def __str__(self) -> str:
         return f'No item named "{self.name}" deployfish.yml section "{self.section}"'
 
+
 class RenderException(Exception):
     """
     This is used for click commands, and gets re-raised when we get other exceptions so we can

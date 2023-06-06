@@ -55,8 +55,8 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
 
     def get_schedule_data(self, data: Dict[str, Any], task_definition: TaskDefinition) -> Dict[str, Any]:
         """
-        Construct the dict that will be given as input for configuring an EventScheduleRule and EventTarget for our
-        helper task.
+        Construct the dict that will be given as input for configuring an
+        EventScheduleRule and EventTarget for our helper task.
 
         The EventScheduleRule.new() factory method expects this struct:
 
@@ -652,7 +652,7 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
         kwargs: Dict[str, Any] = {}
         secrets: List[Secret] = []
         if 'config' in self.data:
-            secrets = self.get_secrets(data['cluster'], f"task-{data['name']}")
+            secrets = self.get_secrets(data['cluster'], f"task-{data['name']}", decrypt=False)
         kwargs['task_definition'] = self.get_task_definition(secrets=secrets)
         self.update_container_logging(data, kwargs['task_definition'])
         if 'networkConfiguration' in data and kwargs['task_definition'].data['networkMode'] != 'awsvpc':
@@ -1156,7 +1156,8 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         :rtype: list(Union[Secret, ExternalSecret])
         """
         if self.load_secrets:
-            secrets = self.get_secrets(self.data['cluster'], self.data['name'])
+            # We only need secret values if we're explicitly showing them
+            secrets = self.get_secrets(self.data['cluster'], self.data['name'], decrypt=False)
         else:
             secrets = []
         return secrets

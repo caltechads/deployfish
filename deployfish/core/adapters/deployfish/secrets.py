@@ -55,7 +55,7 @@ class SecretsMixin:
 
     data: Dict[str, Any]
 
-    def get_secrets(self, cluster: str, name: str) -> List[Secret]:
+    def get_secrets(self, cluster: str, name: str, decrypt: bool = True) -> List[Secret]:
         secrets = None
         if 'config' in self.data:
             secrets = []

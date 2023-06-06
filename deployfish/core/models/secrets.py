@@ -125,7 +125,7 @@ class SecretManager(Manager):
             parameters.extend(page['Parameters'])
         return parameters
 
-    def _get_parameter_values(self, names: List[str]) -> Tuple[Dict[str, Any], List[str]]:
+    def _get_parameter_values(self, names: List[str], decrypt: bool = True) -> Tuple[Dict[str, Any], List[str]]:
         # get_parameters only accepts 10 or fewer names in the Names kwarg, so we have to
         # split names into sub lists of 10 of fewer names and iterate
         names_chunks = [names[i * 10:(i + 1) * 10] for i in range((len(names) + 9) // 10)]
@@ -133,7 +133,7 @@ class SecretManager(Manager):
         non_existant = []
         for chunk in names_chunks:
             try:
-                response = self.client.get_parameters(Names=chunk, WithDecryption=True)
+                response = self.client.get_parameters(Names=chunk, WithDecryption=decrypt)
             except self.client.exceptions.InvalidKeyId as e:
                 raise self.model.DecryptionFailed(str(e))
             if 'InvalidParameters' in response and response['InvalidParameters']:
@@ -202,7 +202,7 @@ class SecretManager(Manager):
         parameters = self._describe_parameters(prefix)
         return [p['Name'] for p in parameters]
 
-    def list(self, prefix: str) -> Sequence["Secret"]:
+    def list(self, prefix: str, decrypt: bool = True) -> Sequence["Secret"]:
         if prefix.endswith('*'):
             prefix = prefix[:-1]
             if not prefix.endswith('.'):
@@ -212,7 +212,7 @@ class SecretManager(Manager):
         # KeyId for our KMS key, but does not give us Value or ARN, while
         # get_parameters gives us Value and ARN but no KeyId
         names = [parameter['Name'] for parameter in parameters]
-        values, _ = self._get_parameter_values(names)
+        values, _ = self._get_parameter_values(names, decrypt=decrypt)
         secrets = []
         for parameter in parameters:
             parameter['ARN'] = values[parameter['Name']]['ARN']
