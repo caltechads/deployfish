@@ -64,7 +64,7 @@ class SecretsMixin:
                     secrets.append(Secret.new({'value': secret}, 'deployfish', cluster=cluster, name=name))
                 except SecretAdapter.ExternalParameterException:
                     # handle globs
-                    secrets.extend(ExternalSecret.objects.list(secret))
+                    secrets.extend(ExternalSecret.objects.list(secret, decrypt=decrypt))
         return cast(List[Secret], secrets)
 
 
