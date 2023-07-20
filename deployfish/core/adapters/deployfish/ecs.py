@@ -2,7 +2,7 @@ from copy import copy
 import os
 import re
 import shlex
-from typing import Dict, Any, Tuple, List, cast
+from typing import Dict, Any, Tuple, List, cast, Optional
 
 from deployfish.core.models import (
     EventScheduleRule,
@@ -49,16 +49,29 @@ class VpcConfigurationMixin:
 class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
 
     def is_fargate(self, _: Dict[str, Any]) -> bool:
-        if 'requiresCompatibilities' in self.data and self.data['requiresCompatibilities'] == ['FARGATE']:
+        """
+        Return ``True ``if this task definition is for FARGATE, ``False``
+        otherwise.
+        """
+        if (
+            'requiresCompatibilities' in self.data and
+            self.data['requiresCompatibilities'] == ['FARGATE']
+        ):
             return True
         return False
 
-    def get_schedule_data(self, data: Dict[str, Any], task_definition: TaskDefinition) -> Dict[str, Any]:
+    def get_schedule_data(
+        self,
+        data: Dict[str, Any],
+        task_definition: TaskDefinition
+    ) -> Dict[str, Any]:
         """
         Construct the dict that will be given as input for configuring an
-        EventScheduleRule and EventTarget for our helper task.
+        :py:class:`deployfish.core.models.events.EventScheduleRule` and
+        :py:class:`deployfish.core.models.events.EventTarget` for our helper task.
 
-        The EventScheduleRule.new() factory method expects this struct:
+        The :py:meth:`deployfish.core.models.events.EventScheduleRule.new`
+        factory method expects this struct::
 
            {
               'name': the name for the schedule
@@ -76,11 +89,13 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
               }
         }
 
+        Args:
+            data: The output of :py:meth:`get_data`
+            task_definition: The task definition to schedule
 
-        :param data dict(str, *): the output of self.get_data()
-        :param task_definition TaskDefinition:  the task definition to schedule
-
-        :rtype: dict(str, *): data appropriate for configuring an EventScheduleRule and Event Target
+        Returns:
+            Data appropriate for configuring an ``EventScheduleRule`` and
+            ``EventTarget``
         """
         schedule_data: Dict[str, Any] = {}
         schedule_data['name'] = task_definition.data['family']
@@ -108,11 +123,46 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
                 schedule_data['vpc_configuration']['public_ip'] = vc['allowPublicIp'] == 'ENABLED'
         return schedule_data
 
-    def update_container_logging(self, data: Dict[str, Any], task_definition: TaskDefinition) -> None:
+    def update_container_logging(
+        self,
+        data: Dict[str, Any],
+        task_definition: TaskDefinition
+    ) -> None:
         """
-        FARGATE tasks can only use these logging drivers: awslogs, splunk, awsfirelens.   Examine each
-        container in our task definition and if (a) there is no logging stanza or (b) the logging driver
-        is not valid, replace the logging stanza with one that writes the logs to awslogs.
+        When creating :py:class:`deployfish.core.models.ecs.ServiceHelperTask`
+        objects, from a ``deployfish.yml`` service definition, we always create
+        the tasks as FARGATE tasks.  To make a ``ServiceHelperTask``, we copy
+        the service's task definition and modify it to be a FARGATE task as well
+        as with the appropriate overrides from the ``tasks:`` section of the
+        service definition.
+
+        However, the service itself may be an EC2 based task.  If so, we may not
+        be able to use the same logging configuration for the tasks as we do for
+        the service.  This is because FARGATE tasks can only use these logging
+        drivers: ``awslogs``, ``splunk``, ``awsfirelens``, while EC2 services
+        and tasks have a much longer list of supported logging drivers (e.g.
+        ``fluentd``).
+
+        Or, we may not have a logging configuration at all for the service or
+        task we want, in which case we need to add one.
+
+        Examine each container in our task definition and if
+
+        * there is no logging stanza at all for the container
+        * or the logging driver is not valid for FARGATE
+
+        replace the logging stanza with one that writes the logs to ``awslogs``.
+
+        We'll set the log group to be either ``/<cluster>/<service>`` or
+        ``/<cluster>/standalone-tasks`` depending on whether this is a
+        ``ServiceHelperTask`` or a ``StandaloneTask``, and set the log
+        strem prefix to that of our name
+
+        Args:
+            data: the data dict for the container
+            task_definition: the
+                :py:class:`deployfish.core.models.ecs.TaskDefinition` object that
+                owns this container
         """
         if task_definition.is_fargate():
             for container in task_definition.containers:
@@ -149,9 +199,10 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
 
 class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignore
     """
-    Convert our deployfish YAML definition of our task definition to the same format that
-    boto3.client('ecs').describe_task_definition() returns, but translate all container info
-    into ContainerDefinitions.
+    Convert our deployfish YAML definition of our task definition to the same
+    format that :py:meth`describe_task_definition` returns, but translate all
+    container info into :py:class:`deployfish.core.models.ecs.ContainerDefinition`
+    objects.
     """
 
     def __init__(
@@ -168,7 +219,7 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
 
     def get_volumes(self) -> List[Dict[str, Any]]:
         """
-        In the YAML, volume definitions look like this:
+        In the YAML, volume definitions look like this::
 
             volumes:
               - name: 'string'
@@ -187,11 +238,13 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
 
         .. note::
 
-            People can only actually specify one of 'path', 'config' or 'efs_config' -- they're mutually exclusive.
-            And 'path' is not available for FARGATE tasks.
+            People can only actually specify one of ``path``, ``config`` or
+            ``efs_config`` -- they're mutually exclusive.  And ``path`` is not
+            available for FARGATE tasks.
 
 
-        Convert that to to the same structure that boto3.client('ecs').describe_task_definition() returns for that info:
+        Convert that to to the same structure that
+        :py:meth:`describe_task_definition` returns for that info::
 
             [
                 {
@@ -216,13 +269,13 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
                     },
             ]
 
-        .. warning:
+        .. warning::
 
-            Old-style container definitions in deployfish.yml could be specified entirely in the
-            container's own `volumes:` section.
+            Old-style container definitions in deployfish.yml could be specified
+            entirely in the container's own `volumes:` section.
 
-
-        :rtype: dict
+        Returns:
+            A list of volume definitions for this task definition.
         """
         volume_names = set()
         volumes = []
@@ -295,8 +348,20 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
 
 class ContainerDefinitionAdapter(Adapter):
     """
-    Convert our deployfish YAML definition of our containers to the same format that
-    boto3.client('ecs').describe_task_definition() returns for container definitions.
+    Convert our deployfish YAML definition of our containers to the same format
+    that :py:meth:`describe_task_definition` returns for container definitions.
+
+    Args:
+        data: a deployfish.yml container definition stanza
+
+    Keyword Args:
+        task_definition_data: :py:attr:`deployfish.core.models.ecs.TaskDefinition.data`
+            from the owning :py:class:`deployfish.core.models.ecs.TaskDefinition`
+        secrets: a list of :py:class:`deployfish.core.models.secrets.Secret`
+        extra_environment: a dict of extra environment variables to add to the container
+        partial: if ``True``, we're updating an existing ContainerDefinition from a partial
+            set of overrides.  Setting this to ``True`` will cause us to ignore any
+            missing required fields.
     """
 
     PORTS_RE = re.compile(r'(?P<hostPort>\d+)(:(?P<containerPort>\d+)(/(?P<protocol>udp|tcp))?)?')
@@ -321,38 +386,51 @@ class ContainerDefinitionAdapter(Adapter):
         self.extra_environment = extra_environment if extra_environment else {}
         self.partial = partial
 
+    @property
+    def is_fargate(self) -> bool:
+        """
+        Return ``True`` if this container is part of a FARGATE task
+        """
+        return 'FARGATE' in self.task_definition_data.get('requiresCompatibilities', [])
+
     def get_secrets(self) -> List[Dict[str, str]]:
         """
-        Add parameter store values to the containers 'secrets' list. The task will fail if we try
-        to do this and we don't have an execution role, so we don't pass the secrets if it doesn't
-        have an execution role
+        Add parameter store values to the container's 'secrets' list. The task
+        will fail if we try to do this and we don't have an execution role, so
+        we don't pass the secrets if it doesn't have an execution role.
         """
         return [{'name': s.name, 'valueFrom': s.pk} for s in self.secrets]
 
     def get_mountPoints(self) -> List[Dict[str, str]]:
         """
-        In deployfish.yml, volumes take one of these two forms:
+        In ``deployfish.yml``, volumes take one of these two forms::
 
             volumes:
                 - storage:/container/path
 
-        or:
+        or::
 
             volumes:
                 - /host/path:/container/path
                 - /host/path-ro:/container/path-ro:ro
 
-        The first form is the new style volume definition.  The "storage" bit refers to a volume on the task definition
-        named "storage", which has all the volume configuration info.
+        The first form is the new style volume definition.  The "storage" bit
+        refers to a volume on the task definition named "storage", which has all
+        the volume configuration info.
 
-        The second form is the old-style volume definition.  Before we allowed the "volumes:" section in the task
-        definition yml, you could define volumes on individual containers and the "volumes" list in the
-        register_task_definition() AWS API call would be auto-constructed based on the host and container path.
+        The second form is the old-style volume definition.  Before we allowed
+        the "volumes:" section in the task definition yml, you could define
+        volumes on individual containers and the "volumes" list in the
+        :py:meth:`register_task_definition` AWS API call would be
+        auto-constructed based on the host and container path.
 
-        To deal with the second form, we need to internally convert to the first form and add a hidden volume
-        definition on the task definition, then transform the volume mountpoint to the first form.
+        To deal with the second form, we need to internally convert to the first
+        form and add a hidden volume definition on the task definition, then
+        transform the volume mountpoint to the first form.
 
-        :rtype: list(dict(str, str))
+        Returns:
+            A list of dicts, each of which is a mountpoint definition for the
+            container.
         """
 
         volume_names = set()
@@ -370,9 +448,10 @@ class ContainerDefinitionAdapter(Adapter):
             name = self.MOUNT_RE.sub('_', host_path)
             name = name[:254] if len(name) > 254 else name
             if name not in volume_names:
-                # FIXME: if the host_path doesn't start with a /, ensure that the volume already
-                # exists in the task definition, otherwise raise ContainerYamlSchemaException
-                # Add this container specific volume to the task definition
+                # FIXME: if the host_path doesn't start with a /, ensure that
+                # the volume already exists in the task definition, otherwise
+                # raise ContainerYamlSchemaException Add this container specific
+                # volume to the task definition
                 self.task_definition_data['volumes'].append({
                     'name': name,
                     'host': {'sourcePath': host_path}
@@ -389,20 +468,24 @@ class ContainerDefinitionAdapter(Adapter):
 
     def get_ports(self) -> List[Dict[str, Any]]:
         """
-        deployfish.yml port mappings look like this:
+        ``deployfish.yml`` port mappings look like this::
 
             ports:
                 - "80"
                 - "8443:443"
                 - "8125:8125/udp"
 
-        Convert them to this:
+        Convert them to this::
 
             [
                 {"containerPort": 80, "protocol": "tcp"},
                 {"containerPort": 443, "hostPort": 8443, "protocol": "tcp"},
                 {"containerPort": 8125, "hostPort": 8125, "protocol": "udp"},
             ]
+
+        Returns:
+            A list of dicts, each of which is a port mapping definition for the
+            container.
         """
         portMappings = []
         for mapping in self.data.get('ports', []):
@@ -428,26 +511,29 @@ class ContainerDefinitionAdapter(Adapter):
 
     def get_environment(self) -> List[Dict[str, str]]:
         """
-        deployfish.yml environment variables are defined in one of the two following ways:
+        ``deployfish.yml`` environment variables are defined in one of the two
+        following ways::
 
             environment:
                 - FOO=bar
                 - BAZ=bash
 
-        or:
+        or::
 
             environment:
                 FOO: bar
                 BAZ: bash
 
-        Convert them to this, which is what boto3.client('ecs').describe_task_definition() returns.
+        Convert them to this, which is what :py:meth:`describe_task_definition`
+        returns::
 
             [
                 {"name": "FOO", "value": "bar"},
                 {"name": "BAZ", "value": "bash}
             ]
 
-        :rtype: list(dict(str, str))
+        Returns:
+            A list of dicts, each of which is an environment variable definition
         """
         environment: List[Dict[str, str]] = []
         if 'environment' in self.data:
@@ -465,26 +551,29 @@ class ContainerDefinitionAdapter(Adapter):
 
     def get_dockerLabels(self) -> Dict[str, str]:
         """
-        deployfish.yml environment variables are defined in one of the two following ways:
+        ``deployfish.yml`` docker labels are defined in one of the two following
+        ways::
 
             labels:
                 - FOO=bar
                 - BAZ=bash
 
-        or:
+        or::
 
             labels:
                 FOO: bar
                 BAZ: bash
 
-        Convert them to this, which is what boto3.client('ecs').describe_task_definition() returns.
+        Convert them to this, which is what :py:meth:`describe_task_definition`
+        returns::
 
             {
                 'FOO': 'bar',
                 'BAZ': 'bash'
             {
 
-        :rtype: dict(str, str)
+        Returns:
+            A dict of docker labels
         """
         dockerLabels: Dict[str, str] = {}
         if 'labels' in self.data:
@@ -553,26 +642,127 @@ class ContainerDefinitionAdapter(Adapter):
             extraHosts.append({'hostname': hostname, 'ipAddress': ip_address})
         return extraHosts
 
+    def get_cpu(self) -> Optional[int]:
+        """
+        Get the ``cpu`` value for this container, which is the number of cpu
+        units to reserve for the container.    One full CPU is 1024 units.
+
+        * If the task is a FARGATE task, then ``cpu`` is optional.
+        * If the task is an EC2 task, then ``cpu`` is required.  If it is not
+          present in the ``deployfish.yml`` file, then it defaults to 256.
+
+        If ``cpu`` is specified then the only requirement is that the sum of all
+        ``cpu`` values for all containers in the task be lower than the ``cpu``
+        value specified in the task definition, if that is present.
+
+        Raises:
+            SchemaException: if the ``cpu`` value is greater than the task cpu
+                value.
+
+        Returns:
+            The ``cpu`` value for this container.
+        """
+
+        if self.is_fargate:
+            default = None
+        else:
+            default = 256
+        cpu = self.data.get('cpu', default)
+        if isinstance(cpu, str):
+            cpu = int(cpu)
+        if 'cpu' in self.task_definition_data:
+            task_cpu = self.task_definition_data['cpu']
+            if isinstance(task_cpu, str):
+                task_cpu = int(task_cpu)
+            if cpu > task_cpu:
+                raise self.SchemaException(
+                    'container "{}": cpu is greater than the task cpu value'.format(
+                        self.data['name']
+                    )
+                )
+        return cpu
+
+    def get_memory(self) -> Optional[int]:
+        """
+        Get the ``memory`` value for this container, which is the amount
+        of memory (in MiB) to allow the container to use.
+
+        * If the task is a FARGATE task, then ``memory`` is optional.
+        * If the task is an EC2 task, ``memory`` is required at the container
+          level if it is not specified at the task level.
+
+        If ``memory`` is specified then the only requirement is that the sum of all
+        ``memory`` values for all containers in the task be lower than the ``memory``
+        value specified in the task definition, if that is present.
+
+        Raises:
+            SchemaException: if the container memory is greater than the task memory
+            SchemaException: if the task is an EC2 task and ``memory`` is not
+                specified in container definition the ``deployfish.yml`` file and is
+                also not present at the task level in the ``deployfish.yml`` file.
+
+        Returns:
+            The ``cpu`` value for this container.
+        """
+        if self.is_fargate:
+            if 'memory' not in self.data:
+                return None
+        if 'memory' not in self.data:
+            if 'memory' in self.task_definition_data:
+                return None
+            raise self.SchemaException(
+                'container "{}": memory is required for containers if not specified at the task level'.format(
+                    self.data['name']
+                )
+            )
+        memory = self.data['memory']
+        if isinstance(memory, str):
+            memory = int(memory)
+        if 'memory' in self.task_definition_data:
+            task_memory = self.task_definition_data['memory']
+            if isinstance(task_memory, str):
+                task_memory = int(task_memory)
+            if memory > task_memory:
+                raise self.SchemaException(
+                    'container "{}": memory is greater than task memory'.format(self.data['name'])
+                )
+        return memory
+
     def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         data: Dict[str, Any] = {}
         self.set(data, 'name')
         self.set(data, 'image')
         self.set(data, 'essential', default=True)
-        try:
-            self.set(data, 'cpu', default=256, convert=int)
-        except ValueError:
-            raise self.SchemaException('"cpu" must be an integer')
+        cpu = self.get_cpu()
         try:
             self.set(data, 'memoryReservation', optional=True, convert=int)
         except ValueError:
-            raise self.SchemaException('"memoryReservation" must be an integer')
-        try:
-            self.set(data, 'memory', optional=True, convert=int)
-        except ValueError:
-            raise self.SchemaException('"memory" must be an integer')
-        if data.get('memoryReservation', None) is None and data.get('memory', None) is None:
+            raise self.SchemaException(
+                'container "{}": "memoryReservation" must be an integer'.format(
+                    self.data['name']
+                )
+            )
+        if cpu is not None:
+            data['cpu'] = cpu
+        memory = self.get_memory()
+        if memory is not None:
+            data['memory'] = memory
+        # If neither memory nor memoryReservation are specified, and this is not
+        # a partial update of a container definition (i.e. we are overriding our
+        # parent task definition in a ServiceHelperTask) AND this is not a
+        # FARGATE task, then set memory to 512
+        memoryReservation = data.get('memoryReservation', None)
+        if memoryReservation is None and memory is None:
             if not self.partial:
-                data['memory'] = 512
+                if not self.is_fargate:
+                    data['memory'] = 512
+        if memoryReservation is not None and memory is not None:
+            if memoryReservation >= memory:
+                raise self.SchemaException(
+                    'container "{}": "memoryReservation" must be less than "memory"'.format(
+                        self.data['name']
+                    )
+                )
         if 'ports' in self.data:
             data['portMappings'] = self.get_ports()
         self.set(data, 'command', optional=True, convert=shlex.split)
