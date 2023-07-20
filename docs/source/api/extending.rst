@@ -1,8 +1,12 @@
-************
-Introduction
-************
+Extending deployfish
+====================
 
-deployfish has a modular architecture that allows you to add subcommands that
+.. warning::
+
+    This guide no longer is accurate after our move from ``click`` to `cement
+    <https://github.com/datafolklabs/cement>`_.  We'll update it soon.
+
+``deployfish`` has a modular architecture that allows you to add subcommands that
 have access to the internal objects through the *deployfish* library. As an
 example, you can look at `deployfish-mysql <https://github.com/caltechads/deployfish-mysql>`_.
 

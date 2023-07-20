@@ -1,6 +1,8 @@
-**********************
+.. _api__classic_load_balancing:
+
 Classic Load Balancing
-**********************
+======================
+
 
 .. autoclass:: deployfish.core.models.ClassicLoadBalancer
    :members:

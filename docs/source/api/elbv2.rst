@@ -1,6 +1,5 @@
-**********************************
 Application/Network Load Balancing
-**********************************
+==================================
 
 .. autoclass:: deployfish.core.models.LoadBalancer
    :members:

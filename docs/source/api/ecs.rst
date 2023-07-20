@@ -1,9 +1,8 @@
-*************************
 Elastic Container Service
-*************************
+=========================
 
 Service
-=======
+-------
 
 .. autoclass:: deployfish.core.models.Service
    :members:
@@ -12,7 +11,7 @@ Service
    :members:
 
 Tasks
-=====
+-----
 
 .. autoclass:: deployfish.core.models.ServiceHelperTask
    :members:
@@ -27,7 +26,7 @@ Tasks
    :members:
 
 TaskDefinition
-==============
+--------------
 
 .. autoclass:: deployfish.core.models.TaskDefinition
    :members:
@@ -36,7 +35,7 @@ TaskDefinition
    :members:
 
 Cluster
-=======
+-------
 
 .. autoclass:: deployfish.core.models.Cluster
    :members:

@@ -11,14 +11,25 @@ Deployfish
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
+   :hidden:
+   :caption: User Guide
 
    intro
    install
    tutorials
    yaml
    deploy
-   extend
+
+.. toctree::
+   :hidden:
+   :caption: Developer Guide
+
+   api/adapters
+   api/ecs
+   api/elb
+   api/elbv2
+   api/secrets
+   api/extending
 
 ..
    Indices and tables

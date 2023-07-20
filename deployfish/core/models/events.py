@@ -128,7 +128,7 @@ class EventScheduleRuleManager(Manager):
 
 class EventTarget(Model):
     """
-    self.data here has the same structure as what is returned by
+    :py:attr:`data` here has the same structure as what is returned by
     ``client('events').list_targets_for_rule()``::
 
         {

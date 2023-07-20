@@ -1,6 +1,5 @@
-**********************
 AWS SSM Paramter Store
-**********************
+======================
 
 .. autoclass:: deployfish.core.models.secrets.Secret
    :members:

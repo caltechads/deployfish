@@ -5,12 +5,12 @@ from deployfish.exceptions import SchemaException as BaseSchemaException
 
 class Adapter:
     """
-    Given a dict of data from a data source, convert it appropriate data structures to be used
-    to initialize a deployfish model.
+    Given a dict of data from a data source, convert it appropriate data
+    structures to be used to initialize a deployfish model.
 
-    Minimally this means translating the source data into the data structure returned by an
-    apporpriate ``describe_*`` AWS API call.  In more complicated cases, there may be additional
-    data returned also.
+    Minimally this means translating the source data into the data structure
+    returned by an apporpriate ``describe_*`` AWS API call.  In more complicated
+    cases, there may be additional data returned also.
     """
 
     NONE: str = 'deployfish:required'
