@@ -219,7 +219,6 @@ class TaskDefinitionFARGATEMixin:
         EC2 task.
 
         Args:
-
             data : the :py:attr:`deployfish.core.models.ecs.TaskDefinition.data`
                 dict to modify
             container_data: the list of

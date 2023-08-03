@@ -200,9 +200,20 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
 class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignore
     """
     Convert our deployfish YAML definition of our task definition to the same
-    format that :py:meth`describe_task_definition` returns, but translate all
+    format that :py:meth:`describe_task_definition` returns, but translate all
     container info into :py:class:`deployfish.core.models.ecs.ContainerDefinition`
     objects.
+
+    Args:
+        data: The data from deployfish.yml for this task definition
+
+    Keyword Args:
+        secrets: A list of :py:class:`deployfish.core.models.ecs.Secret` objects
+            that are used by this task definition
+        extra_environment: A dict of extra environment variables to add to the
+            task definition
+        partial: If True, this is a partial task definition, and we should be
+            more lenient about what we accept as valid data.
     """
 
     def __init__(
@@ -328,7 +339,9 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
             try:
                 containers = self.data['containers']
             except KeyError:
-                raise self.SchemaException('You must define at least one container in your task definition')
+                raise self.SchemaException(
+                    'You must define at least one container in your task definition'
+                )
         for container_definition in containers:
             containers_data.append(
                 ContainerDefinitionAdapter(
@@ -355,13 +368,15 @@ class ContainerDefinitionAdapter(Adapter):
         data: a deployfish.yml container definition stanza
 
     Keyword Args:
-        task_definition_data: :py:attr:`deployfish.core.models.ecs.TaskDefinition.data`
-            from the owning :py:class:`deployfish.core.models.ecs.TaskDefinition`
+        task_definition_data:
+            :py:attr:`deployfish.core.models.ecs.TaskDefinition.data` from the
+            owning :py:class:`deployfish.core.models.ecs.TaskDefinition`
         secrets: a list of :py:class:`deployfish.core.models.secrets.Secret`
-        extra_environment: a dict of extra environment variables to add to the container
-        partial: if ``True``, we're updating an existing ContainerDefinition from a partial
-            set of overrides.  Setting this to ``True`` will cause us to ignore any
-            missing required fields.
+        extra_environment: a dict of extra environment variables to add to the
+            container
+        partial: if ``True``, we're updating an existing ContainerDefinition
+            from a partial set of overrides.  Setting this to ``True`` will cause us
+            to ignore any missing required fields.
     """
 
     PORTS_RE = re.compile(r'(?P<hostPort>\d+)(:(?P<containerPort>\d+)(/(?P<protocol>udp|tcp))?)?')
@@ -375,11 +390,6 @@ class ContainerDefinitionAdapter(Adapter):
         extra_environment: Dict[str, Any] = None,
         partial: bool = False
     ) -> None:
-        """
-        :param data dict(str, *): a deployfish.yml container definition stanza
-        :param task_definition_data dict(str, *): TaskDefinition.data from the owning TaskDefinition
-        :param secrets: (optional) a list of Secrets to add to our container
-        """
         super().__init__(data)
         self.task_definition_data = task_definition_data if task_definition_data else {}
         self.secrets = secrets if secrets else []
@@ -710,11 +720,13 @@ class ContainerDefinitionAdapter(Adapter):
         if 'memory' not in self.data:
             if 'memory' in self.task_definition_data:
                 return None
-            raise self.SchemaException(
-                'container "{}": memory is required for containers if not specified at the task level'.format(
-                    self.data['name']
+            if not self.partial:
+                raise self.SchemaException(
+                    'container "{}": memory is required for containers if not specified at the task level'.format(
+                        self.data['name']
+                    )
                 )
-            )
+            return None
         memory = self.data['memory']
         if isinstance(memory, str):
             memory = int(memory)
@@ -934,8 +946,10 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
 
     def __init__(self, data: Dict[str, Any], service: Service):
         """
-        :param data dict(str, *): the tasks section from our service
-        :param service Service: the Service for which we are building helper tasks
+        Args:
+            data: the ``tasks:`` section from our service definition in deployfish.yml
+            service: the :py:class:`deployfish.core.models.ecs.Service` for
+                which we are building helper tasks
         """
         self.data = data
         self.service = service
@@ -949,18 +963,20 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         source: Dict[str, Any] = None
     ) -> None:
         """
-        Set a `data[data_key]` on the dict `data` by looking at both `task` and `source`.
+        Set a ``data[data_key]`` on the dict ``data`` by looking at both
+        ``task`` and ``source``.
 
-        If `task[yml_key]` exists, set `data[data_key]` to that value.
-        Else if `source[yml_key]` exists, set `data[data_key]` to THAT value.
-        Else if `source[data_key]` exists, set `data[data_key]` to THAT value.
+        If ``task[yml_key]`` exists, set ``data[data_key]`` to that value.
+        Else if ``source[yml_key`]`` exists, set ``data[data_key]`` to THAT value.
+        Else if ``source[data_key]`` exists, set ``data[data_key]`` to THAT value.
         Else, do nothing.
 
         .. note::
 
-            This is called ``_set`` because it overrides Adapter.set(), but has different args.
+            This is called ``_set`` because it overrides Adapter.set(), but has
+            different args.
 
-        If `source` is None, we set source to `self.data`.
+        If ``source`` is ``None``, we set ``source`` to `self.service.data`.
         """
         if not source:
             source = self.service.data
@@ -978,13 +994,19 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         source: Dict[str, Any] = None
     ) -> None:
         """
-        Construct `data` so that it can be used for constructing our Task parameters by combining data from an existing
-        TaskDefinition with configuration from deployfish.yml.
+        Construct ``data`` so that it can be used for constructing our
+        :py:class:`deployfish.core.models.ecs.ServiceHelperTask` parameters by
+        combining data from an existing
+        :py:class:`deployfish.core.models.ecs.TaskDefinition` with configuration
+        from deployfish.yml.
 
-        :param data dict(str, *): our output dict
-        :param task dict(str, *): configuration from deployfish.yml
-        :param source Union[dict(str, *), None]: (optional) if provided, the data from  the previous set of Task
-                                                 parameters.  If not provided, self.service.data.
+        Args:
+            data: the dict we are building
+            task: the task configuration from deployfish.yml
+
+        Keyword Args:
+            source: the data from the previous set of Task parameters.  If not
+                provided, ``self.service.data``.
         """
         if not source:
             source = self.service.data
@@ -1046,23 +1068,35 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         service_td: TaskDefinition
     ) -> Tuple[Dict[str, Any], TaskDefinition]:
         """
-        Build a dict that takes info from the service and overlays the generic (not command specific) task data to build
-        the parameters we'll need when running the task.  Also build a new TaskDefinition object that is the service's
-        TaskDefinition overlaid with the changes from the generic task data.
+        Build a dict that takes info from the service and overlays the generic
+        (not command specific) task data to build the parameters we'll need when
+        running the task.  Also build a new TaskDefinition object that is the
+        service's TaskDefinition overlaid with the changes from the generic task
+        data.
 
-        :param task_data dict(str, *): the generic helper task data
-        :param service_td TaskDefinition: the Service's TaskDefinition object
+        Args:
+            task_data: the generic helper task data
+            service_td: the Service's
+                :py:class:`deployfish.core.models.ecs.TaskDefinition` object
 
-        :rtype: tuple(dict(str, *), TaskDefinition)
+        Returns:
+            A 2-tuple: dict of parameters for the factory method of
+            :py:class:`deployfish.core.models.ecs.ServiceHelperTask`, and the
+            new TaskDefinition object
         """
         data_base: Dict[str, Any] = {}
         # first, extract whatever we can from self.service
         self.get_data(data_base, task_data)
         data_base['service'] = self.service.pk
+        # This base_td_overlay here should be just the things we want to change
+        # from the service's TaskDefinition
         base_td_overlay = TaskDefinition.new(task_data, 'deployfish', partial=True)
+        # Then we add the service's TaskDefinition to the base_td_overlay to get the
+        # one for the ServiceHelperTask
         base_td = service_td + base_td_overlay
         base_td.data['family'] = task_data.get('family', f"{service_td.data['family']}-tasks")
-        # Remove any portMappings fro our task definition -- we don't need them for ephemeral tasks
+        # Remove any portMappings fro our task definition -- we don't need them
+        # for ephemeral tasks
         for container in base_td.containers:
             if 'portMappings' in container.data:
                 del container.data['portMappings']
@@ -1132,60 +1166,67 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
 
     def _get_command_specific_data(
         self,
-        command: Dict[str, Any],
+        command_data: Dict[str, Any],
         data_base: Dict[str, Any],
         base_td: TaskDefinition
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Build a dict that takes info from the output of self._get_base_task_data() and overlays the command specific
-        task data to build the parameters we'll need when running the task.  Also build a new TaskDefinition object that
-        is the TaskDefinition returned by self._get_base_task_data() overlaid with the changes from the command specific
-        task data.
+        Build a dict that takes info from the output of
+        :py:meth:`_get_base_task_data` and overlays the command specific task data
+        to build the parameters we'll need when running the task.  Also build a
+        new TaskDefinition object that is the TaskDefinition returned by
+        :py:meth:`_get_base_task_data` overlaid with the changes from the command
+        specific task data.
 
-        :param commmand dict(str, *): the command specific task data
-        :param data_base dict(str, *): the dict returned by self._get_base_task_data()
-        :param service_td TaskDefinition: the TaskDefinition object returned by self._get_base_task_data()
+        Args:
+            commmand: the command specific task data
+            data_base: the dict returned by self._get_base_task_data()
+            service_td: the TaskDefinition object returned by self._get_base_task_data()
 
-        :rtype: tuple(dict(str, *), TaskDefinition)
+        Returns:
+            A 2-tuple: dict of parameters for the factory method of
+            :py:class:`deployfish.core.models.ecs.ServiceHelperTask`, and the
+            new TaskDefinition object
         """
         data: Dict[str, Any] = {}
         kwargs: Dict[str, Any] = {}
-        # Build our new Task data based on the general task overlay we got from self._get_base_task_data()
-        self.get_data(data, command, source=data_base)
+        # Build our new Task data based on the general task overlay we got from
+        # self._get_base_task_data()
+        self.get_data(data, command_data, source=data_base)
         data['service'] = self.service.pk
         if 'cluster' not in data:
             data['cluster'] = self.service.data['cluster']
         try:
-            data['name'] = command['name']
+            data['name'] = command_data['name']
         except KeyError:
             raise self.SchemaException(
                 'Service(pk="{}"): Each helper task must have a "name" assigned in the "commands" section'.format(
                     self.service.pk
                 )
             )
-        if 'family' not in command:
+        if 'family' not in command_data:
             # Make the task definition family be named after our command
-            command_name = command['name'].replace('_', '-')
-            command['family'] = f"{base_td.data['family']}-{command_name}"
+            command_name = command_data['name'].replace('_', '-')
+            command_data['family'] = f"{base_td.data['family']}-{command_name}"
         # Generate our overlay task definition
-        command_td_overlay = TaskDefinition.new(command, 'deployfish', partial=True)
+        command_td_overlay = TaskDefinition.new(command_data, 'deployfish', partial=True)
         # Use that to make our actual task definition
         command_td = base_td + command_td_overlay
         # Update the deployfish specific environment variables in our task definition's containers
         self.update_container_environments(
             command_td,
             {
-                'DEPLOYFISH_TASK_NAME': command['family'],
+                'DEPLOYFISH_TASK_NAME': command_data['family'],
                 'DEPLOYFISH_CLUSTER_NAME': data['cluster'],
                 'DEPLOYFISH_ENVIRONMENT': self.service.deployfish_environment
             }
         )
         kwargs['task_definition'] = command_td
         # See if we need to schedule this command
-        if 'schedule' in command:
+        if 'schedule' in command_data:
             if 'schedule_role' not in data:
                 raise self.SchemaException(
-                    f'''ServiceHelperTask("{command['name']}") in Service("{self.service.pk}"): '''
+                    f'''ServiceHelperTask("{command_data['name']}") in Service("{self.service.pk}"): '''
                     '"schedule_role" is required when you specify a schedule'
                 )
             kwargs['schedule'] = EventScheduleRule.new(self.get_schedule_data(data, command_td), 'deployfish')
@@ -1197,12 +1238,17 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         service_td = self.service.task_definition.copy()
         if 'tasks' in self.data:
             for task in self.data['tasks']:
-                # Preprocess the data to turn the old-style command definitions into the new style definitions
+                # Preprocess the data to turn the old-style command definitions
+                # into the new style definitions
                 self._preprocess_task_data(task, service_td)
                 data_base, base_td = self._get_base_task_data(task, service_td)
                 # Now iterate through each item in task -> commands
                 for command in task['commands']:
-                    command_data, command_kwargs = self._get_command_specific_data(command, data_base, base_td)
+                    command_data, command_kwargs = self._get_command_specific_data(
+                        command,
+                        data_base,
+                        base_td
+                    )
                     self.update_container_logging(command_data, command_kwargs['task_definition'])
                     data_list.append(command_data)
                     kwargs_list.append(command_kwargs)

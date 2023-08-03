@@ -1192,9 +1192,11 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
 
     .. note::
 
-        An AWS, the task definition object contains all the configuration for each of the containers that
-        will be part of the task, but in deployfish we put container definitions into ``ContainerDefinition``
-        objects so that we can work with them more effectively.
+        An AWS, the task definition object contains all the configuration for
+        each of the containers that will be part of the task, but in deployfish
+        we put container definitions into
+        :py:class:`deployfish.core.models.ecs.ContainerDefinition` objects so
+        that we can work with them more effectively.
 
     ``TaskDefinition.data`` looks like this::
 
@@ -1265,10 +1267,8 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
     @property
     def pk(self) -> str:
         """
-        If this task definition exists in AWS, return our ``<family>:<revision>`` string.
-        Else, return just the family.
-
-        :rtype: string or ``None``
+        If this task definition exists in AWS, return our
+        ``<family>:<revision>`` string.  Else, return just the family.
         """
         if self.revision:
             return f"{self.data['family']}:{self.revision}"
@@ -1340,9 +1340,10 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         self.autofill_fargate_parameters(data)
         data['containerDefinitions'] = [c.render() for c in sorted(self.containers, key=lambda x: x.name)]
         if 'executionRoleArn' not in data:
-            # If we don't have an execution role, we can't write secrets into our task definition, beause without
-            # the execution role, the container won't be able to start because it won't have permissions to read
-            # the secrets from AWS SSM Paramter Store.
+            # If we don't have an execution role, we can't write secrets into
+            # our task definition, because without the execution role, the
+            # container won't be able to start because it won't have permissions
+            # to read the secrets from AWS SSM Paramter Store.
             for d in data['containerDefinitions']:
                 if 'secrets' in d:
                     del d['secrets']
@@ -1361,9 +1362,8 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
 
     def is_fargate(self) -> bool:
         """
-        If this is a FARGATE task definition, return True.  Otherwise return False.
-
-        :rtype: bool
+        If this is a FARGATE task definition, return ``True``.  Otherwise return
+        ``False``.
         """
         return self.launch_type == 'FARGATE'
 
