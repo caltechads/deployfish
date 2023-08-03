@@ -374,9 +374,10 @@ class ContainerDefinitionAdapter(Adapter):
         secrets: a list of :py:class:`deployfish.core.models.secrets.Secret`
         extra_environment: a dict of extra environment variables to add to the
             container
-        partial: if ``True``, we're updating an existing ContainerDefinition
-            from a partial set of overrides.  Setting this to ``True`` will cause us
-            to ignore any missing required fields.
+        partial: if ``True``, we're updating an existing
+            :py:class:`deployfish.core.models.ecs.ContainerDefinition`` from a
+            partial set of overrides.  Setting this to ``True`` will cause us to
+            ignore any missing required fields.
     """
 
     PORTS_RE = re.compile(r'(?P<hostPort>\d+)(:(?P<containerPort>\d+)(/(?P<protocol>udp|tcp))?)?')
