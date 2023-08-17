@@ -12,21 +12,27 @@ from deployfish.types import SupportsSSHModel, SupportsService
 
 from .utils import handle_model_exceptions
 
-def get_ssh_target(app: App, obj: SupportsSSHModel, choose: bool = False) -> Instance:
+
+def get_ssh_target(
+    app: App,
+    obj: SupportsSSHModel,
+    choose: bool = False
+) -> Instance:
     """
     Return an ``Instance`` object to which the user can ssh.
 
-    If ``choose`` is ``False``, return the first `Instance`` of the
-    available ssh targets for ``obj``.
+    If ``choose`` is ``False``, return the first `Instance`` of the available
+    ssh targets for ``obj``.
 
-    If ``choose`` is ``True``, prompt the user to choose one of the
-    available ssh targets for this object.
+    If ``choose`` is ``True``, prompt the user to choose one of the available
+    ssh targets for this object.
 
     Args:
         obj: an instance of ``self.model``
 
     Keyword Arguments:
-        choose: if ``True``, prompt the user to choose one of the available instances
+        choose: if ``True``, prompt the user to choose one of the available
+            instances
 
     Raises:
         Instance.DoesNotExist: if there are no available ssh targets
@@ -86,7 +92,7 @@ class ObjectSSHController(Controller):
     @ex(
         help="SSH into a container machine running one of the tasks for this object.",
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the object in AWS'}),
+            (['pk'], {'help': 'The primary key for the object in AWS'}),
             (
                 ["--verbose"],
                 {
@@ -124,9 +130,9 @@ class ObjectSSHController(Controller):
     @ex(
         help="Run a shell command on one or all instances related to an object.",
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the object in AWS'}),
+            (['pk'], {'help': 'The primary key for the object in AWS'}),
             (['command'], {
-                'help' : 'The primary key for the object in AWS',
+                'help': 'The primary key for the object in AWS',
                 'nargs': '+'
             }),
             (

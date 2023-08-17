@@ -1,4 +1,4 @@
-from typing import  Dict, Any, Optional, Type
+from typing import Dict, Any, Optional, Type
 
 from cement import ex, shell
 import click
@@ -10,6 +10,7 @@ from deployfish.core.loaders import ObjectLoader
 from deployfish.core.models import Model, Instance, SSHTunnel
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Controller
 from deployfish.types import SupportsTunnelModel
+
 
 def get_tunnel_target(obj: SupportsTunnelModel, choose: bool = False) -> Instance:
     """
@@ -209,8 +210,8 @@ class ObjectTunnelController(Controller):
     @ex(
         help="Establish an ssh tunnel.",
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the object in AWS'}),
-            (['tunnel_name'], { 'help' : 'The name of the tunnel to use'}),
+            (['pk'], {'help': 'The primary key for the object in AWS'}),
+            (['tunnel_name'], {'help': 'The name of the tunnel to use'}),
             (
                 ["--verbose"],
                 {

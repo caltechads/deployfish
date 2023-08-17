@@ -53,22 +53,25 @@ def build_sigint_handler(p: subprocess.Popen) -> Callable:
 
 class AbstractSSHProvider:
     """
-    Abbstract class that provides the methods that ``SSHMixin`` will use to stablish tunnels, interactive
-    ssh sessions, non-interactive commands over ssh and docker execs.
+    Abstract class that provides the methods that ``SSHMixin`` will use to
+    stablish tunnels, interactive ssh sessions, non-interactive commands over
+    ssh and docker execs.
+
+    Args:
+        instance: the instance through which we will ssh
+
+    Keyword Args:
+        verbose: if ``True``, use verbose flags for the ssh command
     """
 
     def __init__(self, instance: "Instance", verbose: bool = False) -> None:
-        """
-        Save the instance through which we will SSH, and whether we set the verbosity of our ssh commands.
-
-        :param instance: The core.models.ec2.Instance through which we will ssh
-        :param verbose: If True, use verbose flags for the ssh command
-        """
-        assert instance is not None, '{}.instance must not be None'.format(self.__class__.__name__)
+        assert instance is not None, \
+            '{}.instance must not be None'.format(self.__class__.__name__)
         assert instance.__class__.__name__ == 'Instance', \
             '{}.instance must be an Instance object'.format(self.__class__.__name__)
+        #: The instance through which we will ssh
         self.instance = instance
-        # If the caller specified --verbose, we send SSH the `-vv` flag.
+        #: If the caller specified ``verbose=True``, we send SSH the ``-vv`` flag.
         self.ssh_verbose_flag = '-vv' if verbose else ''
 
     def ssh(self, command: str = None) -> str:
@@ -81,7 +84,8 @@ class AbstractSSHProvider:
 
     def ssh_command(self, command: str) -> str:
         """
-        Return a shell command suitable for running a command-line command via ssh on ``self.instance``.
+        Return a shell command suitable for running a command-line command via
+        ssh on :py:attr:`instance`.
 
         .. note::
 
@@ -91,21 +95,31 @@ class AbstractSSHProvider:
 
     def docker_exec(self) -> str:
         """
-        Return a shell command suitable for establishing a "docker exec" session into a container running on
-        ``self.instance``.
+        Return a shell command suitable for establishing a "docker exec" session
+        into a container running on :py:attr:`instance`.
+
+        Returns:
+            A shell command suitable for establishing a "docker exec" session
         """
-        # FIXME: the "head -1" here crudely handles the case where we have multiple instances of the same container
-        # running on the same container instance.  But this eliminates the possibility of execing into the 2nd, 3rd,
-        # etc. containers
+        # FIXME: the "head -1" here crudely handles the case where we have
+        # multiple instances of the same container running on the same container
+        # instance.  But this eliminates the possibility of execing into the
+        # 2nd, 3rd, etc. containers
         return "/usr/bin/docker exec -it $(/usr/bin/docker ps --filter 'name=ecs-{}-[0-9]+-{}' -q | head -1) bash"
 
     def tunnel(self, local_port: int, target_host: str, host_port: int) -> str:
         """
-        Return a shell command suitable for establishing an ssh tunnel through ``self.instance``.
+        Return a shell command suitable for establishing an ssh tunnel through
+        :py:attr:`self.instance`.
 
-        :param local_port: let the port on our side of the tunnel be this
-        :param target_host: the hostname/IP address of the host to connect to on the remote side of the tunnel
-        :param host_port: the port on the remote host to which to connect the tunnel
+        Args:
+            local_port: let the port on our side of the tunnel be this
+            target_host: the hostname/IP address of the host to connect to on
+                the remote side of the tunnel
+            host_port: the port on the remote host to which to connect the tunnel
+
+        Returns:
+            A shell command suitable for establishing an ssh tunnel
         """
         raise NotImplementedError
 
@@ -122,7 +136,7 @@ class AbstractSSHProvider:
 class SSMSSHProvider(AbstractSSHProvider):
     """
     Implement our SSH commands via AWS Systems Manager SSH connections directly
-    to ``self.instance``.
+    to :py:attr:`instance`.
 
     For SSM ssh to work for your non-default AWS profiles, add a stanza to your
     ``~/.ssh/config`` that looks like this::
@@ -260,7 +274,8 @@ class SSHMixin(SupportsCache, SupportsModel):
     @property
     def ssh_targets(self) -> Sequence["Instance"]:
         """
-        Return all Instances associated with this class that can be targeted by .ssh().
+        Return all Instances associated with this class that can be targeted by
+        .ssh().
         """
         if self.ssh_target:
             return [self.ssh_target]
@@ -271,7 +286,7 @@ class SSHMixin(SupportsCache, SupportsModel):
         """
         Return an Instance that an be targeted by .tunnel().
 
-        For EC2 backed ECS Tasks, this will be the same as ``self.ssh_target``.
+        For EC2 backed ECS Tasks, this will be the same as :py:meth:`ssh_target`.
         """
         return self.ssh_target
 
@@ -280,7 +295,7 @@ class SSHMixin(SupportsCache, SupportsModel):
         """
         Return an list of Instances that an be targeted by .tunnel().
 
-        For EC2 backed ECS Tasks, this will be the same as ``self.ssh_targets``.
+        For EC2 backed ECS Tasks, this will be the same as :py:meth`ssh_targets`.
         """
         return self.ssh_targets
 
@@ -294,10 +309,14 @@ class SSHMixin(SupportsCache, SupportsModel):
 
     def ssh_interactive(self, ssh_target: "Instance" = None, verbose: bool = False) -> None:
         """
-        Do an interactive SSH session to Instance.  This method will not exit until the user ends the ssh sesison.
+        Do an interactive SSH session to Instance.  This method will not exit
+        until the user ends the ssh sesison.
 
-        :param ssh_target: the instance to which to ssh
-        :param verbose: If True, use the verbose flags for ssh
+        Args:
+            ssh_target: the instance to which to ssh
+
+        Keyword Args:
+            verbose: If ``True``, use the verbose flags for ssh
         """
         if ssh_target is None:
             ssh_target = self.ssh_target
@@ -316,10 +335,23 @@ class SSHMixin(SupportsCache, SupportsModel):
         ssh_target: "Instance" = None
     ) -> Tuple[bool, str]:
         """
-        Run a command on ``instance`` via ssh. This method will not exit until the command finishes.
+        Run a command on ``ssh_target`` via ssh. This method will not exit until
+        the command finishes.
 
-        :param ssh_target: the instance to which to ssh
-        :param verbose: If True, use the verbose flags for ssh
+        Args:
+            command: the command to run on the remote host
+
+        Keyword Args:
+            verbose: If ``True``, use the verbose flags for ssh
+            output: a filename or file descriptor to which to write the output.
+            input_data: a filename, file descriptor, or string from which to
+                read input.
+            ssh_target: the instance to which to ssh
+
+        Returns:
+            A tuple of (success, output).  ``success`` is a boolean indicating
+            whether the command succeeded.  ``output`` is the output of the
+            command.
         """
         if ssh_target is None:
             ssh_target = self.ssh_target
@@ -335,8 +367,12 @@ class SSHMixin(SupportsCache, SupportsModel):
                 input_string = input_data
         else:
             stdin = None
-        provider: AbstractSSHProvider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
+        provider: AbstractSSHProvider = self.providers[self.ssh_proxy_type](
+            ssh_target,
+            verbose=verbose
+        )
         if not command.startswith('ssh'):
+            # Wrap the command in an ssh command
             command = provider.ssh_command(command)
         try:
             p = subprocess.Popen(
