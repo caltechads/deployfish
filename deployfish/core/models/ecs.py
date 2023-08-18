@@ -9,6 +9,7 @@ from typing import (
     Any,
     Dict,
     List,
+    Literal,
     NoReturn,
     Optional,
     Sequence,
