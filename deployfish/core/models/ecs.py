@@ -18,6 +18,7 @@ from typing import (
     Union,
     cast,
 )
+import warnings
 
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.ssh import DockerMixin, SSHMixin
@@ -2312,7 +2313,20 @@ w         creation, or which we don't send and which we just take the defaults
         data['service'] = self.data['serviceName']
         data['cluster'] = self.data['cluster']
         if 'loadBalancers' in self.data:
-            data['loadBalancers'] = self.data['loadBalancers']
+            uses_classic_load_balancer = any(
+                [lb.get('loadBalancerName', None) for lb in self.data['loadBalancers']]
+            )
+            if not uses_classic_load_balancer:
+                # Updating services with Classic Load Balancers fails with an
+                # "Target Group Arn can not be blank", and people are still seeing this
+                # as of 2023-08-01, so we'll just say you can't update load balancers
+                # for services that use Classic Load Balancers
+                data['loadBalancers'] = self.data['loadBalancers']
+            else:
+                warnings.warn(
+                    'Cannot update load balancers for services that use Classic Load '
+                    'Balancers: not updating load balancers'
+                )
         data['enableExecuteCommand'] = self.data['enableExecuteCommand']
         # Purposely not setting desiredCount here -- we may be scaled up, so we
         # shouldn't be scaling back to whatever deployfish.yml says lest we
