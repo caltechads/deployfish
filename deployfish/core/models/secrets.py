@@ -170,9 +170,9 @@ class SecretManager(Manager):
         prefixes = set()
         # FIXME: we're getting all parameters for a service even if we wanted just a few, and that takes a long time.
         # Find the breakeven point below which it's faster to get parameters individually and above which is better to
-        # get all the paramters.
+        # get all the parameters.
         for pk in pks:
-            prefixes.add(pk.rsplit('.', 1)[0])
+            prefixes.add(pk.rsplit('.', 1)[0] + ".")
         descriptions = {}
         for prefix in prefixes:
             params = self._describe_parameters(prefix)
