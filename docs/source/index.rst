@@ -18,7 +18,6 @@ Deployfish
    install
    tutorials
    yaml
-   deploy
 
 .. toctree::
    :hidden:

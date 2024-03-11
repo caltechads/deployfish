@@ -1,8 +1,6 @@
 ************************
 deployfish.yml Reference
 ************************
-..
-    .. contents::
 
 The deployfish service config file is a YAML file defining ECS services, task
 definitions and one-off tasks associated with those services.
@@ -1147,7 +1145,7 @@ The name of the task group to associate with the task. The default value is the 
 schedule
 --------
 
-The scheduling expression. For example, "cron(0 20 * * ? *)" or "rate(5 minutes)".
+The scheduling expression. For example, "``cron(0 20 * * ? *)``" or "``rate(5 minutes)``".
 
 See `Schedule Expressions for Rules <https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html>`_.
 
@@ -1657,12 +1655,9 @@ Loading config: variables into your container environment
 So now that we have all of these values loaded into the AWS Parameter Store,
 how do we use them?  You need an execution role.
 
-Execution Role
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You must provide an execution_role that has permission to get the parameter store values,
-then your task or service will automatically have the parameter store values inserted
-into the environment.
+You must provide an ``execution_role`` that has permission to get the parameter
+store values, then your task or service will automatically have the parameter
+store values inserted into the environment.
 
 Service Helper Tasks
 ====================

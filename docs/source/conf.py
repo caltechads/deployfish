@@ -37,7 +37,6 @@ extensions: List[str] = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
-    'sphinx_click.ext',
     'sphinx_rtd_theme'
 ]
 

@@ -2222,7 +2222,8 @@ class Service(
         * Strip any object specific info from the AWS data (ARNs for example)
         * Strip any ephemeral data from the AWS data (events, deployments, desiredCount, etc.)
         * Add keys to the deployfish side that get auto-populated upon service
-w         creation, or which we don't send and which we just take the defaults
+          creation, or which we don't send and which we just take the defaults
+
         """
         data = self.render()
         data['tags'] = self.render_tags()  # type: ignore

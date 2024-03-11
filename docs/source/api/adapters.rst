@@ -7,13 +7,17 @@ Adapters: Loading a Model from configuration in deployfish.yml
 Classes derived from :py:class:`deployfish.core.models.abstract.Model` can be configured
 from configuration in ``deployfish.yml``.
 
-#. Extract the configuration stanza for your object from deployfish.yml::
+#. Extract the configuration stanza for your object from deployfish.yml:
 
-   item_config = Config.get_section_item('my_section_name', 'my_item_name')
+   .. code-block: python
 
-#. Generate your configued Model subclass instance by doing::
+      item_config = Config.get_section_item('my_section_name', 'my_item_name')
 
-   instance = MyModel.new(item_config, 'deployfish')
+#. Generate your configued Model subclass instance by doing:
+
+   .. code-block: python
+
+      instance = MyModel.new(item_config, 'deployfish')
 
 ``MyModel.new()`` does this:
 
@@ -27,9 +31,11 @@ from configuration in ``deployfish.yml``.
    to look like what boto3's ``describe_*`` API method would return for the
    ``MyModel``, and ``kwargs``, extra configuration ``MyModel`` may need in order
    to function properly.
-#. Instantiate a ``MyModel`` by doing::
+#. Instantiate a ``MyModel`` by doing:
 
-   instance = MyModel.__init__(data)
+   .. code-block: python
+
+      instance = MyModel.__init__(data)
 
 #. Set any other necessary attributes on ``instance`` from the data we returned
    above in ``kwargs``.
