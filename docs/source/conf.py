@@ -59,8 +59,8 @@ author: str = 'Chris Malek, Glenn Bach'
 
 show_authors = False
 
-version: str = '1.11.11'
-release: str = '1.11.11'
+version: str = '1.11.12'
+release: str = '1.11.12'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
