@@ -27,7 +27,7 @@ AWS Credentials
 
 deployfish uses `boto3 <https://boto3.readthedocs.io>`_ to do all its work in AWS and by default defers to boto3
 credential resolution to figure out what AWS credentials it should use.  See `Configuring Credentials
-<https://boto3.readthedocs.io/en/latest/guide/configuration.html#guide-configuration)>`_ in boto3's documentation for
+<https://boto3.readthedocs.io/en/latest/guide/configuration.html#guide-configuration>`_ in boto3's documentation for
 details.
 
 Alternately, you can tell deployfish specifically how to get your AWS credentials by
@@ -193,7 +193,7 @@ rules per service. ::
             - type: spread
               field: 'attribute:ecs.availability-zone'
 
-See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html)>`_.
+See `Service Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html>`_.
 
 launch_type
 -----------
@@ -215,13 +215,13 @@ Example::
       - name: foobar-prod
         launch_type: FARGATE
 
-See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html)>`_.
+See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html>`_.
 
 enable_exec
 -----------
 
 If "``true``", enable ECS Exec for the tasks on this service.  If ``enable_exec`` is not specified, default to
-""``false``"".
+"``false``".
 
 **Important**: In addition to setting this to "``true``", in order for ECS Exec to work, you'll need to configure your cluster,
 task role and the system on which you run deployfish as described here: `Using Amazon ECS Exec for debugging <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html>`_.
@@ -335,7 +335,7 @@ See `Using Data Volumes in Tasks <https://docs.aws.amazon.com/AmazonECS/latest/d
 
 .. note::
 
-  You are responsible for installing and confuring any 3rd party docker volume drivers on your ECS container machines.
+  You are responsible for installing and configuring any 3rd party docker volume drivers on your ECS container machines.
   The `volumes` section just allows you to use that driver once you've properly set it up and configured it.
 
 service_role_arn
@@ -345,9 +345,9 @@ service_role_arn
 
 .. note::
 
-    You should only specify ``service_role_arn`` if you do not have the ``AWSServiceRoleForECS``a service linked role in
-    your account and you are not using ``awsvpc`` network mode on your task definition.  If you do have that role, ECS
-    will use it automatically and will not allow you to create your service until you remove ``service_role_arn``.
+    You should only specify ``service_role_arn`` if you do not have the ``AWSServiceRoleForECS`` a service linked role
+    in your account and you are not using ``awsvpc`` network mode on your task definition.  If you do have that role,
+    ECS will use it automatically and will not allow you to create your service until you remove ``service_role_arn``.
 
 The name or full Amazon Resource Name (ARN) of the IAM role that allows Amazon ECS to make calls to your load balancer
 on your behalf. This parameter is only permitted if you are using a load balancer with your service and your task
@@ -530,7 +530,7 @@ Example::
 This would create a new service discovery service on the ``local`` Route53 private zone. The DNS would be
 ``foobar-prod.local``
 
-See `Amazon ECS Service Discovery <https://aws.amazon.com/blogs/aws/amazon-ecs-service-discovery/)>`_.
+See `Amazon ECS Service Discovery <https://aws.amazon.com/blogs/aws/amazon-ecs-service-discovery/>`_.
 
 application_scaling
 -------------------
@@ -632,7 +632,7 @@ And it needs an appropriate policy attached.  The below policy allows the role t
         ]
     }
 
-See `Amazon ECS Service Auto Scaling IAM Role <http://docs.aws.amazon.com/AmazonECS/latest/developerguide/autoscale_IAM_role.html)>`_.
+See `Amazon ECS Service Auto Scaling IAM Role <http://docs.aws.amazon.com/AmazonECS/latest/developerguide/autoscale_IAM_role.html>`_.
 
 scale-up, scale-down
 ^^^^^^^^^^^^^^^^^^^^
@@ -897,7 +897,7 @@ Example::
       - name: foobar-prod
         launch_type: FARGATE
 
-See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html)>`_.
+See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html>`_.
 
 vpc_configuration
 -----------------
@@ -1114,7 +1114,7 @@ placement_constraints
             - type: memberOf
               expression: 'attribute:ecs.instance-type =~ t2.*'
 
-See `Task Placement Constraints <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-placement-constraints.html)>`_.
+See `Task Placement Constraints <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-placement-constraints.html>`_.
 
 placement_strategy
 ------------------
@@ -1128,14 +1128,14 @@ placement_strategy
             - type: spread
               field: 'attribute:ecs.availability-zone'
 
-See `Task Placement Strategies <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-placement-strategies.html)>`_.
+See `Task Placement Strategies <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-placement-strategies.html>`_.
 
 platform_version
 ----------------
 
 (Optional) The platform version the task should run. A platform version is only specified for tasks using the Fargate launch type. If one is not specified, the LATEST platform version is used by default.
 
-See `AWS Fargate Platform Versions <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html>`_.
+See `AWS Fargate Platform Versions <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html#fargate-platform-versions>`_.
 
 group
 -----
@@ -1379,7 +1379,7 @@ string into an array for you for passing to ECS. ::
 environment
 -----------
 
-(Optional) Add environment variables. You can use either an array or a dictionary. Any boolean values; true, false, yes
+(Optional) Add environment variables. You can use either an array or a dictionary. Any boolean values: true, false, yes,
 no, need to be enclosed in quotes to ensure they are not converted to True or False by the YML parser. ::
 
     containers:
@@ -1746,11 +1746,11 @@ task defintion for each of the helper tasks and store their specific family:revi
 tasks on the Service's task definition.
 Then when you run ``deploy service task run foobar-prod migrate``, deployfish will:
 
-1. Search for ``migrate`` among all the separate ``commands`` listings under ``tasks``
-1. Determine that ``migrate`` belongs to the ``foobar-tasks-prod`` task
-1. Look on the active ``foobar-prod`` service task definition for the ``edu.caltech.foobar-helper-prod`` docker label
-1. Use the value of that label to figure out which revision of our task to run.
-1. Call the ECS ``RunTasks`` API call with that task revision.
+#. Search for ``migrate`` among all the separate ``commands`` listings under ``tasks``
+#. Determine that ``migrate`` belongs to the ``foobar-tasks-prod`` task
+#. Look on the active ``foobar-prod`` service task definition for the ``edu.caltech.foobar-helper-prod`` docker label
+#. Use the value of that label to figure out which revision of our task to run.
+#. Call the ECS ``RunTasks`` API call with that task revision.
 
 
 .. _Interpolation:

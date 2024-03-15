@@ -48,7 +48,7 @@ from configuration in ``deployfish.yml``.
     dependent objects (e.g. the
     :py:class:`deployfish.core.models.ecs.TaskDefinition` of a
     :py:class:`deployfish.core.models.ecs.Service`) to be lazy loaded from AWS
-    in order to reduce the API calls to only the data we need at the moment --,
+    in order to reduce the API calls to only the data we need at the moment --
     this saves the user from having to wait too long.
 
     When loading an object from ``deployfish.yml`` however, we load all the
@@ -82,24 +82,24 @@ The ``Adapter`` that handles parsing the ``services:`` entry for your service is
 in this order:
 
 #. Build the data necessary for the ``data`` parameter to
-   #:py:meth:`deployfish.core.models.ecs.Service.__init__` from the service's config.
+   :py:meth:`deployfish.core.models.ecs.Service.__init__` from the service's config.
 #. If a ``config:`` section is present in the service's config, load the list of
    :py:class:`deployfish.core.models.secrets.Secret` objects from the service's
    ``config:`` section via
    :py:class:`deployfish.core.adapters.deployfish.SecretAdapter` and possibly
    :py:class:`deployfish.core.adapters.deployfish.ExternalSecretAdapter`.
-#. Use :py:class:`deployfish.core.adapters.deployfish.TaskDefinitionAdapter`` to
+#. Use :py:class:`deployfish.core.adapters.deployfish.TaskDefinitionAdapter` to
    create a :py:class:`deployfish.core.models.ecs.TaskDefinition` from the service
-   config.  This needs the secrets we created above, if any.
+   config. This needs the secrets we created above, if any.
 #. If ``application_scaling:`` section is present in the service's config, build
    the Application Scaling objects, which are:
 
-   * :py:class:`deployfish.core.models.appscaling.ScalableTarget`` (from
+   * :py:class:`deployfish.core.models.appscaling.ScalableTarget` (from
      :py:class:`deployfish.core.adapters.appscaling.ECServiceScalableTargetAdapter`)
    * One or more :py:class:`deployfish.core.models.appscaling.ScalingPolicy`
      objects (via :py:class:`deployfish.core.adapters.appscaling.ECServiceScalingPolicyAdapter`)
    * One :py:class:`deployfish.core.models.cloudwatch.CloudwatchAlarm` per
-     :py:class:`deployfish.core.models.appscaling.ScalingPolicy`` (via
+     :py:class:`deployfish.core.models.appscaling.ScalingPolicy` (via
      :py:class:`deployfish.core.adapters.cloudwatch.ECServiceCPUAlarmAdapter`)
 
 #. If a ``service_discovery:`` section is present in the service's config, build
@@ -137,4 +137,3 @@ Here's how :py:meth:`deployfish.core.models.ecs.Service.save` works when creatin
 * Create the ``Service`` in AWS
 * If we need it, create the ``ScalingTarget``, ``ScalingPolicy`` and
   ``CloudwatchAlarm`` objects in AWS, otherwise delete any such that exist in AWS
-
