@@ -178,8 +178,8 @@ class SSMSSHProvider(AbstractSSHProvider):
 
     def push(self, filename: str, run: bool = False):
         if run:
-            return '"cat > {filename};bash {filename};rm {filename}"'.format(filename=filename)
-        return '"cat > {}"'.format(filename)
+            return 'cat > {filename};bash {filename};rm {filename}'.format(filename=filename)
+        return 'cat > {}'.format(filename)
 
 
 class BastionSSHProvider(AbstractSSHProvider):
@@ -440,6 +440,7 @@ class SSHMixin(SupportsCache, SupportsModel):
             with open(input_filename, encoding='utf-8') as ifd:
                 success, output = self.ssh_noninteractive(
                     command,
+                    verbose=verbose,
                     input_data=ifd,
                     ssh_target=ssh_target
                 )
