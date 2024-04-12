@@ -297,7 +297,7 @@ class TaskTagExporter:
     """
     Take ``data``, the configuration struct for a StandaloneTask or
     ServiceHelperTask, and convert it to AWS tags to be stored on the task
-    definiition for the task.
+    definition for the task.
 
     See ``TaskTagImporter`` for the description of how the tags work.
     """
@@ -392,7 +392,7 @@ class TaskTagExporter:
         Take ``data``, the configuration struct for a
         :py:class:`deployfish.core.models.ecs.StandaloneTask` or
         :py:class:`deployfish.core.models.ecs.ServiceHelperTask`, and convert it
-        to AWS tags to be stored on the task definiition for the task.
+        to AWS tags to be stored on the task definition for the task.
         """
         self.tags['deployfish:task-name'] = data['name']
         self.tags['deployfish:type'] = task_type
@@ -768,7 +768,7 @@ class StandaloneTaskManager(AbstractTaskManager):
         tag_filters = []
         tag_filters.append({'Key': 'deployfish:type', 'Values': [task_type]})
         # Because deployfish:service is a {cluster_name}:{service_name}, and we expect people to just give us a bare
-        # service name, don't filter by tag on serviice_name at all -- we use self.filter_list_results()
+        # service name, don't filter by tag on service_name at all -- we use self.filter_list_results()
         if cluster_name and not is_fnmatch_filter(cluster_name):
             tag_filters.append({'Key': 'deployfish:cluster', 'Values': [cluster_name]})
         if task_name and not is_fnmatch_filter(task_name):
@@ -792,7 +792,11 @@ class StandaloneTaskManager(AbstractTaskManager):
             pks = resource_arns
         tasks = []
         for pk in pks:
-            tasks.append(self.get(pk))
+            # Check if the latest task definition still has the matching task_type tag.
+            # If the pk was added based on an old revision and the latest one does not have it, skip it.
+            task = self.get(pk)
+            if task.data.get('task_type') == task_type:
+                tasks.append(task)
         return self.filter_list_results(
             cast(Sequence["StandaloneTask"], tasks),
             service_name,
@@ -1613,7 +1617,7 @@ class Task(TagsMixin, VPCConfigurationMixin, Model):
         placementStrategy: (optional) the placement strategy for running the task
         group: (optional)the task group
 
-    We write these as tags on the task defintiion:
+    We write these as tags on the task defintion:
 
         * Need 5 tags for cluster, count, launchType, platformVersion
         * 1 tag for service pk
