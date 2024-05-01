@@ -391,8 +391,8 @@ class SSHMixin(SupportsCache, SupportsModel):
                 output += err.stderr
             return False, output
         else:
-            stdout_output, _ = p.communicate(input_string)
-            return p.returncode == 0, stdout_output
+            stdout_output, stderr_output = p.communicate(input_string)
+            return p.returncode == 0, f'{stdout_output}\n{stderr_output}'
 
     def tunnel(self, tunnel: "SSHTunnel", verbose: bool = False, tunnel_target: "Instance" = None) -> None:
         """
