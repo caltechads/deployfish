@@ -2,6 +2,8 @@ import json
 import os
 import os.path
 import re
+import sys
+import click
 from typing import Dict, List, Any, Union, TYPE_CHECKING, cast
 
 import boto3
@@ -76,6 +78,9 @@ class TerraformS3State(AbstractTerraformState):
         key = s3.Object(bucket, filename)
         try:
             state_file = key.get()["Body"].read().decode('utf-8')
+        except botocore.exceptions.UnauthorizedSSOTokenError as ex:
+            click.secho(str(ex), fg='red')
+            sys.exit(1)
         except botocore.exceptions.ClientError as ex:
             if ex.response['Error']['Code'] == 'NoSuchKey':
                 raise NoSuchTerraformStateFile("Could not find Terraform state file {}".format(state_file_url))
