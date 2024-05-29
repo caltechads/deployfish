@@ -1325,7 +1325,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         data['version'] = self.version
         data['timestamp'] = self.timestamp
         if 'compatibilities' in data:
-            data['requiresCompatibilities'] = data['compatibilities']
+            # data['requiresCompatibilities'] = data['compatibilities']
             del data['compatibilities']
         if 'volumes' in data:
             for volume in data['volumes']:
@@ -1347,7 +1347,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             del data['registeredAt']
             del data['registeredBy']
             if 'compatibilities' in data:
-                data['requiresCompatibilities'] = data['compatibilities']
+                # data['requiresCompatibilities'] = data['compatibilities']
                 del data['compatibilities']
             if 'requiresAttributes' in data:
                 del data['requiresAttributes']
@@ -1475,8 +1475,10 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             del data['registeredAt']
             del data['registeredBy']
             if 'compatibilities' in data:
-                data['requiresCompatibilities'] = data['compatibilities']
+                # data['requiresCompatibilities'] = data['compatibilities']
                 del data['compatibilities']
+            if 'requiresCompatibilities' in data:
+                data['requiresCompatibilities'] = data['requiresCompatibilities']
             if 'requiresAttributes' in data:
                 del data['requiresAttributes']
         else:
@@ -1554,7 +1556,15 @@ class ContainerDefinition(SecretsMixin, LazyAttributeMixin):
         return data
 
     def render(self) -> Dict[str, Any]:
-        return deepcopy(self.data)
+        data = deepcopy(self.data)
+        if 'environment' in data:
+            if data['environment']:
+                # Alphabetize the environment variables for easier comparison
+                environment = data['environment'].sort(key=lambda item: item['name'])
+                data['environment'] = environment
+            else:
+                data['environment'] = []
+        return data
 
     def copy(self) -> "ContainerDefinition":
         return self.__class__(self.render())
@@ -2236,7 +2246,7 @@ class Service(
         if 'role' in data:
             # We loaded this from deployfish.yml, so we need to define some default
             # values that appear when you describe_services on an active service
-            data['roleArn'] = data['role']
+            # data['roleArn'] = data['role']
             del data['role']
             data['status'] = 'ACTIVE'
             data['propagateTags'] = 'NONE'
@@ -2270,6 +2280,10 @@ class Service(
                 del data['deployments']
             if 'events' in data:
                 del data['events']
+        if 'roleArn' in data:
+            del data['roleArn']
+        if 'platformFamily' in data:
+            del data['platformFamily']
         data['taskDefinition'] = self.task_definition.render_for_diff()
         if self.appscaling:
             data['appscaling'] = self.appscaling.render_for_diff()
