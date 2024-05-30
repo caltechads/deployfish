@@ -34,9 +34,10 @@ class VpcConfigurationMixin:
         if not source:
             source = self.data.get('vpc_configuration', None)
         if source:
-            data['subnets'] = source['subnets']
+            # sort the subnets and security_groups so that we can compare them easily
+            data['subnets'] = sorted(source['subnets'])
             if 'security_groups' in source:
-                data['securityGroups'] = source['security_groups']
+                data['securityGroups'] = sorted(source['security_groups'])
             if 'public_ip' in source:
                 data['assignPublicIp'] = source['public_ip']
             else:
@@ -1367,7 +1368,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         :rtype: dict(str, *)
         """
-        data['status'] = '(known after update)'
+        data['status'] = '(known after save)'
         data['cluster'] = self.data['cluster']
         data['serviceName'] = self.data['name']
         if 'load_balancer' in self.data:

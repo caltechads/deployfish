@@ -1371,7 +1371,8 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             for d in data['containerDefinitions']:
                 if 'secrets' in d:
                     del d['secrets']
-        self._tags['Timestamp'] = datetime.datetime.utcnow().strftime('%Y/%m/%dT%H:%M:%SZ')
+        if 'Timestamp' not in self._tags:
+            self._tags['Timestamp'] = datetime.datetime.now(datetime.UTC).strftime('%Y/%m/%dT%H:%M:%SZ')
         data['tags'] = self.render_tags()
         if not data['tags']:
             del data['tags']
@@ -2157,6 +2158,11 @@ class Service(
         if 'tags' in data_kwargs:
             instance.tags.update(data_kwargs['tags'])
         instance.helper_tasks = ServiceHelperTask.new(obj, source, service=instance)
+        if 'task_definition' in data_kwargs:
+            # Update instance.task_definition with Timestamp and deployfish command tags
+            instance.task_definition.tags['Timestamp'] = "(known after save)"
+            for task in instance.helper_tasks:
+                instance.task_definition.tags[f'deployfish:command:{task.command}'] = "(known after save)"
         return instance
 
     def __init__(self, data: Dict[str, Any], **kwargs):

@@ -1,11 +1,13 @@
 import argparse
 from datetime import datetime
+import json
 import os
 from typing import Type, Dict, cast
 
 import botocore
 from cement import ex
 import click
+from jsondiff import diff
 from deployfish.controllers.network import ObjectDockerExecController, ObjectSSHController
 from deployfish.controllers.secrets import ObjectSecretsController
 from deployfish.controllers.tunnel import ObjectTunnelController
@@ -51,6 +53,7 @@ class ECSService(CrudBase):
     }
 
     info_template: str = 'detail--service.jinja2'
+    plan_template: str = 'plan--service.jinja2'
 
     list_ordering: str = 'Service'
     list_result_columns: Dict[str, str] = {
@@ -251,7 +254,6 @@ class ECSService(CrudBase):
         for _ in self.app.hook.run('post_service_scale', self.app, obj, count):
             pass
 
-
     @ex(
         help='Restart the running tasks for a Service in AWS',
         arguments=[
@@ -291,6 +293,39 @@ class ECSService(CrudBase):
             ordering=self.running_tasks_ordering
         )
         self.app.print(renderer.render(results))
+
+    @ex(
+        help='Show what we would do if we were to update an ECS Service in AWS. (Experimental)',
+        arguments=[
+            (['pk'], {'help': 'The primary key for the ECS Service'}),
+        ]
+    )
+    @handle_model_exceptions
+    def plan(self):
+        """
+        Show what we would do if we were to update an ECS Service in AWS.
+        """
+        loader = self.loader(self)
+        df_obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        self.app.log.debug("Deployfish Service loaded!")
+        aws_obj = loader.get_object_from_aws(self.app.pargs.pk)
+        self.app.log.debug("AWS Service loaded!")
+        # Instead of using AbstractModel.diff() method, we'll collect the json data to pass to our template.
+        df_json = df_obj.render_for_diff()
+        aws_json = aws_obj.render_for_diff()
+        changes = json.loads(diff(aws_json, df_json, syntax='explicit', dump=True))
+        self.app.log.debug(f"Changes: {changes}")
+        self.app.render(
+            {
+                'obj': df_obj,
+                'aws_json': aws_json,
+                'changes': changes,
+                # If debug is True, it will print out the print line marker, and how nested the data is in the changes.
+                # See render_diff macro in plan--service.jinja2 to see how the line markers are located.
+                'debug': self.app.debug,
+            },
+            template=self.plan_template
+        )
 
 
 class ECSServiceStandaloneTasks(Controller):
