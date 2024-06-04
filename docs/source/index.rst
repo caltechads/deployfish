@@ -23,6 +23,9 @@ Deployfish
    :hidden:
    :caption: Developer Guide
 
+   api/contributing
+   api/architecture
+   api/config
    api/adapters
    api/ecs
    api/elb
