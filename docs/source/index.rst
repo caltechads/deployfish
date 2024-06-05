@@ -23,15 +23,22 @@ Deployfish
    :hidden:
    :caption: Developer Guide
 
-   api/contributing
-   api/architecture
+   runbook/contributing
+   runbook/architecture
+   runbook/adapters
+   runbook/extending
+
+.. toctree::
+   :hidden:
+   :caption: Reference
+
    api/config
-   api/adapters
+   api/controllers
+   api/loaders
    api/ecs
    api/elb
    api/elbv2
    api/secrets
-   api/extending
 
 ..
    Indices and tables
