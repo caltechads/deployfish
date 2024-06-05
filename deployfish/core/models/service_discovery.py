@@ -199,7 +199,7 @@ class ServiceDiscoveryNamespace(Model):
 
 class ServiceDiscoveryService(Model):
     """
-    self.data has this structure:
+    self.data has this structure::
 
         'Id': 'string',                             [optional]
         'Arn': 'string',                            [optional]

@@ -5,3 +5,5 @@ Loaders
 
 .. automodule:: deployfish.core.loaders
     :members:
+    :undoc-members:
+    :show-inheritance:

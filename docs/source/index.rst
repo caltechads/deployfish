@@ -32,13 +32,11 @@ Deployfish
    :hidden:
    :caption: Reference
 
-   api/config
-   api/controllers
+   api/config/index
+   api/controllers/index
    api/loaders
-   api/ecs
-   api/elb
-   api/elbv2
-   api/secrets
+   api/adapters/index
+   api/models/index
 
 ..
    Indices and tables

@@ -1,4 +1,4 @@
-.. _api__contributing:
+.. _contributing:
 
 Contributing
 ============

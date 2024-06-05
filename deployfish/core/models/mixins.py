@@ -147,10 +147,10 @@ class TaskDefinitionFARGATEMixin:
 
         Args:
             cpu_required: the minimum amount of cpu required to run all
-            containers, in cpu units
+                containers, in cpu units
 
         Keyword Args:
-            source:  the data source for computing task memory.  If ``None``, use
+            source: the data source for computing task memory. If ``None``, use
                 :py:attr:`data`
 
         Raises:
@@ -226,8 +226,8 @@ class TaskDefinitionFARGATEMixin:
                 dicts to parse
 
         Keyword Args:
-            source: the data source for computing task cpu.  If None, use
-            :py:attr:`data`.
+            source: the data source for computing task cpu.  If ``None``, use
+                :py:attr:`data`.
         """
         if not source:
             source = self.data

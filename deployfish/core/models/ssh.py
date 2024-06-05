@@ -44,6 +44,8 @@ class SSHTunnel(Model):
     """
     self.data here has the following structure:
 
+    .. code-block:: python
+
         {
             'name': 'string',
             'service': 'string',

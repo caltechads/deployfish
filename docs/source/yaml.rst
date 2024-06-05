@@ -12,7 +12,7 @@ definitions and one-off tasks associated with those services.
   flag, that will be used even if ``DEPLOYFISH_CONFIG_FILE`` is defined.
 
 Options specified in the Dockerfile for your containers (e.g., ``ENTRYPOINT``,
-``CMD``, ``ENV``) are respected by default - you don’t need to specify them again
+``CMD``, ``ENV``) are respected by default - you don't need to specify them again
 in ``deployfish.yml``.
 
 You can use terraform outputs in configuration values with a
@@ -687,7 +687,7 @@ Definitions" page in the AWS web console, what is listed under "Task Definition"
         family: foobar-prod-task-def
 
 
-See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#family>`_.
+See also the `Amazon ECS Task Definition Parameters: Family`_.
 
 network_mode
 ------------
@@ -702,8 +702,7 @@ or ``none``. If this parameter is omitted, a service is assumed to use ``bridge`
         family: foobar-prod-task-def
         network_mode: bridge
 
-See the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#network_mode>`_ for
-what each of those modes are.
+See the `Amazon ECS Task Definition Parameters: Network Mode`_ for what each of those modes are.
 
 In order to be able to specify ``awsvpc`` as your network mode, you also need to define ``vpc_configuration``::
 
@@ -739,8 +738,7 @@ on your behalf. ::
 deployfish won't create the Task Role for you -- you'll need to create it
 before running ``deploy service create <service_name>``.
 
-See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_role_arn>`_, and
-`IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html>`_
+See also the `Amazon ECS Task Definition Parameters`_, and `Amazon ECS Task IAM Roles`_
 
 execution_role
 --------------
@@ -781,7 +779,7 @@ Value  Virtual CPUs
 4096   4 vCPU
 =====  ============
 
-See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
+See also the `Amazon ECS Task Definition Parameters: Task Size`_
 
 memory
 ------
@@ -803,7 +801,7 @@ CPU               Memory Configurations
 4096 (4 vCPU)     Between 8192 (8GB) and 30720 (30GB) in increments of 1024 (1GB)
 ================  ========
 
-See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
+See also the `Amazon ECS Task Definition Parameters: Task Size`_
 
 ECS Task Configuration
 ======================
@@ -998,7 +996,7 @@ console, what is listed under "Task Definition" is the family name. ::
         family: foobar-prod-task-def
 
 
-See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#family>`_.
+See also the `Amazon ECS Task Definition Parameters: Family`_.
 
 network_mode
 ------------
@@ -1014,8 +1012,7 @@ use ``bridge`` mode. ::
         family: foobar-prod-task-def
         network_mode: bridge
 
-See the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#network_mode>`_ for
-what each of those modes are.
+See the `Amazon ECS Task Definition Parameters: Network Mode`_ for what each of those modes are.
 
 task_role_arn
 -------------
@@ -1035,8 +1032,7 @@ on your behalf. ::
 deployfish won't create the Task Role for you -- you'll need to create it
 before running ``deploy task run <task_name>``.
 
-See also the `AWS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_role_arn>`_, and
-`IAM Roles For Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html>`_
+See also the `Amazon ECS Task Definition Parameters`_, and `Amazon ECS Task IAM Roles`_
 
 execution_role
 ------------------
@@ -1078,7 +1074,7 @@ Value  Virtual CPUs
 4096   4 vCPU
 =====  ============
 
-See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
+See also the `Amazon ECS Task Definition Parameters: Task Size`_
 
 memory
 ------
@@ -1100,7 +1096,7 @@ CPU               Memory Configurations
 4096 (4 vCPU)     Between 8192 (8GB) and 30720 (30GB) in increments of 1024 (1GB)
 ================  ========
 
-See also the `Task Definition Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size>`_
+See also the `Amazon ECS Task Definition Parameters: Task Size`_
 
 placement_constraints
 ---------------------
@@ -1200,7 +1196,7 @@ Each of the containers listed in the ``containers`` list will be added to the
 task definition for the service.
 
 For each of the following attributes, see also the `AWS
-ECS documentation <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#standard_container_definition_params>`_.
+ECS Task Definition Parameters: Standard container definition parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#standard_container_definition_params>`_.
 
 **NOTE**: Each container in your service automatically gets their log
 configuration setup as 'fluentd', with logs being sent to ``127.0.0.1:24224`` and
@@ -1411,7 +1407,7 @@ a single limit as an integer or soft/hard limits as a mapping. ::
             soft: 65535
             hard: 65535
 
-See `Task Definition Parameters: Resource Limits <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_limits>`_.
+See `Amazon ECS Task Definition Parameters: Resource Limits <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_limits>`_.
 
 cap_add
 -------
@@ -1429,7 +1425,7 @@ cap_add
 
   The capabilities should be in ALL CAPS.  Valid values are given in the link below.
 
-See `Task Definition Parameters: Linux Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_linuxparameters>`_.
+See `Amazon ECS Task Definition Parameters: Linux Parameters`_.
 
 cap_drop
 --------
@@ -1463,7 +1459,7 @@ tmpfs
           - container_path: /tmpfs_another
             size: 128
 
-See `Task Definition Parameters: Linux Parameters <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_linuxparameters>`_.
+See `Amazon ECS Task Definition Parameters: Linux Parameters`_.
 
 dockerLabels
 ------------
@@ -1662,7 +1658,7 @@ store values inserted into the environment.
 Service Helper Tasks
 ====================
 
-In the ``tasks`` section of the service defintion, you can define helper tasks
+In the ``tasks`` section of the service definition, you can define helper tasks
 to be associated with your service and define commands on them that you can run via
 ``deploy service task run <service> <command>``.
 
@@ -1734,15 +1730,15 @@ correct task revision. ::
                   - name: foobar
                     command: ./manage.py update_index
 
-This example defines 2 separate new task defintions ("foobar-prod-tasks-migrate"  and
+This example defines 2 separate new task definitions ("foobar-prod-tasks-migrate"  and
 "foobar-prod-tasks-update-index") for our service "foobar-prod". Those two task definitions
 implement the two available commands on our service: ``migrate`` and ``update_index``.
-These task defintions are created by starting with the Service's task definition, updating
+These task definitions are created by starting with the Service's task definition, updating
 it with values from the top of the `tasks:` entry, and then further updating that with
 command specific setting for each of the commands in the ``commands:`` section.
 
 When you do ``deploy service update foobar-prod``, deployfish will create a new
-task defintion for each of the helper tasks and store their specific family:revision as
+task definition for each of the helper tasks and store their specific family:revision as
 tasks on the Service's task definition.
 Then when you run ``deploy service task run foobar-prod migrate``, deployfish will:
 
@@ -1918,7 +1914,7 @@ profile
 (String, Optional) The name of the AWS CLI Named Profile to use when retrieving
 the statefile from S3.
 
-See `Named Profiles <https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html>`_
+See `Named Profiles`_.
 
 region
 ^^^^^^^
@@ -1956,9 +1952,8 @@ It is not uncommon to of your Terraform state files in a single bucket, even if
 the associated Terraform templates affect resources in many different accounts.
 
 If this is the case with you, you can specify which AWS Credentials named profile
-(see `Named Profiles <https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html>`_
-for more information).  use to retrieve the state files by adding the ``profile`` and ``region``
-settings to your ``terrraform:`` section::
+(see `Named Profiles`_ for more information). Use it to retrieve the state files
+by adding the ``profile`` and ``region`` settings to your ``terrraform:`` section::
 
     terraform:
       statefile: 's3://hello-world-remotestate-file/hello-world-terraform-state'
@@ -1973,3 +1968,12 @@ settings to your ``terrraform:`` section::
 
 This will tell ``deployfish`` that, for retrieving this statefile only, it
 should use the "configs" AWS profile.
+
+.. _`Amazon ECS Task Definition Parameters`: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_role_arn
+.. _`Amazon ECS Task Definition Parameters\: Family`: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#family
+.. _`Amazon ECS Task Definition Parameters\: Linux Parameters`: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_linuxparameters
+.. _`Amazon ECS Task Definition Parameters\: Network Mode`: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#network_mode
+.. _`Amazon ECS Task Definition Parameters\: Task Size`: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size
+.. _`Amazon ECS Task IAM Roles`: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
+
+.. _`Named Profiles`: https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html
