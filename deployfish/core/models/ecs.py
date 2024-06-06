@@ -1336,10 +1336,15 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
                         )
                     except EFSFileSystem.DoesNotExist:
                         volume['efsVolumeConfiguration']['FileSystem'] = "DOES NOT EXIST"
+        if 'runtimePlatform' not in data:
+            data['runtimePlatform'] = {}
+            data['runtimePlatform']['cpuArchitecture'] = 'X86_64'
+            data['runtimePlatform']['operatingSystemFamily'] = 'LINUX'
         return data
 
     def render_for_diff(self):
         data = self.render()
+        data['containerDefinitions'] = [c.render_for_diff() for c in sorted(self.containers, key=lambda x: x.name)]
         if 'taskDefinitionArn' in data:
             del data['taskDefinitionArn']
             del data['status']
@@ -1379,6 +1384,8 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         return data
 
     def save(self):
+        # Update Timestamp tag on task defintion before saving
+        self._tags['Timestamp'] = datetime.datetime.now(datetime.UTC).strftime('%Y/%m/%dT%H:%M:%SZ')
         return self.objects.save(self)
 
     # ----------------------------------
@@ -1554,6 +1561,11 @@ class ContainerDefinition(SecretsMixin, LazyAttributeMixin):
             data['volumesFrom'] = []
         if 'mountPoints' not in data:
             data['mountPoints'] = []
+        if 'systemControls' not in self.data:
+            data['systemControls'] = []
+        if 'cpu' not in data:
+            data['cpu'] = 0
+
         return data
 
     def render(self) -> Dict[str, Any]:
@@ -1561,10 +1573,8 @@ class ContainerDefinition(SecretsMixin, LazyAttributeMixin):
         if 'environment' in data:
             if data['environment']:
                 # Alphabetize the environment variables for easier comparison
-                environment = data['environment'].sort(key=lambda item: item['name'])
+                environment = sorted(data['environment'], key=lambda item: item['name'])
                 data['environment'] = environment
-            else:
-                data['environment'] = []
         return data
 
     def copy(self) -> "ContainerDefinition":
@@ -2246,6 +2256,10 @@ class Service(
 
         """
         data = self.render()
+        if 'status' not in data:
+            # If the Service was loaded from deployfish.yml, status is missing, while it's present when loaded from AWS
+            # Since we don't need to provide this when saving a Service, we only add this when doing a diff
+            data['status'] = "(known after save)"
         data['tags'] = self.render_tags()  # type: ignore
         if 'desiredCount' in data:
             del data['desiredCount']
@@ -2258,15 +2272,10 @@ class Service(
             data['propagateTags'] = 'NONE'
             data['enableECSManagedTags'] = False
             data['enableExecuteCommand'] = False
-            data['healthCheckGracePeriodSeconds'] = 0
             if 'deploymentConfiguration' not in data:
                 data['deploymentConfiguration'] = {}
                 data['deploymentConfiguration']['maximumPercent'] = 200
                 data['deploymentConfiguration']['minimumHealthyPercent'] = 50
-            if 'placementConstraints' not in data:
-                data['placementConstraints'] = []
-            if 'placementStrategy' not in data:
-                data['placementStrategy'] = []
         if 'clientToken' in data:
             del data['clientToken']
         if 'createdAt' in data:
@@ -2295,6 +2304,24 @@ class Service(
             data['appscaling'] = self.appscaling.render_for_diff()
         if self.service_discovery:
             data['service_discovery'] = self.service_discovery.render_for_diff()
+        if 'healthCheckGracePeriodSeconds' not in data:
+            data['healthCheckGracePeriodSeconds'] = 0
+        if 'propagateTags' not in self.data:
+            data['propagateTags'] = 'NONE'
+        if 'placementConstraints' not in data:
+            data['placementConstraints'] = []
+        if 'placementStrategy' not in data:
+            data['placementStrategy'] = []
+        if 'deploymentConfiguration' not in data:
+            data['deploymentConfiguration'] = {}
+            data['deploymentConfiguration']['maximumPercent'] = 200
+            data['deploymentConfiguration']['minimumHealthyPercent'] = 50
+        if 'deploymentCircuitBreaker' not in data['deploymentConfiguration']:
+            data['deploymentConfiguration']['deploymentCircuitBreaker'] = {}
+            data['deploymentConfiguration']['deploymentCircuitBreaker']['enable'] = False
+            data['deploymentConfiguration']['deploymentCircuitBreaker']['rollback'] = False
+        if 'deploymentController' not in data:
+            data['deploymentController'] = {'type': 'ECS'}
         return data
 
     def render_for_create(self) -> Dict[str, Any]:

@@ -334,8 +334,6 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
             data['runtimePlatform']['operatingSystemFamily'] = self.data['runtime_platform'].get('operating_system_family', 'LINUX')
         if self.data.get('placementConstraints', None):
             data['placementConstraints'] = self.data['placementConstraints']
-        else:
-            data['placementConstraints'] = []
         self.set(data, 'task_role_arn', dest_key='taskRoleArn', optional=True)
         self.set(data, 'execution_role', dest_key='executionRoleArn', optional=True)
         if not self.partial and (launch_type == 'FARGATE' and not data['executionRoleArn']):
@@ -768,8 +766,6 @@ class ContainerDefinitionAdapter(Adapter):
             )
         if cpu is not None:
             data['cpu'] = cpu
-        else:
-            data['cpu'] = 0
         memory = self.get_memory()
         if memory is not None:
             data['memory'] = memory
@@ -799,12 +795,6 @@ class ContainerDefinitionAdapter(Adapter):
             data['environment'] = self.get_environment()
         if 'volumes' in self.data:
             data['mountPoints'] = self.get_mountPoints()
-        else:
-            data['mountPoints'] = []
-        if 'volumesFrom' not in self.data:
-            data['volumesFrom'] = []
-        if 'systemControls' not in self.data:
-            data['systemControls'] = []
         self.set(data, 'links', optional=True)
         self.set(data, 'dockerLabels', optional=True)
         if 'logging' in self.data:
@@ -865,12 +855,8 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
             data['capacityProviderStrategy'] = self.data['capacity_provider_strategy']
         if 'placement_constraints' in self.data:
             data['placementConstraints'] = self.data['placement_constraints']
-        else:
-            data['placementConstraints'] = []
         if 'placement_strategy' in self.data:
             data['placementStrategy'] = self.data['placement_strategy']
-        else:
-            data['placementStrategy'] = []
         if 'group' in self.data:
             data['Group'] = self.data['group']
         if 'count' in self.data:
@@ -1391,28 +1377,15 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
             data['networkConfiguration']['awsvpcConfiguration'] = vpc_configuration
         if 'placement_constraints' in self.data:
             data['placementConstraints'] = self.data['placement_constraints']
-        else:
-            data['placementConstraints'] = []
         if 'placement_strategy' in self.data:
             data['placementStrategy'] = self.data['placement_strategy']
-        else:
-            data['placementStrategy'] = []
         if 'healthCheckGracePeriodSeconds' in self.data:
             data['healthCheckGracePeriodSeconds'] = self.data['healthCheckGracePeriodSeconds']
-        else:
-            data['healthCheckGracePeriodSeconds'] = 0
         data['deploymentConfiguration'] = {}
         data['deploymentConfiguration']['maximumPercent'] = int(self.data.get('maximum_percent', 200))
         data['deploymentConfiguration']['minimumHealthyPercent'] = int(
             self.data.get('minimum_healthy_percent', 50)
         )
-        data['deploymentConfiguration']['deploymentCircuitBreaker'] = {}
-        data['deploymentConfiguration']['deploymentCircuitBreaker']['enable'] = self.data.get('enable_circuit_breaker', False)
-        data['deploymentConfiguration']['deploymentCircuitBreaker']['rollback'] = self.data.get('rollback', False)
-        if 'deploymentController' in self.data:
-            data['deploymentController'] = self.data['deploymentController']
-        else:
-            data['deploymentController'] = {'type': 'ECS'}
         data['schedulingStrategy'] = self.data.get('scheduling_strategy', 'REPLICA')
         if data['schedulingStrategy'] == 'DAEMON':
             data['desiredCount'] = 'automatically'
@@ -1426,8 +1399,6 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         data['enableECSManagedTags'] = True
         if 'propagateTags' in self.data:
             data['propagateTags'] = self.data['propagateTags']
-        else:
-            data['propagateTags'] = 'NONE'
 
     def __build_Secrets(self) -> List[Secret]:
         """
