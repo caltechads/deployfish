@@ -7,8 +7,3 @@ Base
     :members:
     :undoc-members:
     :show-inheritance:
-
-.. automodule:: deployfish.controllers.crud
-    :members:
-    :undoc-members:
-    :show-inheritance:
