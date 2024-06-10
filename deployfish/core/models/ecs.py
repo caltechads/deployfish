@@ -2322,6 +2322,17 @@ class Service(
             data['deploymentConfiguration']['deploymentCircuitBreaker']['rollback'] = False
         if 'deploymentController' not in data:
             data['deploymentController'] = {'type': 'ECS'}
+        # sort the subnets and security_groups so that we can compare them easily
+        if 'networkConfiguration' in data:
+            if 'awsvpcConfiguration' in data['networkConfiguration']:
+                if 'subnets' in data['networkConfiguration']['awsvpcConfiguration']:
+                    data['networkConfiguration']['awsvpcConfiguration']['subnets'] = sorted(
+                        data['networkConfiguration']['awsvpcConfiguration']['subnets']
+                    )
+                if 'security_groups' in data['networkConfiguration']['awsvpcConfiguration']:
+                    data['networkConfiguration']['awsvpcConfiguration']['security_groups'] = sorted(
+                        data['networkConfiguration']['awsvpcConfiguration']['security_groups']
+                    )
         return data
 
     def render_for_create(self) -> Dict[str, Any]:
