@@ -1325,7 +1325,6 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         data['version'] = self.version
         data['timestamp'] = self.timestamp
         if 'compatibilities' in data:
-            # data['requiresCompatibilities'] = data['compatibilities']
             del data['compatibilities']
         if 'volumes' in data:
             for volume in data['volumes']:
@@ -1352,7 +1351,6 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             del data['registeredAt']
             del data['registeredBy']
             if 'compatibilities' in data:
-                # data['requiresCompatibilities'] = data['compatibilities']
                 del data['compatibilities']
             if 'requiresAttributes' in data:
                 del data['requiresAttributes']
@@ -1483,7 +1481,6 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             del data['registeredAt']
             del data['registeredBy']
             if 'compatibilities' in data:
-                # data['requiresCompatibilities'] = data['compatibilities']
                 del data['compatibilities']
             if 'requiresCompatibilities' in data:
                 data['requiresCompatibilities'] = data['requiresCompatibilities']
@@ -2266,7 +2263,7 @@ class Service(
         if 'role' in data:
             # We loaded this from deployfish.yml, so we need to define some default
             # values that appear when you describe_services on an active service
-            # data['roleArn'] = data['role']
+            data['roleArn'] = data['role']
             del data['role']
             data['status'] = 'ACTIVE'
             data['propagateTags'] = 'NONE'
