@@ -32,11 +32,13 @@ Deployfish
    :hidden:
    :caption: Reference
 
+   api/main
    api/config/index
    api/controllers/index
    api/loaders
    api/adapters/index
    api/models/index
+   api/renderers
 
 ..
    Indices and tables

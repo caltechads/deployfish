@@ -90,6 +90,13 @@ We are using ``cement`` for the CLI, ``click`` for the colorful outputs, and ``j
     Please read the :doc:`adapters` documentation to get an idea of how ``deployfish.yml`` gets translated to models.
     Examples are also given in the documentation.
 
+:py:mod:`deployfish.renderers`
+
+    Renderers are responsible for rendering the data from models in a certain way.
+
+    A common renderer we use is the :py:class:`deployfish.renderers.table.TableRenderer` class, which will render the
+    data in a table format. We pass the ``render`` output to ``self.app.print`` in the controller.
+
 
 .. _`cement controllers overview`: https://docs.builtoncement.com/getting-started/framework-overview#controllers
 .. _`cement controllers`: https://docs.builtoncement.com/core-foundation/controllers
