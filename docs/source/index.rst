@@ -27,6 +27,7 @@ Deployfish
    runbook/architecture
    runbook/adapters
    runbook/extending
+   runbook/testing
 
 .. toctree::
    :hidden:
