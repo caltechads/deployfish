@@ -49,7 +49,15 @@
                     {{ render_diff(orig, diff[key], prefix + '.' + key, key, mode, debug) }}
                 {%- elif mode == '$update' -%}
                     {#- Original has the key, but we don't want to increment the prefix depth -#}
+                    {%- if key == 'value' and 'key' not in diff -%}
+                        {#- If this is a tag pair, then we want to print the key for indentification -#}
+                        {{ render_diff(orig, orig['key'], prefix, 'key', None, debug) }}
+                    {%- endif -%}
                     {{ render_diff(orig, diff[key], prefix, key, mode, debug) }}
+                    {%- if key == 'key' and 'value' not in diff -%}
+                        {#- If this is a tag pair, then we want to print the value for indentification -#}
+                        {{ render_diff(orig, orig['value'], prefix, 'value', None, debug) }}
+                    {%- endif -%}
                 {%- else -%}
                     {{ render_diff(orig[key], diff[key], prefix + '.' + key, key, mode, debug) }}
                 {%- endif -%}
@@ -97,6 +105,7 @@ UNHANDLED
     {#- Prefixed a symbol if mode is present -#}
     {%- if mode == '$update' -%}
 {%- if debug -%}(4) {{ depth}} {% endif -%}
+{#- Special case for key:value pairs - specifically supporting tags -#}
 {{ indent(depth) }}{{ diff_sym(mode) }} {{ pkey }}: {{ orig[pkey] }} {%- filter color(fg='yellow') %} -> {{ diff }}{% endfilter -%}
     {%- elif mode == '$insert' -%}
 {%- if debug -%}(5) {{ depth}} {% endif -%}
@@ -106,8 +115,17 @@ UNHANDLED
 {{ indent(depth) }}{{ diff_sym(mode) }} {{ pkey }}: {{ orig[diff] }}
         {%- filter color(fg='red') %} -> null{% endfilter -%}
     {%- else -%}
+        {#- This is where a key and value prints out without a mode -#}
+        {%- if pkey == 'value' -%}
+{#- Newline #}
+{# Newline -#}
+        {%- endif -%}
 {%- if debug -%}(7) {{ depth}} {% endif -%}
-{{ indent(depth) }}{{ diff }}
+{{ indent(depth) }}  {{ pkey }}: {{ diff }}
+        {%- if pkey != 'value' -%}
+{#- Newline #}
+{# Newline -#}
+        {%- endif -%}
     {%- endif -%}
 {%- endif -%}
 {%- endmacro -%}

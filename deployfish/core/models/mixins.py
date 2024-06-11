@@ -87,8 +87,9 @@ class TagsMixin:
 
     def render_tags(self: SupportsTags) -> List[Dict[str, str]]:
         data: List[Dict[str, str]] = []
-        for key, value in list(self.tags.items()):
-            data.append({'key': key, 'value': value})
+        # Loop through the tags in sorted order
+        for key in sorted(self.tags):
+            data.append({'key': key, 'value': self.tags[key]})
         return data
 
 
