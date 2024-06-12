@@ -5,6 +5,8 @@ from ..abstract import Adapter
 
 class ServiceDiscoveryServiceAdapter(Adapter):
     """
+    .. code-block:: python
+
         {
             'namespace': 'local',
             'name': 'test',

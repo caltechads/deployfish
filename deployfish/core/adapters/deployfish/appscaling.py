@@ -10,6 +10,8 @@ from deployfish.core.models import CloudwatchAlarm, ScalingPolicy
 
 class ECSServiceScalingPolicyAdapter(Adapter):
     """
+    .. code-block:: python
+
         {
             'cpu': '>=60',
             'check_every_seconds': 60,
@@ -76,6 +78,8 @@ class ECSServiceScalingPolicyAdapter(Adapter):
 
 class ECSServiceScalableTargetAdapter(Adapter):
     """
+    .. code-block:: python
+
         {
             'min_capacity': 2,
             'max_capacity': 4,

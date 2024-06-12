@@ -75,21 +75,21 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
         The :py:meth:`deployfish.core.models.events.EventScheduleRule.new`
         factory method expects this struct::
 
-           {
-              'name': the name for the schedule
-              'schedule': the schedule expression
-              'schedule_role': the ARN of the role EventBridge will use to execute our task definition
-              'cluster': the name of the cluster in which to run our tasks
-              'count': (optional) the number of tasks to run
-              'launch_type': (optional): "FARGATE" or "EC2"
-              'platform_version': (optional)
-              'group': (optional) task group
-              'vpc_configuration': { (optional)
+            {
+                'name': the name for the schedule
+                'schedule': the schedule expression
+                'schedule_role': the ARN of the role EventBridge will use to execute our task definition
+                'cluster': the name of the cluster in which to run our tasks
+                'count': (optional) the number of tasks to run
+                'launch_type': (optional): "FARGATE" or "EC2"
+                'platform_version': (optional)
+                'group': (optional) task group
+                'vpc_configuration': { (optional)
                 'subnets': list of subnet ids
                 'security_groups': list of security group ids
                 'public_ip': bool: assign a public ip to our containers?
-              }
-        }
+                }
+            }
 
         Args:
             data: The output of :py:meth:`get_data`
@@ -319,7 +319,7 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
 
     def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        :rtype: dict(str, *), list(ContainerDefinition), dict(str, *)
+        :rtype: dict(str, Any), dict(str, Any)
         """
         data: Dict[str, Any] = {}
         self.set(data, 'family')
@@ -1278,6 +1278,8 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
     Helper tasks are overlays for the service's task definition.  Each task listed under the `tasks` section of
     the service consists of general overrides, and then a set of specific command overrides, possibly with schedules.
+
+    .. code-block:: yaml
 
         services:
             - name: foobar-prod

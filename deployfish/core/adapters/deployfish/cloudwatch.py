@@ -10,6 +10,8 @@ from ..abstract import Adapter
 
 class ECSServiceCPUAlarmAdapter(Adapter):
     """
+    .. code-block:: python
+
         {
             'cpu': '>=60',
             'check_every_seconds': 60,
