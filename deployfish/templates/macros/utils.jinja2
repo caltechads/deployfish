@@ -22,3 +22,7 @@ General macros for use in any template
 {% for key, value in tag_dict.items() %}    {{ key|color(fg='yellow') }}: {{ value }}
 {% endfor -%}
 {% endmacro %}
+
+{% macro indent(depth) %}
+{{- '  ' * depth -}}
+{% endmacro %}

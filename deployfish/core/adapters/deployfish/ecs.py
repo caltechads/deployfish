@@ -39,6 +39,8 @@ class VpcConfigurationMixin:
                 data['securityGroups'] = source['security_groups']
             if 'public_ip' in source:
                 data['assignPublicIp'] = source['public_ip']
+            else:
+                data['assignPublicIp'] = 'DISABLED'
         return data
 
 
@@ -325,6 +327,12 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
         launch_type = self.data.get('launch_type', 'EC2')
         if launch_type == 'FARGATE':
             data['requiresCompatibilities'] = ['FARGATE']
+        if self.data.get('runtime_platform', None):
+            data['runtimePlatform'] = {}
+            data['runtimePlatform']['cpuArchitecture'] = self.data['runtime_platform'].get('cpu_architecture', 'X86_64')
+            data['runtimePlatform']['operatingSystemFamily'] = self.data['runtime_platform'].get('operating_system_family', 'LINUX')
+        if self.data.get('placementConstraints', None):
+            data['placementConstraints'] = self.data['placementConstraints']
         self.set(data, 'task_role_arn', dest_key='taskRoleArn', optional=True)
         self.set(data, 'execution_role', dest_key='executionRoleArn', optional=True)
         if not self.partial and (launch_type == 'FARGATE' and not data['executionRoleArn']):
@@ -1369,6 +1377,8 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
             data['placementConstraints'] = self.data['placement_constraints']
         if 'placement_strategy' in self.data:
             data['placementStrategy'] = self.data['placement_strategy']
+        if 'healthCheckGracePeriodSeconds' in self.data:
+            data['healthCheckGracePeriodSeconds'] = self.data['healthCheckGracePeriodSeconds']
         data['deploymentConfiguration'] = {}
         data['deploymentConfiguration']['maximumPercent'] = int(self.data.get('maximum_percent', 200))
         data['deploymentConfiguration']['minimumHealthyPercent'] = int(
@@ -1385,6 +1395,8 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         data['clientToken'] = self.get_clientToken()
         data['enableExecuteCommand'] = self.data.get('enable_exec', False)
         data['enableECSManagedTags'] = True
+        if 'propagateTags' in self.data:
+            data['propagateTags'] = self.data['propagateTags']
 
     def __build_Secrets(self) -> List[Secret]:
         """

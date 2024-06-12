@@ -1325,7 +1325,6 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         data['version'] = self.version
         data['timestamp'] = self.timestamp
         if 'compatibilities' in data:
-            data['requiresCompatibilities'] = data['compatibilities']
             del data['compatibilities']
         if 'volumes' in data:
             for volume in data['volumes']:
@@ -1336,10 +1335,15 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
                         )
                     except EFSFileSystem.DoesNotExist:
                         volume['efsVolumeConfiguration']['FileSystem'] = "DOES NOT EXIST"
+        if 'runtimePlatform' not in data:
+            data['runtimePlatform'] = {}
+            data['runtimePlatform']['cpuArchitecture'] = 'X86_64'
+            data['runtimePlatform']['operatingSystemFamily'] = 'LINUX'
         return data
 
     def render_for_diff(self):
         data = self.render()
+        data['containerDefinitions'] = [c.render_for_diff() for c in sorted(self.containers, key=lambda x: x.name)]
         if 'taskDefinitionArn' in data:
             del data['taskDefinitionArn']
             del data['status']
@@ -1347,7 +1351,6 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             del data['registeredAt']
             del data['registeredBy']
             if 'compatibilities' in data:
-                data['requiresCompatibilities'] = data['compatibilities']
                 del data['compatibilities']
             if 'requiresAttributes' in data:
                 del data['requiresAttributes']
@@ -1371,13 +1374,16 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             for d in data['containerDefinitions']:
                 if 'secrets' in d:
                     del d['secrets']
-        self._tags['Timestamp'] = datetime.datetime.utcnow().strftime('%Y/%m/%dT%H:%M:%SZ')
+        if 'Timestamp' not in self._tags:
+            self._tags['Timestamp'] = datetime.datetime.now(datetime.UTC).strftime('%Y/%m/%dT%H:%M:%SZ')
         data['tags'] = self.render_tags()
         if not data['tags']:
             del data['tags']
         return data
 
     def save(self):
+        # Update Timestamp tag on task defintion before saving
+        self._tags['Timestamp'] = datetime.datetime.now(datetime.UTC).strftime('%Y/%m/%dT%H:%M:%SZ')
         return self.objects.save(self)
 
     # ----------------------------------
@@ -1475,8 +1481,9 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
             del data['registeredAt']
             del data['registeredBy']
             if 'compatibilities' in data:
-                data['requiresCompatibilities'] = data['compatibilities']
                 del data['compatibilities']
+            if 'requiresCompatibilities' in data:
+                data['requiresCompatibilities'] = data['requiresCompatibilities']
             if 'requiresAttributes' in data:
                 del data['requiresAttributes']
         else:
@@ -1551,10 +1558,21 @@ class ContainerDefinition(SecretsMixin, LazyAttributeMixin):
             data['volumesFrom'] = []
         if 'mountPoints' not in data:
             data['mountPoints'] = []
+        if 'systemControls' not in self.data:
+            data['systemControls'] = []
+        if 'cpu' not in data:
+            data['cpu'] = 0
+
         return data
 
     def render(self) -> Dict[str, Any]:
-        return deepcopy(self.data)
+        data = deepcopy(self.data)
+        if 'environment' in data:
+            if data['environment']:
+                # Alphabetize the environment variables for easier comparison
+                environment = sorted(data['environment'], key=lambda item: item['name'])
+                data['environment'] = environment
+        return data
 
     def copy(self) -> "ContainerDefinition":
         return self.__class__(self.render())
@@ -2147,6 +2165,11 @@ class Service(
         if 'tags' in data_kwargs:
             instance.tags.update(data_kwargs['tags'])
         instance.helper_tasks = ServiceHelperTask.new(obj, source, service=instance)
+        if 'task_definition' in data_kwargs:
+            # Update instance.task_definition with Timestamp and deployfish command tags
+            instance.task_definition.tags['Timestamp'] = "(known after save)"
+            for task in instance.helper_tasks:
+                instance.task_definition.tags[f'deployfish:command:{task.command}'] = "(known after save)"
         return instance
 
     def __init__(self, data: Dict[str, Any], **kwargs):
@@ -2230,6 +2253,10 @@ class Service(
 
         """
         data = self.render()
+        if 'status' not in data:
+            # If the Service was loaded from deployfish.yml, status is missing, while it's present when loaded from AWS
+            # Since we don't need to provide this when saving a Service, we only add this when doing a diff
+            data['status'] = "(known after save)"
         data['tags'] = self.render_tags()  # type: ignore
         if 'desiredCount' in data:
             del data['desiredCount']
@@ -2242,15 +2269,10 @@ class Service(
             data['propagateTags'] = 'NONE'
             data['enableECSManagedTags'] = False
             data['enableExecuteCommand'] = False
-            data['healthCheckGracePeriodSeconds'] = 0
             if 'deploymentConfiguration' not in data:
                 data['deploymentConfiguration'] = {}
                 data['deploymentConfiguration']['maximumPercent'] = 200
                 data['deploymentConfiguration']['minimumHealthyPercent'] = 50
-            if 'placementConstraints' not in data:
-                data['placementConstraints'] = []
-            if 'placementStrategy' not in data:
-                data['placementStrategy'] = []
         if 'clientToken' in data:
             del data['clientToken']
         if 'createdAt' in data:
@@ -2270,11 +2292,44 @@ class Service(
                 del data['deployments']
             if 'events' in data:
                 del data['events']
+        if 'roleArn' in data:
+            del data['roleArn']
+        if 'platformFamily' in data:
+            del data['platformFamily']
         data['taskDefinition'] = self.task_definition.render_for_diff()
         if self.appscaling:
             data['appscaling'] = self.appscaling.render_for_diff()
         if self.service_discovery:
             data['service_discovery'] = self.service_discovery.render_for_diff()
+        if 'healthCheckGracePeriodSeconds' not in data:
+            data['healthCheckGracePeriodSeconds'] = 0
+        if 'propagateTags' not in self.data:
+            data['propagateTags'] = 'NONE'
+        if 'placementConstraints' not in data:
+            data['placementConstraints'] = []
+        if 'placementStrategy' not in data:
+            data['placementStrategy'] = []
+        if 'deploymentConfiguration' not in data:
+            data['deploymentConfiguration'] = {}
+            data['deploymentConfiguration']['maximumPercent'] = 200
+            data['deploymentConfiguration']['minimumHealthyPercent'] = 50
+        if 'deploymentCircuitBreaker' not in data['deploymentConfiguration']:
+            data['deploymentConfiguration']['deploymentCircuitBreaker'] = {}
+            data['deploymentConfiguration']['deploymentCircuitBreaker']['enable'] = False
+            data['deploymentConfiguration']['deploymentCircuitBreaker']['rollback'] = False
+        if 'deploymentController' not in data:
+            data['deploymentController'] = {'type': 'ECS'}
+        # sort the subnets and security_groups so that we can compare them easily
+        if 'networkConfiguration' in data:
+            if 'awsvpcConfiguration' in data['networkConfiguration']:
+                if 'subnets' in data['networkConfiguration']['awsvpcConfiguration']:
+                    data['networkConfiguration']['awsvpcConfiguration']['subnets'] = sorted(
+                        data['networkConfiguration']['awsvpcConfiguration']['subnets']
+                    )
+                if 'security_groups' in data['networkConfiguration']['awsvpcConfiguration']:
+                    data['networkConfiguration']['awsvpcConfiguration']['security_groups'] = sorted(
+                        data['networkConfiguration']['awsvpcConfiguration']['security_groups']
+                    )
         return data
 
     def render_for_create(self) -> Dict[str, Any]:
