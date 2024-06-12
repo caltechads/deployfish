@@ -196,6 +196,11 @@ task cpu            :     {{ obj.data['cpu'] }}
 {%- if 'memory' in obj.data %}
 task memory         :     {{ obj.data['memory'] }}
 {%- endif %}
+{%- if 'runtimePlatform' in obj.data %}
+{{ subsection('runtime platform') }}
+  cpu architecture  :     {{ obj.data['runtimePlatform']['cpuArchitecture'] }}
+  os family         :     {{ obj.data['runtimePlatform']['operatingSystemFamily'] }}
+{%- endif %}
 {%- if 'volumes' in obj.data and obj.data['volumes'] %}
 
 {% for volume_def in obj.render_for_display()['volumes'] -%}
@@ -208,4 +213,3 @@ task memory         :     {{ obj.data['memory'] }}
 {{- container(container_obj)|indent(width=2) }}
 {%- endfor -%}
 {% endmacro %}
-
