@@ -98,7 +98,21 @@
             {%- endif -%}
         {%- endfor -%}
     {%- else -%}
-UNHANDLED
+        {#- Should be a list of values to update -#}
+        {%- if orig|length == 0 -%}
+            {%- set new_mode = '$insert' -%}
+            {#- orig is a list with no content - this is really an insert -#}
+            {%- for item in diff -%}
+{%- if debug -%}(8) {{ depth}} {% endif -%}
+{{ indent(depth) }}{{ diff_sym(new_mode) }} {{ loop.index }} : {
+{{ render_diff(orig, item, prefix, key, new_mode, debug) }}
+{% if debug -%}(8) {{ depth}} {% endif -%}
+{{ indent(depth) }}}{#- Remove spacing -#}
+            {%- endfor -%}
+        {%- else -%}
+            {#- orig is a list with content - jsondiff should provide a different format -#}
+            UNHANDLED
+        {%- endif -%}
     {%- endif -%}
 {%- else -%}
     {#- Handles the case where diff is neither a dictionary nor a list, or it's a string -#}

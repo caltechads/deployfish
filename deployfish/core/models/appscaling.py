@@ -189,6 +189,8 @@ class ScalableTarget(Model):
                 'ScheduledScalingSuspended': False
             }
         data['scaling_policies'] = [p.render_for_diff() for p in sorted(self.policies, key=lambda x: x.pk)]
+        if 'ScalableTargetARN' in data:
+            del data['ScalableTargetARN']
         return data
 
     def render_for_create(self) -> Dict[str, Any]:
