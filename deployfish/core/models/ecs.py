@@ -1357,9 +1357,8 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         else:
             if 'placementConstraints' not in data:
                 data['placementConstraints'] = []
-            if 'requiresCompatibilities' not in data:
-                data['requiresCompatibilities'] = ['EC2']
-
+        if 'requiresCompatibilities' not in data:
+            data['requiresCompatibilities'] = ['EC2']
         return data
 
     def render(self):
