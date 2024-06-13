@@ -39,7 +39,9 @@ Static credentials
 Static credentials can be provided by adding an ``access_key`` and ``secret_key``
 in-line in an ``aws:`` section in ``deployfish.yml``.
 
-Usage::
+Usage:
+
+.. code-block:: yaml
 
     aws:
       access_key: anaccesskey
@@ -58,7 +60,9 @@ location is ``$HOME/.aws/credentials`` on Linux and OS X.  You can specify a
 different location for this file via the ``AWS_SHARED_CREDENTIALS_FILE``
 environment variable.
 
-Usage::
+Usage:
+
+.. code-block:: yaml
 
     aws:
       profile: customprofile
@@ -74,7 +78,9 @@ This section contains a list of all configuration options supported by a
 ECS Service definition in version 1.
 
 Services are specified in a YAML list under the top level ``services:`` key like
-so::
+so:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -94,7 +100,9 @@ letters (uppercase and lowercase), numbers, hyphens, and underscores are
 allowed.
 
 Once your service has been created, this is not changable without deleting and
-re-creating the service. ::
+re-creating the service.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -103,7 +111,9 @@ cluster
 -------
 
 (String, Required) The name of the actual ECS cluster in which we'll create our service. ``cluster``
-is required. This has to exist in AWS before running ``deploy service create <service-name>``. ::
+is required. This has to exist in AWS before running ``deploy service create <service-name>``.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -113,7 +123,9 @@ environment
 -----------
 
 (String, Optional) This is a keyword that can be used in terraform lookups (see
-"Interpolation_", below).  It can also be used as an alias for the service name in the ``deploy`` command. ::
+"Interpolation_", below).  It can also be used as an alias for the service name in the ``deploy`` command.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -122,7 +134,9 @@ environment
 scheduling_strategy
 -------------------
 
-(String, Optional) When we create the ECS service, configure the service to run in REPLICA or DAEMON. Default to REPLICA. ::
+(String, Optional) When we create the ECS service, configure the service to run in REPLICA or DAEMON. Default to REPLICA.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -135,7 +149,9 @@ count
 -----
 
 (Integer, Required for REPLICA scheduling strategy) When we create the ECS service, configure the service to run this
-many tasks. ::
+many tasks.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -150,7 +166,9 @@ maximum_percent
 
 (Integer, Optional) During a deployment, this is the upper limit on the number of tasks that are allowed in the RUNNING
 or PENDING state, as a percentage of the ``count``.  This must be configured along with ``minimum_healthy_percent``.  If
-not provided will default to 200. If schdeuling strategy is set to DAMEON, it will be fixd at 100 ::
+not provided will default to 200. If schdeuling strategy is set to DAMEON, it will be fixd at 100.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -161,7 +179,9 @@ minimum_healthy_percent
 
 (Integer, Optional) During a deployment,this is the lower limit on the number of tasks that must remain in the RUNNING
 state, as a percentage of the ``count``. This must be configured along with ``maximum_percent``. If not provided will
-default to 0. ::
+default to 0.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -171,7 +191,9 @@ placement_constraints
 ---------------------
 
 (Optional) An array of placement constraint objects to use for tasks in your service. You can specify a maximum of 10
-constraints per task (this limit includes constraints in the task definition and those specified at run time). ::
+constraints per task (this limit includes constraints in the task definition and those specified at run time).
+
+.. code-block:: yaml
 
     services:
         - name: foobar-prod
@@ -184,7 +206,9 @@ placement_strategy
 ------------------
 
 (Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy
-rules per service. ::
+rules per service.
+
+.. code-block:: yaml
 
     services:
         - name: foobar-prod
@@ -209,13 +233,47 @@ If you use the Fargate launch type, these task parameters are not valid:
 * ``placementConstraints``
 * ``privileged``
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
         launch_type: FARGATE
 
 See `Amazon ECS Launch Types <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html>`_.
+
+runtime_platform
+----------------
+
+(Optional) The platform on which to run your service. Only used if the launch type is ``FARGATE``.
+
+You'll need to specify:
+
+* ``cpu_architecture``: (string) The CPU architecture to use for the task. Valid values are ``X86_64`` or ``ARM64``. If
+  not specified, the default is ``X86_64``.
+* ``operating_system_family``: (string) The operating system family to use for the task. There are various valid values. If not specified, the default is ``LINUX``.
+
+Example to run a service on ``ARM64`` architecture with ``LINUX`` operating system family:
+
+.. code-block:: yaml
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        launch_type: FARGATE
+        runtime_platform:
+          cpu_architecture: ARM64
+          operating_system_family: LINUX
+
+.. note::
+
+    You do not need to include ``runtime_platform`` if you're running a service on ``X86_64`` (``AMD64``) architecture
+    with ``LINUX`` operating system.
+
+See `Amazon ECS Runtime Platform <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#runtime-platform>`_.
+
 
 enable_exec
 -----------
@@ -241,9 +299,11 @@ You'll need to specify
   subnets are supported at this time. The VPC will be determined by the subnets you specify, so if you specify multiple
   subnets they must be in the same VPC.
 * ``security_groups``: (list of strings) The ID of the security group to associate with the service.
-* ``public_ip``: (string) Whether to enabled or disable public IPs. Valid values are ``ENABLED`` or ``DISABLED``
+* ``public_ip``: (string) Whether to enabled or disable public IPs. Valid values are ``ENABLED`` or ``DISABLED``.
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -264,11 +324,13 @@ autoscalinggroup_name
 (Optional)
 
 If you have a dedicated EC2 AutoScaling Group for your service, you can declare it with the ``autoscalinggroup_name``
-option.  This will allow you to scale the ASG up and down when you scale the service up and down with ``deploy service scale
-<service-name> <count>``.
+option.  This will allow you to scale the ASG up and down when you scale the service up and down with ``deploy service
+scale <service-name> <count>``.
 
-deployfish won't create the autoscaling group for you -- you'll need to create it before you can use ``deploy service scale
-<service_name> <count>`` to manipulate it. ::
+Deployfish won't create the autoscaling group for you -- you'll need to create it before you can use ``deploy service
+scale <service_name> <count>`` to manipulate it.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -289,7 +351,9 @@ service definition.  You only really need to do use this if you want to use a do
 in ``local`` one -- the one that allows you to mount host machinefolders into your container.  To mount one of the
 volumes you define here in one of your containers, see "volumes" under "Container Definitions" on this page.
 
-Here is a fully specified example ::
+Here is a fully specified example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -354,7 +418,9 @@ on your behalf. This parameter is only permitted if you are using a load balance
 definition does not use the ``awsvpc`` network mode.  If you specify the role parameter, you must also specify a load
 balancer object with the ``load_balancer`` parameter, below.
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -393,7 +459,9 @@ To specify that the the service is to use an ELB, you'll need to specify
   load balancer.  This port must correspond to a container port on container
   ``container_name`` in your service's task definition
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -429,7 +497,9 @@ To specify that the the service is to use an ALB or NLB, you'll need to specify:
 
 deployfish won't create the target group for you == you'll need to create it before running ``deploy service create <service_name>``.
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -441,7 +511,9 @@ Example::
           container_name: foobar-prod
           container_port: 80
 
-You can specify multiple target groups for your service, by placing them in a list named ``target_groups``::
+You can specify multiple target groups for your service, by placing them in a list named ``target_groups``:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -472,11 +544,13 @@ the cluster.
 .. note::
 
   ``capacity_provider_strategy`` and ``launch_type`` are mutually exclusive.  Define one or the other.  To
-  use Fargate with `capacity_provider_strategy`, choose either the ``FARGATE`` or ``FARGATE_SPOT`` pre-defined
+  use Fargate with ``capacity_provider_strategy``, choose either the ``FARGATE`` or ``FARGATE_SPOT`` pre-defined
   providers.
 
 
-Example ::
+Example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -514,7 +588,9 @@ To use service discovery you'll need to specify
     * ``type``: (string) The type of dns record. Valid values are ``A`` and ``SRV``.
     * ``ttl``: (int) The ttl of the dns record.
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -528,7 +604,7 @@ Example::
             ttl: 10
 
 This would create a new service discovery service on the ``local`` Route53 private zone. The DNS would be
-``foobar-prod.local``
+``foobar-prod.local``.
 
 See `Amazon ECS Service Discovery <https://aws.amazon.com/blogs/aws/amazon-ecs-service-discovery/>`_.
 
@@ -539,7 +615,9 @@ application_scaling
 
 If you want your service so scale up and down with service CPU, configure it with an ``application_scaling`` block.
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -588,7 +666,9 @@ role_arn
 ^^^^^^^^
 
 (String, Required) The name or full ARN of the IAM role that allows Application Autoscaling to muck with your service.
-Your role definition should look like this::
+Your role definition should look like this:
+
+.. code-block::
 
     {
       "Version": "2012-10-17",
@@ -603,7 +683,9 @@ Your role definition should look like this::
       ]
     }
 
-And it needs an appropriate policy attached.  The below policy allows the role to act on any service. ::
+And it needs an appropriate policy attached.  The below policy allows the role to act on any service.
+
+.. code-block::
 
     {
         "Version": "2012-10-17",
@@ -678,7 +760,9 @@ family
 ------
 
 (String, Required) When we create task definitions for this service, put them in this family.  When you go to the "Task
-Definitions" page in the AWS web console, what is listed under "Task Definition" is the family name. ::
+Definitions" page in the AWS web console, what is listed under "Task Definition" is the family name.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -693,7 +777,9 @@ network_mode
 ------------
 
 (String, Optional) The Docker networking mode for the containers in our task.  One of: ``bridge``, ``host``, ``awsvpc``
-or ``none``. If this parameter is omitted, a service is assumed to use ``bridge`` mode. ::
+or ``none``. If this parameter is omitted, a service is assumed to use ``bridge`` mode.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -704,7 +790,9 @@ or ``none``. If this parameter is omitted, a service is assumed to use ``bridge`
 
 See the `Amazon ECS Task Definition Parameters: Network Mode`_ for what each of those modes are.
 
-In order to be able to specify ``awsvpc`` as your network mode, you also need to define ``vpc_configuration``::
+In order to be able to specify ``awsvpc`` as your network mode, you also need to define ``vpc_configuration``:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -725,7 +813,9 @@ task_role_arn
 
 (String, Optional) A task role ARN for an IAM role that allows the containers in the task
 permission to call the AWS APIs that are specified in its associated policies
-on your behalf. ::
+on your behalf.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -744,7 +834,9 @@ execution_role
 --------------
 
 (String, Required for Fargate) A task exeuction role ARN for an IAM role that allows Fargate to pull container images and publish container logs
-to Amazon CloudWatch on your behalf.::
+to Amazon CloudWatch on your behalf.
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -810,7 +902,9 @@ This section contains a list of all configuration options supported by a
 ECS Task definition in version 1.
 
 Services are specified in a YAML list under the top level ``tasks:`` key like
-so::
+so:
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -827,6 +921,8 @@ The restrictions on characters in ECS tasks are in play here:  Up to 255
 letters (uppercase and lowercase), numbers, hyphens, and underscores are
 allowed.
 
+.. code-block:: yaml
+
     tasks:
       - name: foobar-prod
 
@@ -836,6 +932,8 @@ service
 (String, Option) Use the ``service`` option to associate this task with a particular service.
 This is used when running ``deploy service service tasks <service_name>``.
 
+.. code-block:: yaml
+
     tasks:
       - name: foobar-prod
         service: foobar-service-prod
@@ -843,7 +941,9 @@ This is used when running ``deploy service service tasks <service_name>``.
 cluster
 -------
 
-(String, Required) The name of the actual ECS cluster in which we'll run our task.::
+(String, Required) The name of the actual ECS cluster in which we'll run our task.
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -853,7 +953,9 @@ environment
 -----------
 
 (String, Optional) This is a keyword that can be used in terraform lookups (see
-"Interpolation_", below).  It can also be used as an alias for the task name in the ``deploy`` command. ::
+"Interpolation_", below).  It can also be used as an alias for the task name in the ``deploy`` command.
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -862,7 +964,9 @@ environment
 count
 -----
 
-(Integer) When we run the ECS task, run this many instances. ::
+(Integer) When we run the ECS task, run this many instances.
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -889,7 +993,9 @@ If you use the Fargate launch type, the following task parameters are not valid:
 * ``placementConstraints``
 * ``privileged``
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -915,7 +1021,9 @@ You'll specify
 * ``security_groups``: (array) OPTIONAL The ID of the security group to associate with the task.
 * ``public_ip``: (string) OPTIONAL Whether to enabled or disable public IPs. Valid Values are ``ENABLED`` or ``DISABLED``
 
-Example::
+Example:
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -940,7 +1048,9 @@ task definition.  You only really need to do use this if you want to use a docke
 in ``local`` one -- the one that allows you to mount host machinefolders into your container.  To mount one of the
 volumes you define here in one of your containers, see "volumes" under "Container Definitions" on this page.
 
-Here is a fully qualfied example ::
+Here is a fully qualfied example:
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -987,7 +1097,9 @@ family
 
 (String, Required) When we create task definitions for this task, put them
 in this family.  When you go to the "Task Definitions" page in the AWS web
-console, what is listed under "Task Definition" is the family name. ::
+console, what is listed under "Task Definition" is the family name.
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -1003,7 +1115,9 @@ network_mode
 
 (String, Optional) The Docker networking mode for the containers in our task.
 One of: ``bridge``, ``host``, ``awsvpc`` or ``none``. If this parameter is omitted, a task is assumed to
-use ``bridge`` mode. ::
+use ``bridge`` mode.
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -1019,7 +1133,9 @@ task_role_arn
 
 (String, Optional) A task role ARN for an IAM role that allows the containers in the task
 permission to call the AWS APIs that are specified in its associated policies
-on your behalf. ::
+on your behalf.
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -1038,7 +1154,9 @@ execution_role
 ------------------
 
 (String, Required for Fargate) A task exeuction role ARN for an IAM role that allows Fargate to pull container images and publish container logs
-to Amazon CloudWatch on your behalf.::
+to Amazon CloudWatch on your behalf.
+
+.. code-block:: yaml
 
     tasks:
       - name: foobar-prod
@@ -1101,7 +1219,9 @@ See also the `Amazon ECS Task Definition Parameters: Task Size`_
 placement_constraints
 ---------------------
 
-(Optional) An array of placement constraint objects to use for tasks. You can specify a maximum of 10 constraints per task (this limit includes constraints in the task definition and those specified at run time). ::
+(Optional) An array of placement constraint objects to use for tasks. You can specify a maximum of 10 constraints per task (this limit includes constraints in the task definition and those specified at run time).
+
+.. code-block:: yaml
 
     tasks:
         - name: foobar-prod
@@ -1115,7 +1235,9 @@ See `Task Placement Constraints <https://docs.aws.amazon.com/AmazonECS/latest/de
 placement_strategy
 ------------------
 
-(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy rules per service. ::
+(Optional) The placement strategy objects to use for tasks in your service. You can specify a maximum of four strategy rules per service.
+
+.. code-block:: yaml
 
     services:
         - name: foobar-prod
@@ -1148,7 +1270,9 @@ See `Schedule Expressions for Rules <https://docs.aws.amazon.com/AmazonCloudWatc
 schedule_role
 -------------
 
-The Amazon Resource Name (ARN) of the IAM role associated with the schedule rule. This should just allow the cloudwatch scheduled event to run the task. It should have a policy like::
+The Amazon Resource Name (ARN) of the IAM role associated with the schedule rule. This should just allow the cloudwatch scheduled event to run the task. It should have a policy like:
+
+.. code-block::
 
     {
         "Version": "2012-10-17",
@@ -1176,7 +1300,9 @@ Container Definitions
 
 Define your containers within a task or service by using a ``containers:`` subsection.
 
-``containers`` is a list of containers like so::
+``containers`` is a list of containers like so:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -1208,7 +1334,9 @@ name
 (String, Required) The name of the container. If you are linking multiple containers together in a task definition, the
 name of one container can be entered in the links of another container to connect the containers.  The restrictions on
 characters in ECS container are in play here:  Up to 255 letters (uppercase and lowercase), numbers, hyphens, and
-underscores are allowed. ::
+underscores are allowed.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1219,14 +1347,18 @@ image
 (String, Required) The image used to start the container. Up to 255 letters (uppercase and lowercase), numbers, hyphens,
 underscores, colons, periods, forward slashes, and number signs are allowed.
 
-For an AWS ECR repository::
+For an AWS ECR repository:
+
+.. code-block:: yaml
 
     containers:
       - name: foo
         image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
 
 
-For a Docker hub repository::
+For a Docker hub repository:
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1236,7 +1368,9 @@ memory
 ------
 
 (Integer, Required) The hard limit of memory (in MB) available to the container.  If the container tries to exceed this
-amount of memory, it is killed. ::
+amount of memory, it is killed.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1249,7 +1383,9 @@ memoryReservation
 (Integer, Optional) The soft limit (in MB) of memory to reserve for the container. When system memory is under heavy
 contention, Docker attempts to keep the container memory to this soft limit; however, your container can consume more
 memory when it needs to, up to the hard limit specified with the ``memory`` parameter.  ``memoryReservation`` must be
-less than ``memory`` ::
+less than ``memory``
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1266,7 +1402,9 @@ cpu
 ---
 
 (Integer, Required) The number of cpu units to reserve for the container. A container instance has 1,024 cpu units for
-every CPU core. ::
+every CPU core.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1281,7 +1419,9 @@ ports
 Either specify both ports (HOST:CONTAINER), or just the container port (a random host port will be chosen).  You can
 also specify a protocol as (HOST:CONTAINER/PROTOCOL).  Note that both HOST and CONTAINER here must be single ports, not
 port ranges as ``docker-compose.yml`` allows in its port definitions.  PROTOCOL must be one of 'tcp' or 'udp'.  If no
-PROTOCOL is specified, we assume 'tcp'. ::
+PROTOCOL is specified, we assume 'tcp'.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1297,7 +1437,9 @@ links
 (List of strings, Optional) A list of names of other containers in our task definition.  Adding a container name to
 links allows containers to communicate with each other without the need for port mappings.
 
-Links should be specified as ``CONTAINER_NAME``, or ``CONTAINER_NAME:ALIAS``. ::
+Links should be specified as ``CONTAINER_NAME``, or ``CONTAINER_NAME:ALIAS``.
+
+.. code-block:: yaml
 
     containers:
       - name: my-service
@@ -1324,7 +1466,9 @@ essential
 (Boolean, Optional) If the essential parameter of a container is marked as true, and that container fails or stops for
 any reason, all other containers that are part of the task are stopped. If the essential parameter of a container is
 marked as false, then its failure does not affect the rest of the containers in a task. If this parameter is omitted, a
-container is assumed to be essential. ::
+container is assumed to be essential.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1337,7 +1481,9 @@ container is assumed to be essential. ::
 extra_hosts
 -----------
 
-(list of strings, Optional) Add hostname mappings. ::
+(list of strings, Optional) Add hostname mappings.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1345,7 +1491,9 @@ extra_hosts
         - "somehost:162.242.195.82"
         - "otherhost:50.31.209.229"
 
-An entry with the ip address and hostname will be created in ``/etc/hosts`` inside containers for this service, e.g::
+An entry with the ip address and hostname will be created in ``/etc/hosts`` inside containers for this service, e.g:
+
+.. code-block:: yaml
 
     162.242.195.82  somehost
     50.31.209.229   otherhost
@@ -1354,7 +1502,9 @@ entrypoint
 ----------
 
 (String, Optional) The entry point that is passed to the container.  Specify it as a string and Deployintaor will split
-the string into an array for you for passing to ECS. ::
+the string into an array for you for passing to ECS.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1365,7 +1515,9 @@ command
 -------
 
 (String, Optional) The command that is passed to the container.  Specify it as a string and Deployintaor will split the
-string into an array for you for passing to ECS. ::
+string into an array for you for passing to ECS.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1376,7 +1528,9 @@ environment
 -----------
 
 (Optional) Add environment variables. You can use either an array or a dictionary. Any boolean values: true, false, yes,
-no, need to be enclosed in quotes to ensure they are not converted to True or False by the YML parser. ::
+no, need to be enclosed in quotes to ensure they are not converted to True or False by the YML parser.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1396,7 +1550,9 @@ ulimits
 -------
 
 (Optional) Override the default ulimits for a container. You can either specify
-a single limit as an integer or soft/hard limits as a mapping. ::
+a single limit as an integer or soft/hard limits as a mapping.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1412,7 +1568,9 @@ See `Amazon ECS Task Definition Parameters: Resource Limits <https://docs.aws.am
 cap_add
 -------
 
-(List of strings, Optional) List here any Linux kernel capabilities your container should have ::
+(List of strings, Optional) List here any Linux kernel capabilities your container should have.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1421,7 +1579,7 @@ cap_add
           - SYS_ADMIN
           - CHOWN
 
-.. note ::
+.. note::
 
   The capabilities should be in ALL CAPS.  Valid values are given in the link below.
 
@@ -1430,7 +1588,9 @@ See `Amazon ECS Task Definition Parameters: Linux Parameters`_.
 cap_drop
 --------
 
-(List of strings, Optional) List here any Linux kernel capabilities your container should **not** have ::
+(List of strings, Optional) List here any Linux kernel capabilities your container should **not** have.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1438,14 +1598,16 @@ cap_drop
         cap_drop:
           - SYS_RAWIO
 
-.. note ::
+.. note::
 
   The capabilities should be in ALL CAPS.  Valid values are given in the link below.
 
 tmpfs
 --------
 
-(Optional) The container path, mount options, and size (in MiB) of the tmpfs mount. This parameter maps to the --tmpfs option to docker run, mount_options is optional ::
+(Optional) The container path, mount options, and size (in MiB) of the tmpfs mount. This parameter maps to the --tmpfs option to docker run, mount_options is optional.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1468,7 +1630,9 @@ dockerLabels
 an array or a dictionary.
 
 Use reverse-DNS notation to prevent your labels from conflicting with those
-used by other software. ::
+used by other software.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1489,7 +1653,9 @@ volumes
 -------
 
 (List of strings, Optional) Specify a path on the host machine (VOLUME:CONTAINER), or an access mode
-(VOLUME:CONTAINER:ro).  The HOST and CONTAINER paths should be absolute paths. ::
+(VOLUME:CONTAINER:ro).  The HOST and CONTAINER paths should be absolute paths.
+
+.. code-block:: yaml
 
     containers:
       - name: foo
@@ -1503,7 +1669,9 @@ will mount that folder on the host machine into your container via the `local` d
 define the volume specifically in the ``volumes`` section in your task definition.
 
 You can also set the VOLUME portion of the mount to the name of a volume defined in your task definition's ``volumes``
-section ::
+section.
+
+.. code-block:: yaml
 
     services:
       - name: foobar
@@ -1527,7 +1695,9 @@ logging
 
 (String and dictionary, Optional) Specify a log driver and its associated options.
 
-To configure awslogs::
+To configure awslogs:
+
+.. code-block:: yaml
 
     logging:
       driver: awslogs
@@ -1536,7 +1706,9 @@ To configure awslogs::
         awslogs-region: ap-northeast-1
         awslogs-stream-prefix: awslogs-example
 
-For fluentd::
+For fluentd:
+
+.. code-block:: yaml
 
     logging:
       driver: fluentd
@@ -1544,9 +1716,10 @@ For fluentd::
         fluentd-address: 127.0.0.1:24224
         tag: hello
 
+.. note::
 
-**NOTE**: if you don't provide a ``logging:`` section, no logs will be emitted
-from your service.
+  if you don't provide a ``logging:`` section, no logs will be emitted
+  from your service.
 
 
 Secrets Management with AWS Parameter Store
@@ -1559,22 +1732,30 @@ This allows us to store settings, encrypted passwords and other secrets without
 exposing them to casual view in the AWS Console via the ``environment`` section
 of the container definition.
 
-This is a list, so each item begins with a dash. For an unencrypted value, it is in the form::
+This is a list, so each item begins with a dash. For an unencrypted value, it is in the form:
+
+.. code-block:: yaml
 
     - VARIABLE=VALUE
 
-For an encrypted value, you must add the *secure* flag::
+For an encrypted value, you must add the *secure* flag:
+
+.. code-block:: yaml
 
     - VARIABLE:secure=VALUE
 
 In this format, the encrypted value will be encrypted with the default key. For
-better security, make a unique key for each app and specify it in this format::
+better security, make a unique key for each app and specify it in this format:
+
+.. code-block:: yaml
 
     - VARIABLE:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
 
 For more information about creating keys, see `AWS Key Management Service (KMS) <https://aws.amazon.com/kms/>`_.
 
-Here's an example configuration::
+Here's an example configuration:
+
+.. code-block:: yaml
 
     services:
       - name: hello-world-test
@@ -1601,26 +1782,36 @@ using the ``config`` subcommand.
 Services
 ^^^^^^^^
 
-To see how your local values compare vs the current values of the service config in AWS, run::
+To see how your local values compare vs the current values of the service config in AWS, run:
+
+.. code-block:: bash
 
     deploy service config diff hello-world-test
 
-To view your current values of the service config in AWS, run::
+To view your current values of the service config in AWS, run:
+
+.. code-block:: bash
 
     deploy service config show hello-world-test
 
-To update the values of the service config to AWS, run::
+To update the values of the service config to AWS, run:
+
+.. code-block:: bash
 
     deploy service config write hello-world-test
 
 Tasks
 ^^^^^
 
-To view your current values of the task config in AWS, run::
+To view your current values of the task config in AWS, run:
+
+.. code-block:: bash
 
     deploy task config show hello-world-test
 
-To update the values of the task config to AWS, run::
+To update the values of the task config to AWS, run:
+
+.. code-block:: bash
 
     deploy task config write hello-world-test
 
@@ -1629,7 +1820,9 @@ Reading From The Environment
 
 In practice, you do not want the ``deployfish.yml`` file to contain actual
 passwords, so the best practice is to have the secret parameter values defined
-in an environment variable. You would then change the *config* section to be::
+in an environment variable. You would then change the *config* section to be:
+
+.. code-block:: yaml
 
     ...
     config:
@@ -1677,8 +1870,9 @@ When you do a ``deploy service update <service_name>``, deployfish automaticaly 
 the task definition to what is listed in the ``tasks`` entry for each task, and
 adds a docker label to the first container of the task definition for the
 service for each task, recording the ``<family>:<revision>`` string of the
-correct task revision. ::
+correct task revision.
 
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -1764,7 +1958,9 @@ Environmnent variable replacement
 
 You can add ``${env.<environment var>}`` to your service definition anywhere you
 want the value of the shell environment variable ``<environment var>``.  For
-example, for the following ``deployfish.yml`` snippet::
+example, for the following ``deployfish.yml`` snippet:
+
+.. code-block:: yaml
 
     services:
       - name: foobar-prod
@@ -1784,7 +1980,9 @@ shell environment into the deployfish environment.  Then anything you've
 defined in your shell environment will be available for ``${env.VAR}``
 replacements.
 
-Example::
+Example:
+
+.. code-block:: bash
 
     deploy --import_env <subcommand> [options]
 
@@ -1800,7 +1998,9 @@ these rules:
 * Blank lines are ignored.
 * There is no special handling of quotation marks.
 
-Example::
+Example:
+
+.. code-block:: bash
 
     deploy --env_file=<filename> <subcommand> [options]
 
@@ -1812,7 +2012,9 @@ The "env_file" service definition option
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can also specify this environment variable file in the ECS service
-definition itself::
+definition itself:
+
+.. code-block:: yaml
 
     services:
       - name: hello-world-test
@@ -1831,7 +2033,9 @@ Enterprise, you can use the values of your terraform outputs as string, list, or
 in your service definitions.
 
 To do so, first declare a ``terraform`` top level section in your
-``deployfish.yml`` file::
+``deployfish.yml`` file:
+
+.. code-block:: yaml
 
     terraform:
       statefile: 's3://terraform-remote-state/my-service-terraform-state'
@@ -1844,7 +2048,9 @@ To do so, first declare a ``terraform`` top level section in your
         ecr_repo_url: 'ecr-repository-url'
 
 If using Terraform Enterprise you need to provide the ``workspace`` and ``organization``
-in place of the statefile::
+in place of the statefile:
+
+.. code-block:: yaml
 
     terraform:
       workspace: sample_workspace
@@ -1860,7 +2066,9 @@ in place of the statefile::
         subnets: 'service-subnets'
 
 Then, wherever you have a string, list, or map value in your service definition, you can
-replace that with a terraform lookup, like so::
+replace that with a terraform lookup, like so:
+
+.. code-block:: yaml
 
     services:
       - name: my-service
@@ -1938,12 +2146,16 @@ In order to authenticate against terraform enterprise and read the state,
 you need to provide an API token. This can be either a user API token,
 team API token, or organization token.
 
-    ``deploy --tfe_token <token> <subcommand> [options]``
+.. code-block:: bash
+
+    deploy --tfe_token <token> <subcommand> [options]
 
 It will also work if you specify an ``ATLAS_TOKEN`` environment variable
 while using the ``--import_env`` option.
 
-    ``deploy --import_env <subcommand> [options]``
+.. code-block:: bash
+
+    deploy --import_env <subcommand> [options]
 
 Advanced Usage: using a different AWS Profile for the statefile
 ===============================================================
@@ -1953,7 +2165,9 @@ the associated Terraform templates affect resources in many different accounts.
 
 If this is the case with you, you can specify which AWS Credentials named profile
 (see `Named Profiles`_ for more information). Use it to retrieve the state files
-by adding the ``profile`` and ``region`` settings to your ``terrraform:`` section::
+by adding the ``profile`` and ``region`` settings to your ``terrraform:`` section:
+
+.. code-block:: yaml
 
     terraform:
       statefile: 's3://hello-world-remotestate-file/hello-world-terraform-state'
