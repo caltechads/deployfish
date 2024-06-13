@@ -1357,9 +1357,8 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         else:
             if 'placementConstraints' not in data:
                 data['placementConstraints'] = []
-            if 'requiresCompatibilities' not in data:
-                data['requiresCompatibilities'] = ['EC2']
-
+        if 'requiresCompatibilities' not in data:
+            data['requiresCompatibilities'] = ['EC2']
         return data
 
     def render(self):
@@ -1623,17 +1622,17 @@ class Task(TagsMixin, VPCConfigurationMixin, Model):
 
     Config we need in order to run the task:
 
-        cluster: what cluster to run the task in
-        desiredCount: how many tasks to actually run
-        launchType: EC2 or FARGATE
-        platformVersion: (optional) only used if launchType == FARGATE
-        networkConfiguration.awsvpcConfiguration: If the task definition's networkMode is 'awsvpc', this tells us
-            what subnets in which to run the tasks, and which security groups to assign to them
-        capacityProviderStrategy: (optional) the capacity provider strategy to use, if any.  This is mutually
-            exclusive with launchType
-        placementConstraints: (optional) placement constraints for running the task
-        placementStrategy: (optional) the placement strategy for running the task
-        group: (optional)the task group
+        * ``cluster``: what cluster to run the task in
+        * ``desiredCount``: how many tasks to actually run
+        * ``launchType``: EC2 or FARGATE
+        * ``platformVersion``: (optional) only used if launchType == FARGATE
+        * ``networkConfiguration.awsvpcConfiguration``: If the task definition's networkMode is 'awsvpc', this tells us
+          what subnets in which to run the tasks, and which security groups to assign to them
+        * ``capacityProviderStrategy``: (optional) the capacity provider strategy to use, if any.  This is mutually
+          exclusive with launchType
+        * ``placementConstraints``: (optional) placement constraints for running the task
+        * ``placementStrategy``: (optional) the placement strategy for running the task
+        * ``group``: (optional)the task group
 
     We write these as tags on the task defintion:
 

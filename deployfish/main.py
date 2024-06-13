@@ -1,8 +1,10 @@
 import os
 from typing import Any, Optional, Dict
 
+from botocore.exceptions import UnauthorizedSSOTokenError
 from cement import App, init_defaults
 from cement.core.exc import CaughtSignal
+import click
 
 import deployfish.core.adapters  # noqa:F401,F403  # pylint:disable=unused-import
 
@@ -241,6 +243,10 @@ def main():
             if app.debug is True:
                 import traceback
                 traceback.print_exc()
+
+        except UnauthorizedSSOTokenError as ex:
+            click.secho(str(ex), fg='red')
+            app.exit_code = 1
 
         except DeployfishAppError as e:
             print('DeployfishAppError > %s' % e.args[0])

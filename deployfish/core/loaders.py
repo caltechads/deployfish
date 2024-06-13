@@ -6,6 +6,10 @@ from deployfish.ext.ext_df_argparse import DeployfishArgparseController
 
 
 class ServiceDereferenceMixin:
+    """
+    A mixin for Service objects to support dereferencing of identifiers in the
+    form "name" or "environment" into the usual "{cluster_name}:{service_name}".
+    """
 
     controller: DeployfishArgparseController
 
@@ -30,6 +34,9 @@ class ServiceDereferenceMixin:
 
 
 class ObjectLoader:
+    """
+    A base class for loading objects from deployfish.yml or from AWS.
+    """
 
     class DeployfishSectionDoesNotExist(NoSuchConfigSection):
         pass
@@ -151,4 +158,7 @@ class ObjectLoader:
 
 
 class ServiceLoader(ServiceDereferenceMixin, ObjectLoader):
+    """
+    A loader for Service objects.
+    """
     pass
