@@ -1374,7 +1374,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
                 if 'secrets' in d:
                     del d['secrets']
         if 'Timestamp' not in self._tags:
-            self._tags['Timestamp'] = datetime.datetime.now(datetime.UTC).strftime('%Y/%m/%dT%H:%M:%SZ')
+            self._tags['Timestamp'] = datetime.datetime.now(datetime.timezone.utc).strftime('%Y/%m/%dT%H:%M:%SZ')
         data['tags'] = self.render_tags()
         if not data['tags']:
             del data['tags']
@@ -1382,7 +1382,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
 
     def save(self):
         # Update Timestamp tag on task defintion before saving
-        self._tags['Timestamp'] = datetime.datetime.now(datetime.UTC).strftime('%Y/%m/%dT%H:%M:%SZ')
+        self._tags['Timestamp'] = datetime.datetime.now(datetime.timezone.utc).strftime('%Y/%m/%dT%H:%M:%SZ')
         return self.objects.save(self)
 
     # ----------------------------------
