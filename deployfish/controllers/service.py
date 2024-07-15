@@ -24,6 +24,7 @@ from deployfish.core.waiters.hooks.ecs import ECSDeploymentStatusWaiterHook
 from deployfish.renderers.table import TableRenderer
 
 from .crud import CrudBase
+from ..core.ssh import DockerMixin
 
 
 def valid_date(s):
@@ -274,7 +275,10 @@ class ECSService(CrudBase):
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         obj = cast(Service, obj)
-        obj.restart(hard=self.app.pargs.hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
+        try:
+            obj.restart(hard=self.app.pargs.hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
+        except DockerMixin.NoRunningTasks:
+            return click.secho('\n\nNo running tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='yellow')
         return click.secho('\n\nRestarted tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
 
     @ex(
