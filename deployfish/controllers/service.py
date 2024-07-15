@@ -24,6 +24,7 @@ from deployfish.core.waiters.hooks.ecs import ECSDeploymentStatusWaiterHook
 from deployfish.renderers.table import TableRenderer
 
 from .crud import CrudBase
+from ..core.ssh import DockerMixin
 
 
 def valid_date(s):
@@ -249,7 +250,7 @@ class ECSService(CrudBase):
         obj.scale(count)
         self.scale_services_waiter(obj)  # type: ignore
         self.app.print(
-            click.style('\n\nScaled {}("{}") to {} tasks.'.format(self.model.__name__, obj.pk, count), fg='green')
+            click.secho('\n\nScaled {}("{}") to {} tasks.'.format(self.model.__name__, obj.pk, count), fg='green')
         )
         for _ in self.app.hook.run('post_service_scale', self.app, obj, count):
             pass
@@ -274,8 +275,11 @@ class ECSService(CrudBase):
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         obj = cast(Service, obj)
-        obj.restart(hard=self.app.pargs.hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
-        return click.style('\n\nRestarted tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
+        try:
+            obj.restart(hard=self.app.pargs.hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
+        except DockerMixin.NoRunningTasks:
+            return click.secho('\n\nNo running tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='yellow')
+        return click.secho('\n\nRestarted tasks for {}("{}").'.format(self.model.__name__, obj.pk), fg='green')
 
     @ex(
         help='List the running tasks for an ECS Service in AWS.',
@@ -339,7 +343,6 @@ class ECSServiceStandaloneTasks(Controller):
 
     model: Type[Model] = Service
     loader: Type[ObjectLoader] = ServiceLoader
-
 
     @ex(
         help='List StandaloneTasks related to a Service from configuration in deployfish.yml',
@@ -428,7 +431,6 @@ class ECSServiceStandaloneTasks(Controller):
             click.secho('\nDone.', fg='yellow')
         else:
             self.app.print('No related tasks.')
-
 
 
 class ECSServiceSecrets(ObjectSecretsController):

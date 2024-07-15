@@ -2780,6 +2780,12 @@ class Service(
         """
         if not waiter_hooks:
             waiter_hooks = []
+        if len(self.running_tasks) == 0:
+            # If there aren't any running tasks to restart, we have nothing to do but inform the user of said fact.
+            raise self.NoRunningTasks(
+                f'Service "{self.data["serviceName"]}" has no running tasks.'
+            )
+
         waiter = self.objects.get_waiter('services_stable')
         for task in self.running_tasks:
             task.delete()
