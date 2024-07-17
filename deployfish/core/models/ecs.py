@@ -2745,10 +2745,82 @@ class Service(
             return [vpc.provisioner]
         return self.ssh_targets
 
+    def ssh_interactive(self, ssh_target: "Instance" = None, verbose: bool = False) -> None:
+        """
+        Do an interactive SSH session to ``ssh_target``.  This method will not exit
+        until the user ends the ssh sesison.  If ``ssh_target`` is not provided, we
+        will choose the "first" instance used by the list of running tasks.
+
+        If this is a FARGATE service, we will raise an exception -- FARGATE services
+        do not have reachable instances.
+
+        Args:
+            ssh_target: the instance to which to ssh
+
+        Keyword Args:
+            verbose: If ``True``, use the verbose flags for ssh
+
+        Raises:
+            self.OperationFailed: _description_
+        """
+        if self.task_definition.is_fargate():
+            raise self.OperationFailed(
+                'Cannot SSH to a FARGATE service'
+            )
+        super().ssh_interactive(ssh_target=ssh_target, verbose=verbose)
+
+    def ssh_noninteractive(
+        self,
+        command: str,
+        verbose: bool = False,
+        output = None,
+        input_data = None,
+        ssh_target: "Instance" = None
+    ) -> Tuple[bool, str]:
+        """
+        Run a command on ``ssh_target`` via ssh. This method will not exit until
+        the command finishes.  If ``ssh_target`` is not provided, we will choose
+        the "first" instance used by the list of running tasks.
+
+        If this is a FARGATE service, we will raise an exception -- FARGATE services
+        do not have reachable instances.
+
+        Args:
+            command: the command to run on the remote host
+
+        Keyword Args:
+            verbose: If ``True``, use the verbose flags for ssh
+            output: a filename or file descriptor to which to write the output.
+            input_data: a filename, file descriptor, or string from which to
+                read input.
+            ssh_target: the instance to which to ssh
+
+        Raises:
+            self.OperationFailed: this is a FARGATE service, and we can't ssh to
+                a FARGATE service
+
+        Returns:
+            A tuple of (success, output).  ``success`` is a boolean indicating
+            whether the command succeeded.  ``output`` is the output of the
+            command.
+        """
+        if self.task_definition.is_fargate():
+            raise self.OperationFailed(
+                'Cannot SSH to a FARGATE service'
+            )
+        return super().ssh_noninteractive(
+            command,
+            verbose=verbose,
+            output=output,
+            input_data=input_data,
+            ssh_target=ssh_target
+        )
+
     @property
     def ssh_tunnels(self):
-        # We're doing this import here to hopefully avoid circular dependencies between this file and ./ssh.py
-        from .ssh import SSHTunnel
+        # We're doing this import here to hopefully avoid circular dependencies
+        # between this file and ./ssh.py
+        from .ssh import SSHTunnel   # pylint: disable=import-outside-toplevel
         # We actually want the live service here -- no point in tunneling to a service that doesn't
         # exist or is out of date with deployfish.yml
         service = self
