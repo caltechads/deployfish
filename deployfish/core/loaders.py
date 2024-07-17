@@ -8,7 +8,8 @@ from deployfish.ext.ext_df_argparse import DeployfishArgparseController
 class ServiceDereferenceMixin:
     """
     A mixin for Service objects to support dereferencing of identifiers in the
-    form "name" or "environment" into the usual "{cluster_name}:{service_name}".
+    form "name" or "environment" into the usual
+    "``{cluster_name}:{service_name}``".
     """
 
     controller: DeployfishArgparseController
@@ -39,15 +40,31 @@ class ObjectLoader:
     """
 
     class DeployfishSectionDoesNotExist(NoSuchConfigSection):
+        """
+        We raise this when we can't find the section in deployfish.yml that
+        the object we're trying to load is supposed to be in.
+        """
         pass
 
     class DeployfishObjectDoesNotExist(NoSuchConfigSectionItem):
+        """
+        We raise this when we can't find the object in the section in
+        deployfish.yml that the object we're trying to load is supposed to be
+        in.
+        """
         pass
 
     class ObjectNotManaged(Exception):
+        """
+        We raise this if the object we're trying to load is not managed in
+        deployfish.yml.
+        """
         pass
 
     class ReadOnly(ObjectReadOnly):
+        """
+        We raise this if this object is read-only.
+        """
         pass
 
     def __init__(self, controller):
@@ -56,14 +73,18 @@ class ObjectLoader:
     def dereference_identifier(self, identifier: str) -> str:
         return identifier
 
-    def get_object_from_aws(self, identifier: str, model: Optional[Type[Model]] = None) -> Model:
+    def get_object_from_aws(
+        self,
+        identifier: str,
+        model: Optional[Type[Model]] = None
+    ) -> Model:
         """
         Get an object from AWS directly, and don't look at our config in
         deployfish.yml.
 
         Args:
             identifier: the name of the item to load from the section named by
-                `self.model.config_section`
+                ``self.model.config_section``
 
         Keyword Arguments:
             model: Override the model on self.controller with this class
@@ -87,7 +108,7 @@ class ObjectLoader:
         """
         Load an object from deployfish.yml.  This may differ from the object in
         AWS.  If you want the object from AWS, use
-        ``self.get_object_from_aws()``.
+        :py:meth:`get_object_from_aws`.
 
         Args:
             identifier: the name of the object in deployfish.yml
@@ -146,13 +167,13 @@ class ObjectLoader:
         if model.config_section != 'NO_SECTION':
             try:
                 config.get_section(model.config_section)
-            except KeyError:
-                raise self.DeployfishSectionDoesNotExist(model.config_section)
+            except KeyError as e:
+                raise self.DeployfishSectionDoesNotExist(model.config_section) from e
             try:
                 data = config.get_section_item(model.config_section, identifier)
                 return model.new(data, 'deployfish', **factory_kwargs)
-            except KeyError:
-                raise self.DeployfishObjectDoesNotExist(model.config_section, identifier)
+            except KeyError as e:
+                raise self.DeployfishObjectDoesNotExist(model.config_section, identifier) from e
         else:
             raise self.ObjectNotManaged('deployfish.yml does not manage objects of class {}'.format(model.__class__))
 

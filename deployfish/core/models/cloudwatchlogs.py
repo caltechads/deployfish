@@ -8,10 +8,23 @@ from .abstract import Manager, Model
 
 class CloudWatchLogStreamIterator:
     """
-    An iterator class that allows you to iterate through your cloudwatch logs from a log stream.
+    An iterator class that allows you to iterate through your cloudwatch logs
+    from a log stream.
+
+    Args:
+        stream: the log stream to iterate through
+
+    Keyword Args:
+        sleep: the number of seconds to sleep between requests
+        start_time: the time to start the iterator from
     """
 
-    def __init__(self, stream: "CloudWatchLogStream", sleep: int = 5, start_time: datetime = None):
+    def __init__(
+        self,
+        stream: "CloudWatchLogStream",
+        sleep: int = 5,
+        start_time: datetime = None
+    ) -> None:
         """
         :param start_time datetime: a timezone aware, UTC datetime
         """

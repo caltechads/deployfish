@@ -13,6 +13,10 @@ boto3_session: Optional[boto3.session.Session] = None
 class AWSSessionBuilder:
 
     class NoSuchAWSProfile(Exception):
+        """
+        We raise this if the AWS profile defined in the deployfish.yml file
+        does not exist in the user's ``~/.aws/config`` file.
+        """
         pass
 
     class ForbiddenAWSAccountId(Exception):
@@ -116,6 +120,17 @@ def build_boto3_session(
     boto3_session_override: boto3.session.Session = None,
     use_aws_section: bool = True
 ) -> None:
+    """
+    Build a boto3 session object from the deployfish.yml file, commandline flags and
+    our environment.  Save it in the global variable :py:var:`boto3_session`.  So we
+    don't have to keep constructing it.
+
+    Args:
+        filename: the path to our deployfish.yml file
+        boto3_session_override: if not None, use this boto3 session object instead of
+            building a new one
+        use_aws_section: if ``False``, ignore any ``aws:`` section in deployfish.yml
+    """
     global boto3_session  # pylint: disable=global-statement
     if boto3_session_override:
         boto3_session = boto3_session_override
@@ -123,7 +138,26 @@ def build_boto3_session(
         boto3_session = AWSSessionBuilder().new(filename, use_aws_section=use_aws_section)
 
 
-def get_boto3_session(boto3_session_override: boto3.session.Session = None) -> boto3.session.Session:
+def get_boto3_session(
+    boto3_session_override: boto3.session.Session = None
+) -> boto3.session.Session:
+    """
+    Get the boto3 session object that we've built, or the one that was passed in
+    by ``boto3_session_override``.  This is the function that all the rest of
+    our code should use to get the boto3 session object.
+
+    Important:
+
+        You should have called :py:func:`build_boto3_session` before calling this
+        function.
+
+    Args:
+        boto3_session_override: if not None, use this boto3 session object instead of
+            the one we built.
+
+    Returns:
+        The boto3 session object.
+    """
     if boto3_session_override:
         return boto3_session_override
     if boto3_session:

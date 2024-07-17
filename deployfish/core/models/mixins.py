@@ -51,7 +51,9 @@ class TagsMixin:
 
     objects: "Manager"
 
-    def __init__(self, *args, **kwargs):
+    data: Dict[str, Any]
+
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._tags: Dict[str, str] = {}
         key = None
@@ -167,8 +169,8 @@ class TaskDefinitionFARGATEMixin:
         if 'cpu' in self.data:
             try:
                 cpu = int(self.data['cpu'])
-            except ValueError:
-                raise SchemaException('Task cpu must be an integer')
+            except ValueError as e:
+                raise SchemaException('Task cpu must be an integer') from e
             if cpu not in self.VALID_FARGATE_CPU:
                 raise SchemaException(
                     'Task cpu of {}MB is not valid for FARGATE tasks.  Choose one of {}'.format(
@@ -205,8 +207,8 @@ class TaskDefinitionFARGATEMixin:
         if 'cpu' in self.data:
             try:
                 cpu = int(self.data['cpu'])
-            except ValueError:
-                raise SchemaException('Task cpu must be an integer')
+            except ValueError as e:
+                raise SchemaException('Task cpu must be an integer') from e
         return cpu
 
     def set_task_cpu(
@@ -335,8 +337,8 @@ class TaskDefinitionFARGATEMixin:
         else:
             try:
                 memory = int(self.data['memory'])
-            except ValueError:
-                raise SchemaException('Task memory must be an integer')
+            except ValueError as e:
+                raise SchemaException('Task memory must be an integer') from e
             if memory not in self.VALID_FARGATE_MEMORY[cpu]:
                 raise SchemaException(
                     'When using the FARGATE launch_type with task cpu={}, your requested task memory of {}MB is not valid. Valid task memory values for that cpu level are: {}'.format(  # noqa:E501  # pylint:disable=line-too-long
@@ -357,8 +359,8 @@ class TaskDefinitionFARGATEMixin:
         if 'memory' in self.data:
             try:
                 memory = int(self.data['memory'])
-            except ValueError:
-                raise SchemaException('Task memory must be an integer')
+            except ValueError as e:
+                raise SchemaException('Task memory must be an integer') from e
         return memory
 
     def set_task_memory(

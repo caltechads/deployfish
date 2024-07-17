@@ -1,10 +1,8 @@
 from copy import deepcopy
 import datetime
 import fnmatch
-import pytz
 import re
 import textwrap
-from tzlocal import get_localzone
 from typing import (
     Any,
     Dict,
@@ -20,10 +18,14 @@ from typing import (
 )
 import warnings
 
+import pytz
+from tzlocal import get_localzone
+
 from deployfish.core.aws import get_boto3_session
 from deployfish.core.ssh import DockerMixin, SSHMixin
 from deployfish.core.utils import is_fnmatch_filter
 from deployfish.exceptions import SchemaException, ObjectImproperlyConfigured
+from deployfish.config import get_config
 
 from .abstract import Manager, Model, LazyAttributeMixin
 from .ec2 import Instance, AutoscalingGroup
@@ -1454,7 +1456,15 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         )
 
     @property
-    def secrets(self):
+    def secrets(self) -> Dict[str, "Secret"]:
+        """
+        Return a dictionary of the secrets (AWS SSM Parameter Store parameters)
+        for this task definition.  The keys are the secret names, the values are
+        :py:class:`deployfish.core.models.secrets.Secret` objects.
+
+        This will be a combined dictionary of all the secrets for all the
+        containers in this task definition.
+        """
         if 'secrets' not in self.cache:
             self.cache['secrets'] = {s.secret_name: s for s in self.containers[0].secrets}
         return self.cache['secrets']
@@ -2477,15 +2487,17 @@ class Service(
     @property
     def version(self) -> str:
         """
-        Return the version tag on the container image for the first container in the task definition.
+        Return the version tag on the container image for the first container in
+        the task definition.
         """
         return self.task_definition.version
 
     @property
     def containers(self) -> Sequence[ContainerDefinition]:
         """
-        This returns a list of  ``ContainerDefinition`` objects in the ``TaskDefinition`` for the PRIMARY deployment for
-        the service.  If you want the list of actual running containers for the service, use
+        This returns a list of  ``ContainerDefinition`` objects in the
+        ``TaskDefinition`` for the PRIMARY deployment for the service.  If you
+        want the list of actual running containers for the service, use
         ``self.running_containers``.
         """
         return self.task_definition.containers
@@ -2518,7 +2530,8 @@ class Service(
         """
         Return our deployfish environment: ``test``, ``prod``, etc..
 
-        .. note::
+        Note:
+
             Not the docker environment, which is a list of environment variables
             to set in the container environment.
         """
@@ -2526,6 +2539,13 @@ class Service(
 
     @property
     def events(self) -> List[Dict[str, Any]]:
+        """
+        Return the list of service events.
+
+        Returns:
+            A list of dictionaries, each of which represents an event for this
+            service.
+        """
         return self.data.get('events', [])
 
     @property
@@ -2541,17 +2561,38 @@ class Service(
         """
         Return the prefix we use to save our AWS Parameter Store Parameters to
         AWS.
+
+        This is always the cluster name followed by the service name::
+
+                "{cluster-name}.{service-name}."
         """
         return f"{self.data['cluster']}.{self.name}."
 
     @property
-    def secrets(self):
+    def secrets(self) -> Dict[str, "Secret"]:
+        """
+        Return a dictionary of the secrets (AWS SSM Parameter Store parameters)
+        for this task definition.  The keys are the secret names, the values are
+        :py:class:`deployfish.core.models.secrets.Secret` objects.
+
+        This will be a combined dictionary of all the secrets for all the
+        containers in the task definition for this service.
+        """
         if 'secrets' not in self.cache:
             self.cache['secrets'] = self.task_definition.secrets
         return self.cache['secrets']
 
     @secrets.setter
-    def secrets(self, value):
+    def secrets(self, value: Dict[str, "Secret"]) -> None:
+        """
+        Set the secrets cache for this service.   Secrets in this case are
+        AWS SSM Parameter Store parameters.
+
+        Args:
+            value: a dictionary of secrets for this service, where the keys are
+                the secret names and the values are
+                :py:class:`deployfish.core.models.secrets.Secret` objects.
+        """
         self.cache['secrets'] = value
 
     def reload_secrets(self) -> None:
@@ -2619,6 +2660,14 @@ class Service(
 
     @property
     def service_discovery(self) -> Optional[ServiceDiscoveryService]:
+        """
+        Return the :py:class:`deployfish.core.models.ServiceDiscoveryService` object
+        for this service, if it has one.
+
+        Returns:
+            A :py:class:`deployfish.core.models.ServiceDiscoveryService` object
+            or ``None``
+        """
         if 'service_discovery' not in self.cache:
             if 'serviceRegistries' in self.data and self.data['serviceRegistries']:
                 pk = self.data['serviceRegistries'][0]['registryArn']
@@ -2640,8 +2689,7 @@ class Service(
         Args:
             value: a configured ``ServiceDiscoveryService`` instance
 
-        .. note::
-
+        Note:
             The ServiceDiscoveryService we get here may not be saved to AWS yet,
             so may not have an ARN.  We therefore set the `serviceRegistries'
             key in :py:attr:`data` in :py:meth:`save`, after saving the
@@ -2651,6 +2699,12 @@ class Service(
 
     @property
     def helper_tasks(self) -> Sequence[ServiceHelperTask]:
+        """
+        Get the helper tasks for this service.
+
+        Returns:
+            A list of :py:class:`deployfish.core.models.ServiceHelperTask` objects
+        """
         if 'helper_tasks' not in self.cache:
             command_arns = [
                 self.task_definition.tags[t]  # type: ignore
@@ -2662,14 +2716,38 @@ class Service(
 
     @helper_tasks.setter
     def helper_tasks(self, value: Sequence[ServiceHelperTask]) -> None:
+        """
+        Set the helper tasks for this service.
+
+        Args:
+            value: a list of :py:class:`deployfish.core.models.ServiceHelperTask` objects
+        """
         self.cache['helper_tasks'] = value
 
     @property
     def running_tasks(self) -> Sequence[InvokedTask]:
+        """
+        Return a list of all the running tasks for this service as a list
+        of :py:class:`deployfish.core.models.InvokedTask` objects.
+
+        Returns:
+            The list of running tasks for this service.
+        """
         return InvokedTask.objects.list(self.data['cluster'], service=self.name)
 
     @property
     def container_instances(self) -> Sequence[ContainerInstance]:
+        """
+        Return a list of all the container instances for this service as a list
+        of :py:class:`deployfish.core.models.ContainerInstance` objects.
+
+        Note:
+            FARAGATE services don't have container instances, so this will
+            return an empty list for FARGATE services.
+
+        Returns:
+            A list of container instances for this service.
+        """
         if 'container_instances' not in self.cache:
             self.cache['container_instances'] = [
                 task.container_instance for task in self.running_tasks
@@ -2838,8 +2916,16 @@ class Service(
 
     def render_for_scale(self, count: int) -> Dict[str, Any]:
         """
-        Prepare the payload for boto3.client('ecs').update_service() when all we want to do is change ``desiredCount``.
-        This will be called by ServiceManager.scale() which will itself be called by Service.scale().
+        Prepare the payload for boto3.client('ecs').update_service() when all we
+        want to do is change ``desiredCount``.  This will be called by
+        :py:meth:`ServiceManager.scale` which will itself be called by
+        :py:meth:`Service.scale`.
+
+        Args:
+            count: the new desired count for the service
+
+        Returns:
+            The payload for ``boto3.client('ecs').update_service()``
         """
         data = {}
         data['service'] = self.data['serviceName']

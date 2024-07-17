@@ -3,7 +3,18 @@ import os
 import random
 import signal
 import subprocess
-from typing import Dict, Type, Any, Tuple, TYPE_CHECKING, Optional, cast, Sequence, Callable
+from typing import (
+  Any,
+  Callable,
+  Dict,
+  Literal,
+  Optional,
+  Sequence,
+  Type,
+  Tuple,
+  TYPE_CHECKING,
+  cast,
+)
 
 import shellescape
 
@@ -78,7 +89,12 @@ class AbstractSSHProvider:
         """
         Return a shell command suitable for establish an interactive ssh session.
 
-        :param command: run this instead of an interactive shell.
+        Args:
+            command: run this instead of starting an interactive shell.
+
+        Returns:
+            A shell command suitable for establishing an interactive ssh session
+            or running a command on the remote instance.
         """
         raise NotImplementedError
 
@@ -90,6 +106,12 @@ class AbstractSSHProvider:
         .. note::
 
             Remove this in favor of just calling self.ssh(command) directly.
+
+        Args:
+            command: the command to run on the remote instance
+
+        Returns:
+            A shell command suitable for running a command-line command via ssh
         """
         return self.ssh(command)
 
@@ -125,10 +147,15 @@ class AbstractSSHProvider:
 
     def push(self, filename: str, run: bool = False) -> str:
         """
-        Return a shell command suitable for uploading a file through an ssh tunnel to ``self.instance``.
+        Return a shell command suitable for uploading a file through an ssh
+        tunnel to :py:attr:`self.instance`.
 
-        :param filename: the local filename to upload.  The remote file will have the same filename.
-        :param run: If True, execute the uploaded file as a shell script.
+        Args:
+            filename: the name of the local file to upload
+            run: if ``True``, execute the uploaded file as a shell script
+
+        Returns:
+            The command to run to upload the file
         """
         raise NotImplementedError
 
@@ -151,6 +178,22 @@ class SSMSSHProvider(AbstractSSHProvider):
     """
 
     def ssh(self, command: str = None) -> str:
+        """
+        Return a shell command suitable for establishing an interactive ssh session.
+
+        If ``command`` is provided, run that command on the remote instance
+        instead of starting an interactive shell.
+
+        If :py:attr:`ssh_verbose_flag` is set, add the ssh verbose flags to the
+        command.
+
+        Keyword Args:
+            command: A command to run on the remote instance instead of opening an
+                interactive session.
+
+        Returns:
+            _type_: _description_
+        """
         # If the caller specified --verbose, have SSH print everything.
         # Otherwise, have SSH print nothing.
         flags = self.ssh_verbose_flag if self.ssh_verbose_flag else '-q'
@@ -163,6 +206,19 @@ class SSMSSHProvider(AbstractSSHProvider):
         return 'ssh -t {} ec2-user@{} {}'.format(flags, ssh_target, shellescape.quote(command))
 
     def tunnel(self, local_port: int, target_host: str, host_port: int) -> str:
+        """
+        Build a command that will tunnel through an SSM connection to an
+        instance to get to another resource in the VPC.
+
+        Args:
+            local_port: the port on the local host to which to connect the tunnel
+            target_host: The hostname/IP address of the target host to which to
+                connect the tunnel
+            host_port: The port on the target host to which to connect the tunnel
+
+        Returns:
+            A shell command suitable for establishing an ssh tunnel
+        """
         profile_name = get_boto3_session().profile_name
         ssh_target = self.instance.pk
         if profile_name:
@@ -176,7 +232,18 @@ class SSMSSHProvider(AbstractSSHProvider):
         )
         return cmd
 
-    def push(self, filename: str, run: bool = False):
+    def push(self, filename: str, run: bool = False) -> str:
+        """
+        Return a shell command suitable for uploading a file through an ssh
+        tunnel to :py:attr:`instance`.
+
+        Args:
+            filename: the name of the local file to upload
+            run: if ``True``, execute the uploaded file as a shell script
+
+        Returns:
+            _type_: _description_
+        """
         if run:
             return 'cat > {filename};bash {filename};rm {filename}'.format(filename=filename)
         return 'cat > {}'.format(filename)
@@ -184,8 +251,8 @@ class SSMSSHProvider(AbstractSSHProvider):
 
 class BastionSSHProvider(AbstractSSHProvider):
     """
-    Find the public-facing bastion host in the VPC in which ``self.instance`` lives, and tunnel through that to get to
-    our instance.
+    Find the public-facing bastion host in the VPC in which :py:attr:`instance`
+    lives, and tunnel through that to get to our instance.
     """
 
     def __init__(self, instance: "Instance", verbose: bool = False) -> None:
@@ -325,9 +392,10 @@ class SSHMixin(SupportsCache, SupportsModel):
         Keyword Args:
             verbose: If ``True``, use the verbose flags for ssh
         """
-        if ssh_target is None:
+        if not ssh_target:
             ssh_target = self.ssh_target
         if ssh_target:
+            # self.ssh_target can still be None
             provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
             subprocess.call(provider.ssh(), shell=True)
         else:
@@ -337,8 +405,8 @@ class SSHMixin(SupportsCache, SupportsModel):
         self,
         command: str,
         verbose: bool = False,
-        output=None,
-        input_data=None,
+        output = None,
+        input_data = None,
         ssh_target: "Instance" = None
     ) -> Tuple[bool, str]:
         """
@@ -401,13 +469,21 @@ class SSHMixin(SupportsCache, SupportsModel):
             stdout_output, stderr_output = p.communicate(input_string)
             return p.returncode == 0, f'{stdout_output}\n{stderr_output}'
 
-    def tunnel(self, tunnel: "SSHTunnel", verbose: bool = False, tunnel_target: "Instance" = None) -> None:
+    def tunnel(
+        self,
+        tunnel: "SSHTunnel",
+        verbose: bool = False,
+        tunnel_target: "Instance" = None
+    ) -> None:
         """
         Establish an SSH tunnel.  This will not exit until the tunnel is closed by the user.
 
-        :param tunnel: the tunnel config
-        :param verbose: if True, display verbose output from ssh
-        :param tunnel_target: if not None, use this host for our tunnel host
+        Args:
+            tunnel: the tunnel config
+
+        Keyword Args:
+            verbose: If ``True``, use the verbose flags for ssh
+            tunnel_target: If not None, use this host for our tunnel host
         """
         if not tunnel_target:
             tunnel_target = self.tunnel_target
@@ -517,8 +593,10 @@ class DockerMixin(SSHMixin, SupportsService):
         Manager.  This is what we use for FARGATE tasks.
 
         .. warning::
-            In order for ECS Exec to work, you'll need to configure your cluster, task role and the system on which you
-            run deployfish as described here:
+
+            In order for ECS Exec to work, you'll need to configure your
+            cluster, task role and the system on which you run deployfish as
+            described here:
             `<https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html>`_.
 
         If ``task_arn`` is not provided, use the first task listed in the
@@ -533,7 +611,6 @@ class DockerMixin(SSHMixin, SupportsService):
                 exec into
             container_name: the name of the container to exec into
         """
-
         if self.running_tasks:
             if task_arn is None:
                 task_arn = self.running_tasks[0].arn

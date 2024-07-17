@@ -348,10 +348,9 @@ class ObjectDockerExecController(Controller):
     @handle_model_exceptions
     def exec(self):
         """
-        SSH to a container machine running one of the tasks for an existing Service or Task in AWS.
-
-        NOTE: this is only available if your Service or Task is of launch type EC2.  You cannot ssh
-        to the container machine of a FARGATE Service or task.
+        Exec into a container running in an existing
+        :py:class:`deployfish.core.models.ecs.Service` or
+        :py:class:`deployfish.core.models.ecs.Task` in AWS.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
