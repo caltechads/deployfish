@@ -198,11 +198,7 @@ class DeployfishApp(App):
             }
             self._deployfish_config = Config.new(**config_kwargs)
             if 'proxy' not in self._deployfish_config.get_global_config('ssh'):
-                self._deployfish_config.set_global_config(
-                    'ssh',
-                    'proxy',
-                    self.config.get('deployfish', 'ssh_provider')
-                )
+                self._deployfish_config.ssh_provider_type = self.config.get('deployfish', 'ssh_provider')
         return self._deployfish_config
 
     @property

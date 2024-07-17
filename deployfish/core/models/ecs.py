@@ -2174,7 +2174,7 @@ class Service(
     def __init__(self, data: Dict[str, Any], **kwargs):
         self.autoscalinggroup_name: Optional[str] = None
         super().__init__(data, **kwargs)
-        self._ssh_proxy_type: str = self.DEFAULT_PROVIDER
+        self._ssh_proxy_type: Literal["bastion", "ssm"] = super().ssh_proxy_type
 
     # ---------------------
     # Model overrides
@@ -2682,13 +2682,33 @@ class Service(
     # -----------------------
 
     @property
-    def ssh_proxy_type(self) -> str:
+    def ssh_proxy_type(self) -> Literal["bastion", "ssm"]:
+        """
+        Return the SSH proxy type for this service.  If the service is a FARGATE
+        service, we default to using SSM.
+
+        Note:
+
+            While FARGATE tasks have no instances, we will force "ssm" as our
+            proxy type so we can use a provisioner node to setup tunnels for the
+            FARGATE tasks.
+
+        Returns:
+            "bastion" or "ssm"
+        """
         if self.task_definition.is_fargate():
             self._ssh_proxy_type = 'ssm'
-        return getattr(self, '_ssh_proxy_type', self.DEFAULT_PROVIDER)
+        return self._ssh_proxy_type
 
     @ssh_proxy_type.setter
-    def ssh_proxy_type(self, value: str) -> None:
+    def ssh_proxy_type(self, value: Literal["bastion", "ssm"]) -> None:
+        """
+        Set the SSH proxy type for this service.
+
+        Args:
+            value: either "bastion" or "ssm"
+        """
+        assert value in ['bastion', 'ssm'], f"ssh_proxy_type must be 'bastion' or 'ssm', not '{value}'"
         self._ssh_proxy_type = value
 
     @property

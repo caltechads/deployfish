@@ -253,16 +253,17 @@ class SSHMixin(SupportsCache, SupportsModel):
         pass
 
     @property
-    def ssh_proxy_type(self) -> str:
-        proxy: str = self.DEFAULT_PROVIDER
-        try:
-            ssh_config = get_config().get_global_config('ssh')
-        except ConfigProcessingFailed:
-            pass
-        else:
-            if ssh_config and 'proxy' in ssh_config:
-                proxy = ssh_config['proxy']
-        return proxy
+    def ssh_proxy_type(self) -> Literal["bastion", "ssm"]:
+        """
+        Return the type of SSH proxy to use for this object: bastion or ssm.
+
+        Raises:
+            ConfigProcessingFailed: if the config file is missing or misconfigured
+
+        Returns:
+            "bastion" or "ssm"
+        """
+        return get_config().ssh_provider_type
 
     @property
     def ssh_target(self) -> Optional["Instance"]:
@@ -274,8 +275,9 @@ class SSHMixin(SupportsCache, SupportsModel):
     @property
     def ssh_targets(self) -> Sequence["Instance"]:
         """
-        Return all Instances associated with this class that can be targeted by
-        .ssh().
+        Return all :py:class:`deployfish.core.models.ec2.Instance` objects
+        associated with this class that can be targeted by
+        :py:meth:`ssh_interactive` or :py:meth:`ssh_noninteractive`.
         """
         if self.ssh_target:
             return [self.ssh_target]
@@ -284,24 +286,29 @@ class SSHMixin(SupportsCache, SupportsModel):
     @property
     def tunnel_target(self) -> Optional["Instance"]:
         """
-        Return an Instance that an be targeted by .tunnel().
+        Return an Instance that an be targeted by :py:meth:`tunnel`
 
-        For EC2 backed ECS Tasks, this will be the same as :py:meth:`ssh_target`.
+        For EC2 backed ECS Tasks, this will be the same as
+        :py:meth:`ssh_target`.
         """
         return self.ssh_target
 
     @property
     def tunnel_targets(self) -> Sequence["Instance"]:
         """
-        Return an list of Instances that an be targeted by .tunnel().
+        Return an list of Instances that an be targeted by :py:meth:`tunnel`.
 
-        For EC2 backed ECS Tasks, this will be the same as :py:meth`ssh_targets`.
+        For EC2 backed ECS Tasks, this will be the same as
+        :py:meth`ssh_targets`.
         """
         return self.ssh_targets
 
     def __is_or_has_file(self, data: Any) -> bool:
         """
-        Return True if `data` is a file-like object, False otherwise.
+        Return ``True`` if ``data`` is a file-like object, ``False`` otherwise.
+
+        Args:
+            data: the file-like object to check
         """
         if hasattr(data, 'file'):
             data = data.file
@@ -460,8 +467,7 @@ class DockerMixin(SSHMixin, SupportsService):
         """
         raise NotImplementedError
 
-    def __init__(self, *args, provider_type: str = 'bastion', **kwargs) -> None:
-        self.provider_type: str = provider_type
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def docker_ssh_exec(
@@ -473,12 +479,14 @@ class DockerMixin(SSHMixin, SupportsService):
         """
         Exec into a container running on an EC2 backed ECS Service.
 
-        If ``ssh_target`` is not provided, use ``self.ssh_target`` instead.
-        If ``container_name`` is not provided, use the name of the first container in the first running task.
+        If ``ssh_target`` is not provided, use ``self.ssh_target`` instead.  If
+        ``container_name`` is not provided, use the name of the first container
+        in the first running task.
 
-        :param ssh_target: If provided, the Instance object to which to ssh
-        :param container_name: the name of the container to exec into
-        :param verbose: if True, display verbose output from ssh
+        Keyword Args:
+            ssh_target: the instance to which to ssh
+            container_name: the name of the container to exec into
+            verbose: if True, display verbose output from ssh
         """
         if self.running_tasks:
             if ssh_target is None:
@@ -487,8 +495,11 @@ class DockerMixin(SSHMixin, SupportsService):
                 # Arbitrarily exec into the first container in our object
                 container_name = self.running_tasks[0].containers[0].name
         else:
-            raise self.NoRunningTasks(f'{self.__class__.__name__}(pk={self.pk}) has no running tasks.')
-        provider = self.providers[self.ssh_proxy_type](cast("Instance", ssh_target), verbose=verbose)
+            raise self.NoRunningTasks(
+                f'{self.__class__.__name__}(pk={self.pk}) has no running tasks.'
+            )
+        ssh_target = cast("Instance", ssh_target)
+        provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
         cmd = provider.docker_exec().format(
             self.task_definition.data['family'],
             cast(str, container_name).replace('_', '')

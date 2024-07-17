@@ -1,7 +1,7 @@
 from copy import deepcopy
 import os
 import sys
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Literal, cast
 try:
     from typing import Final
 except ImportError:
@@ -261,3 +261,24 @@ class Config:
         if section not in self.cooked['deployfish']:
             self.cooked['deployfish'][section] = {}
         self.cooked['deployfish'][section][key] = value
+
+    @property
+    def ssh_provider_type(self) -> Literal["bastion", "ssm"]:
+        """
+        A shortcut method to figure out what SSH provider we're using.
+
+        """
+        ssh_config = self.get_global_config('ssh')
+        return cast(Literal["bastion", "ssm"], ssh_config.get('proxy'))
+
+    @ssh_provider_type.setter
+    def ssh_provider_type(self, value: Literal["bastion", "ssm"]) -> None:
+        """
+        A shortcut method to set what SSH provider we're using.
+
+        Args:
+            value: the new SSH provider type.  Must be either 'bastion' or 'ssm'.
+        """
+        assert value in ['bastion', 'ssm'], \
+            f"Invalid SSH provider type: {value}.  Valid values are 'bastion' and 'ssm'"
+        self.set_global_config('ssh', 'proxy', value)
