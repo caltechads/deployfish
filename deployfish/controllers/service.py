@@ -250,7 +250,7 @@ class ECSService(CrudBase):
         obj.scale(count)
         self.scale_services_waiter(obj)  # type: ignore
         self.app.print(
-            click.secho('\n\nScaled {}("{}") to {} tasks.'.format(self.model.__name__, obj.pk, count), fg='green')
+            click.style('\n\nScaled {}("{}") to {} tasks.'.format(self.model.__name__, obj.pk, count), fg='green')
         )
         for _ in self.app.hook.run('post_service_scale', self.app, obj, count):
             pass
