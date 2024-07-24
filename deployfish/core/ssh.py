@@ -314,7 +314,7 @@ class SSHMixin(SupportsCache, SupportsModel):
         'ssm': SSMSSHProvider,
         'bastion': BastionSSHProvider
     }
-    DEFAULT_PROVIDER: str = 'bastion'
+    DEFAULT_PROVIDER: str = 'ssm'
 
     class NoSSHTargetAvailable(Exception):
         pass
