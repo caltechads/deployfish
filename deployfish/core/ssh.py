@@ -16,10 +16,10 @@ from typing import (
   cast,
 )
 
+import click
 import shellescape
 
 from deployfish.types import SupportsCache, SupportsModel, SupportsService
-from deployfish.exceptions import ConfigProcessingFailed
 from deployfish.config import get_config
 
 from .aws import get_boto3_session
@@ -575,6 +575,9 @@ class DockerMixin(SSHMixin, SupportsService):
                 f'{self.__class__.__name__}(pk={self.pk}) has no running tasks.'
             )
         ssh_target = cast("Instance", ssh_target)
+        click.echo(
+            f'Connecting to {click.style(ssh_target.name, fg="cyan")} and execing into container {click.style(container_name, fg="cyan")} ...'
+        )
         provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
         cmd = provider.docker_exec().format(
             self.task_definition.data['family'],
