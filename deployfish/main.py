@@ -1,3 +1,4 @@
+# pylint: disable=import-outside-toplevel
 import os
 from typing import Any, Optional, Dict
 
@@ -104,7 +105,6 @@ class DeployfishApp(App):
         # handlers
         log_handler = 'colorlog'
         output_handler = 'df_jinja2'
-        plugin_handler = 'df_plugin'
 
         # where do our templates live?
         template_module = 'deployfish.templates'
