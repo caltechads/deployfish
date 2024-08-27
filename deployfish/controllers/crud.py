@@ -238,7 +238,6 @@ class CrudBase(ReadOnlyCrudBase):
                 pass
             raise
         else:
-            for _ in self.app.hook.run('post_object_update', self.app):
             for _ in self.app.hook.run('post_object_update', self.app, obj):
                 pass
         self.app.print(click.style('\n\nUpdated {}("{}").'.format(self.model.__name__, obj.pk), fg='green'))
