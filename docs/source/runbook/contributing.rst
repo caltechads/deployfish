@@ -116,12 +116,6 @@ For a new resource, it'll be more extensive, as you'll need to create a new cont
   This is where you do all the data manipulation you need for various commands you'll be implementing.
 
 
-Adding command through an extension
-"""""""""""""""""""""""""""""""""""
-
-To add a command through an extension, see :doc:`extending`.
-
-
 .. _`boto3 documentation`: https://boto3.amazonaws.com/v1/documentation/api/latest/index.html
 .. _`cement`: https://docs.builtoncement.com/
 .. _`deployfish-mysql`: https://github.com/caltechads/deployfish-mysql

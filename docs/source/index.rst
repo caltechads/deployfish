@@ -17,6 +17,7 @@ Deployfish
    intro
    install
    tutorials
+   plugins
    yaml
 
 .. toctree::
@@ -26,7 +27,7 @@ Deployfish
    runbook/contributing
    runbook/architecture
    runbook/adapters
-   runbook/extending
+..    runbook/extending
    runbook/testing
 
 .. toctree::
