@@ -1,0 +1,9 @@
+{% from 'macros/utils.jinja2' import heading, subsection, subobject, tags -%}
+{{ subobject('MySQL Database', obj.name) }}
+  pk                  :     {{ obj.pk }}
+  name                :     {{ obj.name }}
+  host                :     {{ obj.host }}
+  port                :     {{ obj.port }}
+  database            :     {{ obj.db }}
+  user                :     {{ obj.user }}
+  password            :     {{ obj.password }}
