@@ -158,8 +158,8 @@ The model handles the data while the manager handles the interaction with the AW
         ...
 
 
-Add a controllers
------------------
+Add a controller
+----------------
 
 See :doc:`../api/controllers/index` to pick one to inherit from.
 
