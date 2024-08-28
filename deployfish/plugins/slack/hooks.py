@@ -63,8 +63,9 @@ class ServiceUpdateMessage(GitChangelogMixin, GitMixin, PythonMixin, DeployfishM
     """A message indicating that a service has been updated."""
 
     def __init__(self, app, obj, repo_folder):
-        cwd = os.getcwd()
-        os.chdir(repo_folder)
+        if repo_folder:
+            cwd = os.getcwd()
+            os.chdir(repo_folder)
         super().__init__(
             app,
             SlackMessageHeader(text="Service Update Succeeded"),
@@ -72,14 +73,15 @@ class ServiceUpdateMessage(GitChangelogMixin, GitMixin, PythonMixin, DeployfishM
         )
         self.values = {}
         self.annotate(self.values)
-        os.chdir(cwd)
+        if repo_folder:
+            os.chdir(cwd)
 
         self.add_service_update(obj)
         self.add_changelog()
         self.add_context()
 
     def add_service_update(self, obj):
-        environment = obj.deployfish_environment
+        environment = obj.tags["Environment"]
         block = SlackLabelValueListBlock()
         block.add_entry(
             SlackLabelValuePair(
