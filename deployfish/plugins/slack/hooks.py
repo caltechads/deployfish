@@ -1,6 +1,7 @@
 import logging
 import os
 import getpass
+import pwd
 
 from slackfin import (
     SlackFormatter,
@@ -82,6 +83,8 @@ class ServiceUpdateMessage(GitChangelogMixin, GitMixin, PythonMixin, DeployfishM
 
     def add_service_update(self, obj):
         environment = obj.tags["Environment"]
+        username = getpass.getuser()
+        full_name = pwd.getpwnam(username).pw_gecos.split(",")[0]
         block = SlackLabelValueListBlock()
         block.add_entry(
             SlackLabelValuePair(
@@ -96,12 +99,12 @@ class ServiceUpdateMessage(GitChangelogMixin, GitMixin, PythonMixin, DeployfishM
                 value=environment,
             )
         )
-        block.add_entry(
-            SlackLabelValuePair(
-                label="Cluster",
-                value=obj.cluster.pk,
-            )
-        )
+        # block.add_entry(
+        #     SlackLabelValuePair(
+        #         label="Cluster",
+        #         value=obj.cluster.pk,
+        #     )
+        # )
         block.add_entry(
             SlackLabelValuePair(
                 label="Committer",
@@ -112,6 +115,12 @@ class ServiceUpdateMessage(GitChangelogMixin, GitMixin, PythonMixin, DeployfishM
             SlackLabelValuePair(
                 label="Authors",
                 value=",".join(self.values["authors"]),
+            )
+        )
+        block.add_entry(
+            SlackLabelValuePair(
+                label="Deployer",
+                value=full_name,
             )
         )
         self.add_block(block)
