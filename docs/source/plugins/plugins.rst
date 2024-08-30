@@ -8,3 +8,4 @@ Plugins
 
     mysql
     slack
+    sqs

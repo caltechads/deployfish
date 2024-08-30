@@ -42,8 +42,9 @@ class PythonMixin(AnnotationMixin):
 
 class GitMixin(AnnotationMixin):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, url_type="slack", **kwargs):
         self.repo = None
+        self.url_type = url_type
         self.url_patterns = {}
         self.__get_repo()
         self.__build_url_patterns()
@@ -52,6 +53,11 @@ class GitMixin(AnnotationMixin):
     def __get_repo(self):
         if not self.repo:
             self.repo = Repo('.')
+
+    def __format_url(self, url: str, label: str):
+        if self.url_type == "markdown":
+            return f"[{label}]({url})"
+        return f"<{url}|{label}>"
 
     def __build_url_patterns(self):
         # https://caltech-imss-ads@bitbucket.org/caltech-imss-ads/exeter_api/src/0.10.2/
@@ -62,13 +68,13 @@ class GitMixin(AnnotationMixin):
             if origin_url.endswith('.git'):
                 origin_url = origin_url[:-4]
             if p.bitbucket:
-                self.url_patterns['commit'] = f"<{origin_url}/commits/" + "{sha}|{sha}>"
-                self.url_patterns['project'] = f"<{origin_url}/src/" + "{version}/|{name}>"
-                self.url_patterns['diff'] = f"{origin_url}/branches/compare/" + "{from_sha}..{to_sha}#diff"
+                self.url_patterns['commit'] = self.__format_url(url=f"{origin_url}/commits/" + "{sha}", label="{sha}")
+                self.url_patterns['project'] = self.__format_url(url=f"{origin_url}/src/" + "{version}/", label="{name}")
+                self.url_patterns['diff'] = self.__format_url(url=f"{origin_url}/branches/compare/" + "{from_sha}..{to_sha}#diff", label="{from_sha}..{to_sha}")
             elif p.github:
-                self.url_patterns['commit'] = f"<{origin_url}/commit/" + "{sha}|{sha}>"
-                self.url_patterns['project'] = f"<{origin_url}/tree/" + "{version}|{name}>"
-                self.url_patterns['diff'] = f"{origin_url}/compare/" + "{from_sha}..{to_sha}"
+                self.url_patterns['commit'] = self.__format_url(url=f"{origin_url}/commit/" + "{sha}", label="{sha}")
+                self.url_patterns['project'] = self.__format_url(url=f"{origin_url}/tree/" + "{version}", label="{name}")
+                self.url_patterns['diff'] = self.__format_url(url=f"{origin_url}/compare/" + "{from_sha}..{to_sha}", label="{from_sha}..{to_sha}")
             else:
                 self.url_patterns['commit'] = "{sha}"
                 self.url_patterns['project'] = "{name}"
