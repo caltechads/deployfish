@@ -101,8 +101,8 @@ class Annotator(GitChangelogMixin, GitMixin, PythonMixin):
     def get_description(self):
         """Get the description for the message."""
         description  = ""
-        description += f"**Committer**: {self.get_committer()}\n"
-        description += f"**Authors**: {self.get_author_string()}\n"
+        # description += f"**Committer**: {self.get_committer()}\n"
+        # description += f"**Authors**: {self.get_author_string()}\n"
         description += f"**Deployer**: {self.get_deployer()}\n"
         description += "\n"
         description += "**Changelog**\n\n"
