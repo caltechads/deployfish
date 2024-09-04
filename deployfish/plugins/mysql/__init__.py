@@ -2,7 +2,7 @@ import os
 
 from cement import App
 
-import deployfish_mysql.adapters  # noqa:F401
+from . import adapters  # noqa:F401
 
 from .controllers.mysql import MysqlController
 from .hooks import pre_config_interpolate_add_mysql_section

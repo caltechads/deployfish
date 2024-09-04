@@ -10,7 +10,7 @@ from deployfish.controllers.utils import handle_model_exceptions
 from deployfish.core.models import Model, RDSInstance
 from deployfish.ext.ext_df_jinja2 import color, section_title
 
-from deployfish_mysql.models.mysql import MySQLDatabase
+from deployfish.plugins.mysql.models.mysql import MySQLDatabase
 
 
 class MysqlController(ReadOnlyCrudBase):
@@ -45,7 +45,7 @@ class MysqlController(ReadOnlyCrudBase):
         self.jinja2_env = Environment(
             loader=ChoiceLoader([
                 PackageLoader('deployfish', 'templates'),       # Load templates from the main application
-                PackageLoader('deployfish_mysql', 'templates')  # Load templates from the plugin
+                PackageLoader('deployfish.plugins.mysql', 'templates')  # Load templates from the plugin
             ])
         )
         # Import the color and section_title filters from deployfish.ext.ext_df_jinja2 in order to render the templates
