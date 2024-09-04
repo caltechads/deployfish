@@ -13,6 +13,19 @@ from deployfish.core.models import Manager, Model, Secret, Service, Instance, Cl
 class MySQLDatabaseManager(Manager):
 
     def get(self, pk: str, **_) -> Model:
+        """
+        Get the MySQLDatabase object from the config file.
+
+        Args:
+            pk: the name of the database to get from the config file.
+
+        Raises:
+            MySQLDatabase.DoesNotExist: No MySQLDatabase object with that name
+                exists in the config file.
+
+        Returns:
+            The MySQLDatabase object.
+        """
         # hint: (str["{name}"])
         config = get_config()
         section = config.get_section('mysql')
@@ -26,6 +39,12 @@ class MySQLDatabaseManager(Manager):
         )
 
     def list(self, service_name: str = None, **_) -> Sequence["MySQLDatabase"]:
+        """
+        List the MySQLDatabase objects in the config file.
+
+        Returns:
+            A list of MySQLDatabase objects.
+        """
         # hint: (str["{service_name}"], int)
         config = get_config()
         section = config.get_section('mysql')
@@ -42,6 +61,27 @@ class MySQLDatabaseManager(Manager):
         ssh_target: Instance = None,
         verbose: bool = False
     ) -> str:
+        """
+        This is an alias for :py:meth:`create`.
+
+        Args:
+            obj: The ``MySQLDatabase`` object
+            root_user: The root user to use to connect to the database.
+            root_password: The root password to use to connect to the database.
+
+        Keyword Args:
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+
+        Raises:
+            obj.OperationFailed: The create failed because of some
+                unexpected error.
+
+        Returns:
+            The output of the validation commands.
+        """
         return self.create(obj, root_user, root_password, ssh_target=ssh_target, verbose=verbose)
 
     def create(
@@ -52,6 +92,28 @@ class MySQLDatabaseManager(Manager):
         ssh_target: Instance = None,
         verbose: bool = False
     ) -> str:
+        """
+        Create the database and user for ``obj``, and assign appropriate grants to
+        the user.
+
+        Args:
+            obj: The ``MySQLDatabase`` object
+            root_user: The root user to use to connect to the database.
+            root_password: The root password to use to connect to the database.
+
+        Keyword Args:
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+
+        Raises:
+            obj.OperationFailed: The create failed because of some
+                unexpected error.
+
+        Returns:
+            The output of the validation commands.
+        """
         version = self.major_server_version(
             obj,
             user=root_user,
@@ -85,6 +147,27 @@ class MySQLDatabaseManager(Manager):
         ssh_target: Instance = None,
         verbose: bool = False
     ) -> str:
+        """
+        Update the grants and password for the database user on ``obj``.
+
+        Args:
+            obj: The ``MySQLDatabase`` object
+            root_user: The root user to use to connect to the database.
+            root_password: The root password to use to connect to the database.
+
+        Keyword Args:
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+
+        Raises:
+            obj.OperationFailed: The update failed because of some
+                unexpected error.
+
+        Returns:
+            The output of the update commands.
+        """
         version = self.major_server_version(
             obj,
             user=root_user,
@@ -116,6 +199,25 @@ class MySQLDatabaseManager(Manager):
         ssh_target: Instance = None,
         verbose: bool = False
     ) -> str:
+        """
+        Validate that the database and user exist on the target MySQL server.
+
+        Args:
+            obj: The ``MySQLDatabase`` object to validate.
+
+        Keyword Args:
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+
+        Raises:
+            obj.OperationFailed: The validation failed because of some
+                unexpected error.
+
+        Returns:
+            The output of the validation commands.
+        """
         command = obj.render_for_validate()
         success, output = obj.cluster.ssh_noninteractive(
             command,
@@ -140,6 +242,32 @@ class MySQLDatabaseManager(Manager):
         ssh_target: Instance = None,
         verbose: bool = False
     ) -> Tuple[str, str]:
+        """
+        Use ``mysqldump`` to dump the remote database as SQL to a local file.
+
+        If ``filename`` is not supplied, the filename of the output file will be
+        ``{service-name}.sql``. If that exists, then we will use
+        ``{service-name}-1.sql``, and if that exists ``{service-name}-2.sql``
+        and so on.
+
+        Args:
+            obj: The ``MySQLDatabase`` object to us
+
+        Keyword Args:
+            filename: The name of the file to dump the database to.  If not,
+                choose a filename for the dump.
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+
+        Raises:
+            obj.OperationFailed: The dump failed because of some
+                unexpected error.
+
+        Returns:
+            The stderr output of dumping the database.
+        """
         if filename is None:
             filename = "{}.sql".format(obj.service.name)
             i = 1
@@ -175,7 +303,27 @@ class MySQLDatabaseManager(Manager):
         ssh_target: Instance = None,
         verbose: bool = False
     ) -> str:
-        success, output, filename = obj.cluster.push_file(filepath, ssh_target=ssh_target)
+        """
+        Load the local SQL file ``filepath`` into the remote database.
+
+        Args:
+            obj: The ``MySQLDatabase`` object to us
+            filepath: The name of the file to load
+
+        Keyword Args:
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+
+        Raises:
+            obj.OperationFailed: The load failed because of some
+                unexpected error.
+
+        Returns:
+            The output of loading the file.
+        """
+        success, output, filename = obj.cluster.push_file(filepath, ssh_target=ssh_target, verbose=verbose)
         if not success:
             host = 'NO HOST'
             if ssh_target:
@@ -207,6 +355,30 @@ class MySQLDatabaseManager(Manager):
         user: str = None,
         password: str = None
     ):
+        """
+        Return the major.minor version of the MySQL server.
+
+        Example:
+            If the server version is ``5.7.22``, then we will return ``5.7``.
+
+        Args:
+            obj: The ``MySQLDatabase`` object to us
+
+        Keyword Args:
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+            user: The user to use to bind to the database.
+            password: The password to use to bind to the database.
+
+        Raises:
+            obj.OperationFailed: The command failed because of some
+                unexpected error.
+
+        Returns:
+            The major.minor version of the MySQL server.
+        """
         version = self.server_version(obj, ssh_target=ssh_target, verbose=verbose, user=user, password=password)
         version = version.rsplit('.', 1)[0]
         return version
@@ -219,6 +391,30 @@ class MySQLDatabaseManager(Manager):
         user: str = None,
         password: str = None
     ) -> str:
+        """
+        Return the MySQL version of the MySQL server.
+
+        Example:
+            If the server version is ``5.7.22``, then we will return ``5.7.22``.
+
+        Args:
+            obj: The ``MySQLDatabase`` object to us
+
+        Keyword Args:
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+            user: The user to use to bind to the database.
+            password: The password to use to bind to the database.
+
+        Raises:
+            obj.OperationFailed: The command failed because of some
+                unexpected error.
+
+        Returns:
+            The server version
+        """
         command = obj.render_for_server_version(user=user, password=password)
         success, output = obj.cluster.ssh_noninteractive(command, ssh_target=ssh_target, verbose=verbose)
         if success:
@@ -235,6 +431,25 @@ class MySQLDatabaseManager(Manager):
         ssh_target: Instance = None,
         verbose: bool = False,
     ) -> str:
+        """
+        Show the GRANTs for the database user on the remote database.
+
+        Args:
+            obj: The ``MySQLDatabase`` object to us
+
+        Keyword Args:
+            ssh_target: the ssh instance to use for running our mysql commands.
+                If not supplied, we will use the ``cluster``'s default ssh
+                instance.
+            verbose: If ``True`` run ssh in verbose mode.
+
+        Raises:
+            obj.OperationFailed: The command failed because of some
+                unexpected error.
+
+        Returns:
+            The output of the ``SHOW GRANTS` command.
+        """
         command = obj.render_for_show_grants()
         success, output = obj.cluster.ssh_noninteractive(command, ssh_target=ssh_target, verbose=verbose)
         if success:
