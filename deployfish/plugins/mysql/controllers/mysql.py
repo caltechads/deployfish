@@ -2,13 +2,15 @@ from typing import Type, Any, Dict
 
 from cement import ex, shell
 import click
+from jinja2 import ChoiceLoader, Environment, PackageLoader
 
 from deployfish.controllers.crud import ReadOnlyCrudBase
 from deployfish.controllers.network import get_ssh_target
 from deployfish.controllers.utils import handle_model_exceptions
-from deployfish.core.models import Model
+from deployfish.core.models import Model, RDSInstance
+from deployfish.ext.ext_df_jinja2 import color, section_title
 
-from ..models import MySQLDatabase
+from deployfish_mysql.models.mysql import MySQLDatabase
 
 
 class MysqlController(ReadOnlyCrudBase):
@@ -21,6 +23,11 @@ class MysqlController(ReadOnlyCrudBase):
 
     model: Type[Model] = MySQLDatabase
 
+    help_overrides: Dict[str, str] = {
+        'exists': 'Show whether a MySQL database connection exists in deployfish.yml',
+        'list': 'List available MySQL database connections from deployfish.yml',
+    }
+
     info_template: str = 'detail--mysqldatabase.jinja2'
 
     list_ordering: str = 'Name'
@@ -32,18 +39,41 @@ class MysqlController(ReadOnlyCrudBase):
         'Password': 'password',
     }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set up Jinja2 environment with a ChoiceLoader to load templates from the main application and the plugin
+        self.jinja2_env = Environment(
+            loader=ChoiceLoader([
+                PackageLoader('deployfish', 'templates'),       # Load templates from the main application
+                PackageLoader('deployfish_mysql', 'templates')  # Load templates from the plugin
+            ])
+        )
+        # Import the color and section_title filters from deployfish.ext.ext_df_jinja2 in order to render the templates
+        self.jinja2_env.filters['color'] = color
+        self.jinja2_env.filters['section_title'] = section_title
+
     @ex(
-        help="Create a MySQL database and user for a Service.",
+        help='Show details about a MySQL database connection.',
+        arguments=[
+            (['pk'], {'help': 'the name of the MySQL connection in deployfish.yml'})
+        ],
+    )
+    @handle_model_exceptions
+    def info(self) -> None:
+        """
+        Show details about a MySQL database in AWS.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_aws(self.app.pargs.pk)
+        # Use the Jinja2 environment to render the template rather than the default Cement renderer that only takes a
+        # local template name
+        template = self.jinja2_env.get_template(self.info_template)
+        self.app.print(template.render(obj=obj))
+
+    @ex(
+        help="Create a MySQL database and user in the remote MySQL server.",
         arguments=[
             (['pk'], {'help': 'the name of the MySQL connection in deployfish.yml'}),
-            (
-                ['--root-user'],
-                {
-                    'help': 'the username of the root user for the MySQL server',
-                    'default': None,
-                    'dest': 'root_user'
-                }
-            ),
             (
                 ['--root-password'],
                 {
@@ -72,22 +102,25 @@ class MysqlController(ReadOnlyCrudBase):
             ),
         ],
         description="""
-Create a database and user in a remote MySQL server for a Service.
+Create a database and user in a remote MySQL server.
 """
     )
     @handle_model_exceptions
     def create(self):
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
-        if not self.app.pargs.root_user:
-            p = shell.Prompt('DB root user')
-            self.app.pargs.root_user = p.prompt()
+        # The DbInstanceIdentifier should be the short hostname from the host key
+        db_instance_name = obj.host.split('.')[0]
+        rds_instance = RDSInstance.objects.get(db_instance_name)
         if not self.app.pargs.root_password:
-            p = shell.Prompt('DB root password')
-            self.app.pargs.root_password = p.prompt()
+            if rds_instance.secret_enabled:
+                self.app.pargs.root_password = rds_instance.root_password
+            else:
+                p = shell.Prompt('DB root password')
+                self.app.pargs.root_password = p.prompt()
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
         output = obj.create(
-            self.app.pargs.root_user,
+            rds_instance.root_user,
             self.app.pargs.root_password,
             ssh_target=target,
             verbose=self.app.pargs.verbose
@@ -109,17 +142,9 @@ Create a database and user in a remote MySQL server for a Service.
         self.app.print('\n'.join(lines))
 
     @ex(
-        help="Update a MySQL database and user for a Service.",
+        help="Update a MySQL database and user for in the remote MySQL server.",
         arguments=[
             (['pk'], {'help': 'the name of the MySQL connection in deployfish.yml'}),
-            (
-                ['--root-user'],
-                {
-                    'help': 'the username of the root user for the MySQL server',
-                    'default': None,
-                    'dest': 'root_user'
-                }
-            ),
             (
                 ['--root-password'],
                 {
@@ -148,24 +173,27 @@ Create a database and user in a remote MySQL server for a Service.
             ),
         ],
         description="""
-Update an existing database and user in a remote MySQL server for a Service.  This allows you
-to change the database character set and collation, update the user's password and update the
-GRANTs for the user.
+Update an existing database and user in a remote MySQL server.  This allows you
+to change the database character set and collation, update the user's password
+and update the GRANTs for the user.
 """
     )
     @handle_model_exceptions
     def update(self):
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
-        if not self.app.pargs.root_user:
-            p = shell.Prompt('DB root user')
-            self.app.pargs.root_user = p.prompt()
+        db_instance_name = obj.host.split('.')[0]
+        rds_instance = RDSInstance.objects.get(db_instance_name)
         if not self.app.pargs.root_password:
-            p = shell.Prompt('DB root password')
+            if rds_instance.secret_enabled:
+                self.app.pargs.root_password = rds_instance.root_password
+            else:
+                p = shell.Prompt('DB root password')
+                self.app.pargs.root_password = p.prompt()
             self.app.pargs.root_password = p.prompt()
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
         output = obj.update(
-            self.app.pargs.root_user,
+            rds_instance.root_user,
             self.app.pargs.root_password,
             ssh_target=target,
             verbose=self.app.pargs.verbose
@@ -187,7 +215,8 @@ GRANTs for the user.
         self.app.print('\n'.join(lines))
 
     @ex(
-        help="Validate that a MySQL user for a Service exists and has the password we expect.",
+        help="Validate that a MySQL database and user exists in the remote MySQL "
+             "server and has the password we expect.",
         arguments=[
             (['pk'], {'help': 'the name of the MySQL connection in deployfish.yml'}),
             (
@@ -210,7 +239,8 @@ GRANTs for the user.
             ),
         ],
         description="""
-Validate that a user in a remote MySQL server exists and has the password we expect.
+Validate that a database and user in a remote MySQL server exists in the remote
+MySQL server and has the password we expect.
 """
     )
     @handle_model_exceptions
@@ -261,7 +291,7 @@ Validate that a user in a remote MySQL server exists and has the password we exp
             ),
         ],
         description="""
-Dump the contents of a MySQL database to a local file.  If "--filename" is not supplied,
+Dump the contents of a MySQL database to a local file.  If "--dumpfile" is not supplied,
 the filename of the output file will be "{service-name}.sql". If that exists, then we will
 use "{service-name}-1.sql", and if that exists "{service-name}-2.sql" and so on.
 """
@@ -290,7 +320,7 @@ use "{service-name}-1.sql", and if that exists "{service-name}-2.sql" and so on.
         help="Load the contents of a local SQL file into an existing MySQL database.",
         arguments=[
             (['pk'], {'help': 'the name of the MySQL connection in deployfish.yml'}),
-            (['filename'], {'help': 'the filename of the SQL file to load'}),
+            (['sqlfile'], {'help': 'the filename of the SQL file to load'}),
             (
                 ['-c', '--choose'],
                 {
@@ -311,7 +341,7 @@ use "{service-name}-1.sql", and if that exists "{service-name}-2.sql" and so on.
             ),
         ],
         description="""
-Load the contents of a local SQL file into an existing MySQL database.
+Load the contents of a local SQL file into an existing MySQL database in the remote MySQL server.
 """
     )
     @handle_model_exceptions
@@ -319,11 +349,11 @@ Load the contents of a local SQL file into an existing MySQL database.
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
-        output = obj.load(self.app.pargs.filename, ssh_target=target, verbose=self.app.pargs.verbose)
+        output = obj.load(self.app.pargs.sqlfile, ssh_target=target, verbose=self.app.pargs.verbose)
         lines = [
             click.style(
                 'Loaded file "{}" into database "{}" on mysql server {}:{}'.format(
-                    self.app.pargs.filename, obj.db, obj.host, obj.port
+                    self.app.pargs.sqlfile, obj.db, obj.host, obj.port
                 ),
                 fg='green'
             )
@@ -369,7 +399,7 @@ Show the GRANTs for our user in the remote MySQL server.
         self.app.print(output)
 
     @ex(
-        help="Show the the MySQL Version for the remote MySQL server.",
+        help="Show the the MySQL version for the remote MySQL server.",
         arguments=[
             (['pk'], {'help': 'the name of the MySQL connection in deployfish.yml'}),
             (
@@ -392,7 +422,7 @@ Show the GRANTs for our user in the remote MySQL server.
             ),
         ],
         description="""
-Print the version of the remote MySQL server.
+Print the MySQL version of the remote MySQL server.
 """
     )
     @handle_model_exceptions
