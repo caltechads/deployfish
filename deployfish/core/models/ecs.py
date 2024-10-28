@@ -1700,11 +1700,23 @@ class Task(TagsMixin, VPCConfigurationMixin, Model):
             data['schedule_disabled'] = 'DISABLED' if not self.schedule.enabled else ''
         return data
 
+    def render_for_diff(self):
+        data = self.render()
+        if self.schedule:
+            data['schedule'] = self.schedule.data['ScheduleExpression']
+            data['schedule_role'] = self.schedule.target.data['RoleArn']
+        if 'networkConfiguration' in data:
+            if 'awsvpcConfiguration' in data['networkConfiguration']:
+                if 'assignPublicIp' in data['networkConfiguration']['awsvpcConfiguration']:
+                    del data['networkConfiguration']['awsvpcConfiguration']['assignPublicIp']
+        return data
+
     def render(self):
         data = super().render()
         if 'name' in data:
             del data['name']
-        del data['task_type']
+        if 'task_type' in data:
+            del data['task_type']
         if 'service' in data:
             del data['service']
         return data

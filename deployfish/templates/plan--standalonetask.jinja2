@@ -1,0 +1,10 @@
+{%- from 'macros/utils-plan.jinja2' import diff_sym, render_diff -%}
+{# Now call the macro to loop through the changes #}
+{% set taskname = obj.cluster.pk ~ ":" ~ obj.pk %}
+{% filter color(fg='green') %}StandaloneTask: {% endfilter %}{{ taskname|color(fg='cyan', bold=True) }}
+{% if debug %}{% filter color(fg='yellow') %}Debugging...{% endfilter %}{% endif%}
+{{ render_diff(aws_json, changes, 'standalonetask.' + obj.pk, "", None, debug) }}
+
+Run update command to apply changes:
+
+  deploy task update {{ obj.name }}
