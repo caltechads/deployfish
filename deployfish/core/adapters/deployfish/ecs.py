@@ -850,6 +850,10 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
         data['launchType'] = self.data.get('launch_type', 'EC2')
         if data['launchType'] == 'FARGATE':
             data['platformVersion'] = self.data.get('platform_version', 'LATEST')
+        if self.data.get('runtime_platform', None):
+            data['runtimePlatform'] = {}
+            data['runtimePlatform']['cpuArchitecture'] = self.data['runtime_platform'].get('cpu_architecture', 'X86_64')
+            data['runtimePlatform']['operatingSystemFamily'] = self.data['runtime_platform'].get('operating_system_family', 'LINUX')
         elif 'capacity_provider_strategy' in self.data:
             data['capacityProviderStrategy'] = self.data['capacity_provider_strategy']
         if 'placement_constraints' in self.data:
