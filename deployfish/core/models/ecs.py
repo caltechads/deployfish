@@ -1698,7 +1698,7 @@ class Task(TagsMixin, VPCConfigurationMixin, Model):
         if self.schedule:
             data['schedule_expression'] = self.schedule.data['ScheduleExpression']
             data['schedule_disabled'] = 'DISABLED' if not self.schedule.enabled else ''
-        if self.task_definition:
+        if self.task_definition and 'runtimePlatform' in self.task_definition.data:
             data['runtimePlatform'] = self.task_definition.data['runtimePlatform']
         return data
 
@@ -1707,7 +1707,7 @@ class Task(TagsMixin, VPCConfigurationMixin, Model):
         if self.schedule:
             data['schedule'] = self.schedule.data['ScheduleExpression']
             data['schedule_role'] = self.schedule.target.data['RoleArn']
-        if self.task_definition:
+        if self.task_definition and 'runtimePlatform' in self.task_definition.data:
             data['runtimePlatform'] = self.task_definition.data['runtimePlatform']
         if 'networkConfiguration' in data:
             if 'awsvpcConfiguration' in data['networkConfiguration']:
