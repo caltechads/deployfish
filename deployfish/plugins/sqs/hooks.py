@@ -10,9 +10,9 @@ from tzlocal import get_localzone
 
 from simplesqs.message import MessagingHandler
 
-#pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module
 from deployfish.core.utils.mixins import (
-    PythonMixin,
+    CodeNameVersionMixin,
     GitMixin,
     GitChangelogMixin,
 )
@@ -22,8 +22,9 @@ from deployfish.core.models.ecs import Service
 logging.basicConfig(level=logging.WARNING)
 
 
-class Annotator(GitChangelogMixin, GitMixin, PythonMixin):
+class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
     """Annotate a service update with a git changelog."""
+
     def __init__(self, app, obj, repo_folder):
         self.app = app
         self.obj = obj
@@ -81,8 +82,8 @@ class Annotator(GitChangelogMixin, GitMixin, PythonMixin):
 
     def get_service_name(self):
         """Get the name of the service."""
-        name_env = self.obj.data['serviceName']
-        dash = name_env.rfind('-')
+        name_env = self.obj.data["serviceName"]
+        dash = name_env.rfind("-")
         service_name = name_env[:dash]
         return service_name
 
@@ -94,20 +95,20 @@ class Annotator(GitChangelogMixin, GitMixin, PythonMixin):
         """Get the deploy datetime for the message."""
         local_tz = get_localzone()
         current_time = datetime.datetime.now(local_tz)
-        formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S.%f%z')
-        formatted_time = formatted_time[:-2] + ':' + formatted_time[-2:]
+        formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S.%f%z")
+        formatted_time = formatted_time[:-2] + ":" + formatted_time[-2:]
         return formatted_time
 
     def get_description(self):
         """Get the description for the message."""
-        description  = ""
+        description = ""
         # description += f"**Committer**: {self.get_committer()}\n"
         # description += f"**Authors**: {self.get_author_string()}\n"
         description += f"**Deployer**: {self.get_deployer()}\n"
         description += "\n"
         description += "**Changelog**\n\n"
         for log in self.get_changelog():
-            if not "Bump version" in log:
+            if "Bump version" not in log:
                 description += f"* {log}\n"
         return description
 
@@ -120,25 +121,30 @@ def process_service_update(app, obj, success=True, reason=None):
     try:
         queues = app.config.get("plugin.sqs", "queues")
     except configparser.NoOptionError:
-        app.print(click.style("No SQS queues defined in `/.deployfish.yml", fg='red'))
+        app.print(
+            click.style("No SQS queues defined in `/.deployfish.yml", fg="red")
+        )
         print("No SQS queues defined in `/.deployfish.yml")
         return
     config_file = app.pargs.deployfish_filename
     repo_folder = os.path.dirname(config_file)
     annotator = Annotator(app, obj, repo_folder)
     message = {
-        'service': annotator.get_repo_name(),
-        'title': annotator.get_title(),
-        'environment': annotator.get_environment(),
-        'description': annotator.get_description(),
-        'timestamp': annotator.get_deploy_timestamp(),
+        "service": annotator.get_repo_name(),
+        "title": annotator.get_title(),
+        "environment": annotator.get_environment(),
+        "description": annotator.get_description(),
+        "timestamp": annotator.get_deploy_timestamp(),
     }
     for queue in queues:
-        queue_name = queue['name']
-        queue_type = queue['type']
-        queue_profile = queue.get('profile', None)
+        queue_name = queue["name"]
+        queue_type = queue["type"]
+        queue_profile = queue.get("profile", None)
         response = MessagingHandler(
-            queue_name=queue_name,
-            aws_profile=queue_profile
+            queue_name=queue_name, aws_profile=queue_profile
         ).send_message(queue_type, message)
-        app.print(click.style(f"Message submitted. ID: {response['MessageId']}.", fg='green'))
+        app.print(
+            click.style(
+                f"Message submitted. ID: {response['MessageId']}.", fg="green"
+            )
+        )

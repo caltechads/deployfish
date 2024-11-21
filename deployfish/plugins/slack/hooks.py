@@ -15,9 +15,9 @@ from slackfin import (
     SlackMessageMarkdown,
 )
 
-#pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module
 from deployfish.core.utils.mixins import (
-    PythonMixin,
+    CodeNameVersionMixin,
     GitMixin,
     GitChangelogMixin,
 )
@@ -38,6 +38,7 @@ def process_service_update(app, obj, success=True, reason=None):
     if not channel or channel == "<user>":
         channel = f"@{getpass.getuser()}"
     _ = ServiceUpdateMessage(app, obj, repo_folder).send(channel=channel)
+
 
 class DeployfishMessage(SlackMessage):
     """A message from deployfish."""
@@ -60,7 +61,9 @@ class DeployfishMessage(SlackMessage):
         )
 
 
-class ServiceUpdateMessage(GitChangelogMixin, GitMixin, PythonMixin, DeployfishMessage):
+class ServiceUpdateMessage(
+    GitChangelogMixin, GitMixin, CodeNameVersionMixin, DeployfishMessage
+):
     """A message indicating that a service has been updated."""
 
     def __init__(self, app, obj, repo_folder):
