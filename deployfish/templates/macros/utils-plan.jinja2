@@ -1,0 +1,152 @@
+{% from 'macros/utils.jinja2' import indent %}
+
+{# For adding the characters representing the diff modes #}
+{% macro diff_sym(mode) %}
+{%- if mode == '$update' -%}
+    {%- filter color(fg='yellow') %}~{% endfilter -%}
+{%- elif mode == '$insert' -%}
+    {%- filter color(fg='green') %}+{% endfilter -%}
+{%- elif mode == '$delete' -%}
+    {%- filter color(fg='red') %}-{% endfilter -%}
+{%- else -%}
+    ?
+{%- endif -%}
+{% endmacro %}
+
+{# Recursive macro to loop through the changes #}
+{% macro render_diff(orig, diff, prefix="", pkey="", mode=None, debug=False) %}
+{%- set depth = prefix.split('.')|length - 2 -%}
+{#- Check if diff is a dictionary or a list -#}
+{%- if diff is mapping -%}
+    {#- Handles the case where diff is a dictionary -#}
+    {%- for key, value in diff.items() -%}
+        {%- if key in ['$update', '$insert', '$delete'] -%}
+            {%- set new_mode = key -%}
+        {%- else -%}
+            {%- set new_mode = None %}
+
+        {%- endif -%}
+        {#- Recursive based on mode and value -#}
+        {%- if new_mode -%}
+            {{ render_diff(orig, diff[key], prefix, pkey, new_mode, debug) }}
+        {%- elif key != '0' and key|int == 0 -%}
+            {#- Key is a string -#}
+            {%- if value is mapping or (value is sequence and value is not string ) -%}
+                {#- Print key because the value will nest further -#}
+{%- if debug -%}(1) {{ depth}} {% endif -%}
+{{ indent(depth) }}{{ diff_sym(mode) }} {{ key }}: {
+{{ render_diff(orig[key], diff[key], prefix + '.' + key, key, mode, debug) }}
+{% if debug -%}(1) {{ depth}} {% endif -%}
+{{ indent(depth) }}}{#- Remove spacing -#}
+            {%- elif value is sequence and value is not string -%}
+{%- if debug -%}(2) {{ depth}} {% endif -%}
+{{ indent(depth) }}{{ diff_sym(mode) }} {{ key }}: [
+{{ render_diff(orig[key], diff[key], prefix + '.' + key, key, mode, debug) }}
+{% if debug -%}(2) {{ depth}} {% endif -%}
+{{ indent(depth) }}]{#- Remove spacing -#}
+            {%- else -%}
+                {#- Value is a string or a number -#}
+                {%- if mode == '$insert' -%}
+                    {%- if key != 'key' and 'key' not in diff -%}
+                        {#- If this is a tag pair, then we want to print the key for indentification -#}
+                        {{ render_diff(orig, diff[key], prefix, key, mode, debug) }}
+                    {%- else -%}
+                        {#- Original does not have the key, do not add it -#}
+                        {{ render_diff(orig, diff[key], prefix + '.' + key, key, mode, debug) }}
+                    {%- endif -%}
+                {%- elif mode == '$update' -%}
+                    {#- Original has the key, but we don't want to increment the prefix depth -#}
+                    {%- if key == 'value' and 'key' not in diff -%}
+                        {#- If this is a tag pair, then we want to print the key for indentification -#}
+                        {{ render_diff(orig, orig['key'], prefix, 'key', None, debug) }}
+                    {%- endif -%}
+                    {{ render_diff(orig, diff[key], prefix, key, mode, debug) }}
+                    {%- if key == 'key' and 'value' not in diff -%}
+                        {#- If this is a tag pair, then we want to print the value for indentification -#}
+                        {{ render_diff(orig, orig['value'], prefix, 'value', None, debug) }}
+                    {%- endif -%}
+                {%- else -%}
+                    {{ render_diff(orig[key], diff[key], prefix + '.' + key, key, mode, debug) }}
+                {%- endif -%}
+            {%- endif -%}
+        {%- else -%}
+            {#- key is an index like '0', '1', '2', etc. -#}
+{%- if debug -%}(3) {{ depth}} {% endif -%}
+{{ indent(depth) }}{{ diff_sym(mode) }} {{ key }}: {
+{{ render_diff(orig[key|int], diff[key], prefix + '.'+ key, pkey, mode, debug) }}
+{% if debug -%}(3) {{ depth}} {% endif -%}
+{{ indent(depth) }}}{#- Remove spacing -#}
+        {%- endif -%}
+        {%- if not loop.last -%}
+{#- Newline #}
+{# Newline -#}
+        {%- endif -%}
+    {%- endfor -%}
+{%- elif diff is sequence and diff is not string -%}
+    {#- Handle the case where diff is a list with an index and string vs a list of values -#}
+    {%- if mode == '$insert' -%}
+        {#- Should be a list of [index, value] to insert-#}
+        {%- for item in diff -%}
+            {#- jsondiff lists $insert before $delete, but to properly reflect the change, $delete happens first -#}
+            {#- increment the index to hopefully deal with the missmatch -#}
+            {{ render_diff(orig[item[0]], item[1], prefix, item[0] + 1, mode, debug) }}
+            {%- if not loop.last -%}
+{#- Newline #}
+{# Newline -#}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- elif mode == '$delete' -%}
+        {#- Should be a list of indexes to delete -#}
+        {%- for item in diff -%}
+            {{ render_diff(orig, item, prefix, item, mode, debug) }}
+            {%- if not loop.last -%}
+{#- Newline #}
+{# Newline -#}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- else -%}
+        {#- Should be a list of values to update -#}
+        {%- if orig|length == 0 -%}
+            {%- set new_mode = '$insert' -%}
+            {#- orig is a list with no content - this is really an insert -#}
+            {%- for item in diff -%}
+{%- if debug -%}(8) {{ depth}} {% endif -%}
+{{ indent(depth) }}{{ diff_sym(new_mode) }} {{ loop.index }} : {
+{{ render_diff(orig, item, prefix, key, new_mode, debug) }}
+{% if debug -%}(8) {{ depth}} {% endif -%}
+{{ indent(depth) }}}{#- Remove spacing -#}
+            {%- endfor -%}
+        {%- else -%}
+            {#- orig is a list with content - jsondiff should provide a different format -#}
+            UNHANDLED
+        {%- endif -%}
+    {%- endif -%}
+{%- else -%}
+    {#- Handles the case where diff is neither a dictionary nor a list, or it's a string -#}
+    {#- Prefixed a symbol if mode is present -#}
+    {%- if mode == '$update' -%}
+{%- if debug -%}(4) {{ depth}} {% endif -%}
+{#- Special case for key:value pairs - specifically supporting tags -#}
+{{ indent(depth) }}{{ diff_sym(mode) }} {{ pkey }}: {{ orig[pkey] }} {%- filter color(fg='yellow') %} -> {{ diff }}{% endfilter -%}
+    {%- elif mode == '$insert' -%}
+{%- if debug -%}(5) {{ depth}} {% endif -%}
+{{ indent(depth) }}{{ diff_sym(mode) }} {{ pkey }}: {% filter color(fg='green') %}{{ diff }}{% endfilter -%}
+    {%- elif mode == '$delete' -%}
+{%- if debug -%}(6) {{ depth}} {% endif -%}
+{{ indent(depth) }}{{ diff_sym(mode) }} {{ pkey }}: {{ orig[diff] }}
+        {%- filter color(fg='red') %} -> null{% endfilter -%}
+    {%- else -%}
+        {#- This is where a key and value prints out without a mode -#}
+        {%- if pkey == 'value' -%}
+{#- Newline #}
+{# Newline -#}
+        {%- endif -%}
+{%- if debug -%}(7) {{ depth}} {% endif -%}
+{{ indent(depth) }}  {{ pkey }}: {{ diff }}
+        {%- if pkey != 'value' -%}
+{#- Newline #}
+{# Newline -#}
+        {%- endif -%}
+    {%- endif -%}
+{%- endif -%}
+{% endmacro %}

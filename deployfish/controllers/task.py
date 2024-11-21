@@ -1,10 +1,12 @@
 import argparse
+import json
 from pprint import pprint
 import sys
 from typing import Any, Sequence, Type, Dict, cast
 
 from cement import ex
 import click
+from jsondiff import diff
 
 from deployfish.core.loaders import ObjectLoader
 from deployfish.core.models import (
@@ -38,6 +40,7 @@ class ECSStandaloneTask(CrudBase):
     }
 
     info_template: str = 'detail--standalonetask.jinja2'
+    plan_template: str = 'plan--standalonetask.jinja2'
 
     # --------------------
     # .list() related vars
@@ -307,6 +310,39 @@ Run a StandaloneTask that exists in AWS.
         self.app.print('\n'.join(lines))
         if self.app.pargs.wait:
             self.run_task_waiter(tasks)
+
+    @ex(
+        help='Show what we would do if we were to update an ECS StandaloneTask in AWS. (Experimental)',
+        arguments=[
+            (['pk'], {'help': 'The primary key for the ECS StandaloneTask'}),
+        ]
+    )
+    @handle_model_exceptions
+    def plan(self):
+        """
+        Show what we would do if we were to update an ECS StandaloneTask in AWS.
+        """
+        loader = self.loader(self)
+        df_obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        self.app.log.debug("Deployfish Service loaded!")
+        aws_obj = loader.get_object_from_aws(self.app.pargs.pk)
+        self.app.log.debug("AWS Service loaded!")
+        # Instead of using AbstractModel.diff() method, we'll collect the json data to pass to our template.
+        df_json = df_obj.render_for_diff()
+        aws_json = aws_obj.render_for_diff()
+        changes = json.loads(diff(aws_json, df_json, syntax='explicit', dump=True))
+        self.app.log.debug(f"Changes: {changes}")
+        self.app.render(
+            {
+                'obj': df_obj,
+                'aws_json': aws_json,
+                'changes': changes,
+                # If debug is True, it will print out the print line marker, and how nested the data is in the changes.
+                # See render_diff macro in plan--service.jinja2 to see how the line markers are located.
+                'debug': self.app.debug,
+            },
+            template=self.plan_template
+        )
 
 
 class ECSStandaloneTaskSecrets(ObjectSecretsController):

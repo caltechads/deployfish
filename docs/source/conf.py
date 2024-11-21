@@ -19,7 +19,8 @@
 import os
 import sys
 from typing import List, Dict, Any, Tuple, Optional
-sys.path.insert(0, os.path.abspath('../..'))
+
+sys.path.insert(0, os.path.abspath("../.."))
 
 import sphinx_rtd_theme
 
@@ -33,34 +34,34 @@ import sphinx_rtd_theme
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions: List[str] = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx',
-    'sphinx_rtd_theme'
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx_rtd_theme",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path: List[str] = ['_templates']
+templates_path: List[str] = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix: str = '.rst'
+source_suffix: str = ".rst"
 
 # The master toctree document.
-master_doc: str = 'index'
+master_doc: str = "index"
 
 # General information about the project.
-project: str = 'Deployfish'
-copyright: str = 'Caltech IMSS ADS'  # pylint: disable=redefined-builtin
-author: str = 'Chris Malek, Glenn Bach'
+project: str = "Deployfish"
+copyright: str = "Caltech IMSS ADS"  # pylint: disable=redefined-builtin
+author: str = "Chris Malek, Glenn Bach"
 
 show_authors = False
 
-version: str = '1.14.6'
-release: str = '1.14.6'
+version: str = "1.14.7"
+release: str = "1.14.7"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -70,17 +71,20 @@ exclude_patterns: List[str] = []
 add_function_parentheses: bool = False
 add_module_names: bool = True
 
-autodoc_member_order: str = 'bysource'
+autodoc_member_order: str = "bysource"
 autodoc_type_aliases: Dict[str, str] = {}
 
 # the locations and names of other projects that should be linked to this one
 intersphinx_mapping: Dict[str, Tuple[str, Optional[str]]] = {
-    'python': ('https://docs.python.org/3', None),
-    'boto3': ('https://boto3.amazonaws.com/v1/documentation/api/latest/', None),
+    "python": ("https://docs.python.org/3", None),
+    "boto3": (
+        "https://boto3.amazonaws.com/v1/documentation/api/latest/",
+        None,
+    ),
 }
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style: str = 'sphinx'
+pygments_style: str = "sphinx"
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos: bool = False
@@ -98,9 +102,9 @@ html_context: Dict[str, Any] = {
     "conf_py_path": "/docs/source/",
 }
 html_theme_options: Dict[str, Any] = {
-    'collapse_navigation': True,
-    'display_version': True,
-    'navigation_depth': 3,
+    "collapse_navigation": True,
+    "display_version": True,
+    "navigation_depth": 3,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
