@@ -62,7 +62,7 @@ class ECSServiceCommands(Controller):
     class Meta:
         label = 'commands'
         description = 'Work with Helper Tasks for an ECS Service'
-        help = 'Work with Helper Takss for an ECS Service'
+        help = 'Work with Helper Tasks for an ECS Service'
         stacked_on = 'service'
         stacked_type = 'nested'
 
@@ -165,13 +165,13 @@ Show info about a command associated with a Service that exists in AWS.
     # Update
 
     @ex(
-        help='Update command defintions in AWS independently of their Service',
+        help='Update command definitions in AWS independently of their Service - see description for caveats!',
         arguments=[
             (['pk'], { 'help' : 'The primary key for the ECS Service in AWS'})
         ],
         description="""
 Update all the Service's ServiceHelperTasks in AWS independently of the Service,
-and return the new task defintiion family:revision for each.
+and return the new task definition family:revision for each.
 
 This command exists because while we normally update ServiceHelperTasks
 automatically when their Service is updated, sometimes we want to update a
@@ -189,7 +189,7 @@ this command with "deploy task run" instead of running them with
     @handle_model_exceptions
     def update(self) -> None:
         """
-        Update command defintions in AWS independently of their Service.
+        Update command definitions in AWS independently of their Service.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(

@@ -1644,7 +1644,7 @@ class Task(TagsMixin, VPCConfigurationMixin, Model):
         * ``placementStrategy``: (optional) the placement strategy for running the task
         * ``group``: (optional)the task group
 
-    We write these as tags on the task defintion:
+    We write these as tags on the task definition:
 
         * Need 5 tags for cluster, count, launchType, platformVersion
         * 1 tag for service pk
