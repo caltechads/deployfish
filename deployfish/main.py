@@ -1,7 +1,9 @@
 # pylint: disable=import-outside-toplevel
+import contextlib
 import os
 from typing import Any, Optional, Dict
 
+import debugpy
 from botocore.exceptions import UnauthorizedSSOTokenError
 from cement import App, init_defaults
 from cement.core.exc import CaughtSignal
@@ -227,6 +229,8 @@ class DeployfishApp(App):
 
 
 def main():
+    maybe_do_cli_debugging(sys.argv)
+
     with DeployfishApp() as app:
         set_app(app)
         try:
@@ -256,6 +260,37 @@ def main():
             # Default Cement signals are SIGINT and SIGTERM, exit 0 (non-error)
             print('\n%s' % e)
             app.exit_code = 0
+
+
+def maybe_do_cli_debugging(argv):
+    """
+    Call this to enable client-style debugging of a python script if the user
+    passed --debugpy on the command line (can't use --debug because Cement uses it).
+
+    See here for how to set up VSCode to act as a remote debug server:
+    https://access.caltech.edu/caltech_docs/docs/project/ads-handbook/latest/local_development/debugging_python_with_vscode/
+
+    This function will use the REMOTE_DEBUG_HOST and REMOTE_DEBUG_PORT env vars to
+    to connect to a remote debug server. They default to "localhost" and 5678,
+    respectively.
+
+    Args:
+        argv: Pass sys.argv here for us to check for the --debugpy flag.
+              That flag will be removed if present.
+
+    """
+    if "--debugpy" in argv:
+        try:
+            # Redirect stderr to /dev/null to avoid printing debugpy's error message.
+            # We have our own.
+            with open(os.devnull, "w") as devnull, contextlib.redirect_stderr(devnull):
+                debugpy.connect(("localhost", 5678))
+        except ConnectionRefusedError:
+            print("No debug server is running at localhost:5678.")
+        else:
+            print("Connected to debug server at localhost:5678.")
+        # Remove the --debug flag because django will complain about it.
+        argv.remove("--debugpy")
 
 
 if __name__ == '__main__':
