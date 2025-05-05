@@ -1,9 +1,7 @@
-from typing import Dict, Any, List, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from deployfish.exceptions import (
-    ConfigProcessingFailed,
-    SkipConfigProcessing as BaseSkipConfigProcessing
-)
+from deployfish.exceptions import ConfigProcessingFailed
+from deployfish.exceptions import SkipConfigProcessing as BaseSkipConfigProcessing
 
 if TYPE_CHECKING:
     from deployfish.config import Config
@@ -20,6 +18,7 @@ class AbstractConfigProcessor:
             with
         context: a dict of additional data that we might use when processing the
             config
+
     """
 
     class SkipConfigProcessing(BaseSkipConfigProcessing):
@@ -29,15 +28,15 @@ class AbstractConfigProcessor:
         pass
 
     #: The list of base deployfish replacement strings we currently support
-    REPLACEMENTS: List[str] = [
-        '{name}',
-        '{environment}',
-        '{service-name}',
-        '{task-name}',
-        '{cluster-name}'
+    REPLACEMENTS: list[str] = [
+        "{name}",
+        "{environment}",
+        "{service-name}",
+        "{task-name}",
+        "{cluster-name}"
     ]
 
-    def __init__(self, config: "Config", context: Dict[str, Any]):
+    def __init__(self, config: "Config", context: dict[str, Any]):
         #: The :py:class:`deployfish.config.Config` we are processing
         self.config = config
         #: Any additional context our caller wished to give us for our processing
@@ -45,7 +44,7 @@ class AbstractConfigProcessor:
         #: This holds values for each appropriate replacement in :py:attr:`REPLACEMENTS`
         #: for each item in each section listed in
         #: :py:attr:`deployfish.config.Config.processable_sections`
-        self.deployfish_lookups: Dict[str, Any] = {}
+        self.deployfish_lookups: dict[str, Any] = {}
         self.extract_replacements()
 
     def extract_replacements(self) -> None:
@@ -56,17 +55,17 @@ class AbstractConfigProcessor:
             self.deployfish_lookups[section_name] = {}
             section = self.config.cooked.get(section_name, {})
             for item in section:
-                self.deployfish_lookups[section_name][item['name']] = {}
-                self.deployfish_lookups[section_name][item['name']]['{name}'] = item['name']
-                if section_name == 'services':
-                    self.deployfish_lookups[section_name][item['name']]['{service-name}'] = item['name']
-                if section_name == 'tasks':
-                    self.deployfish_lookups[section_name][item['name']]['{task-name}'] = item['name']
-                self.deployfish_lookups[section_name][item['name']]['{environment}'] = item.get('environment', 'prod')
-                if 'cluster' in item:
-                    self.deployfish_lookups[section_name][item['name']]['{cluster-name}'] = item['cluster']
+                self.deployfish_lookups[section_name][item["name"]] = {}
+                self.deployfish_lookups[section_name][item["name"]]["{name}"] = item["name"]
+                if section_name == "services":
+                    self.deployfish_lookups[section_name][item["name"]]["{service-name}"] = item["name"]
+                if section_name == "tasks":
+                    self.deployfish_lookups[section_name][item["name"]]["{task-name}"] = item["name"]
+                self.deployfish_lookups[section_name][item["name"]]["{environment}"] = item.get("environment", "prod")
+                if "cluster" in item:
+                    self.deployfish_lookups[section_name][item["name"]]["{cluster-name}"] = item["cluster"]
 
-    def get_deployfish_replacements(self, section_name: str, item_name: str) -> Dict[str, str]:
+    def get_deployfish_replacements(self, section_name: str, item_name: str) -> dict[str, str]:
         """
         Return all known replacements for ``deployfish.yml`` section name
         ``section_name``, item name ``item_name``.
@@ -102,13 +101,14 @@ class AbstractConfigProcessor:
 
         Returns:
             The replacements for ``section_name``, ``item_name``.
+
         """
         return self.deployfish_lookups[section_name][item_name]
 
     def replace(
         self,
-        obj: Union[List, Dict],
-        key: Union[str, int],
+        obj: list | dict,
+        key: str | int,
         value: str,
         section_name: str,
         item_name: str
@@ -125,13 +125,14 @@ class AbstractConfigProcessor:
             section_name: the section name ``obj`` came from
             item_name: the name of the item in ``section_name`` that ``obj``
                 came from
+
         """
         raise NotImplementedError
 
     def __process(
         self,
         obj: Any,
-        key: Union[str, int],
+        key: str | int,
         value: Any,
         section_name: str,
         item_name: str
@@ -154,6 +155,7 @@ class AbstractConfigProcessor:
             section_name: the section name ``obj`` came from
             item_name: the name of the item in ``section_name`` that ``obj``
                 came from
+
         """
         if isinstance(value, dict):
             self.__process_dict(value, section_name, item_name)
@@ -162,7 +164,7 @@ class AbstractConfigProcessor:
         elif isinstance(value, str):
             self.replace(obj, key, value, section_name, item_name)
 
-    def __process_list(self, obj: List[Any], section_name: str, item_name: str) -> None:
+    def __process_list(self, obj: list[Any], section_name: str, item_name: str) -> None:
         """
         Process ``obj``, a list value of an item from ``deployfish.yml``,
         looking for strings on which to do string replacements.
@@ -172,11 +174,12 @@ class AbstractConfigProcessor:
             section_name: the section name ``obj`` came from
             item_name: the name of the item in ``section_name`` that ``obj``
                 came from
+
         """
         for i, value in enumerate(obj):
             self.__process(obj, i, value, section_name, item_name)
 
-    def __process_dict(self, obj: Dict[str, Any], section_name: str, item_name: str) -> None:
+    def __process_dict(self, obj: dict[str, Any], section_name: str, item_name: str) -> None:
         """
         Recurse through each key in our dict ``obj`` and process it
         appropriately.  We need to get down to individual strings before we can
@@ -187,8 +190,8 @@ class AbstractConfigProcessor:
             section_name: the section name this dictionary came from
             item_name: the name of the item in ``section_name`` this dictionary
                 came from
-        """
 
+        """
         for key, value in list(obj.items()):
             self.__process(obj, key, value, section_name, item_name)
 
@@ -206,10 +209,11 @@ class AbstractConfigProcessor:
             AbstractConfigProcessor.ProcessingFailed: something went wrong when
                 we tried to run
             AbstractConfigProcessor.SkipConfigProcessing: we didn't run
+
         """
         cooked = self.config.cooked
         for section_name in self.config.processable_sections:
             section = cooked.get(section_name, {})
             for item in section:
                 # Assume each item in a section is s dict
-                self.__process_dict(item, section_name, item['name'])
+                self.__process_dict(item, section_name, item["name"])

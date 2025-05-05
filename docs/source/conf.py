@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # deployfish documentation build configuration file, created by
 # sphinx-quickstart on Tue Jun 13 16:54:27 2017.
@@ -18,7 +17,7 @@
 #
 import os
 import sys
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -33,7 +32,7 @@ import sphinx_rtd_theme
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions: List[str] = [
+extensions: list[str] = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
@@ -42,7 +41,7 @@ extensions: List[str] = [
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path: List[str] = ["_templates"]
+templates_path: list[str] = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -66,16 +65,16 @@ release: str = "1.14.9"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns: List[str] = []
+exclude_patterns: list[str] = []
 
 add_function_parentheses: bool = False
 add_module_names: bool = True
 
 autodoc_member_order: str = "bysource"
-autodoc_type_aliases: Dict[str, str] = {}
+autodoc_type_aliases: dict[str, str] = {}
 
 # the locations and names of other projects that should be linked to this one
-intersphinx_mapping: Dict[str, Tuple[str, Optional[str]]] = {
+intersphinx_mapping: dict[str, tuple[str, str | None]] = {
     "python": ("https://docs.python.org/3", None),
     "boto3": (
         "https://boto3.amazonaws.com/v1/documentation/api/latest/",
@@ -93,15 +92,15 @@ todo_include_todos: bool = False
 # -- Options for HTML output ----------------------------------------------
 
 html_theme: str = "sphinx_rtd_theme"
-html_theme_path: List[str] = [sphinx_rtd_theme.get_html_theme_path()]
-html_context: Dict[str, Any] = {
+html_theme_path: list[str] = [sphinx_rtd_theme.get_html_theme_path()]
+html_context: dict[str, Any] = {
     "display_github": True,
     "github_user": "caltechads",
     "github_repo": "deployfish",
     "github_version": "master",
     "conf_py_path": "/docs/source/",
 }
-html_theme_options: Dict[str, Any] = {
+html_theme_options: dict[str, Any] = {
     "collapse_navigation": True,
     "display_version": True,
     "navigation_depth": 3,

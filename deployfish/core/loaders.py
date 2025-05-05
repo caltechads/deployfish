@@ -1,7 +1,11 @@
-from typing import Type, Optional, Dict, Any, cast
+from typing import Any, cast
 
 from deployfish.core.models import Model
-from deployfish.exceptions import NoSuchConfigSection, NoSuchConfigSectionItem, ObjectReadOnly
+from deployfish.exceptions import (
+    NoSuchConfigSection,
+    NoSuchConfigSectionItem,
+    ObjectReadOnly,
+)
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController
 
 
@@ -26,11 +30,12 @@ class ServiceDereferenceMixin:
 
         Returns:
             A ``{cluster_name}:{service_name}`` string
+
         """
         config = self.controller.app.deployfish_config
-        if ':' not in identifier:
+        if ":" not in identifier:
             item = config.get_section_item(self.controller.model.config_section, identifier)
-            return '{}:{}'.format(item['cluster'], item['name'])
+            return "{}:{}".format(item["cluster"], item["name"])
         return identifier
 
 
@@ -44,7 +49,7 @@ class ObjectLoader:
         We raise this when we can't find the section in deployfish.yml that
         the object we're trying to load is supposed to be in.
         """
-        pass
+
 
     class DeployfishObjectDoesNotExist(NoSuchConfigSectionItem):
         """
@@ -52,20 +57,20 @@ class ObjectLoader:
         deployfish.yml that the object we're trying to load is supposed to be
         in.
         """
-        pass
+
 
     class ObjectNotManaged(Exception):
         """
         We raise this if the object we're trying to load is not managed in
         deployfish.yml.
         """
-        pass
+
 
     class ReadOnly(ObjectReadOnly):
         """
         We raise this if this object is read-only.
         """
-        pass
+
 
     def __init__(self, controller):
         self.controller = controller
@@ -76,7 +81,7 @@ class ObjectLoader:
     def get_object_from_aws(
         self,
         identifier: str,
-        model: Optional[Type[Model]] = None
+        model: type[Model] | None = None
     ) -> Model:
         """
         Get an object from AWS directly, and don't look at our config in
@@ -91,19 +96,20 @@ class ObjectLoader:
 
         Returns:
             A Model instance.
+
         """
         if not model:
             model = self.controller.model
-        model = cast(Type[Model], model)
-        if model.config_section != 'NO_SECTION':
+        model = cast("type[Model]", model)
+        if model.config_section != "NO_SECTION":
             identifier = self.dereference_identifier(identifier)
         return model.objects.get(identifier)
 
     def get_object_from_deployfish(
         self,
         identifier: str,
-        factory_kwargs: Optional[Dict[str, Any]] = None,
-        model: Optional[Type[Model]] = None
+        factory_kwargs: dict[str, Any] | None = None,
+        model: type[Model] | None = None
     ) -> Model:
         """
         Load an object from deployfish.yml.  This may differ from the object in
@@ -124,21 +130,22 @@ class ObjectLoader:
 
         Returns:
             A Model instance
+
         """
         if factory_kwargs is None:
             factory_kwargs = {}
         if not model:
             model = self.controller.model
-        model = cast(Type[Model], model)
-        if model.config_section != 'NO_SECTION':
+        model = cast("type[Model]", model)
+        if model.config_section != "NO_SECTION":
             return self.factory(identifier, factory_kwargs=factory_kwargs, model=model)
-        raise self.ObjectNotManaged(f'{model.__name__} objects are not managed in deployfish.yml')
+        raise self.ObjectNotManaged(f"{model.__name__} objects are not managed in deployfish.yml")
 
     def factory(
         self,
         identifier: str,
-        factory_kwargs: Optional[Dict[str, Any]] = None,
-        model: Optional[Type[Model]] = None
+        factory_kwargs: dict[str, Any] | None = None,
+        model: type[Model] | None = None
     ) -> Model:
         """
         Load an object from deployfish.yml.  Look in the section named by
@@ -155,31 +162,32 @@ class ObjectLoader:
 
         Returns:
             A Model instance.
+
         """
         if factory_kwargs is None:
             factory_kwargs = {}
         config = self.controller.app.deployfish_config
         if not model:
             model = self.controller.model
-        model = cast(Type[Model], model)
+        model = cast("type[Model]", model)
         if not factory_kwargs:
             factory_kwargs = {}
-        if model.config_section != 'NO_SECTION':
+        if model.config_section != "NO_SECTION":
             try:
                 config.get_section(model.config_section)
             except KeyError as e:
                 raise self.DeployfishSectionDoesNotExist(model.config_section) from e
             try:
                 data = config.get_section_item(model.config_section, identifier)
-                return model.new(data, 'deployfish', **factory_kwargs)
+                return model.new(data, "deployfish", **factory_kwargs)
             except KeyError as e:
                 raise self.DeployfishObjectDoesNotExist(model.config_section, identifier) from e
         else:
-            raise self.ObjectNotManaged('deployfish.yml does not manage objects of class {}'.format(model.__class__))
+            raise self.ObjectNotManaged(f"deployfish.yml does not manage objects of class {model.__class__}")
 
 
 class ServiceLoader(ServiceDereferenceMixin, ObjectLoader):
     """
     A loader for Service objects.
     """
-    pass
+

@@ -1,14 +1,12 @@
-from copy import copy
 import logging
 import time
+from copy import copy
 
-from botocore.utils import get_service_module_name
-from botocore.docs.docstring import WaiterDocstring
 from botocore import xform_name
-from botocore.waiter import NormalizedOperationMethod
-
+from botocore.docs.docstring import WaiterDocstring
 from botocore.exceptions import WaiterError
-
+from botocore.utils import get_service_module_name
+from botocore.waiter import NormalizedOperationMethod
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +49,13 @@ def create_hooked_waiter_with_client(waiter_name, waiter_model, client):
     )
 
     # Rename the waiter class based on the type of waiter.
-    waiter_class_name = str('%s.HookedWaiter.%s' % (
+    waiter_class_name = str("%s.HookedWaiter.%s" % (
         get_service_module_name(client.meta.service_model),
         waiter_name))
 
     # Create the new waiter class
     documented_waiter_cls = type(
-        waiter_class_name, (HookedWaiter,), {'wait': wait})
+        waiter_class_name, (HookedWaiter,), {"wait": wait})
 
     # Return an instance of the new waiter class.
     return documented_waiter_cls(
@@ -81,7 +79,7 @@ class HookedWaiter:
 
     Where:
 
-    args:
+    Args:
         * 'state': the current state of the waiter. One of 'waiting', 'success', 'failure', 'error' or 'timeout'.
         * 'response': the boto3 response from the last invocation of our waiter's operation
         * 'num_attempts': the current iteration number
@@ -95,7 +93,9 @@ class HookedWaiter:
         * 'MaxAttempts': (optional) how many iterations we'll perform before timing out
 
     Plus other waiter specific kwargs.  e.g. Bucket when doing a 'bucket_exists' waiter.
+
     """
+
     def __init__(self, name, config, operation_method):
         """
 
@@ -120,23 +120,23 @@ class HookedWaiter:
     def wait(self, **kwargs):
         hook_kwargs = copy(kwargs)
         acceptors = list(self.config.acceptors)
-        current_state = 'waiting'
+        current_state = "waiting"
         # pop the invocation specific config
-        config = kwargs.pop('WaiterConfig', {})
-        hooks = kwargs.pop('WaiterHooks', [])
-        sleep_amount = config.get('Delay', self.config.delay)
-        max_attempts = config.get('MaxAttempts', self.config.max_attempts)
+        config = kwargs.pop("WaiterConfig", {})
+        hooks = kwargs.pop("WaiterHooks", [])
+        sleep_amount = config.get("Delay", self.config.delay)
+        max_attempts = config.get("MaxAttempts", self.config.max_attempts)
         # ------------------------------
         # Build our hook kwargs
         # ------------------------------
-        hook_kwargs['name'] = self.name
-        hook_kwargs['config'] = self.config
-        if 'WaiterHooks' in hook_kwargs:
-            del hook_kwargs['WaiterHooks']
-        if 'MaxAttempts' not in hook_kwargs:
-            hook_kwargs['MaxAttempts'] = max_attempts
-        if 'Delay' not in hook_kwargs:
-            hook_kwargs['Delay'] = sleep_amount
+        hook_kwargs["name"] = self.name
+        hook_kwargs["config"] = self.config
+        if "WaiterHooks" in hook_kwargs:
+            del hook_kwargs["WaiterHooks"]
+        if "MaxAttempts" not in hook_kwargs:
+            hook_kwargs["MaxAttempts"] = max_attempts
+        if "Delay" not in hook_kwargs:
+            hook_kwargs["Delay"] = sleep_amount
         # ------------------------------
         last_matched_acceptor = None
         num_attempts = 0
@@ -153,21 +153,21 @@ class HookedWaiter:
                 # If none of the acceptors matched, we should
                 # transition to the failure state if an error
                 # response was received.
-                if 'Error' in response:
+                if "Error" in response:
                     # ----------------------------------------
                     # Error hook invocation
                     # ----------------------------------------
-                    hook_kwargs['state'] = 'error'
+                    hook_kwargs["state"] = "error"
                     for hook in hooks:
-                        hook('error', response, num_attempts, **hook_kwargs)
+                        hook("error", response, num_attempts, **hook_kwargs)
                     # ----------------------------------------
                     # Transition to a failure state, which we
                     # can just handle here by raising an exception.
                     raise WaiterError(
                         name=self.name,
-                        reason='An error occurred (%s): %s' % (
-                            response['Error'].get('Code', 'Unknown'),
-                            response['Error'].get('Message', 'Unknown'),
+                        reason="An error occurred (%s): %s" % (
+                            response["Error"].get("Code", "Unknown"),
+                            response["Error"].get("Message", "Unknown"),
                         ),
                         last_response=response,
                     )
@@ -177,12 +177,12 @@ class HookedWaiter:
             for hook in hooks:
                 hook(current_state, response, num_attempts, **kwargs)
             # ----------------------------------------
-            if current_state == 'success':
+            if current_state == "success":
                 logger.debug("Waiting complete, waiter matched the "
                              "success state.")
                 return
-            if current_state == 'failure':
-                reason = 'Waiter encountered a terminal failure state: %s' % (
+            if current_state == "failure":
+                reason = "Waiter encountered a terminal failure state: %s" % (
                     acceptor.explanation
                 )
                 raise WaiterError(
@@ -195,12 +195,12 @@ class HookedWaiter:
                 # Timeout hook invocation
                 # ----------------------------------------
                 for hook in hooks:
-                    hook('timeout', response, num_attempts, **kwargs)
+                    hook("timeout", response, num_attempts, **kwargs)
                 # ----------------------------------------
                 if last_matched_acceptor is None:
-                    reason = 'Max attempts exceeded'
+                    reason = "Max attempts exceeded"
                 else:
-                    reason = 'Max attempts exceeded. Previously accepted state: %s' % (
+                    reason = "Max attempts exceeded. Previously accepted state: %s" % (
                         acceptor.explanation
                     )
                 raise WaiterError(

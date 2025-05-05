@@ -1,10 +1,10 @@
 import os
 import tempfile
-from typing import Optional, Sequence, Tuple, List, cast
+from collections.abc import Sequence
+from typing import cast
 
 from deployfish.config import get_config
-from deployfish.core.models import Manager, Model, Secret, Service, Instance, Cluster
-
+from deployfish.core.models import Cluster, Instance, Manager, Model, Secret, Service
 
 # ----------------------------------------
 # Managers
@@ -25,17 +25,18 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The MySQLDatabase object.
+
         """
         # hint: (str["{name}"])
         config = get_config()
-        section = config.get_section('mysql')
+        section = config.get_section("mysql")
         databases = {}
         for data in section:
-            databases[data['name']] = data
+            databases[data["name"]] = data
         if pk in databases:
-            return MySQLDatabase.new(databases[pk], 'deployfish')
+            return MySQLDatabase.new(databases[pk], "deployfish")
         raise MySQLDatabase.DoesNotExist(
-            'Could not find an MySQLDatabase config named "{}" in deployfish.yml:mysql'.format(pk)
+            f'Could not find an MySQLDatabase config named "{pk}" in deployfish.yml:mysql'
         )
 
     def list(self, service_name: str = None, **_) -> Sequence["MySQLDatabase"]:
@@ -44,14 +45,15 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             A list of MySQLDatabase objects.
+
         """
         # hint: (str["{service_name}"], int)
         config = get_config()
-        section = config.get_section('mysql')
-        databases = [MySQLDatabase.new(db, 'deployfish') for db in section]
+        section = config.get_section("mysql")
+        databases = [MySQLDatabase.new(db, "deployfish") for db in section]
         if service_name:
-            databases = [db for db in databases if db.data['service'] == service_name]
-        return cast(List["MySQLDatabase"], databases)
+            databases = [db for db in databases if db.data["service"] == service_name]
+        return cast("list[MySQLDatabase]", databases)
 
     def save(  # type: ignore  # pylint:disable=arguments-differ
         self,
@@ -81,6 +83,7 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The output of the validation commands.
+
         """
         return self.create(obj, root_user, root_password, ssh_target=ssh_target, verbose=verbose)
 
@@ -113,6 +116,7 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The output of the validation commands.
+
         """
         version = self.major_server_version(
             obj,
@@ -130,13 +134,7 @@ class MySQLDatabaseManager(Manager):
         if status:
             return output
         raise obj.OperationFailed(
-            'Failed to create database "{}" and/or user "{}" on {}:{}: {}'.format(
-                obj.db,
-                obj.user,
-                obj.host,
-                obj.port,
-                output
-            )
+            f'Failed to create database "{obj.db}" and/or user "{obj.user}" on {obj.host}:{obj.port}: {output}'
         )
 
     def update(
@@ -167,6 +165,7 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The output of the update commands.
+
         """
         version = self.major_server_version(
             obj,
@@ -184,13 +183,7 @@ class MySQLDatabaseManager(Manager):
         if success:
             return output
         raise obj.OperationFailed(
-            'Failed to update database "{}" and/or user "{}" on {}:{}: {}'.format(
-                obj.db,
-                obj.user,
-                obj.host,
-                obj.port,
-                output
-            )
+            f'Failed to update database "{obj.db}" and/or user "{obj.user}" on {obj.host}:{obj.port}: {output}'
         )
 
     def validate(
@@ -217,6 +210,7 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The output of the validation commands.
+
         """
         command = obj.render_for_validate()
         success, output = obj.cluster.ssh_noninteractive(
@@ -227,12 +221,7 @@ class MySQLDatabaseManager(Manager):
         if success:
             return output
         raise obj.OperationFailed(
-            'Failed to validate user "{}" on {}:{}: {}'.format(
-                obj.user,
-                obj.host,
-                obj.port,
-                output
-            )
+            f'Failed to validate user "{obj.user}" on {obj.host}:{obj.port}: {output}'
         )
 
     def dump(
@@ -241,7 +230,7 @@ class MySQLDatabaseManager(Manager):
         filename: str = None,
         ssh_target: Instance = None,
         verbose: bool = False
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """
         Use ``mysqldump`` to dump the remote database as SQL to a local file.
 
@@ -267,16 +256,17 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The stderr output of dumping the database.
+
         """
         if filename is None:
-            filename = "{}.sql".format(obj.service.name)
+            filename = f"{obj.service.name}.sql"
             i = 1
             while os.path.exists(filename):
-                filename = "{}-{}.sql".format(obj.service.name, i)
+                filename = f"{obj.service.name}-{i}.sql"
                 i += 1
         command = obj.render_for_dump()
         tmp_fd, file_path = tempfile.mkstemp()
-        with os.fdopen(tmp_fd, 'w') as fd:
+        with os.fdopen(tmp_fd, "w") as fd:
             success, output = obj.cluster.ssh_noninteractive(
                 command,
                 output=fd,
@@ -289,12 +279,7 @@ class MySQLDatabaseManager(Manager):
                 return output, filename
             fd.close()
             os.rename(file_path, filename + ".errors")
-            raise obj.OperationFailed('Failed to dump our MySQL db "{}" in {}:{}: {}'.format(
-                obj.db,
-                obj.host,
-                obj.port,
-                output
-            ))
+            raise obj.OperationFailed(f'Failed to dump our MySQL db "{obj.db}" in {obj.host}:{obj.port}: {output}')
 
     def load(
         self,
@@ -322,29 +307,22 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The output of loading the file.
+
         """
         success, output, filename = obj.cluster.push_file(filepath, ssh_target=ssh_target, verbose=verbose)
         if not success:
-            host = 'NO HOST'
+            host = "NO HOST"
             if ssh_target:
-                host = f'{ssh_target.name} ({ssh_target.ip_address})'
+                host = f"{ssh_target.name} ({ssh_target.ip_address})"
             raise obj.OperationFailed(
-                'Failed to upload {} to our cluster machine {}: {}'.format(
-                    filepath, host, output
-                )
+                f"Failed to upload {filepath} to our cluster machine {host}: {output}"
             )
         command = obj.render_for_load().format(filename=filename)
         success, output = obj.cluster.ssh_noninteractive(command, ssh_target=ssh_target, verbose=verbose)
         if success:
             return output
         raise obj.OperationFailed(
-            'Failed to load "{}" into database "{}" on {}:{}: {}'.format(
-                filepath,
-                obj.db,
-                obj.host,
-                obj.port,
-                output
-            )
+            f'Failed to load "{filepath}" into database "{obj.db}" on {obj.host}:{obj.port}: {output}'
         )
 
     def major_server_version(
@@ -378,9 +356,10 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The major.minor version of the MySQL server.
+
         """
         version = self.server_version(obj, ssh_target=ssh_target, verbose=verbose, user=user, password=password)
-        version = version.rsplit('.', 1)[0]
+        version = version.rsplit(".", 1)[0]
         return version
 
     def server_version(
@@ -414,16 +393,13 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The server version
+
         """
         command = obj.render_for_server_version(user=user, password=password)
         success, output = obj.cluster.ssh_noninteractive(command, ssh_target=ssh_target, verbose=verbose)
         if success:
-            return output.split('\n')[3][2:-2].strip()
-        raise obj.OperationFailed('Failed to get MySQL version of remote server {}:{}: {}'.format(
-            obj.host,
-            obj.port,
-            output
-        ))
+            return output.split("\n")[3][2:-2].strip()
+        raise obj.OperationFailed(f"Failed to get MySQL version of remote server {obj.host}:{obj.port}: {output}")
 
     def show_grants(
         self,
@@ -449,17 +425,13 @@ class MySQLDatabaseManager(Manager):
 
         Returns:
             The output of the ``SHOW GRANTS` command.
+
         """
         command = obj.render_for_show_grants()
         success, output = obj.cluster.ssh_noninteractive(command, ssh_target=ssh_target, verbose=verbose)
         if success:
             return output
-        raise obj.OperationFailed('Failed to get grants for user "{}" on remote server {}:{}: {}'.format(
-            obj.user,
-            obj.host,
-            obj.port,
-            output
-        ))
+        raise obj.OperationFailed(f'Failed to get grants for user "{obj.user}" on remote server {obj.host}:{obj.port}: {output}')
 
 
 # ----------------------------------------
@@ -484,102 +456,98 @@ class MySQLDatabase(Model):
     """
 
     objects = MySQLDatabaseManager()
-    config_section: str = 'mysql'
+    config_section: str = "mysql"
 
     @property
     def pk(self) -> str:
-        return self.data['name']
+        return self.data["name"]
 
     @property
     def name(self) -> str:
-        return self.data['name']
+        return self.data["name"]
 
     def secret(self, name: str) -> Secret:
-        if 'secrets' not in self.cache:
-            self.cache['secrets'] = {}
-        if name not in self.cache['secrets']:
+        if "secrets" not in self.cache:
+            self.cache["secrets"] = {}
+        if name not in self.cache["secrets"]:
             if "." not in name:
-                full_name = '{}{}'.format(self.service.secrets_prefix, name)
+                full_name = f"{self.service.secrets_prefix}{name}"
             else:
                 full_name = name
-            self.cache['secrets'][name] = Secret.objects.get(full_name)
-        return self.cache['secrets'][name]
+            self.cache["secrets"][name] = Secret.objects.get(full_name)
+        return self.cache["secrets"][name]
 
     def parse(self, key: str) -> str:
         """
-        deployfish supports putting 'config.KEY' as the value for the host and port keys in self.data
+        Deployfish supports putting 'config.KEY' as the value for the host and port keys in self.data
 
         Parse the value and dereference it from the live secrets for the service if necessary.
         """
         if isinstance(self.data[key], str):
-            if self.data[key].startswith('config.'):
-                _, key = self.data[key].split('.')
+            if self.data[key].startswith("config."):
+                _, key = self.data[key].split(".")
                 try:
                     value = self.secret(key).value
                 except Secret.DoesNotExist:
                     raise self.OperationFailed(
-                        'MySQLDatabase(pk="{}"): Service(pk="{}") has no secret named "{}"'.format(
-                            self.name,
-                            self.service.pk,
-                            key
-                        )
+                        f'MySQLDatabase(pk="{self.name}"): Service(pk="{self.service.pk}") has no secret named "{key}"'
                     )
                 return value
         return self.data[key]
 
     @property
     def host(self) -> str:
-        if 'host' not in self.cache:
-            self.cache['host'] = self.parse('host')
-        return self.cache['host']
+        if "host" not in self.cache:
+            self.cache["host"] = self.parse("host")
+        return self.cache["host"]
 
     @property
     def user(self) -> str:
-        if 'user' not in self.cache:
-            self.cache['user'] = self.parse('user')
-        return self.cache['user']
+        if "user" not in self.cache:
+            self.cache["user"] = self.parse("user")
+        return self.cache["user"]
 
     @property
     def db(self) -> str:
-        if 'db' not in self.cache:
-            self.cache['db'] = self.parse('db')
-        return self.cache['db']
+        if "db" not in self.cache:
+            self.cache["db"] = self.parse("db")
+        return self.cache["db"]
 
     @property
     def password(self) -> str:
-        if 'password' not in self.cache:
-            self.cache['password'] = self.parse('pass')
-        return self.cache['password']
+        if "password" not in self.cache:
+            self.cache["password"] = self.parse("pass")
+        return self.cache["password"]
 
     @property
     def character_set(self) -> str:
-        if 'character_set' not in self.cache:
-            if 'character_set' not in self.data:
-                self.cache['character_set'] = 'utf8'
+        if "character_set" not in self.cache:
+            if "character_set" not in self.data:
+                self.cache["character_set"] = "utf8"
             else:
-                self.cache['character_set'] = self.parse('character_set')
-        return self.cache['character_set']
+                self.cache["character_set"] = self.parse("character_set")
+        return self.cache["character_set"]
 
     @property
     def collation(self) -> str:
-        if 'collation' not in self.cache:
-            if 'collation' not in self.data:
-                self.cache['collation'] = 'utf8_unicode_ci'
+        if "collation" not in self.cache:
+            if "collation" not in self.data:
+                self.cache["collation"] = "utf8_unicode_ci"
             else:
-                self.cache['collation'] = self.parse('collation')
-        return self.cache['collation']
+                self.cache["collation"] = self.parse("collation")
+        return self.cache["collation"]
 
     @property
     def port(self) -> int:
-        if 'port' not in self.cache:
-            if 'port' not in self.data:
-                self.cache['port'] = 3306
+        if "port" not in self.cache:
+            if "port" not in self.data:
+                self.cache["port"] = 3306
             else:
-                self.cache['port'] = self.parse('port')
-        return self.cache['port']
+                self.cache["port"] = self.parse("port")
+        return self.cache["port"]
 
     @property
-    def ssh_target(self) -> Optional[Instance]:
+    def ssh_target(self) -> Instance | None:
         if self.service.task_definition.is_fargate():
             return self.service.ssh_target
         return self.cluster.ssh_target
@@ -590,16 +558,16 @@ class MySQLDatabase(Model):
 
     @property
     def service(self) -> Service:
-        if 'service' not in self.cache:
+        if "service" not in self.cache:
             config = get_config()
-            data = config.get_section_item('services', self.data['service'])
+            data = config.get_section_item("services", self.data["service"])
             # We don't need the live service; we just need the service's cluster to exist
-            self.cache['service'] = Service.new(data, 'deployfish')
-        return self.cache['service']
+            self.cache["service"] = Service.new(data, "deployfish")
+        return self.cache["service"]
 
     @service.setter
     def service(self, value: str) -> None:
-        self.cache['service'] = value
+        self.cache["service"] = value
 
     @property
     def cluster(self) -> Cluster:
@@ -635,7 +603,7 @@ class MySQLDatabase(Model):
         filename: str = None,
         ssh_target: Instance = None,
         verbose: bool = False
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         return self.objects.dump(self, filename=filename, ssh_target=ssh_target, verbose=verbose)
 
     def load(
@@ -684,20 +652,13 @@ class MySQLDatabase(Model):
         version: str = None
     ) -> str:
         if not version:
-            version = '8.0'
-        sql = "CREATE DATABASE {} CHARACTER SET {} COLLATE {};".format(self.db, self.character_set, self.collation)
-        if version == '5.6':
-            sql += "grant all privileges on {}.* to '{}'@'%' identified by '{}';".format(
-                self.db,
-                self.user,
-                self.password
-            )
+            version = "8.0"
+        sql = f"CREATE DATABASE {self.db} CHARACTER SET {self.character_set} COLLATE {self.collation};"
+        if version == "5.6":
+            sql += f"grant all privileges on {self.db}.* to '{self.user}'@'%' identified by '{self.password}';"
         else:
-            sql += "create user '{}'@'%' identified with mysql_native_password by '{}';".format(
-                self.user,
-                self.password
-            )
-            sql += "grant all privileges on {}.* to '{}'@'%';".format(self.db, self.user)
+            sql += f"create user '{self.user}'@'%' identified with mysql_native_password by '{self.password}';"
+            sql += f"grant all privileges on {self.db}.* to '{self.user}'@'%';"
         sql += "flush privileges;"
         return self.render_mysql_command(sql, user=root_user, password=root_password)
 
@@ -708,14 +669,14 @@ class MySQLDatabase(Model):
         version: str = None
     ) -> str:
         if not version:
-            version = '8.0'
-        sql = "ALTER DATABASE {} CHARACTER SET = {};".format(self.db, self.character_set)
-        sql += "ALTER DATABASE {} COLLATE = {};".format(self.db, self.collation)
-        if version == '5.6':
-            sql += "set password for '{}'@'%' = PASSWORD('{}');".format(self.user, self.password)
+            version = "8.0"
+        sql = f"ALTER DATABASE {self.db} CHARACTER SET = {self.character_set};"
+        sql += f"ALTER DATABASE {self.db} COLLATE = {self.collation};"
+        if version == "5.6":
+            sql += f"set password for '{self.user}'@'%' = PASSWORD('{self.password}');"
         else:
-            sql += "alter user '{}'@'%' identified with mysql_native_password by '{}';".format(self.user, self.password)
-        sql += "grant all privileges on {}.* to '{}'@'%';".format(self.db, self.user)
+            sql += f"alter user '{self.user}'@'%' identified with mysql_native_password by '{self.password}';"
+        sql += f"grant all privileges on {self.db}.* to '{self.user}'@'%';"
         sql += "flush privileges;"
         return self.render_mysql_command(sql, user=root_user, password=root_password)
 

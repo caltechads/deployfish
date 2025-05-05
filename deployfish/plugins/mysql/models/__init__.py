@@ -1,1 +1,1 @@
-from .mysql import *  # noqa:F401,F403
+from .mysql import *  # noqa: F403

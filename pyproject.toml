@@ -5,3 +5,80 @@ requires = [
     "toml == 0.10.2",
 ]
 build-backend = "setuptools.build_meta"
+
+###############################################################################
+# Ruff Configuration
+###############################################################################
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py312"
+# Tell ruff that this project's python code all lives inside the {{cookiecutter.project_python_name}} subfolder.
+src = ["deployfish"]
+# Don't lint the venv, the test code, or the migrations.
+exclude = [".venv", "*/tests/*"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+# Disable auto-formatting of code examples in docstrings.
+# This is currently disabled by default, but it is planned for this
+# to be opt-out in the future, so we're opting out now.
+docstring-code-format = false
+# Set the line length limit used when formatting code snippets in docstrings.
+# This only has an effect when the docstring-code-format = true.
+docstring-code-line-length = "dynamic"
+
+[tool.ruff.lint]
+select = ["ALL"]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+# Allow unused variables if their names are underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+ignore = [
+    #### Ignore entire modules
+    "ANN",  # flake8-annotations
+    "COM",  # flake8-commas
+    "C90",  # mccabe complexity
+    "TID",  # flake8-tidy-imports
+
+    #### Ignore specific rules
+    "CPY001",   # ignore missing copyright notices
+    "D100",     # ignore missing docs
+    "D101",     # ignore Missing docstring in public class
+    "D102",     # ignore Missing docstring in public method
+    "D103",     # ignore Missing docstring in public function
+    "D104",     # ignore Missing docstring in public package
+    "D105",     # ignore Missing docstring in magic method
+    "D106",     # ignore Missing docstring in public nested class
+    "D107",     # ignore Missing docstring in __init__ method
+    "D200",     # One-line docstring should fit on one line
+    "D203",     # 1 blank required before class docstring
+    "D205",     # 1 blank line required between summary line and description
+    "D211",     # No blank lines allowed before class docstring
+    "D212",     # Multi-line docstring summary should start at the first line
+    "D400",     # First line of docstring should end with a period
+    "D401",     # First line of docstring should be in imperative mood
+    "D415",     # First line of docstring should end with a period, question mark, or exclamation point
+    "DOC201",   # Ignore missing "Return" section in docstring
+    "E402",     # Ignore imports that aren't at the top of the file
+    "FIX002",   # Line contains "TODO", consider resolving the issue
+    "N818",     # Stop bugging me about not ending my exceptions with "Error"
+    "PLC0415",  # Ignore imports that aren't at the top level. Sometimes that's needed to avoid circular imports
+    "PLR6201",  # Ignore list literals used in membership tests. We don't care about the performance boost from sets
+    "RUF012",   # Ignore mutable class attrs. Wagtail expects lists for a lot of those, and our code never touches them
+    "S603",     # ignore subprocess calls that do not check return code
+    "S607",     # ignore subprocess programs that are not absolute paths
+    "SIM102",   # Don't try to combine nested ifs
+    "SLF001",   # Ignore access to attributes starting with a single _. Django's Model._meta is used all over the place.
+    "TD002",    # Missing author in TODO; try: # TODO(<author_name>): ... or # TODO @<author_name>:
+    "TD003",    # Missing issue link on the line following this TODO
+    "TRY003",   # external messages in exceptions are too verbose
+]
