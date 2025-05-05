@@ -1,4 +1,5 @@
 from typing import Dict, Any, Optional, Type
+import sys
 
 from cement import ex, shell
 import click
@@ -8,6 +9,7 @@ from deployfish.controllers.utils import handle_model_exceptions
 
 from deployfish.core.loaders import ObjectLoader
 from deployfish.core.models import Model, Instance, SSHTunnel
+from deployfish.exceptions import ConfigProcessingFailed
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Controller
 from deployfish.types import SupportsTunnelModel
 
@@ -189,7 +191,12 @@ class BaseTunnel(Controller):
         """
         # We have to do this bit here to load the deployfish.config.Config
         # object so that SSHTunnelManager can get to it later.
-        _ = self.app.deployfish_config
+        try:
+            _ = self.app.deployfish_config
+        except ConfigProcessingFailed as e:
+            click.secho(str(e))
+            sys.exit(1)
+
         if self.app.pargs.tunnel_name:
             loader = self.loader(self)
             tunnel = loader.get_object_from_deployfish(self.app.pargs.tunnel_name)
