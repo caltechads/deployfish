@@ -1,23 +1,21 @@
 import configparser
 import datetime
+import getpass
 import logging
 import os
-import getpass
 import pwd
 
 import click
-from tzlocal import get_localzone
-
-from simplesqs.message import MessagingHandler
+from deployfish.core.models.ecs import Service
 
 # pylint: disable=no-name-in-module
 from deployfish.core.utils.mixins import (
     CodeNameVersionMixin,
-    GitMixin,
     GitChangelogMixin,
+    GitMixin,
 )
-
-from deployfish.core.models.ecs import Service
+from simplesqs.message import MessagingHandler
+from tzlocal import get_localzone
 
 logging.basicConfig(level=logging.WARNING)
 

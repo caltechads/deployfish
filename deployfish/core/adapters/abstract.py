@@ -1,4 +1,5 @@
-from typing import Dict, Any, List, Callable, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from deployfish.exceptions import SchemaException as BaseSchemaException
 
@@ -13,22 +14,22 @@ class Adapter:
     cases, there may be additional data returned also.
     """
 
-    NONE: str = 'deployfish:required'
+    NONE: str = "deployfish:required"
 
     class SchemaException(BaseSchemaException):
         """
         Raise this if data in the config source does not validate properly.
         """
-        pass
 
-    def __init__(self, data: Dict[str, Any], partial: bool = False, **kwargs) -> None:
+
+    def __init__(self, data: dict[str, Any], partial: bool = False, **kwargs) -> None:
         """
         ``data`` is the raw data from our source.
         """
-        self.data: Dict[str, Any] = data
+        self.data: dict[str, Any] = data
         self.partial: bool = partial
 
-    def only_one_is_True(self, data: List[bool]) -> bool:
+    def only_one_is_True(self, data: list[bool]) -> bool:
         """
         Look through the list ``data``, a list of boolean values, and return True if only one True is in the
         list, False otherwise.
@@ -44,7 +45,7 @@ class Adapter:
 
     def set(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source_key: str,
         dest_key: str = None,
         default: Any = NONE,
@@ -56,15 +57,14 @@ class Adapter:
         if self.partial or optional:
             if source_key in self.data:
                 data[dest_key] = self.data[source_key]
+        elif default != self.NONE:
+            data[dest_key] = self.data.get(source_key, default)
         else:
-            if default != self.NONE:
-                data[dest_key] = self.data.get(source_key, default)
-            else:
-                data[dest_key] = self.data[source_key]
+            data[dest_key] = self.data[source_key]
         if dest_key in data and convert:
             data[dest_key] = convert(data[dest_key])
 
-    def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         This method is the meat of the adapter -- it is what takes ``self.data`` and returns the
         data structures needed to initialize our model.

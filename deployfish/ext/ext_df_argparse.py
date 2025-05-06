@@ -55,9 +55,9 @@ class DeployfishArgparseController(ArgparseController):
                 info      My subclass info help
         """
         kwargs = super()._get_command_parser_options(command)
-        if 'help' in kwargs:
-            controller = command['controller']
-            if hasattr(controller, 'help_overrides'):
-                if command['func_name'] in controller.help_overrides:
-                    kwargs['help'] = controller.help_overrides[command['func_name']]
+        if "help" in kwargs:
+            controller = command["controller"]
+            if hasattr(controller, "help_overrides"):
+                if command["func_name"] in controller.help_overrides:
+                    kwargs["help"] = controller.help_overrides[command["func_name"]]
         return kwargs

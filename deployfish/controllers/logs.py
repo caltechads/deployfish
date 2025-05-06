@@ -1,15 +1,15 @@
 import argparse
-from typing import Type, Dict, Union, cast
+from typing import cast
 
-from cement import App, ex
 import click
+from cement import App, ex
 
 from deployfish.core.models import (
+    CloudWatchLogGroup,
+    CloudWatchLogStream,
     Model,
     Task,
     TaskDefinition,
-    CloudWatchLogGroup,
-    CloudWatchLogStream
 )
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Controller
 from deployfish.renderers.table import TableRenderer
@@ -43,14 +43,15 @@ def tail_task_logs(
 
     Note:
         See (CloudWatch Log Filter Patterns|https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html)_ for info on how to format the ``filter_pattern``.
+
     """
-    lc = cast(TaskDefinition, obj.task_definition).logging
-    if lc['logDriver'] != 'awslogs':
+    lc = cast("TaskDefinition", obj.task_definition).logging
+    if lc["logDriver"] != "awslogs":
         raise obj.OperationFailed(
-            'Task log driver is "{}"; we can only tail "awslogs"'.format(lc['logDriver'])
+            'Task log driver is "{}"; we can only tail "awslogs"'.format(lc["logDriver"])
         )
-    group = CloudWatchLogGroup.objects.get(lc['options']['awslogs-group'])
-    stream_prefix = lc['options']['awslogs-stream-prefix']
+    group = CloudWatchLogGroup.objects.get(lc["options"]["awslogs-group"])
+    stream_prefix = lc["options"]["awslogs-stream-prefix"]
     tailer = group.get_event_tailer(
         stream_prefix=stream_prefix,
         sleep=sleep,
@@ -58,8 +59,8 @@ def tail_task_logs(
     for page in tailer:
         for event in page:
             app.print("{}  {}".format(
-                click.style(event['timestamp'].strftime('%Y-%m-%d %H:%M:%S.%f'), fg='cyan'),
-                event['message'].strip()
+                click.style(event["timestamp"].strftime("%Y-%m-%d %H:%M:%S.%f"), fg="cyan"),
+                event["message"].strip()
             ))
         if mark:
             app.print(click.style(
@@ -78,71 +79,72 @@ def list_log_streams(app: App, obj: Task, limit=None) -> None:
 
     Keyword Arguments:
         limit: limit the number of streams to the ``limit`` most recent ones
+
     """
-    lc = cast(TaskDefinition, obj.task_definition).logging
-    if lc['logDriver'] != 'awslogs':
+    lc = cast("TaskDefinition", obj.task_definition).logging
+    if lc["logDriver"] != "awslogs":
         raise obj.OperationFailed(
-            'Task log driver is "{}"; we can only tail "awslogs"'.format(lc['logDriver'])
+            'Task log driver is "{}"; we can only tail "awslogs"'.format(lc["logDriver"])
         )
-    group = CloudWatchLogGroup.objects.get(lc['options']['awslogs-group'])
-    stream_prefix = lc['options']['awslogs-stream-prefix']
+    group = CloudWatchLogGroup.objects.get(lc["options"]["awslogs-group"])
+    stream_prefix = lc["options"]["awslogs-stream-prefix"]
     streams = group.log_streams(stream_prefix=stream_prefix, maxitems=limit)
     columns = {
-        'Stream Name': 'logStreamName',
-        'Created': {'key': 'creationTime', 'datatype': 'timestamp'},
-        'Last Event': {
-            'key': 'lastEventTimestamp',
-            'datatype': 'timestamp',
-            'default': ''
+        "Stream Name": "logStreamName",
+        "Created": {"key": "creationTime", "datatype": "timestamp"},
+        "Last Event": {
+            "key": "lastEventTimestamp",
+            "datatype": "timestamp",
+            "default": ""
         },
     }
-    app.print(TableRenderer(columns, ordering='-Created').render(streams))
+    app.print(TableRenderer(columns, ordering="-Created").render(streams))
 
 
 class Logs(Controller):
 
     class Meta:
-        label = 'logs'
-        description = 'Work with CloudWatch Logs'
-        help = 'Work with CloudWatch Logs'
-        stacked_type = 'nested'
+        label = "logs"
+        description = "Work with CloudWatch Logs"
+        help = "Work with CloudWatch Logs"
+        stacked_type = "nested"
 
 
 class LogsCloudWatchLogGroup(ReadOnlyCrudBase):
 
     class Meta:
-        label = 'awslog-groups'
-        description = 'Work with CloudWatch Log Group objects'
-        help = 'Work with CloudWatch Log Group objects'
-        stacked_on = 'logs'
-        stacked_type = 'nested'
+        label = "awslog-groups"
+        description = "Work with CloudWatch Log Group objects"
+        help = "Work with CloudWatch Log Group objects"
+        stacked_on = "logs"
+        stacked_type = "nested"
 
-    model: Type[Model] = CloudWatchLogGroup
+    model: type[Model] = CloudWatchLogGroup
 
-    help_overrides: Dict[str, str] = {
-        'info': 'Show details about a CloudWatch Log Group in AWS',
+    help_overrides: dict[str, str] = {
+        "info": "Show details about a CloudWatch Log Group in AWS",
     }
 
-    info_template: str = 'detail--cloudwatchloggroup.jinja2'
+    info_template: str = "detail--cloudwatchloggroup.jinja2"
 
-    list_ordering: str = 'Name'
-    list_result_columns: Dict[str, Union[str, Dict[str, str]]] = {
-        'Name': 'logGroupName',
-        'Created': {'key': 'creationTime', 'datatype': 'timestamp'},
-        'Retention': {'key': 'retentionInDays', 'default': 'inf'},
-        'Size': {'key': 'storedBytes', 'datatype': 'bytes'}
+    list_ordering: str = "Name"
+    list_result_columns: dict[str, str | dict[str, str]] = {
+        "Name": "logGroupName",
+        "Created": {"key": "creationTime", "datatype": "timestamp"},
+        "Retention": {"key": "retentionInDays", "default": "inf"},
+        "Size": {"key": "storedBytes", "datatype": "bytes"}
     }
 
     @ex(
         help="List CloudWatch Log Groups in AWS",
         arguments=[
             (
-                ['--prefix'],
+                ["--prefix"],
                 {
-                    'help': 'Filter by prefix',
-                    'action': 'store',
-                    'default': None,
-                    'dest': 'prefix'
+                    "help": "Filter by prefix",
+                    "action": "store",
+                    "default": None,
+                    "dest": "prefix"
                 }
             ),
         ]
@@ -155,41 +157,41 @@ class LogsCloudWatchLogGroup(ReadOnlyCrudBase):
         self.render_list(results)
 
     @ex(
-        help='Tail logs for from a CloudWatch Logs Group.',
+        help="Tail logs for from a CloudWatch Logs Group.",
         arguments=[
-            (['name'], { 'help' : 'The name of the CloudWatch Logs Log Group in AWS'}),
+            (["name"], { "help" : "The name of the CloudWatch Logs Log Group in AWS"}),
             (
-                ['--mark'],
+                ["--mark"],
                 {
-                    'help': 'Print out a line every --sleep seconds.',
-                    'action': 'store_true',
-                    'default': False,
-                    'dest': 'mark',
+                    "help": "Print out a line every --sleep seconds.",
+                    "action": "store_true",
+                    "default": False,
+                    "dest": "mark",
                 }
             ),
             (
-                ['--sleep'],
+                ["--sleep"],
                 {
-                    'help': 'Sleep for this many seconds between polling Cloudwatch Logs for new messages.',
-                    'type': int,
-                    'default': 10,
-                    'dest': 'sleep',
+                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",
+                    "type": int,
+                    "default": 10,
+                    "dest": "sleep",
                 }
             ),
             (
-                ['--filter-pattern'],
+                ["--filter-pattern"],
                 {
-                    'help': 'Return only messages matching this filter.',
-                    'default': None,
-                    'dest': 'filter_pattern',
+                    "help": "Return only messages matching this filter.",
+                    "default": None,
+                    "dest": "filter_pattern",
                 }
             ),
             (
-                ['--stream-prefix'],
+                ["--stream-prefix"],
                 {
-                    'help': 'Return only messages from stream names with this prefix .',
-                    'default': None,
-                    'dest': 'stream_prefix',
+                    "help": "Return only messages from stream names with this prefix .",
+                    "default": None,
+                    "dest": "stream_prefix",
                 }
             ),
         ],
@@ -212,8 +214,8 @@ Tail the logs for a CloudWatch Logs Log Group.
             for event in page:
                 self.app.print(
                     click.style("{}  {}".format(
-                        click.style(event['timestamp'].strftime('%Y-%m-%d %H:%M:%S.%f'), fg='cyan'),
-                        event['message'].strip()
+                        click.style(event["timestamp"].strftime("%Y-%m-%d %H:%M:%S.%f"), fg="cyan"),
+                        event["message"].strip()
                     ))
                 )
             if self.app.pargs.mark:
@@ -228,49 +230,49 @@ Tail the logs for a CloudWatch Logs Log Group.
 class LogsCloudWatchLogStream(ReadOnlyCrudBase):
 
     class Meta:
-        label = 'awslog-streams'
-        description = 'Work with CloudWatch Log Stream objects'
-        help = 'Work with CloudWatch Log Stream objects'
-        stacked_on = 'logs'
-        stacked_type = 'nested'
+        label = "awslog-streams"
+        description = "Work with CloudWatch Log Stream objects"
+        help = "Work with CloudWatch Log Stream objects"
+        stacked_on = "logs"
+        stacked_type = "nested"
 
-    model: Type[Model] = CloudWatchLogStream
+    model: type[Model] = CloudWatchLogStream
 
-    help_overrides: Dict[str, str] = {
-        'info': 'Show details about a CloudWatch Log Group in AWS',
+    help_overrides: dict[str, str] = {
+        "info": "Show details about a CloudWatch Log Group in AWS",
     }
 
-    info_template: str = 'detail--cloudwatchlogstream.jinja2'
+    info_template: str = "detail--cloudwatchlogstream.jinja2"
 
-    list_ordering: str = 'Name'
-    list_result_columns: Dict[str, Union[str, Dict[str, str]]] = {
-        'Name': 'logStreamName',
-        'Group': 'logGroupName',
-        'Created': {'key': 'creationTime', 'datatype': 'timestamp'},
-        'lastEventTimestamp': {'key': 'lastEventTimestamp', 'datatype': 'timestamp', 'default': ''},
+    list_ordering: str = "Name"
+    list_result_columns: dict[str, str | dict[str, str]] = {
+        "Name": "logStreamName",
+        "Group": "logGroupName",
+        "Created": {"key": "creationTime", "datatype": "timestamp"},
+        "lastEventTimestamp": {"key": "lastEventTimestamp", "datatype": "timestamp", "default": ""},
     }
 
     @ex(
         help="List CloudWatch Log Groups in AWS",
         arguments=[
-            (['log_group_name'], {'help': 'The name of the log group whose streams we want to list'}),
+            (["log_group_name"], {"help": "The name of the log group whose streams we want to list"}),
             (
-                ['--prefix'],
+                ["--prefix"],
                 {
-                    'help': 'Filter by prefix',
-                    'action': 'store',
-                    'default': None,
-                    'dest': 'prefix'
+                    "help": "Filter by prefix",
+                    "action": "store",
+                    "default": None,
+                    "dest": "prefix"
                 }
             ),
             (
-                ['--limit'],
+                ["--limit"],
                 {
-                    'help': 'Limit results to this number',
-                    'action': 'store',
-                    'type': int,
-                    'default': None,
-                    'dest': 'limit'
+                    "help": "Limit results to this number",
+                    "action": "store",
+                    "type": int,
+                    "default": None,
+                    "dest": "limit"
                 }
             ),
         ]
@@ -285,25 +287,25 @@ class LogsCloudWatchLogStream(ReadOnlyCrudBase):
         self.render_list(results)
 
     @ex(
-        help='Tail logs for from a CloudWatch Logs Strem.',
+        help="Tail logs for from a CloudWatch Logs Strem.",
         arguments=[
-            (['pk'], { 'help' : 'The primary key for the CloudWatch Logs Log Streamin AWS'}),
+            (["pk"], { "help" : "The primary key for the CloudWatch Logs Log Streamin AWS"}),
             (
-                ['--mark'],
+                ["--mark"],
                 {
-                    'help': 'Print out a line every --sleep seconds.',
-                    'action': 'store_true',
-                    'default': False,
-                    'dest': 'mark',
+                    "help": "Print out a line every --sleep seconds.",
+                    "action": "store_true",
+                    "default": False,
+                    "dest": "mark",
                 }
             ),
             (
-                ['--sleep'],
+                ["--sleep"],
                 {
-                    'help': 'Sleep for this many seconds between polling Cloudwatch Logs for new messages.',
-                    'type': int,
-                    'default': 10,
-                    'dest': 'sleep',
+                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",
+                    "type": int,
+                    "default": 10,
+                    "dest": "sleep",
                 }
             )
         ],
@@ -323,8 +325,8 @@ The pk for a log stream is "{log_group_name}:{log_stream_id}"
         for page in tailer:
             for event in page:
                 self.app.print(click.style("{}  {}".format(
-                    click.style(event['timestamp'].strftime('%Y-%m-%d %H:%M:%S.%f'), fg='cyan'),
-                    event['message'].strip()
+                    click.style(event["timestamp"].strftime("%Y-%m-%d %H:%M:%S.%f"), fg="cyan"),
+                    event["message"].strip()
                 )))
             if self.app.pargs.mark:
                 self.app.print(

@@ -1,24 +1,19 @@
 import argparse
 import json
-from pprint import pprint
-import sys
-from typing import Any, Sequence, Type, Dict, cast
+from collections.abc import Sequence
+from typing import Any, cast
 
-from cement import ex
 import click
+from cement import ex
 from jsondiff import diff
 
 from deployfish.core.loaders import ObjectLoader
-from deployfish.core.models import (
-    InvokedTask,
-    Model,
-    StandaloneTask
-)
+from deployfish.core.models import InvokedTask, Model, StandaloneTask
 from deployfish.core.waiters.hooks.ecs import ECSTaskStatusHook
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Controller
 
 from .crud import CrudBase
-from .logs import tail_task_logs, list_log_streams
+from .logs import list_log_streams, tail_task_logs
 from .secrets import ObjectSecretsController
 from .utils import handle_model_exceptions
 
@@ -26,66 +21,66 @@ from .utils import handle_model_exceptions
 class ECSStandaloneTask(CrudBase):
 
     class Meta:
-        label = 'task'
-        description = 'Work with ECS Standalone Task objects'
-        help = 'Work with ECS Standalone Task objects'
-        stacked_type = 'nested'
+        label = "task"
+        description = "Work with ECS Standalone Task objects"
+        help = "Work with ECS Standalone Task objects"
+        stacked_type = "nested"
 
-    model: Type[Model] = StandaloneTask
-    help_overrides: Dict[str, str] = {
-        'info': 'Show details about an ECS Standalone Task object from AWS',
-        'create': 'Create an ECS StandaloneTask in AWS from what is in deployfish.yml',
-        'update': 'Update an ECS StandaloneTask in AWS from what is in deployfish.yml',
-        'delete': 'Delete an ECS StandaloneTask from AWS'
+    model: type[Model] = StandaloneTask
+    help_overrides: dict[str, str] = {
+        "info": "Show details about an ECS Standalone Task object from AWS",
+        "create": "Create an ECS StandaloneTask in AWS from what is in deployfish.yml",
+        "update": "Update an ECS StandaloneTask in AWS from what is in deployfish.yml",
+        "delete": "Delete an ECS StandaloneTask from AWS"
     }
 
-    info_template: str = 'detail--standalonetask.jinja2'
-    plan_template: str = 'plan--standalonetask.jinja2'
+    info_template: str = "detail--standalonetask.jinja2"
+    plan_template: str = "plan--standalonetask.jinja2"
 
     # --------------------
     # .list() related vars
     # --------------------
-    list_ordering: str = 'Name'
-    list_result_columns: Dict[str, Any] = {
-        'Name': 'name',
-        'Disabled?': 'schedule_disabled',
-        'Service': {'key': 'serviceName', 'default': ''},
-        'Cluster': 'cluster__name',
-        'Launch Type': 'launchType',
-        'Revision': 'revision',
-        'Version': 'version',
-        'Schedule': 'schedule_expression'
+    list_ordering: str = "Name"
+    list_result_columns: dict[str, Any] = {
+        "Name": "name",
+        "Disabled?": "schedule_disabled",
+        "Service": {"key": "serviceName", "default": ""},
+        "Cluster": "cluster__name",
+        "Launch Type": "launchType",
+        "Revision": "revision",
+        "Version": "version",
+        "Schedule": "schedule_expression"
     }
 
     # --------------------
     # .update() related vars
     # --------------------
-    update_template: str = 'detail--standalonetask--short.jinja2'
+    update_template: str = "detail--standalonetask--short.jinja2"
 
     @ex(
         help="Show about an existing ECS Standalone Task in AWS",
         arguments=[
-            (['pk'], {'help': 'The primary key for the ECS Service'}),
+            (["pk"], {"help": "The primary key for the ECS Service"}),
             (
-                ['--includes'],
+                ["--includes"],
                 {
-                    'help': 'Include optional information not normally shown.',
-                    'action': 'store',
-                    'default': None,
-                    'choices': ['secrets'],
-                    'dest': 'includes',
-                    'nargs': "+"
+                    "help": "Include optional information not normally shown.",
+                    "action": "store",
+                    "default": None,
+                    "choices": ["secrets"],
+                    "dest": "includes",
+                    "nargs": "+"
                 }
             ),
             (
-                ['--excludes'],
+                ["--excludes"],
                 {
-                    'help': 'Exclude optional information normally shown.',
-                    'action': 'store',
-                    'default': None,
-                    'choices': ['events'],
-                    'dest': 'excludes',
-                    'nargs': "+"
+                    "help": "Exclude optional information normally shown.",
+                    "action": "store",
+                    "default": None,
+                    "choices": ["events"],
+                    "dest": "excludes",
+                    "nargs": "+"
                 }
             )
         ],
@@ -95,8 +90,8 @@ class ECSStandaloneTask(CrudBase):
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         context = {
-            'obj': obj,
-            'includes': self.app.pargs.includes if self.app.pargs.includes else [],
+            "obj": obj,
+            "includes": self.app.pargs.includes if self.app.pargs.includes else [],
             #'excludes': self.app.pargs.excludes if self.app.pargs.excludes else [],
         }
         self.app.render(context, template=self.info_template)
@@ -105,54 +100,54 @@ class ECSStandaloneTask(CrudBase):
         help="List ECS StandaloneTasks in AWS",
         arguments=[
             (
-                ['--cluster-name'],
+                ["--cluster-name"],
                 {
-                    'help': 'Filter by cluster name, with globs. Ex: "foo*", "*foo"',
-                    'default': None,
-                    'dest': 'cluster_name'
+                    "help": 'Filter by cluster name, with globs. Ex: "foo*", "*foo"',
+                    "default": None,
+                    "dest": "cluster_name"
                 }
             ),
             (
-                ['--service-name'],
+                ["--service-name"],
                 {
-                    'help': 'Filter by service name, with globs. Ex: "foo*", "*foo"',
-                    'default': None,
-                    'dest': 'service_name'
+                    "help": 'Filter by service name, with globs. Ex: "foo*", "*foo"',
+                    "default": None,
+                    "dest": "service_name"
                 }
             ),
             (
-                ['--task-name'],
+                ["--task-name"],
                 {
-                    'help': 'Filter by task name, with globs. Ex: "foo*", "*foo"',
-                    'default': None,
-                    'dest': 'task_name'
+                    "help": 'Filter by task name, with globs. Ex: "foo*", "*foo"',
+                    "default": None,
+                    "dest": "task_name"
                 }
             ),
             (
-                ['--task-type'],
+                ["--task-type"],
                 {
-                    'help': 'Filter by task type.',
-                    'default': 'standalone',
-                    'choices': ['any', 'standalone', 'service_helper'],
-                    'dest': 'task_type'
+                    "help": "Filter by task type.",
+                    "default": "standalone",
+                    "choices": ["any", "standalone", "service_helper"],
+                    "dest": "task_type"
                 }
             ),
             (
-                ['--scheduled-only'],
+                ["--scheduled-only"],
                 {
-                    'help': 'Only list tasks that have schedules',
-                    'action': 'store_true',
-                    'default': False,
-                    'dest': 'scheduled_only'
+                    "help": "Only list tasks that have schedules",
+                    "action": "store_true",
+                    "default": False,
+                    "dest": "scheduled_only"
                 }
             ),
             (
-                ['--all-revisions'],
+                ["--all-revisions"],
                 {
-                    'help': 'List all revisions instead of only the most recent one per family.',
-                    'action': 'store_true',
-                    'default': False,
-                    'dest': 'all_revisions',
+                    "help": "List all revisions instead of only the most recent one per family.",
+                    "action": "store_true",
+                    "default": False,
+                    "dest": "all_revisions",
                 }
             ),
         ]
@@ -174,7 +169,7 @@ class ECSStandaloneTask(CrudBase):
     @ex(
         help="Create an object in AWS",
         arguments=[
-            (['name'], {'help': 'The name of the item from deployfish.yml'})
+            (["name"], {"help": "The name of the item from deployfish.yml"})
         ]
     )
     @handle_model_exceptions
@@ -186,7 +181,7 @@ class ECSStandaloneTask(CrudBase):
     @ex(
         help="Delete an object from AWS",
         arguments=[
-            (['name'], {'help': 'The name of the item from deployfish.yml'})
+            (["name"], {"help": "The name of the item from deployfish.yml"})
         ]
     )
     @handle_model_exceptions
@@ -194,14 +189,14 @@ class ECSStandaloneTask(CrudBase):
         """
         Delete an object from AWS by primary key.
         """
-        raise StandaloneTask.OperationFailed('StandaloneTasks cannot be deleted.')
+        raise StandaloneTask.OperationFailed("StandaloneTasks cannot be deleted.")
 
     # Enable
 
     @ex(
-        help='Enable the schedule for a Standalone Task.',
+        help="Enable the schedule for a Standalone Task.",
         arguments=[
-            (['pk'], {'help': 'The primary key for the StandaloneTask in AWS'}),
+            (["pk"], {"help": "The primary key for the StandaloneTask in AWS"}),
         ],
         description="""
 If a StandaloneTask has a schedule rule and that rule is currently disabled in AWS, enable it.
@@ -215,7 +210,7 @@ If a StandaloneTask has a schedule rule and that rule is currently disabled in A
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        obj = cast(StandaloneTask, obj)
+        obj = cast("StandaloneTask", obj)
         if obj.schedule is None:
             raise StandaloneTask.OperationFailed(
                 f'ABORT: StandaloneTask("{obj.name}") has no schedule; '
@@ -224,20 +219,20 @@ If a StandaloneTask has a schedule rule and that rule is currently disabled in A
         obj.enable_schedule()
         if obj.schedule.enabled:
             self.app.print(
-                click.style(f'Schedule for StandaloneTask("{obj.name}") now ENABLED.', fg='green')
+                click.style(f'Schedule for StandaloneTask("{obj.name}") now ENABLED.', fg="green")
             )
-            self.app.print(f'Schedule: {obj.schedule_expression}')
+            self.app.print(f"Schedule: {obj.schedule_expression}")
         else:
             self.app.print(
-                click.style(f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.', fg='red')
+                click.style(f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.', fg="red")
             )
 
     # Disable
 
     @ex(
-        help='Disable the schedule for a command for a StandaloneTask.',
+        help="Disable the schedule for a command for a StandaloneTask.",
         arguments=[
-            (['pk'], {'help': 'The primary key for the ECS StandaloneTask in AWS'}),
+            (["pk"], {"help": "The primary key for the ECS StandaloneTask in AWS"}),
         ],
         description="""
 If a StandaloneTask has a schedule rule and that rule is currently enabled in AWS, disable it.
@@ -250,7 +245,7 @@ If a StandaloneTask has a schedule rule and that rule is currently enabled in AW
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        obj = cast(StandaloneTask, obj)
+        obj = cast("StandaloneTask", obj)
         if obj.schedule is None:
             raise StandaloneTask.OperationFailed(
                 f'ABORT: StandaloneTask("{obj.name}") has no schedule; '
@@ -259,33 +254,33 @@ If a StandaloneTask has a schedule rule and that rule is currently enabled in AW
         obj.disable_schedule()
         if obj.schedule.enabled:
             self.app.print(
-                click.style(f'Schedule for StandaloneTask("{obj.name}") now ENABLED.', fg='green')
+                click.style(f'Schedule for StandaloneTask("{obj.name}") now ENABLED.', fg="green")
             )
-            self.app.print(f'Schedule: {obj.schedule_expression}')
+            self.app.print(f"Schedule: {obj.schedule_expression}")
         else:
             self.app.print(
-                click.style(f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.', fg='red')
+                click.style(f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.', fg="red")
             )
 
     # Run
 
     def run_task_waiter(self, tasks: Sequence[InvokedTask], **kwargs) -> None:
-        kwargs['WaiterHooks'] = [ECSTaskStatusHook(tasks)]
-        kwargs['tasks'] = [t.arn for t in tasks]
-        kwargs['cluster'] = tasks[0].cluster_name
-        self.wait('tasks_stopped', **kwargs)
+        kwargs["WaiterHooks"] = [ECSTaskStatusHook(tasks)]
+        kwargs["tasks"] = [t.arn for t in tasks]
+        kwargs["cluster"] = tasks[0].cluster_name
+        self.wait("tasks_stopped", **kwargs)
 
     @ex(
-        help='Run one of a service\'s helper tasks',
+        help="Run one of a service's helper tasks",
         arguments=[
-            (['pk'], {'help': 'The primary key for the StandaloneTask in AWS'}),
+            (["pk"], {"help": "The primary key for the StandaloneTask in AWS"}),
             (
-                ['--wait'],
+                ["--wait"],
                 {
-                    'help': 'Wait until the command finshes.',
-                    'action': 'store_true',
-                    'default': False,
-                    'dest': 'wait',
+                    "help": "Wait until the command finshes.",
+                    "action": "store_true",
+                    "default": False,
+                    "dest": "wait",
                 }
             )
         ],
@@ -300,21 +295,21 @@ Run a StandaloneTask that exists in AWS.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        standalone_task = cast(StandaloneTask, obj)
+        standalone_task = cast("StandaloneTask", obj)
         tasks = standalone_task.run()
         lines = []
         for task in tasks:
             lines.append(
-                click.style('\nStarted task: {}:{}\n'.format(standalone_task.data['cluster'], task.arn), fg='green')
+                click.style("\nStarted task: {}:{}\n".format(standalone_task.data["cluster"], task.arn), fg="green")
             )
-        self.app.print('\n'.join(lines))
+        self.app.print("\n".join(lines))
         if self.app.pargs.wait:
             self.run_task_waiter(tasks)
 
     @ex(
-        help='Show what we would do if we were to update an ECS StandaloneTask in AWS. (Experimental)',
+        help="Show what we would do if we were to update an ECS StandaloneTask in AWS. (Experimental)",
         arguments=[
-            (['pk'], {'help': 'The primary key for the ECS StandaloneTask'}),
+            (["pk"], {"help": "The primary key for the ECS StandaloneTask"}),
         ]
     )
     @handle_model_exceptions
@@ -330,16 +325,16 @@ Run a StandaloneTask that exists in AWS.
         # Instead of using AbstractModel.diff() method, we'll collect the json data to pass to our template.
         df_json = df_obj.render_for_diff()
         aws_json = aws_obj.render_for_diff()
-        changes = json.loads(diff(aws_json, df_json, syntax='explicit', dump=True))
+        changes = json.loads(diff(aws_json, df_json, syntax="explicit", dump=True))
         self.app.log.debug(f"Changes: {changes}")
         self.app.render(
             {
-                'obj': df_obj,
-                'aws_json': aws_json,
-                'changes': changes,
+                "obj": df_obj,
+                "aws_json": aws_json,
+                "changes": changes,
                 # If debug is True, it will print out the print line marker, and how nested the data is in the changes.
                 # See render_diff macro in plan--service.jinja2 to see how the line markers are located.
-                'debug': self.app.debug,
+                "debug": self.app.debug,
             },
             template=self.plan_template
         )
@@ -348,59 +343,59 @@ Run a StandaloneTask that exists in AWS.
 class ECSStandaloneTaskSecrets(ObjectSecretsController):
 
     class Meta:
-        label = 'task-secrets'
-        aliases = ['config']
-        stacked_on = 'task'
-        description = 'Work with ECS Standalone Task Secrets'
-        help = 'Work with ECS Standalone Task Secrets'
-        stacked_type = 'nested'
+        label = "task-secrets"
+        aliases = ["config"]
+        stacked_on = "task"
+        description = "Work with ECS Standalone Task Secrets"
+        help = "Work with ECS Standalone Task Secrets"
+        stacked_type = "nested"
 
-    model: Type[Model] = StandaloneTask
+    model: type[Model] = StandaloneTask
 
 
 class ECSStandaloneTaskLogs(Controller):
 
     class Meta:
-        label = 'task-logs'
-        aliases = ['logs']
-        description = 'Work with logs for an ECS StandaloneTask'
-        help = 'Work with logs for an ECS StandaloneTask'
-        stacked_on = 'task'
-        stacked_type = 'nested'
+        label = "task-logs"
+        aliases = ["logs"]
+        description = "Work with logs for an ECS StandaloneTask"
+        help = "Work with logs for an ECS StandaloneTask"
+        stacked_on = "task"
+        stacked_type = "nested"
 
-    model: Type[Model] = StandaloneTask
-    loader: Type[ObjectLoader] = ObjectLoader
+    model: type[Model] = StandaloneTask
+    loader: type[ObjectLoader] = ObjectLoader
 
     # tail
 
     @ex(
-        help='Tail logs for a StandaloneTask.',
+        help="Tail logs for a StandaloneTask.",
         arguments=[
-            (['pk'], {'help': 'The primary key for the ECS StandaloneTask in AWS'}),
+            (["pk"], {"help": "The primary key for the ECS StandaloneTask in AWS"}),
             (
-                ['--mark'],
+                ["--mark"],
                 {
-                    'help': 'Print out a line every --sleep seconds.',
-                    'action': 'store_true',
-                    'default': False,
-                    'dest': 'mark',
+                    "help": "Print out a line every --sleep seconds.",
+                    "action": "store_true",
+                    "default": False,
+                    "dest": "mark",
                 }
             ),
             (
-                ['--sleep'],
+                ["--sleep"],
                 {
-                    'help': 'Sleep for this many seconds between polling Cloudwatch Logs for new messages.',
-                    'type': int,
-                    'default': 10,
-                    'dest': 'sleep',
+                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",
+                    "type": int,
+                    "default": 10,
+                    "dest": "sleep",
                 }
             ),
             (
-                ['--filter-pattern'],
+                ["--filter-pattern"],
                 {
-                    'help': 'Return only messages matching this filter.',
-                    'default': None,
-                    'dest': 'filter_pattern',
+                    "help": "Return only messages matching this filter.",
+                    "default": None,
+                    "dest": "filter_pattern",
                 }
             ),
         ],
@@ -419,7 +414,7 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        obj = cast(StandaloneTask, obj)
+        obj = cast("StandaloneTask", obj)
         tail_task_logs(
             self.app,
             obj,
@@ -431,16 +426,16 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
     # list
 
     @ex(
-        help='List log streams for a StandaloneTask.',
+        help="List log streams for a StandaloneTask.",
         arguments=[
-            (['pk'], {'help': 'The primary key for the ECS StandaloneTask in AWS'}),
+            (["pk"], {"help": "The primary key for the ECS StandaloneTask in AWS"}),
             (
-                ['--limit'],
+                ["--limit"],
                 {
-                    'help': 'Limit the number of streams listed.',
-                    'default': None,
-                    'type': int,
-                    'dest': 'limit',
+                    "help": "Limit the number of streams listed.",
+                    "default": None,
+                    "type": int,
+                    "dest": "limit",
                 }
             ),
         ],
@@ -461,5 +456,5 @@ the streams to ensure that your command is actually running periodically.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        obj = cast(StandaloneTask, obj)
+        obj = cast("StandaloneTask", obj)
         list_log_streams(self.app, obj, limit=self.app.pargs.limit)
