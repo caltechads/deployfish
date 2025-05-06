@@ -1,6 +1,6 @@
 from cement.utils.version import get_version as cement_get_version
 
-VERSION = (1, 14, 9, "final", 0)
+VERSION = (1, 15, 0, "final", 0)
 
 
 def get_version(version=VERSION):
