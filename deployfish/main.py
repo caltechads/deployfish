@@ -1,6 +1,7 @@
 # pylint: disable=import-outside-toplevel
 import contextlib
 import os
+import sys
 from typing import Any
 
 import debugpy
