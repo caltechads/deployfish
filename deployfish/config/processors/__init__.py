@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Type
 
 from deployfish.exceptions import ConfigProcessingFailed, SkipConfigProcessing
 
@@ -7,7 +7,7 @@ from .environment import EnvironmentConfigProcessor
 from .terraform import TerraformStateConfigProcessor
 
 if TYPE_CHECKING:
-    from deployfish.config import Config  # noqa:F401
+    from deployfish.config import Config
 
 
 class ConfigProcessor:
@@ -15,13 +15,13 @@ class ConfigProcessor:
     class ProcessingFailed(ConfigProcessingFailed):
         pass
 
-    processor_classes: List[Type[AbstractConfigProcessor]] = []
+    processor_classes: list[type[AbstractConfigProcessor]] = []
 
     @classmethod
-    def register(cls, processor_class: Type[AbstractConfigProcessor]) -> None:
+    def register(cls, processor_class: type[AbstractConfigProcessor]) -> None:
         cls.processor_classes.append(processor_class)
 
-    def __init__(self, config: "Config", context: Dict[str, Any]):
+    def __init__(self, config: "Config", context: dict[str, Any]):
         self.config = config
         self.context = context
 

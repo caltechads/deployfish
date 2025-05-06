@@ -1,16 +1,16 @@
-from typing import Sequence, Type, Optional, Dict, Any
+from collections.abc import Sequence
+from typing import Any
 
 import botocore
-from cement import ex, shell
 import click
+from cement import ex, shell
 
-from deployfish.core.models import Model
 from deployfish.core.loaders import ObjectLoader
+from deployfish.core.models import Model
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Controller
 from deployfish.renderers.table import TableRenderer
 
 from .utils import handle_model_exceptions
-
 
 # ========================
 # Controllers
@@ -19,29 +19,29 @@ from .utils import handle_model_exceptions
 class ReadOnlyCrudBase(Controller):
 
     class Meta:
-        label = 'ro-crud-base'
+        label = "ro-crud-base"
 
-    model: Type[Model] = Model
-    loader: Type[ObjectLoader] = ObjectLoader
+    model: type[Model] = Model
+    loader: type[ObjectLoader] = ObjectLoader
 
     #: The keys of this dict are method names, and the value is the string
     #: with which to replace the "help" string for that method name with
-    help_overrides: Dict[str, str] = {}
+    help_overrides: dict[str, str] = {}
 
     # --------------------
     # .info() related vars
     # --------------------
     #: Which template should we use when showing :py:meth:`info` output?
-    info_template: str = 'detail.jinja2'
+    info_template: str = "detail.jinja2"
 
     # --------------------
     # .list() related vars
     # --------------------
     #: The name of the column HEADER by which to order the output table
-    list_ordering: Optional[str] = None
+    list_ordering: str | None = None
     #: Configuration for :py:class:`deployfish.renderers.table.TableRenderer`, which
     #: we use to render our tabular output.
-    list_result_columns: Dict[str, Any] = {}
+    list_result_columns: dict[str, Any] = {}
 
     def _default(self):
         """
@@ -52,9 +52,9 @@ class ReadOnlyCrudBase(Controller):
     # Exists
 
     @ex(
-        help='Show whether an object exists in AWS',
+        help="Show whether an object exists in AWS",
         arguments=[
-            (['pk'], {'help': 'The primary key for the object in AWS'})
+            (["pk"], {"help": "The primary key for the object in AWS"})
         ],
     )
     @handle_model_exceptions
@@ -66,16 +66,16 @@ class ReadOnlyCrudBase(Controller):
         try:
             obj = loader.get_object_from_aws(self.app.pargs.pk)
         except self.model.DoesNotExist:
-            click.secho(f'{self.model.__name__}(pk="{self.app.pargs.pk}") does not exist in AWS.', fg='red')
+            click.secho(f'{self.model.__name__}(pk="{self.app.pargs.pk}") does not exist in AWS.', fg="red")
         else:
-            click.secho(f'{self.model.__name__}(pk="{obj.pk}") exists in AWS.', fg='green')
+            click.secho(f'{self.model.__name__}(pk="{obj.pk}") exists in AWS.', fg="green")
 
     # Info
 
     @ex(
-        help='Show info about an object in AWS',
+        help="Show info about an object in AWS",
         arguments=[
-            (['pk'], {'help': 'The primary key for the object in AWS'})
+            (["pk"], {"help": "The primary key for the object in AWS"})
         ],
     )
     @handle_model_exceptions
@@ -85,7 +85,7 @@ class ReadOnlyCrudBase(Controller):
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        self.app.render({'obj': obj}, template=self.info_template)
+        self.app.render({"obj": obj}, template=self.info_template)
 
     # List
 
@@ -102,7 +102,7 @@ class ReadOnlyCrudBase(Controller):
         )
         self.app.print(renderer.render(results))
 
-    @ex(help='List objects in AWS')
+    @ex(help="List objects in AWS")
     @handle_model_exceptions
     def list(self):
         """
@@ -115,35 +115,35 @@ class ReadOnlyCrudBase(Controller):
 class CrudBase(ReadOnlyCrudBase):
 
     class Meta:
-        label = 'crud-base'
+        label = "crud-base"
 
-    model: Type[Model] = Model
-    loader: Type[ObjectLoader] = ObjectLoader
+    model: type[Model] = Model
+    loader: type[ObjectLoader] = ObjectLoader
 
     #: The keys of this dict are method names, and the value is the string
     #: with which to replace the "help" string for that method name with
-    help_overrides: Dict[str, str] = {}
+    help_overrides: dict[str, str] = {}
 
     # --------------------
     # .create() related vars
     # --------------------
     #: Which template should we use when showing :py:meth:`create` output?
-    create_template: str = 'detail.jinja2'
-    create_kwargs: Dict[str, Any] = {}
+    create_template: str = "detail.jinja2"
+    create_kwargs: dict[str, Any] = {}
 
     # --------------------
     # .update() related vars
     # --------------------
     #: Which template should we use when showing :py:meth:`update` output?
-    update_template: str = 'detail.jinja2'
-    update_kwargs: Dict[str, Any] = {}
+    update_template: str = "detail.jinja2"
+    update_kwargs: dict[str, Any] = {}
 
     # --------------------
     # .delete() related vars
     # --------------------
     #: Which template should we use when showing :py:meth:`delete` output?
-    delete_template: str = 'detail.jinja2'
-    delete_kwargs: Dict[str, Any] = {}
+    delete_template: str = "detail.jinja2"
+    delete_kwargs: dict[str, Any] = {}
 
     def _default(self):
         """
@@ -171,7 +171,7 @@ class CrudBase(ReadOnlyCrudBase):
     @ex(
         help="Create an object in AWS",
         arguments=[
-            (['name'], {'help': 'The name of the item from deployfish.yml'})
+            (["name"], {"help": "The name of the item from deployfish.yml"})
         ]
     )
     @handle_model_exceptions
@@ -186,24 +186,24 @@ class CrudBase(ReadOnlyCrudBase):
         )
         if obj.exists:
             self.app.print(
-                click.style('{}(pk={}) already exists in AWS!'.format(self.model.__name__, obj.pk), fg='red')
+                click.style(f"{self.model.__name__}(pk={obj.pk}) already exists in AWS!", fg="red")
             )
             return
-        for _ in self.app.hook.run('pre_object_create', self.app, obj):
+        for _ in self.app.hook.run("pre_object_create", self.app, obj):
             pass
-        click.secho('\n\nCreating {}("{}"):\n\n'.format(self.model.__name__, obj.pk), fg='yellow')
-        self.app.render({'obj': obj}, template=self.create_template)
+        click.secho(f'\n\nCreating {self.model.__name__}("{obj.pk}"):\n\n', fg="yellow")
+        self.app.render({"obj": obj}, template=self.create_template)
         obj.save()
         try:
             self.create_waiter(obj)
         except botocore.exceptions.WaiterError as e:
-            for _ in self.app.hook.run('post_object_create', self.app, obj, success=False, reason=e.kwargs['reason']):
+            for _ in self.app.hook.run("post_object_create", self.app, obj, success=False, reason=e.kwargs["reason"]):
                 pass
             raise
         else:
-            for _ in self.app.hook.run('post_object_create', self.app):
+            for _ in self.app.hook.run("post_object_create", self.app):
                 pass
-        self.app.print(click.style('\n\nCreated {}("{}").'.format(self.model.__name__, obj.pk), fg='green'))
+        self.app.print(click.style(f'\n\nCreated {self.model.__name__}("{obj.pk}").', fg="green"))
 
     # Update
 
@@ -213,7 +213,7 @@ class CrudBase(ReadOnlyCrudBase):
     @ex(
         help="Update an object in AWS",
         arguments=[
-            (['name'], {'help': 'The name of the item from deployfish.yml'})
+            (["name"], {"help": "The name of the item from deployfish.yml"})
         ]
     )
     @handle_model_exceptions
@@ -227,20 +227,20 @@ class CrudBase(ReadOnlyCrudBase):
             factory_kwargs=self.update_kwargs
         )
         self.app.print(
-            click.style('\n\nUpdating {}("{}") to this:\n\n'.format(self.model.__name__, obj.pk), fg='yellow')
+            click.style(f'\n\nUpdating {self.model.__name__}("{obj.pk}") to this:\n\n', fg="yellow")
         )
-        self.app.render({'obj': obj}, template=self.update_template)
+        self.app.render({"obj": obj}, template=self.update_template)
         obj.save()
         try:
             self.update_waiter(obj)
         except botocore.exceptions.WaiterError as e:
-            for _ in self.app.hook.run('post_object_update', self.app, obj, success=False, reason=e.kwargs['reason']):
+            for _ in self.app.hook.run("post_object_update", self.app, obj, success=False, reason=e.kwargs["reason"]):
                 pass
             raise
         else:
-            for _ in self.app.hook.run('post_object_update', self.app, obj):
+            for _ in self.app.hook.run("post_object_update", self.app, obj):
                 pass
-        self.app.print(click.style('\n\nUpdated {}("{}").'.format(self.model.__name__, obj.pk), fg='green'))
+        self.app.print(click.style(f'\n\nUpdated {self.model.__name__}("{obj.pk}").', fg="green"))
 
     # Delete
 
@@ -250,7 +250,7 @@ class CrudBase(ReadOnlyCrudBase):
     @ex(
         help="Delete an object from AWS",
         arguments=[
-            (['name'], {'help': 'The name of the item from deployfish.yml'})
+            (["name"], {"help": "The name of the item from deployfish.yml"})
         ]
     )
     @handle_model_exceptions
@@ -264,22 +264,22 @@ class CrudBase(ReadOnlyCrudBase):
             factory_kwargs=self.delete_kwargs
         )
         obj.reload_from_db()
-        self.app.print(click.style('\nDeleting {}("{}")\n'.format(self.model.__name__, obj.pk), fg='red'))
-        self.app.render({'obj': obj}, template=self.delete_template)
-        self.app.print("\nIf you really want to do this, answer \"{}\" to the question below.\n".format(obj.name))
-        p = shell.Prompt("What {} do you want to delete? ".format(self.model.__name__))
+        self.app.print(click.style(f'\nDeleting {self.model.__name__}("{obj.pk}")\n', fg="red"))
+        self.app.render({"obj": obj}, template=self.delete_template)
+        self.app.print(f'\nIf you really want to do this, answer "{obj.name}" to the question below.\n')
+        p = shell.Prompt(f"What {self.model.__name__} do you want to delete? ")
         value = p.prompt()
         if value == obj.name:
             obj.delete()
         else:
-            self.app.print(click.style('ABORTED: not deleting {}({}).'.format(self.model.__name__, obj.pk)))
+            self.app.print(click.style(f"ABORTED: not deleting {self.model.__name__}({obj.pk})."))
         try:
             self.delete_waiter(obj)  # type: ignore
         except botocore.exceptions.WaiterError as e:
-            for _ in self.app.hook.run('post_object_delete', self.app, obj, success=False, reason=e.kwargs['reason']):
+            for _ in self.app.hook.run("post_object_delete", self.app, obj, success=False, reason=e.kwargs["reason"]):
                 pass
             raise
         else:
-            for _ in self.app.hook.run('post_object_delete', self.app):
+            for _ in self.app.hook.run("post_object_delete", self.app):
                 pass
-        self.app.print(click.style('Deleted {}("{}")'.format(self.model.__name__, obj.pk), fg='cyan'))
+        self.app.print(click.style(f'Deleted {self.model.__name__}("{obj.pk}")', fg="cyan"))

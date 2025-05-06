@@ -1,28 +1,27 @@
+import getpass
 import logging
 import os
-import getpass
 import pwd
 
+from deployfish.core.models.ecs import Service
+
+# pylint: disable=no-name-in-module
+from deployfish.core.utils.mixins import (
+    CodeNameVersionMixin,
+    GitChangelogMixin,
+    GitMixin,
+)
 from slackfin import (
     SlackFormatter,
     SlackLabelValueListBlock,
     SlackLabelValuePair,
     SlackMarkdownType,
+    SlackMessage,
     SlackMessageContext,
     SlackMessageDivider,
     SlackMessageHeader,
-    SlackMessage,
     SlackMessageMarkdown,
 )
-
-# pylint: disable=no-name-in-module
-from deployfish.core.utils.mixins import (
-    CodeNameVersionMixin,
-    GitMixin,
-    GitChangelogMixin,
-)
-
-from deployfish.core.models.ecs import Service
 
 logging.basicConfig(level=logging.WARNING)
 

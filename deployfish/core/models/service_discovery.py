@@ -1,8 +1,8 @@
+from collections.abc import Sequence
 from copy import copy
-from typing import Sequence, Union, cast, Dict, Any, Optional
+from typing import Any, Union, cast
 
 from .abstract import Manager, Model
-
 
 # ----------------------------------------
 # Managers
@@ -11,42 +11,42 @@ from .abstract import Manager, Model
 
 class ServiceDiscoveryNamespaceManager(Manager):
 
-    service = 'servicediscovery'
+    service = "servicediscovery"
 
     def get(self, pk: str, **_) -> "ServiceDiscoveryNamespace":
-        if pk.startswith('ns-'):
+        if pk.startswith("ns-"):
             # this is a namespace['Id']
             try:
                 response = self.client.get_namespace(Id=pk)
             except self.client.exceptions.NamespaceNotFound:
                 raise ServiceDiscoveryNamespace.DoesNotExist(
-                    'No Service Discovery namespace with id="{}" exists in AWS.'.format(pk)
+                    f'No Service Discovery namespace with id="{pk}" exists in AWS.'
                 )
-            return ServiceDiscoveryNamespace(response['Namespace'])
+            return ServiceDiscoveryNamespace(response["Namespace"])
         # Assume this is a namespace['Name']
         namespaces = self.list(private_only=True)
         for namespace in namespaces:
             if namespace.name == pk:
                 return namespace
         raise ServiceDiscoveryNamespace.DoesNotExist(
-            'No Service Discovery namespace with name="{}" exists in AWS.'.format(pk)
+            f'No Service Discovery namespace with name="{pk}" exists in AWS.'
         )
 
     def list(self, private_only: bool = False) -> Sequence["ServiceDiscoveryNamespace"]:
         kwargs = {}
         if private_only:
-            kwargs['Filters'] = [{'Name': 'TYPE', 'Values': ['DNS_PRIVATE'], 'Condition': 'EQ'}]
-        paginator = self.client.get_paginator('list_namespaces')
+            kwargs["Filters"] = [{"Name": "TYPE", "Values": ["DNS_PRIVATE"], "Condition": "EQ"}]
+        paginator = self.client.get_paginator("list_namespaces")
         response_iterator = paginator.paginate(**kwargs)
         namespaces = []
         for response in response_iterator:
-            namespaces.extend(response['Namespaces'])
+            namespaces.extend(response["Namespaces"])
         return [ServiceDiscoveryNamespace(d) for d in namespaces]
 
 
 class ServiceDiscoveryServiceManager(Manager):
 
-    service = 'servicediscovery'
+    service = "servicediscovery"
 
     def _get_with_id(self, pk: str) -> "ServiceDiscoveryService":
         """
@@ -56,23 +56,23 @@ class ServiceDiscoveryServiceManager(Manager):
             response = self.client.get_service(Id=pk)
         except self.client.exceptions.ServiceNotFound:
             raise ServiceDiscoveryService.DoesNotExist(
-                'No Service Discovery service with id="{}" exists in AWS.'.format(pk)
+                f'No Service Discovery service with id="{pk}" exists in AWS.'
             )
-        return ServiceDiscoveryService(response['Namespace'])
+        return ServiceDiscoveryService(response["Namespace"])
 
     def _get_with_namespace_and_service_name(self, pk: str) -> "ServiceDiscoveryService":
         """
-        pk looks like '{namespace_pk}:{service_name}'
+        Pk looks like '{namespace_pk}:{service_name}'
         """
         # this is a namespace_pk:service_name
-        namespace_pk, service_name = pk.split(':', 1)
+        namespace_pk, service_name = pk.split(":", 1)
         namespace = ServiceDiscoveryNamespace.objects.get(namespace_pk)
         services = self.list(namespace=namespace)
         for service in services:
             if service.name == service_name:
                 return service
         raise ServiceDiscoveryService.DoesNotExist(
-            'No Service Discovery service with name="{}" exists in namespace "{}" in AWS.'.format(pk, namespace_pk)
+            f'No Service Discovery service with name="{pk}" exists in namespace "{namespace_pk}" in AWS.'
         )
 
     def _get_with_bare_service_name(self, pk: str) -> "ServiceDiscoveryService":
@@ -105,9 +105,9 @@ class ServiceDiscoveryServiceManager(Manager):
             * a string like '{namespace_pk}:{service_name}'
             * a string like '{service_name}'
         """
-        if pk.startswith('srv-'):
+        if pk.startswith("srv-"):
             return self._get_with_id(pk)
-        if ':' in pk:
+        if ":" in pk:
             return self._get_with_namespace_and_service_name(pk)
         return self._get_with_bare_service_name(pk)
 
@@ -116,17 +116,17 @@ class ServiceDiscoveryServiceManager(Manager):
         if namespace:
             if not isinstance(namespace, ServiceDiscoveryNamespace):
                 namespace = ServiceDiscoveryNamespace.objects.get(namespace)
-            kwargs['Filters'] = [{'Name': 'NAMESPACE_ID', 'Values': [namespace.pk], 'Condition': 'EQ'}]
-        namespace = cast(ServiceDiscoveryNamespace, namespace)
-        paginator = self.client.get_paginator('list_services')
+            kwargs["Filters"] = [{"Name": "NAMESPACE_ID", "Values": [namespace.pk], "Condition": "EQ"}]
+        namespace = cast("ServiceDiscoveryNamespace", namespace)
+        paginator = self.client.get_paginator("list_services")
         response_iterator = paginator.paginate(**kwargs)
         service_defs = []
         for response in response_iterator:
-            service_defs.extend(response['Services'])
+            service_defs.extend(response["Services"])
         services = [ServiceDiscoveryService(d) for d in service_defs]
         if namespace:
             for service in services:
-                service.data['NamespaceId'] = namespace.pk
+                service.data["NamespaceId"] = namespace.pk
         return services
 
     def save(self, obj: Model, **_) -> str:
@@ -142,27 +142,27 @@ class ServiceDiscoveryServiceManager(Manager):
             raise ServiceDiscoveryService.NamespaceNotFound(
                 f'No Service Discovery namespace with name="{obj.namespace_name}" exists in AWS'
             )
-        return response['Services'][0]['Arn']
+        return response["Services"][0]["Arn"]
 
     def update(self, obj: "ServiceDiscoveryService") -> str:
         try:
             response = self.client.update_service(**obj.render_for_update())
         except self.client.exceptions.ServiceNotFound:
             raise ServiceDiscoveryService.DoesNotExist(
-                'No Service Discovery service with id="{}" exists in AWS.'.format(obj.pk)
+                f'No Service Discovery service with id="{obj.pk}" exists in AWS.'
             )
-        return response['Services'][0]['Arn']
+        return response["Services"][0]["Arn"]
 
     def delete(self, obj: Model, **_) -> None:
         try:
             self.client.delete_service(obj.pk)
         except self.client.exceptions.ServiceNotFound:
             raise ServiceDiscoveryService.DoesNotExist(
-                'No Service Discovery service with id="{}" exists in AWS.'.format(obj.pk)
+                f'No Service Discovery service with id="{obj.pk}" exists in AWS.'
             )
         except self.client.exceptions.ResourceInUse:
             raise ServiceDiscoveryService.OperationFailed(
-                'Service Discovery service with id="{}" cannot be deleted because it is in use.'.format(obj.pk)
+                f'Service Discovery service with id="{obj.pk}" cannot be deleted because it is in use.'
             )
 
 
@@ -180,20 +180,20 @@ class ServiceDiscoveryNamespace(Model):
 
     @property
     def pk(self) -> str:
-        return self.data['Id']
+        return self.data["Id"]
 
     @property
     def name(self) -> str:
-        return self.data['Name']
+        return self.data["Name"]
 
     @property
     def arn(self) -> str:
-        return self.data['Arn']
+        return self.data["Arn"]
 
     def render_for_diff(self):
         data = self.render()
-        del data['CreateDate']
-        del data['CreateRequestorId']
+        del data["CreateDate"]
+        del data["CreateRequestorId"]
         return data
 
 
@@ -240,10 +240,10 @@ class ServiceDiscoveryService(Model):
         """
         The namespace that this service is configured with does not exist in AWS.
         """
-        pass
 
-    def __init__(self, data: Dict[str, Any], **kwargs):
-        self.namespace_name: Optional[str] = kwargs.pop('namespace_name', None)
+
+    def __init__(self, data: dict[str, Any], **kwargs):
+        self.namespace_name: str | None = kwargs.pop("namespace_name", None)
         super().__init__(data, **kwargs)
 
     # ---------------------
@@ -252,9 +252,9 @@ class ServiceDiscoveryService(Model):
 
     @property
     def pk(self) -> str:
-        if self.data.get('Id', None):
-            return self.data['Id']
-        if self.data.get('NamespaceId', None):
+        if self.data.get("Id", None):
+            return self.data["Id"]
+        if self.data.get("NamespaceId", None):
             return f"{self.data['NamespaceId']}:{self.name}"
         if self.namespace_name:
             return f"{self.namespace_name}:{self.name}"
@@ -262,42 +262,42 @@ class ServiceDiscoveryService(Model):
 
     @property
     def name(self) -> str:
-        return self.data['Name']
+        return self.data["Name"]
 
     @property
     def arn(self) -> str:
-        return self.data['Arn']
+        return self.data["Arn"]
 
-    def render_for_diff(self) -> Dict[str, Any]:
+    def render_for_diff(self) -> dict[str, Any]:
         data = self.render()
-        del data['Id']
-        del data['Arn']
-        del data['CreateDate']
-        del data['CreateRequestorId']
+        del data["Id"]
+        del data["Arn"]
+        del data["CreateDate"]
+        del data["CreateRequestorId"]
         return data
 
-    def render_for_create(self) -> Dict[str, Any]:
+    def render_for_create(self) -> dict[str, Any]:
         return self.render_for_diff()
 
-    def render_for_update(self) -> Dict[str, Any]:
+    def render_for_update(self) -> dict[str, Any]:
         data = {}
-        data['Id'] = self.data['Id']
+        data["Id"] = self.data["Id"]
         service = {}
-        if 'Description' in self.data:
-            service['Description'] = self.data['Description']
-        data['DNSConfig'] = copy(self.data['DNSConfig'])
-        if 'HealthCheckCOnfig' in self.data:
-            service['HealthCheckConfig'] = copy(self.data['HealthCheckConfig'])
-        data['Service'] = service
+        if "Description" in self.data:
+            service["Description"] = self.data["Description"]
+        data["DNSConfig"] = copy(self.data["DNSConfig"])
+        if "HealthCheckCOnfig" in self.data:
+            service["HealthCheckConfig"] = copy(self.data["HealthCheckConfig"])
+        data["Service"] = service
         return data
 
     def save(self) -> str:
         if not self.namespace:
             raise self.ImproperlyConfigured(
-                'Service Discovery service "{}" has no namespace assigned'.format(self.name)
+                f'Service Discovery service "{self.name}" has no namespace assigned'
             )
-        self.data['NamespaceId'] = self.namespace.pk
-        self.data['DnsConfig']['NamespaceId'] = self.namespace.pk
+        self.data["NamespaceId"] = self.namespace.pk
+        self.data["DnsConfig"]["NamespaceId"] = self.namespace.pk
         return super().save()
 
     # -------------------------------------------
@@ -305,16 +305,16 @@ class ServiceDiscoveryService(Model):
     # -------------------------------------------
 
     @property
-    def namespace(self) -> Optional[ServiceDiscoveryNamespace]:
-        if 'NamespaceId' in self.data:
-            pk = self.data['NamespaceId']
+    def namespace(self) -> ServiceDiscoveryNamespace | None:
+        if "NamespaceId" in self.data:
+            pk = self.data["NamespaceId"]
         elif self.namespace_name:
             pk = self.namespace_name
         else:
-            self.cache['namespace'] = None
+            self.cache["namespace"] = None
             return None
         try:
-            return self.get_cached('namespace', ServiceDiscoveryNamespace.objects.get, [pk])
+            return self.get_cached("namespace", ServiceDiscoveryNamespace.objects.get, [pk])
         except ServiceDiscoveryNamespace.DoesNotExist:
-            self.cache['namespace'] = None
+            self.cache["namespace"] = None
             return None

@@ -1,17 +1,16 @@
-from copy import deepcopy
 import datetime
+from copy import deepcopy
 from textwrap import wrap
-from typing import Dict, Any, List, Optional, Union, cast
+from typing import Any, cast
 
 import click
 from tabulate import tabulate
 
+from deployfish.core.models import LoadBalancerListener, TargetGroup
 from deployfish.exceptions import RenderException
 
-from deployfish.core.models import TargetGroup, LoadBalancerListener
 from .abstract import AbstractRenderer
 from .misc import target_group_listener_rules
-
 
 # ========================
 # Renderers
@@ -28,12 +27,12 @@ class TableRenderer(AbstractRenderer):
 
     def __init__(
         self,
-        columns: Dict[str, Any],
+        columns: dict[str, Any],
         datetime_format: str = None,
         date_format: str = None,
         float_precision: int = None,
         ordering: str = None,
-        tablefmt: str = 'simple',
+        tablefmt: str = "simple",
         show_headers: bool = True
     ):
         """
@@ -105,21 +104,21 @@ class TableRenderer(AbstractRenderer):
 
         """
         super().__init__()
-        assert isinstance(columns, dict), 'TableRenderer: `columns` parameter to __init__ should be a dict'
+        assert isinstance(columns, dict), "TableRenderer: `columns` parameter to __init__ should be a dict"
 
-        self.columns: List[str] = list(columns.values())
-        self.headers: List[str] = list(columns.keys())
+        self.columns: list[str] = list(columns.values())
+        self.headers: list[str] = list(columns.keys())
         self.datetime_format: str = datetime_format if datetime_format else self.DEFAULT_DATETIME_FORMAT
         self.date_format: str = date_format if date_format else self.DEFAULT_DATE_FORMAT
         self.float_precision: int = float_precision if float_precision else self.DEFAULT_FLOAT_PRECISION
-        self.float_format: str = '{{:.{}f}}'.format(self.float_precision)
-        self.ordering: Optional[str] = ordering
+        self.float_format: str = f"{{:.{self.float_precision}f}}"
+        self.ordering: str | None = ordering
         self.tablefmt: str = tablefmt
         self.show_headers: bool = show_headers
 
-    def get_value(self, obj: Any, column: Union[Dict[str, str], str]) -> Any:
+    def get_value(self, obj: Any, column: dict[str, str] | str) -> Any:
         if isinstance(column, dict):
-            data_key = column['key']
+            data_key = column["key"]
         else:
             data_key = column
         try:
@@ -137,31 +136,31 @@ class TableRenderer(AbstractRenderer):
                 except KeyError:
                     pass
         if isinstance(column, dict):
-            if 'default' in column:
-                return column['default']
+            if "default" in column:
+                return column["default"]
 
         # This is for debugging our templates.  We should never get here in production.
         from pprint import pprint
         if isinstance(obj, dict):
             pprint(obj)
         else:
-            print('dir(obj):\n')
+            print("dir(obj):\n")
             pprint(dir(obj))
-            print('\nobj.render_for_display():\n')
+            print("\nobj.render_for_display():\n")
             pprint(obj.render_for_display())
         raise RenderException(
             click.style(
-                '\n\n{our_name}: Could not dereference "{key}"'.format(our_name=self.__class__.__name__, key=data_key),
-                fg='red'
+                f'\n\n{self.__class__.__name__}: Could not dereference "{data_key}"',
+                fg="red"
             )
         )
 
-    def human_bytes(self, value: Union[float, int], suffix: str = 'B') -> str:
-        for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+    def human_bytes(self, value: float, suffix: str = "B") -> str:
+        for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
             if abs(value) < 1024.0:
                 return "%3.1f%s%s" % (value, unit, suffix)
             value /= 1024.0
-        return "%.1f%s%s" % (value, 'Yi', suffix)
+        return "%.1f%s%s" % (value, "Yi", suffix)
 
     def _default_cast(self, value: Any) -> str:
         if isinstance(value, datetime.datetime):
@@ -172,7 +171,7 @@ class TableRenderer(AbstractRenderer):
             value = self.float_format.format(value)
         return value
 
-    def cast_column(self, obj: Any, value: Any, column: Union[Dict[str, str], str]) -> str:
+    def cast_column(self, obj: Any, value: Any, column: dict[str, str] | str) -> str:
         """
         Try to reformat a value into a more human friendly form:
 
@@ -181,31 +180,30 @@ class TableRenderer(AbstractRenderer):
             * If the value is a `float`, render it with precision
 
         """
-        if value == '':
+        if value == "":
             return value
         if isinstance(column, dict):
-            if 'length' in column:
+            if "length" in column:
                 return str(len(value))
-            if 'datatype' not in column:
+            if "datatype" not in column:
                 value = self._default_cast(value)
-            else:
-                if column['datatype'] == 'timestamp':
-                    value = int(value)
-                    try:
-                        value = datetime.datetime.fromtimestamp(value).strftime(self.datetime_format)
-                    except ValueError:
-                        # This is an AWS timestamp in milliseconds, not seconds
-                        value = datetime.datetime.fromtimestamp(value / 1000.0).strftime(self.datetime_format)
-                    value = self._default_cast(value)
-                elif column['datatype'] == 'bytes':
-                    value = int(value)
-                    value = self.human_bytes(value)
-            if 'wrap' in column:
+            elif column["datatype"] == "timestamp":
+                value = int(value)
+                try:
+                    value = datetime.datetime.fromtimestamp(value).strftime(self.datetime_format)
+                except ValueError:
+                    # This is an AWS timestamp in milliseconds, not seconds
+                    value = datetime.datetime.fromtimestamp(value / 1000.0).strftime(self.datetime_format)
+                value = self._default_cast(value)
+            elif column["datatype"] == "bytes":
+                value = int(value)
+                value = self.human_bytes(value)
+            if "wrap" in column:
                 value = str(value)
-                value = '\n'.join(wrap(value, cast(int, column['wrap'])))
+                value = "\n".join(wrap(value, cast("int", column["wrap"])))
         return value
 
-    def render_column(self, obj: Any, column: Union[Dict[str, str], str]) -> str:
+    def render_column(self, obj: Any, column: dict[str, str] | str) -> str:
         """
         Return the value to put in the table for the attribute named `column` on `obj`, a data object.
 
@@ -218,21 +216,20 @@ class TableRenderer(AbstractRenderer):
 
         :rtype: str
         """
-
         if isinstance(column, dict):
-            key = column['key']
+            key = column["key"]
         else:
             key = column
-        if hasattr(self, f'render_{column}_value'):
-            value = getattr(self, f'render_{column}_value')(obj, key, column)
+        if hasattr(self, f"render_{column}_value"):
+            value = getattr(self, f"render_{column}_value")(obj, key, column)
         else:
-            if '__' in key:
-                refs = key.split('__')
-                ref: Optional[str] = refs.pop(0)
+            if "__" in key:
+                refs = key.split("__")
+                ref: str | None = refs.pop(0)
                 while ref:
                     if isinstance(column, dict):
-                        sub_column = cast(Dict[str, Any], deepcopy(column))
-                        sub_column['key'] = ref
+                        sub_column = cast("dict[str, Any]", deepcopy(column))
+                        sub_column["key"] = ref
                         obj = self.get_value(obj, sub_column)
                     else:
                         obj = self.get_value(obj, ref)
@@ -248,7 +245,7 @@ class TableRenderer(AbstractRenderer):
         return value
 
     def render(self, data: Any, **_) -> str:
-        data = cast(List[Any], data)
+        data = cast("list[Any]", data)
         table = []
         for obj in data:
             row = []
@@ -258,7 +255,7 @@ class TableRenderer(AbstractRenderer):
         if self.ordering:
             reverse = False
             order_column = self.ordering
-            if order_column.startswith('-'):
+            if order_column.startswith("-"):
                 reverse = True
                 order_column = order_column[1:]
             order_index = self.headers.index(order_column)
@@ -273,22 +270,22 @@ class TableRenderer(AbstractRenderer):
 
 class TargetGroupTableRenderer(TableRenderer):
 
-    def render_load_balancers_value(self, obj: TargetGroup, key: str, column: Union[Dict[str, str], str]) -> str:
+    def render_load_balancers_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
         load_balancer_names = [lb.name for lb in obj.load_balancers]
-        return '\n'.join(load_balancer_names)
+        return "\n".join(load_balancer_names)
 
-    def render_targets_value(self, obj: TargetGroup, key: str, column: Union[Dict[str, str], str]) -> str:
+    def render_targets_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
         target_names = [t.target.name for t in obj.targets]
-        return '\n'.join(target_names)
+        return "\n".join(target_names)
 
-    def render_rules_value(self, obj: TargetGroup, key: str, column: Union[Dict[str, str], str]) -> str:
+    def render_rules_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
         return target_group_listener_rules(obj)
 
-    def render_listener_port_value(self, obj: TargetGroup, key: str, column: Union[Dict[str, str], str]) -> str:
-        return '\n'.join(["{}:{}".format(l.protocol, str(l.port)) for l in obj.listeners])
+    def render_listener_port_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
+        return "\n".join([f"{l.protocol}:{l.port!s}" for l in obj.listeners])
 
-    def render_container_port_value(self, obj: TargetGroup, key: str, column: Union[Dict[str, str], str]) -> str:
-        return "{}:{}".format(obj.data['Protocol'], obj.data['Port'])
+    def render_container_port_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
+        return "{}:{}".format(obj.data["Protocol"], obj.data["Port"])
 
 
 class LBListenerTableRenderer(TableRenderer):
@@ -297,43 +294,43 @@ class LBListenerTableRenderer(TableRenderer):
         self,
         obj: LoadBalancerListener,
         key: str,
-        column: Union[Dict[str, str], str]
+        column: dict[str, str] | str
     ) -> str:
         actions = []
-        for action in obj.data['DefaultActions']:
-            if action['Type'] == 'forward':
-                tg = TargetGroup.objects.get(action['TargetGroupArn'])
-                actions.append('forward:{}'.format(tg.name))
-            elif action['Type'] == 'redirect':
-                c = action['RedirectConfig']
-                action_string = 'redirect[{}]:'.format(
-                    '301' if c['StatusCode'] == 'HTTP_301' else '302'
+        for action in obj.data["DefaultActions"]:
+            if action["Type"] == "forward":
+                tg = TargetGroup.objects.get(action["TargetGroupArn"])
+                actions.append(f"forward:{tg.name}")
+            elif action["Type"] == "redirect":
+                c = action["RedirectConfig"]
+                action_string = "redirect[{}]:".format(
+                    "301" if c["StatusCode"] == "HTTP_301" else "302"
                 )
-                action_string += "{}://{}".format(c['Protocol'].lower(), c['Host'])
-                if 'Port' in c and c['Port']:
-                    action_string += ":{}".format(c['Port'])
-                action_string += '/'
-                if 'Query' in c and c['Query']:
-                    action_string += '?{}'.format(c['Query'])
+                action_string += "{}://{}".format(c["Protocol"].lower(), c["Host"])
+                if c.get("Port"):
+                    action_string += ":{}".format(c["Port"])
+                action_string += "/"
+                if c.get("Query"):
+                    action_string += "?{}".format(c["Query"])
                 actions.append(action_string)
-            elif action['Type'] == 'fixed':
-                c = action['FixedResponseConfig']
-                actions.append('fixed[{}]: {}'.format(c['StatusCode'], c['ContentType']))
-        return '\n'.join(actions)
+            elif action["Type"] == "fixed":
+                c = action["FixedResponseConfig"]
+                actions.append("fixed[{}]: {}".format(c["StatusCode"], c["ContentType"]))
+        return "\n".join(actions)
 
-    def render_certificates_value(self, obj: LoadBalancerListener, key: str, column: Union[Dict[str, str], str]) -> str:
+    def render_certificates_value(self, obj: LoadBalancerListener, key: str, column: dict[str, str] | str) -> str:
         certs = []
-        if 'Certificates' in obj.data:
-            for cert in obj.data['Certificates']:
-                arn = cert['CertificateArn']
-                arn_source = click.style(arn.split(':')[2].upper(), fg='yellow')
-                arn_id = arn.rsplit('/')[1]
-                arn_string = '{}: {}'.format(arn_source, arn_id)
-                if 'IsDefault' in cert and cert['IsDefault']:
-                    certs.append('[Default] {}'.format(arn_string))
+        if "Certificates" in obj.data:
+            for cert in obj.data["Certificates"]:
+                arn = cert["CertificateArn"]
+                arn_source = click.style(arn.split(":")[2].upper(), fg="yellow")
+                arn_id = arn.rsplit("/")[1]
+                arn_string = f"{arn_source}: {arn_id}"
+                if cert.get("IsDefault"):
+                    certs.append(f"[Default] {arn_string}")
                 else:
                     certs.append(arn_string)
-        return '\n'.join(certs)
+        return "\n".join(certs)
 
-    def render_rules_value(self, obj: LoadBalancerListener, key: str, column: Union[Dict[str, str], str]) -> str:
+    def render_rules_value(self, obj: LoadBalancerListener, key: str, column: dict[str, str] | str) -> str:
         return str(len(obj.rules))

@@ -1,15 +1,13 @@
 import datetime
-from distutils.core import run_setup
 import os
 import pathlib
 import subprocess
 import time
-from typing import Dict
 
 import docker
+import toml
 from git import Repo
 from giturlparse import parse
-import toml
 
 
 class ImproperlyConfiguredError(Exception):
@@ -19,12 +17,12 @@ class ImproperlyConfiguredError(Exception):
 
 
 class AnnotationMixin:
-    def annotate(self, context: Dict[str, str]):
+    def annotate(self, context: dict[str, str]):
         pass
 
 
 class CodeNameVersionMixin(AnnotationMixin):
-    def setup_py(self, path: pathlib.Path) -> Dict[str, str]:
+    def setup_py(self, path: pathlib.Path) -> dict[str, str]:
         """
         Process a setup.py file and return the name and version.
 
@@ -39,7 +37,7 @@ class CodeNameVersionMixin(AnnotationMixin):
             A dictionary with the keys ``name`` and ``version``
 
         """
-        context: Dict[str, str] = {}
+        context: dict[str, str] = {}
         context["version"] = subprocess.run(
             ["/usr/bin/env", "python", str(path), "--version"],
             capture_output=True,
@@ -57,7 +55,7 @@ class CodeNameVersionMixin(AnnotationMixin):
         ).stdout.strip()
         return context
 
-    def makefile(self, path: pathlib.Path) -> Dict[str, str]:
+    def makefile(self, path: pathlib.Path) -> dict[str, str]:
         """
         Process a Makefile and return the name and version.
 
@@ -72,7 +70,7 @@ class CodeNameVersionMixin(AnnotationMixin):
             A dictionary with the keys ``name`` and ``version``
 
         """
-        context: Dict[str, str] = {}
+        context: dict[str, str] = {}
         # This command line extracts the names of the targets from the Makefile,
         # ignoring the implicit ones, and sorts them.
         command = ["make", "-pRrq", "-f", str(path)]
@@ -81,7 +79,7 @@ class CodeNameVersionMixin(AnnotationMixin):
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
+                text=True, check=False,
             )
         except subprocess.CalledProcessError as e:
             print(e.stderr)
@@ -102,7 +100,7 @@ class CodeNameVersionMixin(AnnotationMixin):
         )
         return context
 
-    def pyproject_toml(self, path: pathlib.Path) -> Dict[str, str]:
+    def pyproject_toml(self, path: pathlib.Path) -> dict[str, str]:
         """
         Process a pyproject.toml file and return the name and version.
 
@@ -117,7 +115,7 @@ class CodeNameVersionMixin(AnnotationMixin):
             A dictionary with the keys ``name`` and ``version``
 
         """
-        context: Dict[str, str] = {}
+        context: dict[str, str] = {}
         data = toml.load(path)
         if "project" not in data:
             msg = "pyproject.toml is a stub: no project section"
@@ -126,7 +124,7 @@ class CodeNameVersionMixin(AnnotationMixin):
         context["version"] = data["project"]["version"]
         return context
 
-    def annotate(self, context: Dict[str, str]):
+    def annotate(self, context: dict[str, str]):
         """
         Extract some stuff from setup.py, if present.
 
@@ -189,8 +187,7 @@ class GitMixin(AnnotationMixin):
         if not self.url_patterns:
             p = parse(self.repo.remote().url)
             origin_url = f"https://{p.host}/{p.owner}/{p.repo}"
-            if origin_url.endswith(".git"):
-                origin_url = origin_url[:-4]
+            origin_url = origin_url.removesuffix(".git")
             if p.bitbucket:
                 self.url_patterns["commit"] = self.__format_url(
                     url=f"{origin_url}/commits/" + "{sha}", label="{sha}"
@@ -220,7 +217,7 @@ class GitMixin(AnnotationMixin):
                 self.url_patterns["diff"] = None
             self.url_patterns["repo"] = origin_url
 
-    def __get_last_version(self, values: Dict[str, str]):
+    def __get_last_version(self, values: dict[str, str]):
         """
         Update the `values` dict with:
 
@@ -252,7 +249,7 @@ class GitMixin(AnnotationMixin):
             )
             values["previous_version"] = "initial"
 
-    def git_changelog(self, values: Dict[str, str]):
+    def git_changelog(self, values: dict[str, str]):
         """
         Look through the commits between the current version and the last version
         Update `values` with two new keys:
@@ -280,7 +277,7 @@ class GitMixin(AnnotationMixin):
                 sha=commit.hexsha[0:7]
             )
             changelog.append(
-                f"{commit_link} [{d}] {commit.summary} - {str(commit.author)}"
+                f"{commit_link} [{d}] {commit.summary} - {commit.author!s}"
             )
         values["authors"] = sorted(authors)
         values["changelog"] = changelog
@@ -293,7 +290,7 @@ class GitMixin(AnnotationMixin):
         committer = f"{current.author.name} <{current.author.email}>"
         return f"{branch} {sha_url} {committer}"
 
-    def annotate(self, values: Dict[str, str]):
+    def annotate(self, values: dict[str, str]):
         """
         Extract info about the git repo.  Assume we're in the checked out clone.
         """
@@ -317,7 +314,7 @@ class GitChangelogMixin:
     This needs to be used after GitMixin in the inheritance chain.
     """
 
-    def annotate(self, values: Dict[str, str]):
+    def annotate(self, values: dict[str, str]):
         """
         Look through the commits between the current version and the last version
         Update `values` with two new keys:
@@ -346,7 +343,7 @@ class GitChangelogMixin:
                 sha=commit.hexsha[0:7]
             )
             changelog.append(
-                f"{commit_link} [{d}] {commit.summary} - {str(commit.author)}"
+                f"{commit_link} [{d}] {commit.summary} - {commit.author!s}"
             )
         values["authors"] = sorted(authors)
         values["changelog"] = changelog
@@ -358,7 +355,7 @@ class CodebuildMixin(AnnotationMixin):
             self.log_group = kwargs["log_group"]
         super().__init__(*args, **kwargs)
 
-    def annotate(self, values: Dict[str, str]):
+    def annotate(self, values: dict[str, str]):
         super().annotate(values)
         values["status"] = (
             "Success"
@@ -395,7 +392,7 @@ class DockerMixin(AnnotationMixin):
             del kwargs["image"]
         super().__init__(*args, **kwargs)
 
-    def annotate(self, values: Dict[str, str]):
+    def annotate(self, values: dict[str, str]):
         super().annotate(values)
         client = docker.from_env()
         image = client.images.get(self.image)
@@ -410,6 +407,6 @@ class DeployfishDeployMixin(AnnotationMixin):
             del kwargs["service"]
         super().__init__(*args, **kwargs)
 
-    def annotate(self, values: Dict[str, str]):
+    def annotate(self, values: dict[str, str]):
         super().annotate(values)
         values["service"] = self.service

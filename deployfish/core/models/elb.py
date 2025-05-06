@@ -1,6 +1,8 @@
+import builtins
 import fnmatch
 import re
-from typing import List, Sequence, Dict, Optional, Any
+from collections.abc import Sequence
+from typing import Any
 
 from .abstract import Manager, Model
 from .ec2 import Instance
@@ -13,86 +15,86 @@ from .mixins import TagsMixin
 
 class ClassicLoadBalancerManager(Manager):
 
-    service = 'elb'
+    service = "elb"
 
     def get(self, pk: str, **_) -> "ClassicLoadBalancer":
         instances = self.get_many([pk])
         if len(instances) > 1:
             raise ClassicLoadBalancer.MultipleObjectsReturned(
-                "Got more than one load balancer when searching for pk={}".format(pk)
+                f"Got more than one load balancer when searching for pk={pk}"
             )
         return instances[0]
 
-    def get_many(self, pks: List[str], **kwargs) -> Sequence["ClassicLoadBalancer"]:
-        kwargs = {'LoadBalancerNames': pks}
-        paginator = self.client.get_paginator('describe_load_balancers')
+    def get_many(self, pks: list[str], **kwargs) -> Sequence["ClassicLoadBalancer"]:
+        kwargs = {"LoadBalancerNames": pks}
+        paginator = self.client.get_paginator("describe_load_balancers")
         response_iterator = paginator.paginate(**kwargs)
         lbs = []
         try:
             for response in response_iterator:
-                lbs.extend(response['LoadBalancerDescriptions'])
+                lbs.extend(response["LoadBalancerDescriptions"])
         except self.client.exceptions.AccessPointNotFoundException as e:
             msg = e.args[0]
             lbname = "Unknown"
-            m = re.search(r'Cannot find Load Balancer (?P<lbname>[0-9A-Za-z]+)', msg)
+            m = re.search(r"Cannot find Load Balancer (?P<lbname>[0-9A-Za-z]+)", msg)
             if m:
-                lbname = m.group('lbname')
+                lbname = m.group("lbname")
             raise ClassicLoadBalancer.DoesNotExist(
-                'No Classic Load Balancer with name "{}" exists in AWS'.format(lbname)
+                f'No Classic Load Balancer with name "{lbname}" exists in AWS'
             )
         return [ClassicLoadBalancer(lb) for lb in lbs]
 
     def list(
         self,
         vpc_id: str = None,
-        scheme: str = 'any',
+        scheme: str = "any",
         name: str = None
     ) -> Sequence["ClassicLoadBalancer"]:
-        paginator = self.client.get_paginator('describe_load_balancers')
+        paginator = self.client.get_paginator("describe_load_balancers")
         response_iterator = paginator.paginate()
         lb_data = []
         for response in response_iterator:
             try:
-                lb_data.extend(response['LoadBalancerDescriptions'])
+                lb_data.extend(response["LoadBalancerDescriptions"])
             except self.client.exceptions.AccessPointNotFoundException as e:
                 msg = e.args[0]
                 lbname = "Unknown"
-                m = re.search(r'Cannot find Load Balancer (?P<lbname>[0-9A-Za-z]+)', msg)
+                m = re.search(r"Cannot find Load Balancer (?P<lbname>[0-9A-Za-z]+)", msg)
                 if m:
-                    lbname = m.group('lbname')
+                    lbname = m.group("lbname")
                 raise ClassicLoadBalancer.DoesNotExist(
-                    'No Classic Load Balancer with name "{}" exists in AWS'.format(lbname)
+                    f'No Classic Load Balancer with name "{lbname}" exists in AWS'
                 )
         lbs = []
         for lb in lb_data:
-            if name and not fnmatch.fnmatch(lb['LoadBalancerName'], name):
+            if name and not fnmatch.fnmatch(lb["LoadBalancerName"], name):
                 continue
-            if vpc_id and lb['VPCId'] != vpc_id:
+            if vpc_id and lb["VPCId"] != vpc_id:
                 continue
-            if scheme not in ['any', lb['Scheme']]:
+            if scheme not in ["any", lb["Scheme"]]:
                 continue
             lbs.append(ClassicLoadBalancer(lb))
         return lbs
 
-    def get_tags(self, pk: str) -> List[Dict[str, str]]:
+    def get_tags(self, pk: str) -> builtins.list[dict[str, str]]:
         response = self.client.describe_tags(LoadBalancerName=pk)
-        return response['TagDescriptions']['Tags']
+        return response["TagDescriptions"]["Tags"]
 
 
 class ClassicLoadBalancerTargetManager(Manager):
 
-    service = 'elb'
+    service = "elb"
 
     def list(self, load_balancer_name: str) -> Sequence["ClassicLoadBalancerTarget"]:
         try:
             response = self.client.describe_instance_health(LoadBalancerName=load_balancer_name)
         except self.client.exceptions.AccessPointNotFoundException:
             raise ClassicLoadBalancer.DoesNotExist(
-                'No Classic Load Balancer named "{}" exists in AWS'.format(load_balancer_name)
+                f'No Classic Load Balancer named "{load_balancer_name}" exists in AWS'
             )
         targets = []
-        for data in response['InstanceStates']:
-            instance = Instance.objects.get(data['InstanceId'])
+        for data in response["InstanceStates"]:
+            instance = Instance.objects.get(data["InstanceId"])
             targets.append(ClassicLoadBalancerTarget(data, instance))
         return targets
 
@@ -105,7 +107,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
     objects = ClassicLoadBalancerManager()
 
-    lb_type: str = 'Classic (ELB)'
+    lb_type: str = "Classic (ELB)"
 
     # ---------------------
     # Model overrides
@@ -117,7 +119,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
     @property
     def name(self) -> str:
-        return self.data['LoadBalancerName']
+        return self.data["LoadBalancerName"]
 
     @property
     def arn(self) -> None:
@@ -129,30 +131,30 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
     @property
     def scheme(self) -> str:
-        return self.data['Scheme']
+        return self.data["Scheme"]
 
     @property
     def hostname(self) -> str:
-        return self.data['DNSName']
+        return self.data["DNSName"]
 
     @property
-    def listeners(self) -> List[str]:
-        return [listener['Listener'] for listener in self.data['ListenerDescriptions']]
+    def listeners(self) -> list[str]:
+        return [listener["Listener"] for listener in self.data["ListenerDescriptions"]]
 
     @property
-    def ssl_certificate_arn(self) -> Optional[str]:
+    def ssl_certificate_arn(self) -> str | None:
         cert_id = None
-        for listener in self.data['ListenerDescriptions']:
-            if 'SSLCertificateId' in listener['Listener'] and listener['Listener']['SSLCertificateId']:
-                cert_id = listener['Listener']['SSLCertificateId']
+        for listener in self.data["ListenerDescriptions"]:
+            if "SSLCertificateId" in listener["Listener"] and listener["Listener"]["SSLCertificateId"]:
+                cert_id = listener["Listener"]["SSLCertificateId"]
         return cert_id
 
     @property
-    def ssl_policy(self) -> Optional[str]:
+    def ssl_policy(self) -> str | None:
         cert_id = None
-        for listener in self.data['ListenerDescriptions']:
-            if 'PolicyNames' in listener and listener['PolicyNames']:
-                cert_id = listener['PolicyNames'][0]
+        for listener in self.data["ListenerDescriptions"]:
+            if listener.get("PolicyNames"):
+                cert_id = listener["PolicyNames"][0]
         return cert_id
 
     @property
@@ -164,7 +166,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
     objects = ClassicLoadBalancerTargetManager()
 
-    def __init__(self, data: Dict[str, Any], instance: Instance) -> None:
+    def __init__(self, data: dict[str, Any], instance: Instance) -> None:
         super().__init__(data)
         self.instance: Instance = instance
 
@@ -201,11 +203,11 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
         return self.instance.ip_address
 
     @property
-    def bastion(self) -> Optional[Instance]:
+    def bastion(self) -> Instance | None:
         return self.instance.bastion
 
     @property
-    def provisioner(self) -> Optional[Instance]:
+    def provisioner(self) -> Instance | None:
         return self.instance.provisioner
 
     @property
@@ -218,5 +220,5 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
     def render_for_display(self):
         data = self.render()
-        data['Instance'] = self.instance.render_for_display()
+        data["Instance"] = self.instance.render_for_display()
         return data

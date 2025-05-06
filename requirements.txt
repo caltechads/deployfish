@@ -4,8 +4,10 @@ requests>=2.18.4                              # https://github.com/psf/requests
 jsondiff2>=1.2.3                              # https://github.com/edoreld/jsondiff
 inspect2>=0.1.2                               # https://github.com/JelleZijlstra/inspect2
 jinja2>=2.11                                  # https://github.com/pallets/jinja
-typer[all]>=0.6.1                             # https://github.com/tiangolo/typer
+typer>=0.6.1                                  # https://github.com/tiangolo/typer
 tzlocal>=4.0.1
+cement==3.0.10                                # https://github.com/datafolklabs/cement
+tabulate>=0.8.1
 # ---- Purposely unpinned ----
 boto3>=1.22                                   # https://github.com/boto/boto3
 

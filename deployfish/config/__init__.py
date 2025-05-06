@@ -4,8 +4,7 @@ from cement import App
 
 from .config import Config
 
-
-MAIN_APP: Optional[App] = None
+MAIN_APP: App | None = None
 
 
 def set_app(app: App) -> None:
@@ -14,5 +13,5 @@ def set_app(app: App) -> None:
 
 
 def get_config() -> Config:
-    assert MAIN_APP is not None, 'get_config() called before set_app()'
+    assert MAIN_APP is not None, "get_config() called before set_app()"
     return MAIN_APP.deployfish_config

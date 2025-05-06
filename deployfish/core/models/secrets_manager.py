@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 import base64
-from typing import List, Sequence, Optional
+from collections.abc import Sequence
 
 from .abstract import Manager, Model
 from .mixins import TagsManagerMixin, TagsMixin
-
 
 # ----------------------------------------
 # Managers
@@ -18,7 +16,7 @@ class SMSecretManager(TagsManagerMixin, Manager):
     manages SSM Parameter Store secrets, not Secrets Manager secrets.
     """
 
-    service: str = 'secretsmanager'
+    service: str = "secretsmanager"
 
     def get(self, pk: str, **_) -> "SMSecret":
         try:
@@ -41,17 +39,17 @@ class SMSecretManager(TagsManagerMixin, Manager):
                 f'Could not decrypt SMSecret("{pk}")'
             ) from e
 
-        if 'SecretBinary' in response:
+        if "SecretBinary" in response:
             # SecretBinary is a base64 encoded bytes array.  We need to decode
             # it back to a utf-8 string.
-            return base64.b64decode(response['SecretBinary']).decode('utf-8')
-        return response['SecretString']
+            return base64.b64decode(response["SecretBinary"]).decode("utf-8")
+        return response["SecretString"]
 
     def list(self) -> Sequence["SMSecret"]:
-        secrets: List["SMSecret"] = []
-        paginator = self.client.get_paginator('list_secrets')
+        secrets: list[SMSecret] = []
+        paginator = self.client.get_paginator("list_secrets")
         for page in paginator.paginate():
-            secrets.extend([SMSecret(secret) for secret in page['SecretList']])
+            secrets.extend([SMSecret(secret) for secret in page["SecretList"]])
         return secrets
 
 
@@ -65,34 +63,34 @@ class SMSecret(TagsMixin, Model):
 
     @property
     def pk(self) -> str:
-        return self.data['ANR']
+        return self.data["ANR"]
 
     @property
     def name(self) -> str:
-        return self.data['Name']
+        return self.data["Name"]
 
     @property
     def arn(self) -> str:
-        return self.data['ARN']
+        return self.data["ARN"]
 
     @property
     def kms_key_id(self) -> str:
-        return self.data['KmsKeyId']
+        return self.data["KmsKeyId"]
 
     @property
-    def description(self) -> Optional[str]:
-        return self.data.get('Description', None)
+    def description(self) -> str | None:
+        return self.data.get("Description", None)
 
     @property
     def rotation_enabled(self) -> bool:
-        return self.data['RotationEnabled']
+        return self.data["RotationEnabled"]
 
     @property
     def last_rotated(self) -> bool:
-        return self.data['LastRotationDate']
+        return self.data["LastRotationDate"]
 
     @property
     def value(self) -> str:
-        if 'value' not in self.cache:
-            self.cache['value'] = self.objects.get_value(self.arn)
-        return self.cache['value']
+        if "value" not in self.cache:
+            self.cache["value"] = self.objects.get_value(self.arn)
+        return self.cache["value"]

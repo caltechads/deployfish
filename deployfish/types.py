@@ -1,34 +1,29 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import sys
+from collections.abc import Callable, Sequence
 from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Sequence,
     TYPE_CHECKING,
-    Type,
+    Any,
+    Optional,
 )
 
 if sys.version_info >= (3, 8):
     from typing import Protocol
 else:
-    from typing_extensions import Protocol
+    from typing import Protocol
 
 if TYPE_CHECKING:
     from deployfish.core.models import (
         Cluster,
         ContainerDefinition,
         Instance,
+        InvokedTask,
         Manager,
         Model,
-        TaskDefinition,
-        InvokedTask,
         Secret,
-        SSHTunnel
+        SSHTunnel,
+        TaskDefinition,
     )
 
 class SupportsSSH(Protocol):
@@ -75,21 +70,21 @@ class SupportsNetworking(SupportsSSH, SupportsTunnel, Protocol):
 
 class SupportsCache(Protocol):
 
-    cache: Dict[str, Any]
+    cache: dict[str, Any]
 
     def get_cached(
         self,
         key: str,
         populator: Callable,
-        args: List[Any],
-        kwargs: Dict[str, Any] = None
+        args: list[Any],
+        kwargs: dict[str, Any] = None
     ) -> Any:
         ...
 
 class SupportsSecrets(Protocol):
 
     @property
-    def secrets(self) -> Dict[str, "Secret"]:
+    def secrets(self) -> dict[str, "Secret"]:
         ...
 
     @property
@@ -102,7 +97,7 @@ class SupportsSecrets(Protocol):
     def write_secrets(self) -> None:
         ...
 
-    def diff_secrets(self, other: Sequence["Secret"], ignore_external: bool = False) -> Dict[str, Any]:
+    def diff_secrets(self, other: Sequence["Secret"], ignore_external: bool = False) -> dict[str, Any]:
         ...
 
 
@@ -110,7 +105,7 @@ class SupportsModel(Protocol):
 
     objects: "Manager"
     config_section: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
     @property
     def pk(self) -> str:
@@ -121,12 +116,12 @@ class SupportsModel(Protocol):
         ...
 
     @property
-    def arn(self) -> Optional[str]:
+    def arn(self) -> str | None:
         ...
 
 class SupportsTaskDefinition(SupportsModel, Protocol):
 
-    containers: List["ContainerDefinition"]
+    containers: list["ContainerDefinition"]
 
 
 class SupportsNetworkedModel(SupportsModel, SupportsNetworking, Protocol):
@@ -171,11 +166,11 @@ class SupportsService(
 
 class SupportsModelClass(Protocol):
 
-    model: Type["Model"]
+    model: type["Model"]
 
 
 class SupportsRendering(Protocol):
 
-    datetime_format: Optional[str]
-    date_format: Optional[str]
-    float_precision: Optional[str]
+    datetime_format: str | None
+    date_format: str | None
+    float_precision: str | None

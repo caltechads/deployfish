@@ -1,8 +1,8 @@
+from collections.abc import Sequence
 from copy import copy
-from typing import Optional, Sequence, cast, Dict, Any
+from typing import Any, cast
 
 from .abstract import Manager, Model
-
 
 # ----------------------------------------
 # Managers
@@ -10,18 +10,18 @@ from .abstract import Manager, Model
 
 class EventTargetManager(Manager):
 
-    service = 'events'
+    service = "events"
 
     def get(self, pk: str, **kwargs) -> "EventTarget":
-        rule: Optional['EventScheduleRule'] = kwargs.get('rule', None)
+        rule: EventScheduleRule | None = kwargs.get("rule")
         if not rule:
             raise ValueError('"rule" kwarg is required')
-        if not pk.startswith('deployfish-'):
-            pk = 'deployfish-' + pk
+        if not pk.startswith("deployfish-"):
+            pk = "deployfish-" + pk
         response = self.client.list_targets_by_rule(Rule=rule.pk)
         data = {}
-        for target in response['Targets']:
-            if target['Id'] == pk:
+        for target in response["Targets"]:
+            if target["Id"] == pk:
                 data = target
                 break
         if not data:
@@ -33,7 +33,7 @@ class EventTargetManager(Manager):
     def list(self, rule: "EventScheduleRule") -> Sequence["EventTarget"]:
         response = self.client.list_targets_by_rule(Rule=rule.pk)
         targets = []
-        for target in response['Targets']:
+        for target in response["Targets"]:
             targets.append(EventTarget(target, rule=rule))
         return targets
 
@@ -50,27 +50,27 @@ class EventTargetManager(Manager):
 
 class EventScheduleRuleManager(Manager):
 
-    service = 'events'
+    service = "events"
 
     def get(self, pk: str, **_) -> "EventScheduleRule":
-        if not pk.startswith('deployfish-'):
-            pk = 'deployfish-' + pk
+        if not pk.startswith("deployfish-"):
+            pk = "deployfish-" + pk
         response = self.client.list_rules(NamePrefix=pk, Limit=1)
-        if not response['Rules']:
+        if not response["Rules"]:
             raise EventScheduleRule.DoesNotExist(
-                'No EventScheduleRule for name="{}" exists in AWS'.format(pk)
+                f'No EventScheduleRule for name="{pk}" exists in AWS'
             )
-        data = response['Rules'][0]
+        data = response["Rules"][0]
         rule = EventScheduleRule(data)
         rule.target = EventTarget.objects.get(pk, rule=rule)
         return rule
 
-    def list(self) -> Sequence['EventScheduleRule']:
-        paginator = self.client.get_paginator('list_rules')
+    def list(self) -> Sequence["EventScheduleRule"]:
+        paginator = self.client.get_paginator("list_rules")
         response_iterator = paginator.paginate(NamePrefix="deployfish-")
         rules = []
         for response in response_iterator:
-            for data in response['Rules']:
+            for data in response["Rules"]:
                 rule = EventScheduleRule(data)
                 rule.target = EventTarget.objects.get(rule.pk, rule=rule)
                 rules.append(rule)
@@ -84,7 +84,7 @@ class EventScheduleRuleManager(Manager):
         response = self.client.put_rule(**obj.render())
         if obj.target:
             obj.target.save()
-        return response['RuleArn']
+        return response["RuleArn"]
 
     def delete(self, obj: Model, **_) -> None:
         obj = cast("EventScheduleRule", obj)
@@ -104,7 +104,7 @@ class EventScheduleRuleManager(Manager):
         if not obj.enabled:
             self.client.enable_rule(
                 Name=obj.name,
-                EventBusName=obj.data['EventBusName']
+                EventBusName=obj.data["EventBusName"]
             )
 
     def disable(self, obj: "EventScheduleRule") -> None:
@@ -114,11 +114,12 @@ class EventScheduleRuleManager(Manager):
 
         Args:
             obj: the rule to disable
+
         """
         if obj.enabled:
             self.client.disable_rule(
                 Name=obj.name,
-                EventBusName=obj.data['EventBusName']
+                EventBusName=obj.data["EventBusName"]
             )
 
 
@@ -161,14 +162,14 @@ class EventTarget(Model):
     objects = EventTargetManager()
 
     @classmethod
-    def new(cls, obj: Dict[str, Any], source: str, **kwargs) -> "EventTarget":
-        rule: Optional["EventScheduleRule"] = kwargs.get('rule', None)
+    def new(cls, obj: dict[str, Any], source: str, **kwargs) -> "EventTarget":
+        rule: EventScheduleRule | None = kwargs.get("rule")
         data, kwargs = cls.adapt(obj, source)
         return cls(data, rule=rule)
 
-    def __init__(self, data: Dict[str, Any], rule: "EventScheduleRule" = None):
+    def __init__(self, data: dict[str, Any], rule: "EventScheduleRule" = None):
         super().__init__(data)
-        self.rule: Optional["EventScheduleRule"] = rule
+        self.rule: EventScheduleRule | None = rule
 
     # ---------------------
     # Model overrides
@@ -176,15 +177,15 @@ class EventTarget(Model):
 
     @property
     def pk(self) -> str:
-        return self.data['Id']
+        return self.data["Id"]
 
     @property
     def name(self) -> str:
-        return self.data['Id']
+        return self.data["Id"]
 
     @property
     def arn(self) -> str:
-        return self.data['Arn']
+        return self.data["Arn"]
 
     def save(self) -> None:
         """
@@ -194,14 +195,14 @@ class EventTarget(Model):
         """
         if not self.rule:
             raise self.ImproperlyConfigured(
-                'EventTarget({}) has no EventScheduleRule associated with it.  Assign one with target.rule = rule'
+                "EventTarget({}) has no EventScheduleRule associated with it.  Assign one with target.rule = rule"
             )
         super().save()
 
     def delete(self) -> None:
         if not self.rule:
             raise self.ImproperlyConfigured(
-                'EventTarget({}) has no EventScheduleRule asociated with it.  Assign one with target.rule = rule'
+                "EventTarget({}) has no EventScheduleRule asociated with it.  Assign one with target.rule = rule"
             )
         self.objects.delete(self, rule=self.rule)
 
@@ -210,7 +211,7 @@ class EventTarget(Model):
     # ----------------------------
 
     def set_task_definition_arn(self, arn: str) -> None:
-        self.data['EcsParameters']['TaskDefinitionArn'] = arn
+        self.data["EcsParameters"]["TaskDefinitionArn"] = arn
 
 
 class EventScheduleRule(Model):
@@ -224,7 +225,7 @@ class EventScheduleRule(Model):
     objects = EventScheduleRuleManager()
 
     @classmethod
-    def new(cls, obj: Dict[str, Any], source: str, **_) -> "EventScheduleRule":
+    def new(cls, obj: dict[str, Any], source: str, **_) -> "EventScheduleRule":
         rule = super().new(obj, source)
         rule = cast("EventScheduleRule", rule)
         rule.target = EventTarget.new(obj, source, rule=rule)
@@ -240,17 +241,17 @@ class EventScheduleRule(Model):
 
     @property
     def pk(self) -> str:
-        return self.data['Name']
+        return self.data["Name"]
 
     @property
     def name(self) -> str:
-        return self.data['Name']
+        return self.data["Name"]
 
     @property
     def arn(self) -> str:
-        return self.data['Arn']
+        return self.data["Arn"]
 
-    def render_for_diff(self) -> Dict[str, Any]:
+    def render_for_diff(self) -> dict[str, Any]:
         """
 
         .. note::
@@ -260,11 +261,11 @@ class EventScheduleRule(Model):
             task definition we have in deployfish.yml.
         """
         data = copy(self.data)
-        data['Target'] = {}
+        data["Target"] = {}
         if self.target:
-            data['Target'] = self.target.render_for_diff()
-            if 'taskDefinitionArn' in data['Target']:
-                del data['Target']['taskDefinitionArn']
+            data["Target"] = self.target.render_for_diff()
+            if "taskDefinitionArn" in data["Target"]:
+                del data["Target"]["taskDefinitionArn"]
         return data
 
     # -------------------------------------
@@ -273,7 +274,7 @@ class EventScheduleRule(Model):
 
     @property
     def enabled(self) -> bool:
-        return self.data['State'] == 'ENABLED'
+        return self.data["State"] == "ENABLED"
 
     # ----------------------------------
     # EventScheduleRule-specific actions

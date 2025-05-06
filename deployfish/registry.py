@@ -1,7 +1,7 @@
-from typing import Type, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .core.adapters.abstract import Adapter  # noqa:F401
+    from .core.adapters.abstract import Adapter
 
 
 class AdapterRegistry:
@@ -10,9 +10,9 @@ class AdapterRegistry:
     """
 
     def __init__(self) -> None:
-        self.adapters: Dict[str, Dict[str, Type["Adapter"]]] = {}
+        self.adapters: dict[str, dict[str, type[Adapter]]] = {}
 
-    def register(self, model_name: str, source: str, adapter_class: Type["Adapter"]) -> None:
+    def register(self, model_name: str, source: str, adapter_class: type["Adapter"]) -> None:
         """
         Register a new Adapter class with a model and a source.
 
@@ -24,7 +24,7 @@ class AdapterRegistry:
             self.adapters[model_name] = {}
         self.adapters[model_name][source] = adapter_class
 
-    def get(self, model_name: str, source: str) -> Type["Adapter"]:
+    def get(self, model_name: str, source: str) -> type["Adapter"]:
         """
         Return the source -> model Adapter class to use for the source ``source`` and
         model ``model_name``.
