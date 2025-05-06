@@ -161,7 +161,7 @@ class AbstractSSHProvider:
 
 
 class SSMSSHProvider(AbstractSSHProvider):
-    """
+    r"""
     Implement our SSH commands via AWS Systems Manager SSH connections directly
     to :py:attr:`instance`.
 
