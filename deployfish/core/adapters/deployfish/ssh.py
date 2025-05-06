@@ -1,12 +1,12 @@
 from copy import deepcopy
-from typing import Dict, Any, Tuple
+from typing import Any
 
 from ..abstract import Adapter
 
 
 class SSHTunnelAdapter(Adapter):
 
-    def convert(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
         data = deepcopy(self.data)
-        kwargs: Dict[str, Any] = {}
+        kwargs: dict[str, Any] = {}
         return data, kwargs

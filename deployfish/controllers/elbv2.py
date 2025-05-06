@@ -1,11 +1,8 @@
-from typing import Type, Dict, Any
+from typing import Any
 
 from cement import ex
 
-from deployfish.core.models import (
-    Model,
-    LoadBalancer
-)
+from deployfish.core.models import LoadBalancer, Model
 from deployfish.core.models.elbv2 import LoadBalancerListener, TargetGroup
 
 from .crud import ReadOnlyCrudBase
@@ -15,26 +12,26 @@ from .utils import handle_model_exceptions
 class EC2LoadBalancer(ReadOnlyCrudBase):
 
     class Meta:
-        label = 'lbs'
-        description = 'Work with Load Balancer objects'
-        help = 'Work with Load Balancer objects'
-        stacked_type = 'nested'
+        label = "lbs"
+        description = "Work with Load Balancer objects"
+        help = "Work with Load Balancer objects"
+        stacked_type = "nested"
 
-    model: Type[Model] = LoadBalancer
+    model: type[Model] = LoadBalancer
 
-    help_overrides: Dict[str, str] = {
-        'info': 'Show details about an ALB or NLB from AWS',
+    help_overrides: dict[str, str] = {
+        "info": "Show details about an ALB or NLB from AWS",
     }
 
-    info_template: str = 'detail--loadbalancer.jinja2'
+    info_template: str = "detail--loadbalancer.jinja2"
 
-    list_ordering: str = 'Name'
-    list_result_columns: Dict[str, Any] = {
-        'Name': 'name',
-        'Type': 'lb_type',
-        'Scheme': 'scheme',
-        'VPC': 'VpcId',
-        'Hostname': 'DNSName'
+    list_ordering: str = "Name"
+    list_result_columns: dict[str, Any] = {
+        "Name": "name",
+        "Type": "lb_type",
+        "Scheme": "scheme",
+        "VPC": "VpcId",
+        "Hostname": "DNSName"
     }
 
 
@@ -42,41 +39,41 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
         help="List Load Balancers in AWS",
         arguments=[
             (
-                ['--vpc-id'],
+                ["--vpc-id"],
                 {
-                    'help': 'Filter by VPC ID',
-                    'action': 'store',
-                    'default': None,
-                    'dest': 'vpc_id'
+                    "help": "Filter by VPC ID",
+                    "action": "store",
+                    "default": None,
+                    "dest": "vpc_id"
                 }
             ),
             (
-                ['--name'],
+                ["--name"],
                 {
-                    'help': 'Filter by load balancer name, with globs. Ex: "foo*", "*foo"',
-                    'action': 'store',
-                    'default': None,
-                    'dest': 'name'
+                    "help": 'Filter by load balancer name, with globs. Ex: "foo*", "*foo"',
+                    "action": "store",
+                    "default": None,
+                    "dest": "name"
                 }
             ),
             (
-                ['--type'],
+                ["--type"],
                 {
-                    'help': 'Filter by load balancer type.',
-                    'action': 'store',
-                    'default': 'any',
-                    'choices': ['any', 'application', 'network'],
-                    'dest': 'lb_type'
+                    "help": "Filter by load balancer type.",
+                    "action": "store",
+                    "default": "any",
+                    "choices": ["any", "application", "network"],
+                    "dest": "lb_type"
                 }
             ),
             (
-                ['--scheme'],
+                ["--scheme"],
                 {
-                    'help': 'Filter by load balancer scheme.',
-                    'action': 'store',
-                    'default': 'any',
-                    'choices': ['any', 'internet-facing', 'internal'],
-                    'dest': 'scheme'
+                    "help": "Filter by load balancer scheme.",
+                    "action": "store",
+                    "default": "any",
+                    "choices": ["any", "internet-facing", "internal"],
+                    "dest": "scheme"
                 }
             ),
         ]
@@ -95,34 +92,34 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
 class EC2LoadBalancerListener(ReadOnlyCrudBase):
 
     class Meta:
-        label = 'listeners'
-        description = 'Work with Load Balancer Listener objects'
-        help = 'Work with Load Balancer Listener objects'
-        stacked_on = 'lbs'
-        stacked_type = 'nested'
+        label = "listeners"
+        description = "Work with Load Balancer Listener objects"
+        help = "Work with Load Balancer Listener objects"
+        stacked_on = "lbs"
+        stacked_type = "nested"
 
-    model: Type[Model] = LoadBalancerListener
+    model: type[Model] = LoadBalancerListener
 
-    help_overrides: Dict[str, str] = {
-        'info': 'Show details about an Load Balancer Listener in AWS',
+    help_overrides: dict[str, str] = {
+        "info": "Show details about an Load Balancer Listener in AWS",
     }
 
-    info_template: str = 'detail--loadbalancerlistener.jinja2'
+    info_template: str = "detail--loadbalancerlistener.jinja2"
 
-    list_ordering: str = 'Load Balancer'
-    list_result_columns: Dict[str, Any] = {
-        'Load Balancer': 'load_balancer__name',
-        'Port': 'Port',
-        'Protocol': 'Protocol',
-        'Rules': {'key': 'rules', 'length': True},
-        'ARN': 'arn'
+    list_ordering: str = "Load Balancer"
+    list_result_columns: dict[str, Any] = {
+        "Load Balancer": "load_balancer__name",
+        "Port": "Port",
+        "Protocol": "Protocol",
+        "Rules": {"key": "rules", "length": True},
+        "ARN": "arn"
     }
 
 
     @ex(
         help="List Load Balancer Listeners in AWS",
         arguments=[
-            (['load_balancer'], {'help': 'Load balancer name or ARN'})
+            (["load_balancer"], {"help": "Load balancer name or ARN"})
         ]
     )
     @handle_model_exceptions
@@ -134,28 +131,28 @@ class EC2LoadBalancerListener(ReadOnlyCrudBase):
 class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
 
     class Meta:
-        label = 'target-groups'
-        description = 'Work with Load Balancer Target Group objects'
-        help = 'Work with Load Balancer Target Group objects'
-        stacked_on = 'lbs'
-        stacked_type = 'nested'
+        label = "target-groups"
+        description = "Work with Load Balancer Target Group objects"
+        help = "Work with Load Balancer Target Group objects"
+        stacked_on = "lbs"
+        stacked_type = "nested"
 
-    model: Type[Model] = TargetGroup
+    model: type[Model] = TargetGroup
 
-    help_overrides: Dict[str, str] = {
-        'info': 'Show details about an Load Balancer Target Group in AWS',
+    help_overrides: dict[str, str] = {
+        "info": "Show details about an Load Balancer Target Group in AWS",
     }
 
-    info_template: str = 'detail--targetgroup.jinja2'
+    info_template: str = "detail--targetgroup.jinja2"
 
-    list_ordering: str = 'Name'
-    list_result_columns: Dict[str, Any] = {
-        'Name': 'name',
-        'Load Balancers': 'load_balancers',
-        'Rules': 'rules',
-        'Protocol': 'Protocol',
-        'Target Port': 'Port',
-        'Targets': 'targets'
+    list_ordering: str = "Name"
+    list_result_columns: dict[str, Any] = {
+        "Name": "name",
+        "Load Balancers": "load_balancers",
+        "Rules": "rules",
+        "Protocol": "Protocol",
+        "Target Port": "Port",
+        "Targets": "targets"
     }
 
 
@@ -163,12 +160,12 @@ class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
         help="List Load Balancer Target Groups in AWS",
         arguments=[
             (
-                ['--load-balancer'],
+                ["--load-balancer"],
                 {
-                    'help': 'Filter by load balancer name or ARN"',
-                    'action': 'store',
-                    'default': None,
-                    'dest': 'load_balancer'
+                    "help": 'Filter by load balancer name or ARN"',
+                    "action": "store",
+                    "default": None,
+                    "dest": "load_balancer"
                 }
             ),
         ]
