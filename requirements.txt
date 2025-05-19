@@ -1,3 +1,5 @@
+-e .
+
 click>=6.7                                    # https://github.com/pallets/click
 PyYaml>=5.1                                   # https://github.com/yaml/pyyaml
 requests>=2.18.4                              # https://github.com/psf/requests
@@ -8,19 +10,6 @@ typer>=0.6.1                                  # https://github.com/tiangolo/type
 tzlocal>=4.0.1
 cement==3.0.10                                # https://github.com/datafolklabs/cement
 tabulate>=0.8.1
-shellescape>=3.8.1                            # https://github.com/chrissimpkins/shellescape
-pytz>=2025.2                                  # https://github.com/stub42/pytz
-colorlog>=6.9.0                               # https://github.com/borntyping/python-colorlog
-setuptools>=80.7.1                            # https://github.com/pypa/setuptools
-slackfin>=0.2.2                               # https://github.com/caltechads/slackfin
-docker >= 7.1.0                               # https://github.com/docker/docker-py
-typing_extensions                             # https://github.com/python/typing_extensions
-slack_sdk >= 3.31.0                           # https://github.com/slackapi/python-slack-sdk
-gitpython >= 3.1.43                           # https://github.com/gitpython-developers/GitPython
-giturlparse >= 0.12.0                         # https://github.com/nephila/giturlparse
-simplesqs >= 0.4.0                            # https://github.com/caltechads/simplesqs
-toml >= 0.10.2                                # https://github.com/uiri/toml
-
 # ---- Purposely unpinned ----
 boto3>=1.22                                   # https://github.com/boto/boto3
 
