@@ -1,3 +1,5 @@
+-e .
+
 click>=6.7                                    # https://github.com/pallets/click
 PyYaml>=5.1                                   # https://github.com/yaml/pyyaml
 requests>=2.18.4                              # https://github.com/psf/requests
