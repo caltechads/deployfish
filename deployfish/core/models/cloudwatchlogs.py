@@ -171,18 +171,20 @@ class CloudWatchLogGroupManager(Manager):
         response = self.client.describe_log_groups(
             logGroupNamePrefix=pk
         )
-        if len(response["logGroups"]) > 1:
+        exact_matches = [
+            group
+            for group in response["logGroups"]
+            if group["logGroupName"] == pk
+        ]
+        if len(exact_matches) > 1:
             raise CloudWatchLogGroup.MultipleObjectsReturned(
-                "Got more than one log group when searching for logGroupNamePrefix='{}': {}".format(
-                    pk,
-                    ", ".join([group["logGroupName"] for group in response["logGroups"]])
-                )
+                f"Got more than one log group matching pk={pk}"
             )
-        if len(response["logGroups"]) == 0:
+        if len(exact_matches) == 0:
             raise CloudWatchLogGroup.DoesNotExist(
                 f"No CloudWatchLogGroup matching pk={pk} exists in AWS."
             )
-        return CloudWatchLogGroup(response["logGroups"][0])
+        return CloudWatchLogGroup(exact_matches[0])
 
     def list(self, prefix: str = None) -> Sequence["CloudWatchLogGroup"]:
         paginator = self.client.get_paginator("describe_log_groups")
