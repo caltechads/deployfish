@@ -197,7 +197,6 @@ and update the GRANTs for the user.
             else:
                 p = shell.Prompt("DB root password")
                 self.app.pargs.root_password = p.prompt()
-            self.app.pargs.root_password = p.prompt()
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
         output = obj.update(
             rds_instance.root_user,
