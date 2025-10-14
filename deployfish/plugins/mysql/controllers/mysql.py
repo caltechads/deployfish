@@ -12,7 +12,6 @@ from jinja2 import ChoiceLoader, Environment, PackageLoader
 
 
 class MysqlController(ReadOnlyCrudBase):
-
     class Meta:
         label = "mysql"
         description = "Work with MySQL Databases"
@@ -39,14 +38,18 @@ class MysqlController(ReadOnlyCrudBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Set up Jinja2 environment with a ChoiceLoader to load templates from the main application and the plugin
-        self.jinja2_env = Environment(
-            loader=ChoiceLoader([
-                PackageLoader("deployfish", "templates"),       # Load templates from the main application
-                PackageLoader("deployfish.plugins.mysql", "templates")  # Load templates from the plugin
-            ])
+        # Set up Jinja2 environment with a ChoiceLoader to load templates from
+        # the main application and the plugin
+        self.jinja2_env = Environment(  # noqa: S701
+            loader=ChoiceLoader(
+                [
+                    PackageLoader("deployfish", "templates"),
+                    PackageLoader("deployfish.plugins.mysql", "templates"),
+                ]
+            )
         )
-        # Import the color and section_title filters from deployfish.ext.ext_df_jinja2 in order to render the templates
+        # Import the color and section_title filters from
+        # deployfish.ext.ext_df_jinja2 in order to render the templates
         self.jinja2_env.filters["color"] = color
         self.jinja2_env.filters["section_title"] = section_title
 
@@ -63,8 +66,8 @@ class MysqlController(ReadOnlyCrudBase):
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        # Use the Jinja2 environment to render the template rather than the default Cement renderer that only takes a
-        # local template name
+        # Use the Jinja2 environment to render the template rather than the
+        # default Cement renderer that only takes a local template name
         template = self.jinja2_env.get_template(self.info_template)
         self.app.print(template.render(obj=obj))
 
@@ -77,17 +80,20 @@ class MysqlController(ReadOnlyCrudBase):
                 {
                     "help": "the password of the root user for the MySQL server",
                     "default": None,
-                    "dest": "root_password"
-                }
+                    "dest": "root_password",
+                },
             ),
             (
                 ["-c", "--choose"],
                 {
-                    "help": "Choose from all available ssh targets instead of choosing one automatically.",
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
                     "default": False,
                     "dest": "choose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
             (
                 ["-v", "--verbose"],
@@ -95,13 +101,13 @@ class MysqlController(ReadOnlyCrudBase):
                     "help": "Show all SSH output.",
                     "default": False,
                     "dest": "verbose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
         ],
         description="""
 Create a database and user in a remote MySQL server.
-"""
+""",
     )
     @handle_model_exceptions
     def create(self):
@@ -121,16 +127,18 @@ Create a database and user in a remote MySQL server.
             rds_instance.root_user,
             self.app.pargs.root_password,
             ssh_target=target,
-            verbose=self.app.pargs.verbose
+            verbose=self.app.pargs.verbose,
         )
         lines = [
             click.style(
                 f'Created database "{obj.db}" in mysql server {obj.host}:{obj.port}.',
-                fg="green"
-            ), click.style(
-                f'Created user "{obj.user}" in mysql server {obj.host}:{obj.port} and granted it all privileges on database "{obj.db}".',
-                fg="green"
-            )
+                fg="green",
+            ),
+            click.style(
+                f'Created user "{obj.user}" in mysql server {obj.host}:{obj.port} '
+                f'and granted it all privileges on database "{obj.db}".',
+                fg="green",
+            ),
         ]
         if output:
             lines.append(click.style("\nMySQL output:\n", fg="yellow"))
@@ -146,17 +154,20 @@ Create a database and user in a remote MySQL server.
                 {
                     "help": "the password of the root user for the MySQL server",
                     "default": None,
-                    "dest": "root_password"
-                }
+                    "dest": "root_password",
+                },
             ),
             (
                 ["-c", "--choose"],
                 {
-                    "help": "Choose from all available ssh targets instead of choosing one automatically.",
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
                     "default": False,
                     "dest": "choose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
             (
                 ["-v", "--verbose"],
@@ -164,15 +175,15 @@ Create a database and user in a remote MySQL server.
                     "help": "Show all SSH output.",
                     "default": False,
                     "dest": "verbose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
         ],
         description="""
 Update an existing database and user in a remote MySQL server.  This allows you
 to change the database character set and collation, update the user's password
 and update the GRANTs for the user.
-"""
+""",
     )
     @handle_model_exceptions
     def update(self):
@@ -192,16 +203,18 @@ and update the GRANTs for the user.
             rds_instance.root_user,
             self.app.pargs.root_password,
             ssh_target=target,
-            verbose=self.app.pargs.verbose
+            verbose=self.app.pargs.verbose,
         )
         lines = [
             click.style(
                 f'Updated database "{obj.db}" in mysql server {obj.host}:{obj.port}.',
-                fg="green"
-            ), click.style(
-                f'Created user "{obj.user}" in mysql server {obj.host}:{obj.port} and granted it all privileges on database "{obj.db}".',
-                fg="green"
-            )
+                fg="green",
+            ),
+            click.style(
+                f'Created user "{obj.user}" in mysql server {obj.host}:{obj.port} and '
+                f'granted it all privileges on database "{obj.db}".',
+                fg="green",
+            ),
         ]
         if output:
             lines.append(click.style("\nMySQL output:\n", fg="yellow"))
@@ -210,17 +223,20 @@ and update the GRANTs for the user.
 
     @ex(
         help="Validate that a MySQL database and user exists in the remote MySQL "
-             "server and has the password we expect.",
+        "server and has the password we expect.",
         arguments=[
             (["pk"], {"help": "the name of the MySQL connection in deployfish.yml"}),
             (
                 ["-c", "--choose"],
                 {
-                    "help": "Choose from all available ssh targets instead of choosing one automatically.",
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
                     "default": False,
                     "dest": "choose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
             (
                 ["-v", "--verbose"],
@@ -228,14 +244,14 @@ and update the GRANTs for the user.
                     "help": "Show all SSH output.",
                     "default": False,
                     "dest": "verbose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
         ],
         description="""
 Validate that a database and user in a remote MySQL server exists in the remote
 MySQL server and has the password we expect.
-"""
+""",
     )
     @handle_model_exceptions
     def validate(self):
@@ -245,8 +261,9 @@ MySQL server and has the password we expect.
         obj.validate(ssh_target=target, verbose=self.app.pargs.verbose)
         lines = [
             click.style(
-                f'MySQL user "{obj.user}" in mysql server {obj.host}:{obj.port} exists and has the password we expect.',
-                fg="green"
+                f'MySQL user "{obj.user}" in mysql server {obj.host}:{obj.port} exists '
+                f"and has the password we expect.",
+                fg="green",
             )
         ]
         self.app.print("\n".join(lines))
@@ -261,16 +278,19 @@ MySQL server and has the password we expect.
                     "help": "Write the SQL dump to this file.",
                     "default": None,
                     "dest": "dumpfile",
-                }
+                },
             ),
             (
                 ["-c", "--choose"],
                 {
-                    "help": "Choose from all available ssh targets instead of choosing one automatically.",
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
                     "default": False,
                     "dest": "choose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
             (
                 ["-v", "--verbose"],
@@ -278,15 +298,16 @@ MySQL server and has the password we expect.
                     "help": "Show all SSH output.",
                     "default": False,
                     "dest": "verbose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
         ],
         description="""
-Dump the contents of a MySQL database to a local file.  If "--dumpfile" is not supplied,
-the filename of the output file will be "{service-name}.sql". If that exists, then we will
-use "{service-name}-1.sql", and if that exists "{service-name}-2.sql" and so on.
-"""
+Dump the contents of a MySQL database to a local file.  If "--dumpfile" is not
+supplied, the filename of the output file will be "{service-name}.sql". If that
+exists, then we will use "{service-name}-1.sql", and if that exists
+"{service-name}-2.sql" and so on.
+""",
     )
     @handle_model_exceptions
     def dump(self):
@@ -296,12 +317,13 @@ use "{service-name}-1.sql", and if that exists "{service-name}-2.sql" and so on.
         _, output_filename = obj.dump(
             filename=self.app.pargs.dumpfile,
             ssh_target=target,
-            verbose=self.app.pargs.verbose
+            verbose=self.app.pargs.verbose,
         )
         lines = [
             click.style(
-                f'Dumped database "{obj.db}" in mysql server {obj.host}:{obj.port} to "{output_filename}".',
-                fg="green"
+                f'Dumped database "{obj.db}" in mysql server {obj.host}:{obj.port} to '
+                f'"{output_filename}".',
+                fg="green",
             )
         ]
         self.app.print("\n".join(lines))
@@ -314,11 +336,14 @@ use "{service-name}-1.sql", and if that exists "{service-name}-2.sql" and so on.
             (
                 ["-c", "--choose"],
                 {
-                    "help": "Choose from all available ssh targets instead of choosing one automatically.",
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
                     "default": False,
                     "dest": "choose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
             (
                 ["-v", "--verbose"],
@@ -326,29 +351,36 @@ use "{service-name}-1.sql", and if that exists "{service-name}-2.sql" and so on.
                     "help": "Show all SSH output.",
                     "default": False,
                     "dest": "verbose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
         ],
         description="""
-Load the contents of a local SQL file into an existing MySQL database in the remote MySQL server.
-"""
+Load the contents of a local SQL file into an existing MySQL database in the
+remote MySQL server.
+""",
     )
     @handle_model_exceptions
     def load(self):
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
-        output = obj.load(self.app.pargs.sqlfile, ssh_target=target, verbose=self.app.pargs.verbose)
+        output = obj.load(
+            self.app.pargs.sqlfile, ssh_target=target, verbose=self.app.pargs.verbose
+        )
         lines = [
             click.style(
-                f'Loaded file "{self.app.pargs.sqlfile}" into database "{obj.db}" on mysql server {obj.host}:{obj.port}',
-                fg="green"
+                f'Loaded file "{self.app.pargs.sqlfile}" into database "{obj.db}" on '
+                f"mysql server {obj.host}:{obj.port}",
+                fg="green",
             )
         ]
         if output.strip():
-            # This is here just case `mysql` returns 0 but also prints something. Should probably never trigger.
-            lines.append(click.style(f"Output from `mysql` command:\n{output}", fg="red"))
+            # This is here just case `mysql` returns 0 but also prints something.
+            # Should probably never trigger.
+            lines.append(
+                click.style(f"Output from `mysql` command:\n{output}", fg="red")
+            )
         self.app.print("\n".join(lines))
 
     @ex(
@@ -358,11 +390,14 @@ Load the contents of a local SQL file into an existing MySQL database in the rem
             (
                 ["-c", "--choose"],
                 {
-                    "help": "Choose from all available ssh targets instead of choosing one automatically.",
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
                     "default": False,
                     "dest": "choose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
             (
                 ["-v", "--verbose"],
@@ -370,13 +405,13 @@ Load the contents of a local SQL file into an existing MySQL database in the rem
                     "help": "Show all SSH output.",
                     "default": False,
                     "dest": "verbose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
         ],
         description="""
 Show the GRANTs for our user in the remote MySQL server.
-"""
+""",
     )
     @handle_model_exceptions
     def show_grants(self):
@@ -393,11 +428,14 @@ Show the GRANTs for our user in the remote MySQL server.
             (
                 ["-c", "--choose"],
                 {
-                    "help": "Choose from all available ssh targets instead of choosing one automatically.",
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
                     "default": False,
                     "dest": "choose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
             (
                 ["-v", "--verbose"],
@@ -405,17 +443,19 @@ Show the GRANTs for our user in the remote MySQL server.
                     "help": "Show all SSH output.",
                     "default": False,
                     "dest": "verbose",
-                    "action": "store_true"
-                }
+                    "action": "store_true",
+                },
             ),
         ],
         description="""
 Print the MySQL version of the remote MySQL server.
-"""
+""",
     )
     @handle_model_exceptions
     def server_version(self):
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
-        self.app.print(obj.server_version(ssh_target=target, verbose=self.app.pargs.verbose))
+        self.app.print(
+            obj.server_version(ssh_target=target, verbose=self.app.pargs.verbose)
+        )
