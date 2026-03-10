@@ -2548,7 +2548,7 @@ class Service(
             to set in the container environment.
 
         """
-        return self.tags.get("deployfish:Environment", "test")
+        return self.tags.get("deployfish:Environment") or self.tags.get("Environment", "test")
 
     @property
     def events(self) -> list[dict[str, Any]]:
