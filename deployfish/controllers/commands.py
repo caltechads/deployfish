@@ -178,7 +178,7 @@ run our database migrations before updating the code for the Service.
 NOTE: The ServiceHelperTasks you write with this command won't be directly
 associated with the live Service in AWS, like they would when doing "deploy
 service update".  So to run these tasks, use the family:revision returned by
-this command with "deploy task run" instead of running them with 
+this command with "deploy task run" instead of running them with
 "deploy service commands run".
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -189,10 +189,7 @@ this command with "deploy task run" instead of running them with
         Update command definitions in AWS independently of their Service.
         """
         loader = self.loader(self)
-        obj = loader.get_object_from_deployfish(
-            self.app.pargs.pk,
-            factory_kwargs={"load_secrets": False}
-        )
+        obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         obj = cast("Service", obj)
         self.app.print(
             click.style(f'\n\nUpdating ServiceHelperTasks associated with Service("{obj.pk}"):\n', fg="yellow")
@@ -422,7 +419,7 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
 If a command for a Service uses "awslogs" as its logDriver, list the available
 log streams for that StandaloneTask.
 
-This can be useful when you have a command with a schedule to look at the dates on 
+This can be useful when you have a command with a schedule to look at the dates on
 the streams to ensure that your command is actually running periodically.
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter
