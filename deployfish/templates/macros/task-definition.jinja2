@@ -110,14 +110,19 @@ rootDirectory :     {{ obj['efsVolumeConfiguration']['rootDirectory'] }}
 {% endmacro %}
 
 {# Render the list of linuxParameters:tmpfs settings for a container #}
+{# ECS stores tmpfs as a list of {containerPath, size, mountOptions?} #}
 {# ----------------------------------------------------------------- #}
-{% macro tmpfs(obj) %}
+{% macro tmpfs(objs) %}
 {{- subsection('tmpfs') }}
+{% for obj in objs -%}
 path          :     {{ obj['containerPath'] }}
 size          :     {{ obj['size'] }}
-{%- if 'mountOptions' in obj %}
-mount options :     {{ obj['mountOptions']|join(',') }}
+{%- if 'mountOptions' in obj and obj['mountOptions'] %}
+mount options :     {{ obj['mountOptions']|join(', ') }}
 {%- endif %}
+{% if not loop.last %}
+{% endif %}
+{%- endfor %}
 {% endmacro %}
 
 {# Render a ContainerDefinition #}
@@ -138,6 +143,9 @@ entrypoint         :     {{ obj.data['entryPoint']|join('  ') }}
 {%- endif %}
 {%- if 'command' in obj.data %}
 command            :     {{ obj.data['command']|join('  ') }}
+{%- endif %}
+{%- if 'readonlyRootFilesystem' in obj.data %}
+readonlyRootFilesystem :     {{ obj.data['readonlyRootFilesystem'] }}
 {%- endif %}
 {% if 'links' in obj.data -%}
 {{ links(obj.data['links'])|indent }}
