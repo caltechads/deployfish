@@ -274,6 +274,22 @@ Example to run a service on ``ARM64`` architecture with ``LINUX`` operating syst
 
 See `Amazon ECS Runtime Platform <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#runtime-platform>`_.
 
+readonly_root_filesystem
+------------------------
+
+(Optional, Boolean) When ``true``, each container in the task definition is registered with a read-only root filesystem.
+Omitted or ``false`` leaves the default AWS behavior (writable root). This setting applies to all containers in the task
+definition.
+
+.. code-block:: yaml
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        readonly_root_filesystem: true
+
+See also `Amazon ECS task definition parameters: container definition <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#ContainerDefinition-readonlyRootFilesystem>`_.
+
 
 enable_exec
 -----------
@@ -1216,6 +1232,27 @@ CPU               Memory Configurations
 
 See also the `Amazon ECS Task Definition Parameters: Task Size`_
 
+readonly_root_filesystem
+------------------------
+
+(Optional, Boolean) When ``true``, each container in the task definition is registered with a read-only root filesystem.
+Omitted or ``false`` leaves the default AWS behavior (writable root). This setting applies to all containers in the task
+definition.
+
+.. code-block:: yaml
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        count: 2
+        family: foobar-prod-task-def
+        readonly_root_filesystem: true
+        containers:
+          - name: app
+            image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+
+See also `Amazon ECS task definition parameters: container definition <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#ContainerDefinition-readonlyRootFilesystem>`_.
+
 placement_constraints
 ---------------------
 
@@ -1601,6 +1638,8 @@ cap_drop
 .. note::
 
   The capabilities should be in ALL CAPS.  Valid values are given in the link below.
+
+See `Amazon ECS Task Definition Parameters: Linux Parameters`_.
 
 tmpfs
 --------

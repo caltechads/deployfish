@@ -336,6 +336,7 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
             data["runtimePlatform"]["operatingSystemFamily"] = self.data["runtime_platform"].get("operating_system_family", "LINUX")
         if self.data.get("placementConstraints", None):
             data["placementConstraints"] = self.data["placementConstraints"]
+        readonly_root_filesystem = self.data.get("readonly_root_filesystem")
         self.set(data, "task_role_arn", dest_key="taskRoleArn", optional=True)
         self.set(data, "execution_role", dest_key="executionRoleArn", optional=True)
         if not self.partial and (launch_type == "FARGATE" and not data["executionRoleArn"]):
@@ -360,7 +361,8 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
                     data,
                     secrets=self.secrets,
                     extra_environment=self.extra_environment,
-                    partial=self.partial
+                    partial=self.partial,
+                    readonly_root_filesystem=readonly_root_filesystem,
                 ).convert()
             )
         container_data = [c[0] for c in containers_data]
@@ -401,13 +403,15 @@ class ContainerDefinitionAdapter(Adapter):
         task_definition_data: dict[str, Any] = None,
         secrets: list[Secret] = None,
         extra_environment: dict[str, Any] = None,
-        partial: bool = False
+        partial: bool = False,
+        readonly_root_filesystem: bool | None = None,
     ) -> None:
         super().__init__(data)
         self.task_definition_data = task_definition_data if task_definition_data else {}
         self.secrets = secrets if secrets else []
         self.extra_environment = extra_environment if extra_environment else {}
         self.partial = partial
+        self.readonly_root_filesystem = readonly_root_filesystem
 
     @property
     def is_fargate(self) -> bool:
@@ -638,19 +642,22 @@ class ContainerDefinitionAdapter(Adapter):
                 logConfiguration["options"] = self.data["logging"]["options"]
         return logConfiguration
 
-    def get_linuxCapabilities(self) -> dict[str, Any]:
-        cap_add = self.data.get("cap_add", None)
-        cap_drop = self.data.get("cap_drop", None)
-        tmpfs = self.data.get("tmpfs", None)
-        linuxCapabilities: dict[str, Any] = {}
+    def get_linuxParameters(self) -> dict[str, Any]:
+        linux_parameters: dict[str, Any] = {}
+
+        cap_add = self.data.get("cap_add")
+        cap_drop = self.data.get("cap_drop")
         if cap_add or cap_drop:
-            linuxCapabilities["capabilities"] = {}
+            capabilities: dict[str, Any] = {}
             if cap_add:
-                linuxCapabilities["capabilities"]["add"] = cap_add
+                capabilities["add"] = cap_add
             if cap_drop:
-                linuxCapabilities["capabilities"]["drop"] = cap_drop
+                capabilities["drop"] = cap_drop
+            linux_parameters["capabilities"] = capabilities
+
+        tmpfs = self.data.get("tmpfs")
         if tmpfs:
-            linuxCapabilities["tmpfs"] = []
+            linux_parameters["tmpfs"] = []
             for tc in tmpfs:
                 tc_append = {
                     "containerPath": tc["container_path"],
@@ -658,8 +665,9 @@ class ContainerDefinitionAdapter(Adapter):
                 }
                 if "mount_options" in tc and isinstance(tc["mount_options"], list):
                     tc_append["mountOptions"] = tc["mount_options"]
-                linuxCapabilities["tmpfs"].append(tc_append)
-        return linuxCapabilities
+                linux_parameters["tmpfs"].append(tc_append)
+
+        return linux_parameters
 
     def get_extraHosts(self) -> list[dict[str, str]]:
         extraHosts: list[dict[str, str]] = []
@@ -808,10 +816,12 @@ class ContainerDefinitionAdapter(Adapter):
             data["logConfiguration"] = self.get_logConfiguration()
         if "extra_hosts" in self.data:
             data["extraHosts"] = self.get_extraHosts()
-        if "cap_add" in self.data or "cap_drop" in self.data:
-            data["linuxCapabilities"] = self.get_linuxCapabilities()
+        if ("cap_add" in self.data or "cap_drop" in self.data or "tmpfs" in self.data):
+            data["linuxParameters"] = self.get_linuxParameters()
         if self.secrets:
             data["secrets"] = self.get_secrets()
+        if self.readonly_root_filesystem is not None:
+            data["readonlyRootFilesystem"] = self.readonly_root_filesystem
         kwargs = {}
         kwargs["secrets"] = self.secrets
         return data, kwargs
