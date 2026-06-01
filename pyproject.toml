@@ -1,6 +1,6 @@
 [project]
 name = "deployfish"
-version = "1.16.1"
+version = "1.16.2"
 authors = [
     {name = "Caltech IMSS ADS", email = "imss-ads-staff@caltech.edu"},
 ]
