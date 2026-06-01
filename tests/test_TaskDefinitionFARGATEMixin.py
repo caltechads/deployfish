@@ -1,7 +1,6 @@
 from copy import deepcopy
 
 import pytest
-
 from deployfish.core.models.mixins import TaskDefinitionFARGATEMixin
 from deployfish.exceptions import SchemaException
 

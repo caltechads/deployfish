@@ -7,7 +7,6 @@ from deployfish.core.adapters import StandaloneTaskAdapter
 from deployfish.core.models import Cluster
 from deployfish.exceptions import SchemaException  # noqa:F401
 
-
 EC2_TASK_YML = {
     "name": "foobar-test-mytask",
     "cluster": "foobar-cluster",

@@ -30,6 +30,8 @@ Run tests with coverage:
 
     $ make cov
 
+Coverage is enforced in CI via ``pyproject.toml`` (``[tool.coverage.report] fail_under = 80``). The suite must stay at or above **80%** line coverage on ``deployfish/``.
+
 Run a specific test file or test:
 
 .. code-block:: bash

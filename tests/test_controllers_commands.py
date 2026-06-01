@@ -34,6 +34,51 @@ class TestECSServiceCommandsController:
         with pytest.raises(ServiceHelperTask.DoesNotExist):
             get_task(service, "nonexistent")
 
+    def test_run_command_invokes_helper_task(self, cement_app: MagicMock) -> None:
+        controller = bind_controller(ECSServiceCommands(), cement_app)
+        cement_app.pargs.pk = "foobar-cluster:foobar-test"
+        cement_app.pargs.command = "migrate"
+        cement_app.pargs.wait = False
+        service = Service.new(deepcopy(SERVICE_YML_WITH_HELPER_TASKS), "deployfish")
+        invoked = MagicMock()
+        invoked.arn = "arn:aws:ecs:task:1"
+        helper = MagicMock()
+        helper.data = {"cluster": "foobar-cluster"}
+        helper.run.return_value = [invoked]
+        loader = bind_service_loader(controller)
+        with patch.object(loader, "get_object_from_aws", return_value=service):
+            with patch("deployfish.controllers.commands.get_task", return_value=helper):
+                with patch(
+                    "deployfish.controllers.commands.click.style",
+                    side_effect=lambda value, **_: value,
+                ):
+                    controller.run()
+        helper.run.assert_called_once()
+        cement_app.print.assert_called_once()
+
+    def test_logs_delegates_to_tail_task_logs(self, cement_app: MagicMock) -> None:
+        from deployfish.controllers.commands import ECSServiceCommandLogs
+
+        controller = bind_controller(ECSServiceCommandLogs(), cement_app)
+        cement_app.pargs.pk = "foobar-cluster:foobar-test"
+        cement_app.pargs.command = "migrate"
+        cement_app.pargs.sleep = 5
+        cement_app.pargs.mark = False
+        cement_app.pargs.filter_pattern = None
+        service = Service.new(deepcopy(SERVICE_YML_WITH_HELPER_TASKS), "deployfish")
+        helper = get_task(service, "migrate")
+        loader = bind_service_loader(controller)
+        with patch.object(loader, "get_object_from_aws", return_value=service):
+            with patch(
+                "deployfish.controllers.commands.get_task",
+                return_value=helper,
+            ):
+                with patch(
+                    "deployfish.controllers.commands.tail_task_logs",
+                ) as tail_mock:
+                    controller.tail()
+        tail_mock.assert_called_once()
+
 
 class TestECSServiceSecretsController:
     def test_write_syncs_secrets_when_forced(self, cement_app: MagicMock) -> None:

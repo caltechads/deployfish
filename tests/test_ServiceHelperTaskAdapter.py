@@ -7,7 +7,6 @@ from deployfish.core.adapters import ServiceHelperTaskAdapter
 from deployfish.core.models import Cluster, Service
 from deployfish.exceptions import SchemaException  # noqa:F401
 
-
 SERVICE_YML = {
     "name": "foobar-test",
     "cluster": "foobar-cluster",

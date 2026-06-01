@@ -19,10 +19,9 @@ class TestECSServiceController:
         loader = bind_service_loader(controller)
         with patch.object(
             loader, "get_object_from_deployfish", return_value=mock_service
-        ):
-            with patch.object(controller, "create_waiter"):
-                with patch("deployfish.controllers.crud.click.secho"):
-                    controller.create()
+        ), patch.object(controller, "create_waiter"):
+            with patch("deployfish.controllers.crud.click.secho"):
+                controller.create()
         mock_service.save.assert_called_once()
 
     def test_create_skips_existing_service(self, cement_app: MagicMock) -> None:
@@ -46,9 +45,8 @@ class TestECSServiceController:
         loader = bind_service_loader(controller)
         with patch.object(
             loader, "get_object_from_deployfish", return_value=df_service
-        ):
-            with patch.object(loader, "get_object_from_aws", return_value=aws_service):
-                controller.plan()
+        ), patch.object(loader, "get_object_from_aws", return_value=aws_service):
+            controller.plan()
         cement_app.render.assert_called_once()
         render_context = cement_app.render.call_args[0][0]
         assert "changes" in render_context
