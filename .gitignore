@@ -18,3 +18,5 @@ real_tests
 
 .mypy_cache
 *.code-workspace
+index.db-shm
+index.db-wal

@@ -32,3 +32,9 @@ napoleon-gate-strict:
 
 napoleon-gate-baseline:
 	@.venv/bin/python bin/check_napoleon_gate.py --write-baseline
+
+test:
+	@.venv/bin/pytest
+
+cov:
+	@.venv/bin/pytest --cov=deployfish --cov-report=term-missing

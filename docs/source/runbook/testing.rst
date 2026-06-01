@@ -3,36 +3,36 @@
 Testing
 =======
 
-To run the unittests, you'll need to set up a virtualenv and install the requirements.
+Deployfish uses ``pytest`` for its test suite. Tests live in the top-level ``tests/`` directory.
 
-If you haven't yet, install:
-
-* `pyenv`_
-* `pyenv-virtualenv`_
-
-Deployfish can support python 3.7 and above.
+Set up a virtual environment and install dependencies:
 
 .. code-block:: shell
 
-    $ pyenv install 3.11.9
+    $ uv sync
+    $ source .venv/bin/activate
 
-Set up a virtualenv and install the requirements:
-
-.. code-block:: shell
-
-    $ pyenv virtualenv 3.11.9 deployfish
-    $ pyenv local deployfish
-    $ pip install --upgrade pip wheel
-    $ pip install -r requirements.txt
-
-Run all the tests:
+Run all tests:
 
 .. code-block:: bash
 
-    $ python -m unittest discover
+    $ .venv/bin/pytest
 
-For specific tests, checkout your options with: ``python -m unittest --help``
+Or use the Makefile target:
 
+.. code-block:: bash
 
-.. _`pyenv`: https://github.com/pyenv/pyenv
-.. _`pyenv-virtualenv`: https://github.com/pyenv/pyenv-virtualenv
+    $ make test
+
+Run tests with coverage:
+
+.. code-block:: bash
+
+    $ make cov
+
+Run a specific test file or test:
+
+.. code-block:: bash
+
+    $ .venv/bin/pytest tests/test_Config.py
+    $ .venv/bin/pytest tests/test_Config.py::TestContainerDefinition_load_yaml -k load_yaml
