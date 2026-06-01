@@ -1,5 +1,5 @@
-from typing import Dict, Any, Optional, Type
 import sys
+from typing import Any
 
 import click
 from cement import ex, shell
@@ -8,7 +8,7 @@ from tabulate import tabulate
 from deployfish.controllers.crud import ReadOnlyCrudBase
 from deployfish.controllers.utils import handle_model_exceptions
 from deployfish.core.loaders import ObjectLoader
-from deployfish.core.models import Model, Instance, SSHTunnel
+from deployfish.core.models import Instance, Model, SSHTunnel
 from deployfish.exceptions import ConfigProcessingFailed
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Controller
 from deployfish.types import SupportsTunnelModel

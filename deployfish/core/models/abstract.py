@@ -30,7 +30,7 @@ class LazyAttributeMixin(SupportsCache):
         super().__init__()
 
     def get_cached(self, key: str, populator: Callable, args: list[Any], kwargs: dict[str, Any] = None) -> Any:
-        kwargs = kwargs if kwargs else {}
+        kwargs = kwargs or {}
         if key not in self.cache:
             self.cache[key] = populator(*args, **kwargs)
         return self.cache[key]

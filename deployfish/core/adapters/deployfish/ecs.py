@@ -228,8 +228,8 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):  # type: ignor
         partial: bool = False
     ) -> None:
         super().__init__(data)
-        self.secrets = secrets if secrets else []
-        self.extra_environment = extra_environment if extra_environment else {}
+        self.secrets = secrets or []
+        self.extra_environment = extra_environment or {}
         self.partial = partial
 
     def get_volumes(self) -> list[dict[str, Any]]:
@@ -407,9 +407,9 @@ class ContainerDefinitionAdapter(Adapter):
         readonly_root_filesystem: bool | None = None,
     ) -> None:
         super().__init__(data)
-        self.task_definition_data = task_definition_data if task_definition_data else {}
-        self.secrets = secrets if secrets else []
-        self.extra_environment = extra_environment if extra_environment else {}
+        self.task_definition_data = task_definition_data or {}
+        self.secrets = secrets or []
+        self.extra_environment = extra_environment or {}
         self.partial = partial
         self.readonly_root_filesystem = readonly_root_filesystem
 
@@ -683,7 +683,9 @@ class ContainerDefinitionAdapter(Adapter):
 
         * If the task is a FARGATE task, then ``cpu`` is optional.
         * If the task is an EC2 task, then ``cpu`` is required.  If it is not
-          present in the ``deployfish.yml`` file, then it defaults to 256.
+          present in the ``deployfish.yml`` file, then it defaults to 256 unless
+          this is a partial container overlay, in which case it is omitted so the
+          parent container value is preserved.
 
         If ``cpu`` is specified then the only requirement is that the sum of all
         ``cpu`` values for all containers in the task be lower than the ``cpu``
@@ -698,6 +700,8 @@ class ContainerDefinitionAdapter(Adapter):
 
         """
         if self.is_fargate:
+            default = None
+        elif self.partial:
             default = None
         else:
             default = 256

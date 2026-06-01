@@ -201,7 +201,7 @@ class SSMSSHProvider(AbstractSSHProvider):
         """
         # If the caller specified --verbose, have SSH print everything.
         # Otherwise, have SSH print nothing.
-        flags = self.ssh_verbose_flag if self.ssh_verbose_flag else "-q"
+        flags = self.ssh_verbose_flag or "-q"
         if not command:
             command = ""
         profile_name = get_boto3_session().profile_name
@@ -263,7 +263,7 @@ class BastionSSHProvider(AbstractSSHProvider):
 
     def ssh(self, command: str = None) -> str:
         # If the caller specified --verbose, have SSH print everything. Otherwise, have SSH print nothing.
-        flags = self.ssh_verbose_flag if self.ssh_verbose_flag else "-q"
+        flags = self.ssh_verbose_flag or "-q"
         if not command:
             command = ""
         hop2 = f"ssh {flags} -o StrictHostKeyChecking=no -A -t {self.instance.ip_address} {shellescape.quote(command)}"

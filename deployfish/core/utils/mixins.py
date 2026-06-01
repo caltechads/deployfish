@@ -197,7 +197,7 @@ class GitMixin(AnnotationMixin):
                 )
                 self.url_patterns["diff"] = self.__format_url(
                     url=f"{origin_url}/branches/compare/"
-                    + "{from_sha}..{to_sha}#diff",
+                     "{from_sha}..{to_sha}#diff",
                     label="{from_sha}..{to_sha}",
                 )
             elif p.github:

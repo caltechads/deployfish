@@ -4,8 +4,8 @@ import os
 import sys
 from typing import Any
 
-import debugpy
 import click
+import debugpy
 from botocore.exceptions import UnauthorizedSSOTokenError
 from cement import App, init_defaults
 from cement.core.exc import CaughtSignal

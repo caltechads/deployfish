@@ -641,8 +641,8 @@ class MySQLDatabase(Model):
             host=self.host,
             port=self.port,
             sql=sql,
-            user=user if user else self.user,
-            password=password if password else self.password
+            user=user or self.user,
+            password=password or self.password
         )
 
     def render_for_create(    # type: ignore  # pylint:disable=arguments-differ

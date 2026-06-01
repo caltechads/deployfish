@@ -108,9 +108,9 @@ class TableRenderer(AbstractRenderer):
 
         self.columns: list[str] = list(columns.values())
         self.headers: list[str] = list(columns.keys())
-        self.datetime_format: str = datetime_format if datetime_format else self.DEFAULT_DATETIME_FORMAT
-        self.date_format: str = date_format if date_format else self.DEFAULT_DATE_FORMAT
-        self.float_precision: int = float_precision if float_precision else self.DEFAULT_FLOAT_PRECISION
+        self.datetime_format: str = datetime_format or self.DEFAULT_DATETIME_FORMAT
+        self.date_format: str = date_format or self.DEFAULT_DATE_FORMAT
+        self.float_precision: int = float_precision or self.DEFAULT_FLOAT_PRECISION
         self.float_format: str = f"{{:.{self.float_precision}f}}"
         self.ordering: str | None = ordering
         self.tablefmt: str = tablefmt

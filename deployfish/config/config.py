@@ -101,7 +101,7 @@ class Config:
     ) -> None:
         # FIXME: we're accepting boto3_session as a kwarg, but we never do anything with it
         self.filename: str = filename
-        self.__raw: dict[str, Any] = raw_config if raw_config else self.load_config(filename)
+        self.__raw: dict[str, Any] = raw_config or self.load_config(filename)
         self.__cooked: dict[str, Any] = deepcopy(self.__raw)
 
     @property

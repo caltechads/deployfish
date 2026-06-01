@@ -91,7 +91,7 @@ class ECSStandaloneTask(CrudBase):
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         context = {
             "obj": obj,
-            "includes": self.app.pargs.includes if self.app.pargs.includes else [],
+            "includes": self.app.pargs.includes or [],
             #'excludes': self.app.pargs.excludes if self.app.pargs.excludes else [],
         }
         self.app.render(context, template=self.info_template)
