@@ -12,8 +12,10 @@ version:
 	@echo $(VERSION)
 
 dist: clean
-	@python setup.py sdist
-	@python setup.py bdist_wheel --universal
+	@python -m build --sdist --wheel
+
+compile: uv.lock
+	@uv pip compile pyproject.toml -o requirements.txt
 
 pypi: dist
 	@twine upload dist/*
