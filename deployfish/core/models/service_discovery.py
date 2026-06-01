@@ -1,6 +1,10 @@
-from collections.abc import Sequence
+from __future__ import annotations
+
 from copy import copy
-from typing import Any, Union, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from .abstract import Manager, Model
 
@@ -12,14 +16,14 @@ from .abstract import Manager, Model
 class ServiceDiscoveryNamespaceManager(Manager):
     service = "servicediscovery"
 
-    def get(self, pk: str, **_) -> "ServiceDiscoveryNamespace":
+    def get(self, pk: str, **_) -> ServiceDiscoveryNamespace:
         if pk.startswith("ns-"):
             # this is a namespace['Id']
             try:
                 response = self.client.get_namespace(Id=pk)
-            except self.client.exceptions.NamespaceNotFound:
+            except self.client.exceptions.NamespaceNotFound as e:
                 msg = f'No Service Discovery namespace with id="{pk}" exists in AWS.'
-                raise ServiceDiscoveryNamespace.DoesNotExist(msg)
+                raise ServiceDiscoveryNamespace.DoesNotExist(msg) from e
             return ServiceDiscoveryNamespace(response["Namespace"])
         # Assume this is a namespace['Name']
         namespaces = self.list(private_only=True)
@@ -29,7 +33,9 @@ class ServiceDiscoveryNamespaceManager(Manager):
         msg = f'No Service Discovery namespace with name="{pk}" exists in AWS.'
         raise ServiceDiscoveryNamespace.DoesNotExist(msg)
 
-    def list(self, private_only: bool = False) -> Sequence["ServiceDiscoveryNamespace"]:
+    def list(
+        self, *, private_only: bool = False
+    ) -> Sequence[ServiceDiscoveryNamespace]:
         kwargs = {}
         if private_only:
             kwargs["Filters"] = [
@@ -46,20 +52,20 @@ class ServiceDiscoveryNamespaceManager(Manager):
 class ServiceDiscoveryServiceManager(Manager):
     service = "servicediscovery"
 
-    def _get_with_id(self, pk: str) -> "ServiceDiscoveryService":
+    def _get_with_id(self, pk: str) -> ServiceDiscoveryService:
         """
         `pk` is a service['Id']: "srv-{hexstring}"
         """
         try:
             response = self.client.get_service(Id=pk)
-        except self.client.exceptions.ServiceNotFound:
+        except self.client.exceptions.ServiceNotFound as e:
             msg = f'No Service Discovery service with id="{pk}" exists in AWS.'
-            raise ServiceDiscoveryService.DoesNotExist(msg)
+            raise ServiceDiscoveryService.DoesNotExist(msg) from e
         return ServiceDiscoveryService(response["Namespace"])
 
     def _get_with_namespace_and_service_name(
         self, pk: str
-    ) -> "ServiceDiscoveryService":
+    ) -> ServiceDiscoveryService:
         """
         Pk looks like '{namespace_pk}:{service_name}'
         """
@@ -70,30 +76,32 @@ class ServiceDiscoveryServiceManager(Manager):
         for service in services:
             if service.name == service_name:
                 return service
-        msg = f'No Service Discovery service with name="{pk}" exists in namespace "{namespace_pk}" in AWS.'
+        msg = (
+            f'No Service Discovery service with name="{pk}" exists in '
+            f'namespace "{namespace_pk}" in AWS.'
+        )
         raise ServiceDiscoveryService.DoesNotExist(msg)
 
-    def _get_with_bare_service_name(self, pk: str) -> "ServiceDiscoveryService":
+    def _get_with_bare_service_name(self, pk: str) -> ServiceDiscoveryService:
         """
         `pk` is just a bare service name.
         """
         # this is just a bare service name
         services = self.list()
-        found = []
-        for service in services:
-            if service.name == pk:
-                found.append(service)
+        found = [service for service in services if service.name == pk]
         if len(found) == 0:
             msg = f'No Service Discovery service with name="{pk}" exists in AWS.'
             raise ServiceDiscoveryService.DoesNotExist(msg)
         if len(found) > 1:
-            msg = f'More than one Service Discovery service with name="{pk}" exists in AWS.'
+            msg = (
+                f'More than one Service Discovery service with name="{pk}" '
+                "exists in AWS."
+            )
             raise ServiceDiscoveryService.MultipleObjectsReturned(msg)
-        # We have to do this because the NamespaceId is not included in the services returned by
-        # self.client.list_services, but is included in self.client.get_service
+        # list_services omits NamespaceId, but get_service includes it.
         return self.get(found[0].pk)
 
-    def get(self, pk: str, **_) -> "ServiceDiscoveryService":
+    def get(self, pk: str, **_) -> ServiceDiscoveryService:
         """
         `pk` is one of::
 
@@ -108,8 +116,8 @@ class ServiceDiscoveryServiceManager(Manager):
         return self._get_with_bare_service_name(pk)
 
     def list(
-        self, namespace: Union[str, "ServiceDiscoveryNamespace"] = None
-    ) -> Sequence["ServiceDiscoveryService"]:
+        self, namespace: str | ServiceDiscoveryNamespace | None = None
+    ) -> Sequence[ServiceDiscoveryService]:
         kwargs = {}
         if namespace:
             if not isinstance(namespace, ServiceDiscoveryNamespace):
@@ -135,31 +143,37 @@ class ServiceDiscoveryServiceManager(Manager):
             return self.create(obj)
         return self.update(obj)
 
-    def create(self, obj: "ServiceDiscoveryService") -> str:
+    def create(self, obj: ServiceDiscoveryService) -> str:
         try:
             response = self.client.create_service(**obj.render_for_create())
-        except self.client.exceptions.NamespaceNotFound:
-            msg = f'No Service Discovery namespace with name="{obj.namespace_name}" exists in AWS'
-            raise ServiceDiscoveryService.NamespaceNotFound(msg)
+        except self.client.exceptions.NamespaceNotFound as e:
+            msg = (
+                f'No Service Discovery namespace with name="{obj.namespace_name}" '
+                "exists in AWS"
+            )
+            raise ServiceDiscoveryService.NamespaceNotFound(msg) from e
         return response["Services"][0]["Arn"]
 
-    def update(self, obj: "ServiceDiscoveryService") -> str:
+    def update(self, obj: ServiceDiscoveryService) -> str:
         try:
             response = self.client.update_service(**obj.render_for_update())
-        except self.client.exceptions.ServiceNotFound:
+        except self.client.exceptions.ServiceNotFound as e:
             msg = f'No Service Discovery service with id="{obj.pk}" exists in AWS.'
-            raise ServiceDiscoveryService.DoesNotExist(msg)
+            raise ServiceDiscoveryService.DoesNotExist(msg) from e
         return response["Services"][0]["Arn"]
 
     def delete(self, obj: Model, **_) -> None:
         try:
             self.client.delete_service(obj.pk)
-        except self.client.exceptions.ServiceNotFound:
+        except self.client.exceptions.ServiceNotFound as e:
             msg = f'No Service Discovery service with id="{obj.pk}" exists in AWS.'
-            raise ServiceDiscoveryService.DoesNotExist(msg)
-        except self.client.exceptions.ResourceInUse:
-            msg = f'Service Discovery service with id="{obj.pk}" cannot be deleted because it is in use.'
-            raise ServiceDiscoveryService.OperationFailed(msg)
+            raise ServiceDiscoveryService.DoesNotExist(msg) from e
+        except self.client.exceptions.ResourceInUse as e:
+            msg = (
+                f'Service Discovery service with id="{obj.pk}" cannot be '
+                "deleted because it is in use."
+            )
+            raise ServiceDiscoveryService.OperationFailed(msg) from e
 
 
 # ----------------------------------------
@@ -168,6 +182,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
 
 class ServiceDiscoveryNamespace(Model):
+    #: Manager for Cloud Map namespace records.
     objects = ServiceDiscoveryNamespaceManager()
 
     # ---------------------
@@ -186,7 +201,7 @@ class ServiceDiscoveryNamespace(Model):
     def arn(self) -> str:
         return self.data["Arn"]
 
-    def render_for_diff(self):
+    def render_for_diff(self) -> dict[str, Any]:
         data = self.render()
         del data["CreateDate"]
         del data["CreateRequestorId"]
@@ -230,6 +245,7 @@ class ServiceDiscoveryService(Model):
     deployfish.yml, but may be there if we loaded it from AWS.
     """
 
+    #: Manager for Cloud Map service records.
     objects = ServiceDiscoveryServiceManager()
 
     class NamespaceNotFound(Exception):
@@ -237,7 +253,8 @@ class ServiceDiscoveryService(Model):
         The namespace that this service is configured with does not exist in AWS.
         """
 
-    def __init__(self, data: dict[str, Any], **kwargs):
+    def __init__(self, data: dict[str, Any], **kwargs: Any) -> None:
+        #: Namespace name supplied from config before AWS resolves it to an ID.
         self.namespace_name: str | None = kwargs.pop("namespace_name", None)
         super().__init__(data, **kwargs)
 

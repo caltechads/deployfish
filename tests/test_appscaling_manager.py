@@ -25,8 +25,8 @@ TARGET_DATA = {
 
 
 class TestScalingPolicyManager:
-    def test_get_policy(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_policy(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.describe_scaling_policies.return_value = {
             "ScalingPolicies": [POLICY_DATA]
         }
@@ -35,14 +35,14 @@ class TestScalingPolicyManager:
             policy = ScalingPolicy.objects.get("scale-up")
         assert policy.pk == "scale-up"
 
-    def test_get_raises_when_missing(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_raises_when_missing(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.describe_scaling_policies.return_value = {"ScalingPolicies": []}
         with pytest.raises(ScalingPolicy.DoesNotExist):
             ScalingPolicy.objects.get("missing")
 
-    def test_list_policies(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_list_policies(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.describe_scaling_policies.return_value = {
             "ScalingPolicies": [POLICY_DATA]
         }
@@ -50,24 +50,24 @@ class TestScalingPolicyManager:
             policies = ScalingPolicy.objects.list("cluster", "service")
         assert len(policies) == 1
 
-    def test_delete_policy(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_delete_policy(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         policy = ScalingPolicy(POLICY_DATA, alarm=None)
         ScalingPolicy.objects.delete(policy)
         client.delete_scaling_policy.assert_called_once()
 
 
 class TestScalableTargetManager:
-    def test_get_target(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_target(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.describe_scalable_targets.return_value = {
             "ScalableTargets": [TARGET_DATA]
         }
         with patch.object(ScalingPolicy.objects, "list", return_value=[]):
             ScalableTarget.objects.get("service/cluster/service")
 
-    def test_save_registers_target(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_save_registers_target(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.register_scalable_target.return_value = {}
         target = ScalableTarget(TARGET_DATA, policies=[])
         with patch.object(ScalableTarget.objects, "exists", return_value=False):

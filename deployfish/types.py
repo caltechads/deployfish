@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 if TYPE_CHECKING:
     from deployfish.core.models import (
@@ -29,7 +29,7 @@ class SupportsSSH(Protocol):
         ...
 
     @property
-    def ssh_proxy_type(self) -> str:
+    def ssh_proxy_type(self) -> Literal["bastion", "ssm"]:
         """Return proxy backend name."""
         ...
 
@@ -56,7 +56,7 @@ class SupportsTunnel(Protocol):
         self,
         tunnel: "SSHTunnel",
         verbose: bool = False,  # noqa: FBT001, FBT002
-        tunnel_target: "Instance | None" = None,
+        tunnel_target: Any = None,
     ) -> None:
         """
         Open one configured tunnel.
@@ -132,7 +132,7 @@ class SupportsSecrets(Protocol):
 
     def diff_secrets(
         self,
-        other: Sequence["Secret"],
+        other: Sequence["Secret"] | dict[str, "Secret"],
         ignore_external: bool = False,  # noqa: FBT001, FBT002
     ) -> dict[str, Any]:
         """

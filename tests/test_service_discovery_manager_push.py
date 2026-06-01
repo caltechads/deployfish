@@ -42,18 +42,18 @@ SERVICE_DATA = {
 
 class TestServiceDiscoveryServiceManagerPush:
     def test_list_with_namespace_id_sets_namespace_on_services(
-        self, _mock_boto3_session: MagicMock
+        self, mock_boto3_session: MagicMock
     ) -> None:
-        client = _mock_boto3_session
+        client = mock_boto3_session
         namespace = ServiceDiscoveryNamespace(NS_DATA)
         _paginate(client, [{"Services": [SERVICE_DATA]}])
         services = ServiceDiscoveryService.objects.list(namespace=namespace)
         assert services[0].data["NamespaceId"] == "ns-abc123"
 
     def test_list_resolves_namespace_pk_string(
-        self, _mock_boto3_session: MagicMock
+        self, mock_boto3_session: MagicMock
     ) -> None:
-        client = _mock_boto3_session
+        client = mock_boto3_session
         namespace = ServiceDiscoveryNamespace(NS_DATA)
         _paginate(client, [{"Services": [SERVICE_DATA]}])
         with patch.object(
@@ -70,21 +70,23 @@ class TestServiceDiscoveryServiceManagerPush:
                 ServiceDiscoveryNamespace.objects, "get", return_value=namespace
             ),
             patch.object(ServiceDiscoveryService.objects, "list", return_value=[]),
+            pytest.raises(ServiceDiscoveryService.DoesNotExist),
         ):
-            with pytest.raises(ServiceDiscoveryService.DoesNotExist):
-                ServiceDiscoveryService.objects.get("ns-abc123:missing")
+            ServiceDiscoveryService.objects.get("ns-abc123:missing")
 
     def test_get_bare_name_not_found_raises(self) -> None:
-        with patch.object(ServiceDiscoveryService.objects, "list", return_value=[]):
-            with pytest.raises(ServiceDiscoveryService.DoesNotExist):
-                ServiceDiscoveryService.objects.get("missing-api")
+        with (
+            patch.object(ServiceDiscoveryService.objects, "list", return_value=[]),
+            pytest.raises(ServiceDiscoveryService.DoesNotExist),
+        ):
+            ServiceDiscoveryService.objects.get("missing-api")
 
     def _stub_client_exceptions(self, client: MagicMock) -> None:
         for name in ("NamespaceNotFound", "ServiceNotFound", "ResourceInUse"):
             setattr(client.exceptions, name, type(name, (Exception,), {}))
 
-    def test_create_and_update_return_arn(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_create_and_update_return_arn(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         self._stub_client_exceptions(client)
         arn = SERVICE_DATA["Arn"]
         client.create_service.return_value = {"Services": [{"Arn": arn}]}
@@ -94,9 +96,9 @@ class TestServiceDiscoveryServiceManagerPush:
         assert ServiceDiscoveryService.objects.update(service) == arn
 
     def test_create_raises_namespace_not_found(
-        self, _mock_boto3_session: MagicMock
+        self, mock_boto3_session: MagicMock
     ) -> None:
-        client = _mock_boto3_session
+        client = mock_boto3_session
         self._stub_client_exceptions(client)
         service = ServiceDiscoveryService(
             {
@@ -119,9 +121,9 @@ class TestServiceDiscoveryServiceManagerPush:
             ServiceDiscoveryService.objects.create(service)
 
     def test_update_raises_service_not_found(
-        self, _mock_boto3_session: MagicMock
+        self, mock_boto3_session: MagicMock
     ) -> None:
-        client = _mock_boto3_session
+        client = mock_boto3_session
         self._stub_client_exceptions(client)
         client.update_service.side_effect = client.exceptions.ServiceNotFound("gone")
         service = ServiceDiscoveryService(SERVICE_DATA)
@@ -129,9 +131,9 @@ class TestServiceDiscoveryServiceManagerPush:
             ServiceDiscoveryService.objects.update(service)
 
     def test_save_routes_to_create_or_update(
-        self, _mock_boto3_session: MagicMock
+        self, mock_boto3_session: MagicMock
     ) -> None:
-        client = _mock_boto3_session
+        client = mock_boto3_session
         self._stub_client_exceptions(client)
         arn = SERVICE_DATA["Arn"]
         client.create_service.return_value = {"Services": [{"Arn": arn}]}
@@ -145,9 +147,9 @@ class TestServiceDiscoveryServiceManagerPush:
             assert ServiceDiscoveryService.objects.save(service) == arn
 
     def test_delete_raises_resource_in_use(
-        self, _mock_boto3_session: MagicMock
+        self, mock_boto3_session: MagicMock
     ) -> None:
-        client = _mock_boto3_session
+        client = mock_boto3_session
         self._stub_client_exceptions(client)
         client.delete_service.side_effect = client.exceptions.ResourceInUse("busy")
         service = ServiceDiscoveryService(SERVICE_DATA)
@@ -204,16 +206,15 @@ class TestServiceDiscoveryServiceModelPush:
             "namespace",
             new_callable=PropertyMock,
             return_value=None,
-        ):
-            with pytest.raises(ServiceDiscoveryService.ImproperlyConfigured):
-                service.save()
+        ), pytest.raises(ServiceDiscoveryService.ImproperlyConfigured):
+            service.save()
 
     def test_namespace_property_caches_miss(
-        self, _mock_boto3_session: MagicMock
+        self, mock_boto3_session: MagicMock
     ) -> None:
         exc = type("NamespaceNotFound", (Exception,), {})
-        _mock_boto3_session.exceptions.NamespaceNotFound = exc
-        _mock_boto3_session.get_namespace.side_effect = exc("missing")
+        mock_boto3_session.exceptions.NamespaceNotFound = exc
+        mock_boto3_session.get_namespace.side_effect = exc("missing")
         service = ServiceDiscoveryService({**SERVICE_DATA, "NamespaceId": "ns-gone"})
         assert service.namespace is None
         assert service.cache["namespace"] is None

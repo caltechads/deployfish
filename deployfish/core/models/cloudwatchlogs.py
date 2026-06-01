@@ -1,12 +1,40 @@
 import contextlib
 import time
 from collections.abc import Sequence
-from datetime import datetime
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from deployfish.core.aws import get_boto3_session
 
 from .abstract import Manager, Model
+
+
+def _event_timestamp_to_utc(timestamp_ms: int) -> datetime:
+    """
+    Convert CloudWatch millisecond timestamps to aware UTC datetimes.
+
+    Args:
+        timestamp_ms: Epoch timestamp in milliseconds.
+
+    Returns:
+        Timezone-aware UTC datetime for CloudWatch event timestamp.
+
+    """
+    return datetime.fromtimestamp(timestamp_ms / 1000.0, tz=UTC)
+
+
+def _default_start_time_ms(sleep: int) -> int:
+    """
+    Compute default tail start time in milliseconds.
+
+    Args:
+        sleep: Polling interval in seconds.
+
+    Returns:
+        Epoch milliseconds representing one poll interval ago.
+
+    """
+    return int((datetime.now(tz=UTC).timestamp() - sleep) * 1000)
 
 
 class CloudWatchLogStreamIterator:
@@ -38,6 +66,8 @@ class CloudWatchLogStreamIterator:
             "logStreamName": stream.name,
             "startFromHead": True,
         }
+        if start_time is not None:
+            self.kwargs["startTime"] = int(start_time.timestamp() * 1000)
         self.sleep = sleep
 
     def __iter__(self) -> "CloudWatchLogStreamIterator":
@@ -50,8 +80,7 @@ class CloudWatchLogStreamIterator:
         response = self.client.get_log_events(**self.kwargs)
         events = []
         for event in response["events"]:
-            # Just convert our timetamp to something more useful
-            event["timestamp"] = datetime.fromtimestamp(event["timestamp"] / 1000.0)
+            event["timestamp"] = _event_timestamp_to_utc(event["timestamp"])
             events.append(event)
         token = response["nextForwardToken"]
         if "nextToken" in self.kwargs and token == self.kwargs["nextToken"]:
@@ -83,10 +112,7 @@ class CloudWatchLogGroupTailer:
         if start_time:
             self.kwargs["startTime"] = start_time - (1000 * sleep)
         else:
-            self.kwargs["startTime"] = int(
-                ((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() - sleep)
-                * 1000
-            )
+            self.kwargs["startTime"] = _default_start_time_ms(sleep)
         self.sleep: int = sleep
         self.last_event_ids: list[str] = []
         self.started: bool = False
@@ -107,9 +133,8 @@ class CloudWatchLogGroupTailer:
         events = []
         for response in response_iterator:
             for event in response["events"]:
-                # Just convert our timetamp to something more useful
                 event["raw_timestamp"] = event["timestamp"]
-                event["timestamp"] = datetime.fromtimestamp(event["timestamp"] / 1000.0)
+                event["timestamp"] = _event_timestamp_to_utc(event["timestamp"])
                 if event["eventId"] not in self.last_event_ids:
                     events.append(event)
         if events:
@@ -138,10 +163,7 @@ class CloudWatchLogStreamTailer:
                 1000 * sleep
             )
         else:
-            self.kwargs["startTime"] = int(
-                ((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() - sleep)
-                * 1000
-            )
+            self.kwargs["startTime"] = _default_start_time_ms(sleep)
         self.sleep: int = sleep
         self.last_event: dict[str, Any] | None = None
 
@@ -155,11 +177,10 @@ class CloudWatchLogStreamTailer:
         response = self.client.get_log_events(**self.kwargs)
         events = []
         for event in response["events"]:
-            # Just convert our timetamp to something more useful
             event["raw_timestamp"] = event["timestamp"]
-            event["timestamp"] = datetime.fromtimestamp(event["timestamp"] / 1000.0)
-            # FIXME: what is dumb here is that get_log_events does not return the eventId, but filter_log_events does.
-            # eventId is very useful for deduping
+            event["timestamp"] = _event_timestamp_to_utc(event["timestamp"])
+            # get_log_events omits eventId, so tailer falls back to full-event
+            # equality to avoid duplicating repeated entries.
             if event != self.last_event:
                 events.append(event)
         if events:
@@ -223,8 +244,8 @@ class CloudWatchLogStreamManager(Manager):
         """
         .. note::
 
-            Note that ``log_group_name`` is required here.  We could turn this into "list all streams", but we in ADS
-            have a bajillion groups and streams and that might be untenable to actually work with.
+            ``log_group_name`` stays required because listing every stream in
+            every group would be too large for typical deployfish usage.
         """
         paginator = self.client.get_paginator("describe_log_streams")
         kwargs: dict[str, Any] = {"logGroupName": log_group_name}
@@ -257,6 +278,7 @@ class CloudWatchLogStreamManager(Manager):
 
 
 class CloudWatchLogGroup(Model):
+    #: Manager for CloudWatch log group records.
     objects = CloudWatchLogGroupManager()
 
     @property
@@ -273,14 +295,16 @@ class CloudWatchLogGroup(Model):
 
     def newest_stream(
         self, prefix: str | None = None
-    ) -> Optional["CloudWatchLogStream"]:
+    ) -> "CloudWatchLogStream | None":
         """
-        Look through all our streams and return the one that has the most recent message.  If there is no
-        such stream, return None.
+        Return most recent stream in this group.
 
-        :param prefix str: (optional) if provided, filter streams to only those name matches this prefix
+        Args:
+            prefix: Optional stream-name prefix filter.
 
-        :rtype: Union[CloudWatchLogStream, None]
+        Returns:
+            Most recent stream, or ``None`` when no matching stream exists.
+
         """
         try:
             return CloudWatchLogStream.objects.list(self.name, prefix=prefix)[0]
@@ -294,17 +318,16 @@ class CloudWatchLogGroup(Model):
         filter_pattern: str | None = None,
     ) -> CloudWatchLogGroupTailer:
         """
-        Return a properly configured iterator that will eternally poll our log group (note -- not stream) for new
-        messages in any of its streams, possibly filtering by log stream prefix and filter pattern.
+        Build live tailer for this log group.
 
-        For ``filter_pattern`` syntax , see
-        (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html)_
+        Args:
+            stream_prefix: Optional stream-name prefix filter.
+            sleep: Poll interval in seconds.
+            filter_pattern: Optional CloudWatch Logs filter pattern.
 
-        :param stream_prefix str: (optional) if provided, only poll messages from streams matching this prefix
-        :param sleep int: (optional) if provided, sleep this long between polls
-        :param filter_pattern: (optional) if provided, only return messages matching this filter
+        Returns:
+            Iterator that tails matching events from group streams.
 
-        :rtype: CloudWatchLogGroupTailer
         """
         newest_stream = self.newest_stream(prefix=stream_prefix)
         start_time = None
@@ -323,13 +346,15 @@ class CloudWatchLogGroup(Model):
         self, stream_prefix: str | None = None, maxitems: int | None = None
     ) -> Sequence["CloudWatchLogStream"]:
         """
-        Retrun a list of all our log streams.
+        List streams in this log group.
 
-        :param stream_prefix str: (optional) if provided, only return streams matching this prefix
-        :param maxitems Union[int, None]: (optional) if provided, limit the streams returned to the ``maxitems`` most
-                                          recently updated ones
+        Args:
+            stream_prefix: Optional stream-name prefix filter.
+            maxitems: Maximum number of streams to return.
 
-        :rtype: list(CloudWatchLogStream)
+        Returns:
+            Matching log streams, newest first when AWS supports ordering.
+
         """
         return CloudWatchLogStream.objects.list(
             self.pk, prefix=stream_prefix, limit=maxitems
@@ -337,6 +362,7 @@ class CloudWatchLogGroup(Model):
 
 
 class CloudWatchLogStream(Model):
+    #: Manager for CloudWatch log stream records.
     objects = CloudWatchLogStreamManager()
 
     @property
@@ -354,9 +380,11 @@ class CloudWatchLogStream(Model):
     @property
     def log_group(self) -> CloudWatchLogGroup:
         """
-        Return the ``CloudWatchLogGroup`` that we belong to.
+        Return parent log group for this stream.
 
-        :rtype: CloudWatchLogGroup
+        Returns:
+            Parent log group.
+
         """
         return self.get_cached(
             "log_group", CloudWatchLogGroup.objects.get, [self.data["logGroupName"]]
@@ -364,21 +392,26 @@ class CloudWatchLogStream(Model):
 
     def get_event_tailer(self, sleep: int = 10) -> CloudWatchLogStreamTailer:
         """
-        Return a properly configured iterator that will eternally poll our log stream for new messages.
+        Build live tailer for this log stream.
 
-        :param sleep int: (optional) if provided, sleep this long between polls
+        Args:
+            sleep: Poll interval in seconds.
 
-        :rtype: CloudWatchLogStreamTailer
+        Returns:
+            Tailer configured for this stream.
+
         """
         return CloudWatchLogStreamTailer(self, sleep)
 
     def events(self, sleep: int = 10) -> CloudWatchLogStreamIterator:
         """
-        Return a properly configured iterator that will page through all the events in a stream, starting
-        from the oldest event and ending with the most recent event.
+        Iterate through stream events from oldest to newest.
 
-        :param sleep int: (optional) if provided, sleep this long between polls
+        Args:
+            sleep: Poll interval in seconds.
 
-        :rtype: CloudWatchLogStreamTailer
+        Returns:
+            Iterator over paged log events.
+
         """
         return CloudWatchLogStreamIterator(self, sleep)

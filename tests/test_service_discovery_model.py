@@ -29,34 +29,34 @@ SERVICE_DATA = {
 
 
 class TestServiceDiscoveryNamespaceManager:
-    def test_get_by_id(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_by_id(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.get_namespace.return_value = {"Namespace": NS_DATA}
         namespace = ServiceDiscoveryNamespace.objects.get("ns-abc123")
         assert namespace.name == "local.internal"
 
-    def test_get_by_name(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_by_name(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         _paginate(client, [{"Namespaces": [NS_DATA]}])
         namespace = ServiceDiscoveryNamespace.objects.get("local.internal")
         assert namespace.pk == "ns-abc123"
 
-    def test_list_private_only(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_list_private_only(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         _paginate(client, [{"Namespaces": [NS_DATA]}])
         namespaces = ServiceDiscoveryNamespace.objects.list(private_only=True)
         assert len(namespaces) == 1
 
 
 class TestServiceDiscoveryServiceManager:
-    def test_get_by_service_id(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_by_service_id(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.get_service.return_value = {"Namespace": SERVICE_DATA}
         service = ServiceDiscoveryService.objects.get("srv-hex123")
         assert service.name == "api"
 
-    def test_get_raises_when_missing(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_raises_when_missing(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         exc = type("ServiceNotFound", (Exception,), {})
         client.exceptions.ServiceNotFound = exc
         client.get_service.side_effect = exc("missing")

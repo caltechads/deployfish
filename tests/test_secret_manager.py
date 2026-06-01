@@ -4,6 +4,9 @@ import deployfish.core.adapters  # noqa: F401
 import pytest
 from deployfish.core.models.secrets import Secret
 
+EXPECTED_LISTED_NAMES = 2
+EXPECTED_BATCHED_SECRETS = 11
+
 
 def _paginate(client: MagicMock, pages: list[dict]) -> None:
     paginator = MagicMock()
@@ -26,8 +29,8 @@ PARAM_VALUE = {
 
 
 class TestSecretManager:
-    def test_get_parameter(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_parameter(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.get_parameters.return_value = {
             "Parameters": [PARAM_VALUE],
             "InvalidParameters": [],
@@ -35,10 +38,10 @@ class TestSecretManager:
         _paginate(client, [{"Parameters": [PARAM_META]}])
         secret = Secret.objects.get("cluster.service.DEBUG")
         assert secret.value == "False"
-        assert secret.secret_name == "DEBUG"
+        assert secret.secret_name == PARAM_META["Name"].rsplit(".", 1)[-1]
 
-    def test_get_raises_when_missing(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_raises_when_missing(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         client.get_parameters.return_value = {
             "Parameters": [],
             "InvalidParameters": ["cluster.service.MISSING"],
@@ -47,8 +50,8 @@ class TestSecretManager:
         with pytest.raises(Secret.DoesNotExist):
             Secret.objects.get("cluster.service.MISSING")
 
-    def test_list_names_by_prefix(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_list_names_by_prefix(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         _paginate(
             client,
             [
@@ -61,10 +64,10 @@ class TestSecretManager:
             ],
         )
         names = Secret.objects.list_names("cluster.service.")
-        assert len(names) == 2
+        assert len(names) == EXPECTED_LISTED_NAMES
 
-    def test_list_returns_secrets(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_list_returns_secrets(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         _paginate(client, [{"Parameters": [PARAM_META]}])
         client.get_parameters.return_value = {
             "Parameters": [PARAM_VALUE],
@@ -72,10 +75,10 @@ class TestSecretManager:
         }
         secrets = Secret.objects.list("cluster.service.")
         assert len(secrets) == 1
-        assert secrets[0].secret_name == "DEBUG"
+        assert secrets[0].secret_name == PARAM_META["Name"].rsplit(".", 1)[-1]
 
-    def test_get_many_batches_over_ten(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_get_many_batches_over_ten(self, mock_boto3_session: MagicMock) -> None:
+        client = mock_boto3_session
         names = [f"cluster.service.KEY{i}" for i in range(11)]
         meta = [{"Name": name, "Type": "String", "Tier": "Standard"} for name in names]
         values = [
@@ -93,4 +96,4 @@ class TestSecretManager:
             {"Parameters": values[10:], "InvalidParameters": []},
         ]
         secrets = Secret.objects.get_many(names)
-        assert len(secrets) == 11
+        assert len(secrets) == EXPECTED_BATCHED_SECRETS

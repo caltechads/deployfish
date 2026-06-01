@@ -1,12 +1,8 @@
-import os
 import sys
 from copy import deepcopy
-from typing import Any, Literal, cast
+from pathlib import Path
+from typing import Any, Final, Literal, cast
 
-try:
-    from typing import Final
-except ImportError:
-    from typing import Final  # type: ignore
 import boto3
 import click
 import yaml
@@ -22,9 +18,10 @@ from .processors import ConfigProcessor
 
 class Config:
     """
-    This class reads our ``deployfish.yml`` file and handles the allowed
-    variable substitutions in string values for service entries under the
-    the sections named in :py:attr:`processable_sections`.
+    Read ``deployfish.yml`` and expose interpolated config sections.
+
+    String values in sections named by :py:attr:`processable_sections` support
+    variable substitution.
 
     Allowed variable substitutions:
 
@@ -40,8 +37,8 @@ class Config:
         filename: the path to our config file
 
     Keyword Args:
-        raw_config: if, supplied, use this as our config data instead of loading
-            if from ``filename``
+        raw_config: If supplied, use this config data instead of loading from
+            ``filename``.
 
     """
 
@@ -57,11 +54,31 @@ class Config:
     #: The list of sections in our config file that will be processed
     #: by our :py:class:`deployfish.config.processors.ConfigProcessor`
     processable_sections: list[str] = ["services", "tasks", "tunnels"]
+    #: Path to loaded config file.
+    filename: str
+    #: Raw config before interpolation.
+    __raw: dict[str, Any]
+    #: Cooked config after interpolation.
+    __cooked: dict[str, Any]
+    #: Optional boto3 session passed by callers.
+    boto3_session: boto3.session.Session | None
 
     @classmethod
     def new(cls, **kwargs) -> "Config":
-        # FIXME: Why are we doing this as a classmethod instead of just
-        # doing it all in __init__?
+        """
+        Construct and optionally interpolate a config object.
+
+        Keyword Args:
+            kwargs: Supported keys are ``filename``, ``raw_config``, and
+                ``interpolate``.
+
+        Returns:
+            Initialized config object.
+
+        Side Effects:
+            May run config processors and exit process on processing failure.
+
+        """
         filename: str = kwargs.pop("filename", cls.DEFAULT_DEPLOYFISH_CONFIG_FILE)
         if filename is None:
             filename = cls.DEFAULT_DEPLOYFISH_CONFIG_FILE
@@ -93,11 +110,25 @@ class Config:
         self,
         filename: str,
         raw_config: dict[str, Any] | None = None,
-        boto3_session: boto3.session.Session = None,
+        boto3_session: boto3.session.Session | None = None,
     ) -> None:
-        # FIXME: we're accepting boto3_session as a kwarg, but we never do anything with it
+        """
+        Initialize config state from a file path or provided payload.
+
+        Args:
+            filename: Config file path.
+            raw_config: Optional preloaded config payload.
+            boto3_session: Optional boto3 session reserved for callers that
+                thread AWS context through config creation.
+
+        """
+        #: Path to loaded config file.
         self.filename: str = filename
+        #: Optional boto3 session passed by callers.
+        self.boto3_session = boto3_session
+        #: Raw config before interpolation.
         self.__raw: dict[str, Any] = raw_config or self.load_config(filename)
+        #: Cooked config after interpolation.
         self.__cooked: dict[str, Any] = deepcopy(self.__raw)
 
     @property
@@ -120,10 +151,24 @@ class Config:
 
     @property
     def tasks(self) -> list[dict[str, Any]]:
+        """
+        Return configured task entries.
+
+        Returns:
+            Task config records from cooked config.
+
+        """
         return self.cooked.get("tasks", [])
 
     @property
     def services(self) -> list[dict[str, Any]]:
+        """
+        Return configured service entries.
+
+        Returns:
+            Service config records from cooked config.
+
+        """
         return self.cooked.get("services", [])
 
     def load_config(self, filename: str) -> dict[str, Any]:
@@ -133,18 +178,24 @@ class Config:
         Args:
             filename: the path to our deployfish.yml file
 
-        Return:
-            The raw contents of the deployfish.yml file decoded to a dict
+        Returns:
+            Raw contents of the config file decoded to a dict.
 
         """
-        if not os.path.exists(filename):
+        path = Path(filename)
+        if not path.exists():
             msg = f"Couldn't find deployfish config file '{filename}'"
             raise ConfigProcessingFailed(msg)
-        if not os.access(filename, os.R_OK):
+        if not path.is_file():
             msg = f"Deployfish config file '{filename}' exists but is not readable"
             raise ConfigProcessingFailed(msg)
-        with open(filename, encoding="utf-8") as f:
-            return yaml.load(f, Loader=yaml.FullLoader)
+        try:
+            with path.open(encoding="utf-8") as file_obj:
+                loaded = yaml.load(file_obj, Loader=yaml.FullLoader)  # noqa: S506
+        except OSError as exc:
+            msg = f"Deployfish config file '{filename}' exists but is not readable"
+            raise ConfigProcessingFailed(msg) from exc
+        return cast("dict[str, Any]", loaded)
 
     def get_service(self, service_name: str) -> dict[str, Any]:
         """
@@ -259,12 +310,34 @@ class Config:
         raise self.NoSuchSectionItemError(section_name, item_name)
 
     def get_global_config(self, section: str) -> dict[str, Any]:
+        """
+        Return one deployfish-global config section.
+
+        Args:
+            section: Section name under ``deployfish``.
+
+        Returns:
+            Requested section dict or empty dict when absent.
+
+        """
         if "deployfish" in self.cooked:
             if section in self.cooked["deployfish"]:
                 return self.cooked["deployfish"][section]
         return {}
 
     def set_global_config(self, section: str, key: str, value: Any) -> None:
+        """
+        Set one key in global deployfish config.
+
+        Args:
+            section: Section name under ``deployfish``.
+            key: Key inside the section.
+            value: Value to assign.
+
+        Side Effects:
+            Mutates cooked config in memory.
+
+        """
         if "deployfish" not in self.cooked:
             self.cooked["deployfish"] = {}
         if section not in self.cooked["deployfish"]:
@@ -274,7 +347,10 @@ class Config:
     @property
     def ssh_provider_type(self) -> Literal["bastion", "ssm"]:
         """
-        A shortcut method to figure out what SSH provider we're using.
+        Return configured SSH proxy provider.
+
+        Returns:
+            SSH provider type string.
 
         """
         ssh_config = self.get_global_config("ssh")
@@ -283,13 +359,19 @@ class Config:
     @ssh_provider_type.setter
     def ssh_provider_type(self, value: Literal["bastion", "ssm"]) -> None:
         """
-        A shortcut method to set what SSH provider we're using.
+        Set configured SSH proxy provider.
 
         Args:
-            value: the new SSH provider type.  Must be either 'bastion' or 'ssm'.
+            value: New SSH provider type.
+
+        Raises:
+            ValueError: Provider type is not supported.
 
         """
-        assert value in ["bastion", "ssm"], (
-            f"Invalid SSH provider type: {value}.  Valid values are 'bastion' and 'ssm'"
-        )
+        if value not in ["bastion", "ssm"]:
+            msg = (
+                f"Invalid SSH provider type: {value}. "
+                "Valid values are 'bastion' and 'ssm'"
+            )
+            raise ValueError(msg)
         self.set_global_config("ssh", "proxy", value)

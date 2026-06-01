@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 from deployfish.ext.ext_df_jinja2 import (
@@ -24,7 +24,7 @@ class TestJinjaFilters:
         assert "-" in result
 
     def test_fromtimestamp_epoch_seconds(self) -> None:
-        result = fromtimestamp(datetime(2026, 1, 1, 12, 0, 0).timestamp())
+        result = fromtimestamp(datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC).timestamp())
         assert "2026-01-01" in result
 
     def test_fromtimestamp_milliseconds(self) -> None:

@@ -10,6 +10,8 @@ from deployfish.types import SupportsCache
 
 from .abstract import Manager, Model
 
+MAX_SSM_PARAMETERS_PER_CALL = 10
+
 # ----------------------------------------
 # Protocols
 # ----------------------------------------
@@ -59,7 +61,10 @@ class SecretsMixin:
             del self.cache["secrets"]
 
     def diff_secrets(
-        self: SupportsSecrets, other: Sequence["Secret"], ignore_external: bool = False
+        self: SupportsSecrets,
+        other: Sequence["Secret"] | dict[str, "Secret"],
+        *,
+        ignore_external: bool = False,
     ) -> dict[str, Any]:
         """
         Diff our list of Secrets against `other`.
@@ -102,7 +107,10 @@ class SecretManager(Manager):
     service = "ssm"
 
     def __init__(
-        self, model: type["Secret"] | type["ExternalSecret"], readonly: bool = False
+        self,
+        model: type["Secret"] | type["ExternalSecret"],
+        *,
+        readonly: bool = False,
     ) -> None:
         self.model = model
         self.readonly = readonly
@@ -122,12 +130,17 @@ class SecretManager(Manager):
         return parameters
 
     def _get_parameter_values(
-        self, names: list[str], decrypt: bool = True
+        self, names: list[str], *, decrypt: bool = True
     ) -> tuple[dict[str, Any], list[str]]:
-        # get_parameters only accepts 10 or fewer names in the Names kwarg, so we have to
-        # split names into sub lists of 10 of fewer names and iterate
+        # get_parameters accepts at most 10 names, so batch requests first.
         names_chunks = [
-            names[i * 10 : (i + 1) * 10] for i in range((len(names) + 9) // 10)
+            names[
+                i * MAX_SSM_PARAMETERS_PER_CALL : (i + 1) * MAX_SSM_PARAMETERS_PER_CALL
+            ]
+            for i in range(
+                (len(names) + MAX_SSM_PARAMETERS_PER_CALL - 1)
+                // MAX_SSM_PARAMETERS_PER_CALL
+            )
         ]
         parameters = []
         non_existant = []
@@ -137,7 +150,7 @@ class SecretManager(Manager):
                     Names=chunk, WithDecryption=decrypt
                 )
             except self.client.exceptions.InvalidKeyId as e:
-                raise self.model.DecryptionFailed(str(e))
+                raise self.model.DecryptionFailed(str(e)) from e
             if response.get("InvalidParameters"):
                 non_existant.extend(response["InvalidParameters"])
             parameters.extend(response["Parameters"])
@@ -163,17 +176,15 @@ class SecretManager(Manager):
 
         .. note::
 
-            What we want to return is data that contains both the encryption information (which is only
-            available from describe_paramters) and the actual parameter value (which is only available
-            from get_parameters).  So we do one call to describe_parameters and one to get_parameters for
-            each parameter (well, we bundle the calls as much as possible) and combine the results.
+            We need both encryption metadata from ``describe_parameters`` and
+            values from ``get_parameters``, so this method combines both
+            payloads into one returned secret list.
         """
         # Use get_parameter to get the parameter values
         values, non_existant_parameters = self._get_parameter_values(pks)
         prefixes = set()
-        # FIXME: we're getting all parameters for a service even if we wanted just a few, and that takes a long time.
-        # Find the breakeven point below which it's faster to get parameters individually and above which is better to
-        # get all the parameters.
+        # Current implementation loads by prefix, which may fetch more
+        # parameters than requested but preserves existing runtime behavior.
         for pk in pks:
             prefixes.add(pk.rsplit(".", 1)[0] + ".")
         descriptions = {}
@@ -201,7 +212,7 @@ class SecretManager(Manager):
         parameters = self._describe_parameters(prefix)
         return [p["Name"] for p in parameters]
 
-    def list(self, prefix: str, decrypt: bool = True) -> Sequence["Secret"]:
+    def list(self, prefix: str, *, decrypt: bool = True) -> Sequence["Secret"]:
         if prefix.endswith("*"):
             prefix = prefix[:-1]
             if not prefix.endswith("."):
@@ -227,12 +238,22 @@ class SecretManager(Manager):
         raise self.model.ReadOnly(msg)
 
     def delete_many_by_name(self, pks: builtins.list[str]) -> None:
-        if len(pks) <= 10:
+        if len(pks) <= MAX_SSM_PARAMETERS_PER_CALL:
             self.client.delete_parameters(Names=pks)
         else:
             # delete_parameters() will only take 10 params at a time, so we have
             # to split it up if we have more than 10
-            chunks = [pks[i * 10 : (i + 1) * 10] for i in range((len(pks) + 9) // 10)]
+            chunks = [
+                pks[
+                    i
+                    * MAX_SSM_PARAMETERS_PER_CALL : (i + 1)
+                    * MAX_SSM_PARAMETERS_PER_CALL
+                ]
+                for i in range(
+                    (len(pks) + MAX_SSM_PARAMETERS_PER_CALL - 1)
+                    // MAX_SSM_PARAMETERS_PER_CALL
+                )
+            ]
             for chunk in chunks:
                 self.client.delete_parameters(Names=chunk)
 
@@ -242,8 +263,8 @@ class SecretManager(Manager):
             raise self.model.ReadOnly(msg)
         try:
             self.client.delete_parameter(Name=obj.pk)
-        except self.client.exceptions.ParameterNotFound:
-            raise Secret.DoesNotExist
+        except self.client.exceptions.ParameterNotFound as e:
+            raise Secret.DoesNotExist from e
 
 
 # ----------------------------------------

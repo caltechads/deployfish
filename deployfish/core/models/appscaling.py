@@ -45,8 +45,7 @@ class ScalingPolicyManager(Manager):
         return policies
 
     def save(self, obj: Model, **_) -> str:
-        # NOTE: even though the operation is called put_scaling_policy, it can be used for both create
-        # and update.  Thus we don't need to remove the existing ScalableTarget if we want to update it
+        # put_scaling_policy handles both create and update for existing policy.
         obj = cast("ScalingPolicy", obj)
         response = self.client.put_scaling_policy(**obj.render_for_create())
         arn = response["PolicyARN"]
@@ -71,20 +70,20 @@ class ScalingPolicyManager(Manager):
 class ScalableTargetManager(Manager):
     service = "application-autoscaling"
 
-    def get(self, pk: str, **kwargs) -> "ScalableTarget":
+    def get(self, pk: str, **_) -> "ScalableTarget":
         """
         Get a single ScalableTarget.
         """
         response = self.client.describe_scalable_targets(
             ResourceIds=[pk], ServiceNamespace="ecs"
         )
-        _, cluster, service = pk.split("/")
+        _resource_type, cluster, service_name = pk.split("/")
         if response.get("ScalableTargets"):
             data = response["ScalableTargets"][0]
         else:
             msg = f'No ScalableTarget with name "{pk}" exists in AWS'
             raise ScalableTarget.DoesNotExist(msg)
-        policies = ScalingPolicy.objects.list(cluster, service)
+        policies = ScalingPolicy.objects.list(cluster, service_name)
         return ScalableTarget(data, policies=policies)
 
     def list(self) -> Sequence["ScalableTarget"]:
@@ -93,14 +92,13 @@ class ScalableTargetManager(Manager):
         )
         targets = []
         for data in response["ScalableTargets"]:
-            _, cluster, service = data["ResourceId"].split("/")
-            policies = ScalingPolicy.objects.list(cluster, service)
+            _resource_type, cluster, service_name = data["ResourceId"].split("/")
+            policies = ScalingPolicy.objects.list(cluster, service_name)
             targets.append(ScalableTarget(data, policies=policies))
         return targets
 
     def save(self, obj: Model, **_) -> None:
-        # NOTE: even though the operation is called register_scalable_target, it can be used for both create
-        # and update.  Thus we don't need to remove the existing ScalableTarget if we want to update it
+        # register_scalable_target handles both create and update for target.
         obj = cast("ScalableTarget", obj)
         self.client.register_scalable_target(**obj.render_for_create())
         for policy in obj.policies:
@@ -124,10 +122,14 @@ class ScalableTargetManager(Manager):
 
 
 class ScalingPolicy(Model):
+    #: Manager for Application Auto Scaling policy records.
     objects = ScalingPolicyManager()
 
-    def __init__(self, data: dict[str, Any], alarm: CloudwatchAlarm = None):
+    def __init__(
+        self, data: dict[str, Any], alarm: CloudwatchAlarm | None = None
+    ) -> None:
         super().__init__(data)
+        #: Alarm attached to this scaling policy, if AWS configured one.
         self.alarm: CloudwatchAlarm | None = alarm
 
     @property
@@ -154,12 +156,16 @@ class ScalingPolicy(Model):
 
 
 class ScalableTarget(Model):
+    #: Manager for scalable target records.
     objects = ScalableTargetManager()
 
-    def __init__(self, data, policies: Sequence[ScalingPolicy] | None = None):
+    def __init__(
+        self, data: dict[str, Any], policies: Sequence[ScalingPolicy] | None = None
+    ) -> None:
         super().__init__(data)
         if not policies:
             policies = []
+        #: Scaling policies attached to this target.
         self.policies: Sequence[ScalingPolicy] = policies
 
     @property
@@ -172,7 +178,7 @@ class ScalableTarget(Model):
 
     def render_for_diff(self) -> dict[str, Any]:
         data = self.render()
-        # RoleARN gets set however AWS wants it instead of what we tell it, so ignore that for comparison
+        # AWS rewrites RoleARN, so ignore it during comparisons.
         del data["RoleARN"]
         if "CreationTime" in data:
             del data["CreationTime"]

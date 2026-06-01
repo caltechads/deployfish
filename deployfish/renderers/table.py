@@ -38,8 +38,10 @@ class TableRenderer(AbstractRenderer):
     DEFAULT_DATE_FORMAT: str = "%Y-%m-%d"
     #: Default decimal precision for floats.
     DEFAULT_FLOAT_PRECISION: int = 2
+    #: Base used when scaling byte magnitudes.
+    BYTE_SCALE: float = 1024.0
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         columns: dict[str, Any],
         datetime_format: str | None = None,
@@ -66,9 +68,9 @@ class TableRenderer(AbstractRenderer):
 
         """
         super().__init__()
-        assert isinstance(columns, dict), (
-            "TableRenderer: `columns` parameter to __init__ should be a dict"
-        )
+        if not isinstance(columns, dict):
+            msg = "TableRenderer: `columns` parameter to __init__ should be a dict"
+            raise TypeError(msg)
 
         #: Ordered column descriptors used when rendering rows.
         self.columns: list[str] = list(columns.values())
@@ -90,7 +92,20 @@ class TableRenderer(AbstractRenderer):
         self.show_headers: bool = show_headers
 
     def get_value(self, obj: Any, column: dict[str, str] | str) -> Any:
-        """Dereference one column from an object or rendered mapping."""
+        """
+        Dereference one column from an object or rendered mapping.
+
+        Args:
+            obj: Source object or mapping.
+            column: Column definition or key.
+
+        Returns:
+            Raw column value.
+
+        Raises:
+            RenderException: Column cannot be dereferenced.
+
+        """
         data_key = column["key"] if isinstance(column, dict) else column
         try:
             return getattr(obj, data_key)
@@ -100,8 +115,7 @@ class TableRenderer(AbstractRenderer):
             except KeyError:
                 pass
             except AttributeError:
-                # This is not a Model object, probably just a bare dict because it doesn't have the
-                # .render_for_display() method
+                # Bare dicts do not implement ``render_for_display``.
                 try:
                     return obj[data_key]
                 except KeyError:
@@ -109,12 +123,6 @@ class TableRenderer(AbstractRenderer):
         if isinstance(column, dict):
             if "default" in column:
                 return column["default"]
-
-        # This is for debugging our templates.  We should never get here in production.
-        if isinstance(obj, dict):
-            pass
-        else:
-            pass
         raise RenderException(
             click.style(
                 f'\n\n{self.__class__.__name__}: Could not dereference "{data_key}"',
@@ -123,15 +131,34 @@ class TableRenderer(AbstractRenderer):
         )
 
     def human_bytes(self, value: float, suffix: str = "B") -> str:
-        """Render byte count into human-readable units."""
+        """
+        Render byte count into human-readable units.
+
+        Args:
+            value: Byte count to format.
+            suffix: Unit suffix to append.
+
+        Returns:
+            Human-readable byte string.
+
+        """
         for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
-            if abs(value) < 1024.0:
+            if abs(value) < self.BYTE_SCALE:
                 return f"{value:3.1f}{unit}{suffix}"
-            value /= 1024.0
+            value /= self.BYTE_SCALE
         return "{:.1f}{}{}".format(value, "Yi", suffix)
 
     def _default_cast(self, value: Any) -> str:
-        """Render values using builtin datatype formatting rules."""
+        """
+        Render values using builtin datatype formatting rules.
+
+        Args:
+            value: Value to normalize.
+
+        Returns:
+            Normalized value ready for string rendering.
+
+        """
         if isinstance(value, datetime.datetime):
             value = value.strftime(self.datetime_format)
         elif isinstance(value, datetime.date):
@@ -140,7 +167,7 @@ class TableRenderer(AbstractRenderer):
             value = self.float_format.format(value)
         return value
 
-    def cast_column(self, obj: Any, value: Any, column: dict[str, str] | str) -> str:
+    def cast_column(self, _obj: Any, value: Any, column: dict[str, str] | str) -> str:
         """
         Reformat one value into a more human-friendly form.
 
@@ -163,14 +190,14 @@ class TableRenderer(AbstractRenderer):
             elif column["datatype"] == "timestamp":
                 value = int(value)
                 try:
-                    value = datetime.datetime.fromtimestamp(value).strftime(
-                        self.datetime_format
-                    )
+                    value = datetime.datetime.fromtimestamp(
+                        value, datetime.UTC
+                    ).strftime(self.datetime_format)
                 except ValueError:
                     # This is an AWS timestamp in milliseconds, not seconds
-                    value = datetime.datetime.fromtimestamp(value / 1000.0).strftime(
-                        self.datetime_format
-                    )
+                    value = datetime.datetime.fromtimestamp(
+                        value / 1000.0, datetime.UTC
+                    ).strftime(self.datetime_format)
                 value = self._default_cast(value)
             elif column["datatype"] == "bytes":
                 value = int(value)
@@ -217,13 +244,23 @@ class TableRenderer(AbstractRenderer):
         return value
 
     def render(self, data: Any, **_: Any) -> str:
-        """Render all rows into a formatted table string."""
+        """
+        Render all rows into a formatted table string.
+
+        Args:
+            data: Sequence of row-like objects.
+
+        Keyword Args:
+            **_: Ignored renderer override parameters for interface parity.
+
+        Returns:
+            Formatted table output.
+
+        """
         data = cast("list[Any]", data)
         table = []
         for obj in data:
-            row = []
-            for column in self.columns:
-                row.append(self.render_column(obj, column))
+            row = [self.render_column(obj, column) for column in self.columns]
             table.append(row)
         if self.ordering:
             reverse = False
@@ -247,42 +284,99 @@ class TargetGroupTableRenderer(TableRenderer):
     def render_load_balancers_value(
         self,
         obj: TargetGroup,
-        key: str,
-        column: dict[str, str] | str,
+        _key: str,
+        _column: dict[str, str] | str,
     ) -> str:
-        """Render attached load balancer names."""
+        """
+        Render attached load balancer names.
+
+        Args:
+            obj: Target group being rendered.
+            _key: Unused renderer hook key.
+            _column: Unused renderer hook column.
+
+        Returns:
+            Newline-joined load balancer names.
+
+        """
         load_balancer_names = [lb.name for lb in obj.load_balancers]
         return "\n".join(load_balancer_names)
 
     def render_targets_value(
-        self, obj: TargetGroup, key: str, column: dict[str, str] | str
+        self, obj: TargetGroup, _key: str, _column: dict[str, str] | str
     ) -> str:
-        """Render target names."""
+        """
+        Render target names.
+
+        Args:
+            obj: Target group being rendered.
+            _key: Unused renderer hook key.
+            _column: Unused renderer hook column.
+
+        Returns:
+            Newline-joined target names.
+
+        """
         target_names = [t.target.name for t in obj.targets]
         return "\n".join(target_names)
 
     def render_rules_value(
-        self, obj: TargetGroup, key: str, column: dict[str, str] | str
+        self, obj: TargetGroup, _key: str, _column: dict[str, str] | str
     ) -> str:
-        """Render listener rules attached to target group."""
+        """
+        Render listener rules attached to target group.
+
+        Args:
+            obj: Target group being rendered.
+            _key: Unused renderer hook key.
+            _column: Unused renderer hook column.
+
+        Returns:
+            Listener rule summary string.
+
+        """
         return target_group_listener_rules(obj)
 
     def render_listener_port_value(
         self,
         obj: TargetGroup,
-        key: str,
-        column: dict[str, str] | str,
+        _key: str,
+        _column: dict[str, str] | str,
     ) -> str:
-        """Render listener protocol/port pairs."""
-        return "\n".join([f"{l.protocol}:{l.port!s}" for l in obj.listeners])
+        """
+        Render listener protocol/port pairs.
+
+        Args:
+            obj: Target group being rendered.
+            _key: Unused renderer hook key.
+            _column: Unused renderer hook column.
+
+        Returns:
+            Newline-joined protocol/port strings.
+
+        """
+        return "\n".join(
+            f"{listener.protocol}:{listener.port!s}" for listener in obj.listeners
+        )
 
     def render_container_port_value(
         self,
         obj: TargetGroup,
-        key: str,
-        column: dict[str, str] | str,
+        _key: str,
+        _column: dict[str, str] | str,
     ) -> str:
-        """Render backing container protocol/port pair."""
+        """
+        Render backing container protocol/port pair.
+
+        Args:
+            obj: Target group being rendered.
+            _key: Unused renderer hook key.
+            _column: Unused renderer hook column.
+
+        Returns:
+            Container protocol/port string.
+
+        """
         return "{}:{}".format(obj.data["Protocol"], obj.data["Port"])
 
 
@@ -292,10 +386,21 @@ class LBListenerTableRenderer(TableRenderer):
     def render_default_action_value(
         self,
         obj: LoadBalancerListener,
-        key: str,
-        column: dict[str, str] | str,
+        _key: str,
+        _column: dict[str, str] | str,
     ) -> str:
-        """Render default listener actions."""
+        """
+        Render default listener actions.
+
+        Args:
+            obj: Listener being rendered.
+            _key: Unused renderer hook key.
+            _column: Unused renderer hook column.
+
+        Returns:
+            Newline-joined default action summary.
+
+        """
         actions = []
         for action in obj.data["DefaultActions"]:
             if action["Type"] == "forward":
@@ -323,10 +428,21 @@ class LBListenerTableRenderer(TableRenderer):
     def render_certificates_value(
         self,
         obj: LoadBalancerListener,
-        key: str,
-        column: dict[str, str] | str,
+        _key: str,
+        _column: dict[str, str] | str,
     ) -> str:
-        """Render listener certificates."""
+        """
+        Render listener certificates.
+
+        Args:
+            obj: Listener being rendered.
+            _key: Unused renderer hook key.
+            _column: Unused renderer hook column.
+
+        Returns:
+            Newline-joined certificate summary.
+
+        """
         certs = []
         if "Certificates" in obj.data:
             for cert in obj.data["Certificates"]:
@@ -341,7 +457,21 @@ class LBListenerTableRenderer(TableRenderer):
         return "\n".join(certs)
 
     def render_rules_value(
-        self, obj: LoadBalancerListener, key: str, column: dict[str, str] | str
+        self,
+        obj: LoadBalancerListener,
+        _key: str,
+        _column: dict[str, str] | str,
     ) -> str:
-        """Render count of non-default rules."""
+        """
+        Render count of non-default rules.
+
+        Args:
+            obj: Listener being rendered.
+            _key: Unused renderer hook key.
+            _column: Unused renderer hook column.
+
+        Returns:
+            Count of non-default rules as a string.
+
+        """
         return str(len(obj.rules))

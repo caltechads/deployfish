@@ -42,7 +42,7 @@ class LoadBalancerManager(Manager):
             for response in response_iterator:
                 lbs.extend(response["LoadBalancers"])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise LoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e)) from e
         return [LoadBalancer(lb) for lb in lbs]
 
     def list(
@@ -74,7 +74,7 @@ class LoadBalancerManager(Manager):
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise LoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e)) from e
         return response["TagDescriptions"]["Tags"]
 
 
@@ -85,7 +85,7 @@ class LoadBalancerListenerManager(Manager):
         try:
             response = self.client.describe_listeners(ListenerArns=[pk])
         except self.client.exceptions.ListenerNotFoundException as e:
-            raise LoadBalancerListener.DoesNotExist(str(e))
+            raise LoadBalancerListener.DoesNotExist(str(e)) from e
         return LoadBalancerListener(response["Listeners"][0])
 
     def list(self, load_balancer: str) -> Sequence["LoadBalancerListener"]:
@@ -103,14 +103,14 @@ class LoadBalancerListenerManager(Manager):
             for response in response_iterator:
                 listeners.extend(response["Listeners"])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise LoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e)) from e
         return [LoadBalancerListener(listener) for listener in listeners]
 
     def get_tags(self, arn: str) -> builtins.list[dict[str, str]]:
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise LoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e)) from e
         return response["TagDescriptions"]["Tags"]
 
 
@@ -150,21 +150,15 @@ class LoadBalancerListenerRuleManager(Manager):
         tg = TargetGroup.objects.get(target_group_arn)
         load_balancer_pk = tg.data["LoadBalancerArns"][0]
         rule_objects = self.__get_rules_for_load_balancer(load_balancer_pk)
-        matched_rules = []
-        for obj in rule_objects:
-            for action in obj.data["Actions"]:
-                if (
-                    action["Type"] == "forward"
-                    and action["TargetGroupArn"] == target_group_arn
-                ):
-                    # I'm making an important assumption here that the relevant target group is the one attached
-                    # to the first 'forward' action on the rule, and that we only have one TargetGroup -- we're
-                    # not using a weighted ForwardConfig with a list of TargetGroupArns.
-                    #
-                    # If we ever start doing green/blue deployments with two services attached to the same
-                    # listener rule, we'll need to fix this.
-                    matched_rules.append(obj)
-        return matched_rules
+        return [
+            obj
+            for obj in rule_objects
+            if any(
+                action["Type"] == "forward"
+                and action["TargetGroupArn"] == target_group_arn
+                for action in obj.data["Actions"]
+            )
+        ]
 
     def list(
         self,
@@ -174,7 +168,10 @@ class LoadBalancerListenerRuleManager(Manager):
     ) -> Sequence["LoadBalancerListenerRule"]:
         options = [listener_arn, load_balancer_pk, target_group_arn]
         if sum(x is not None for x in options) > 1:
-            msg = 'Use only one of "listener_arn", "load_balancer_pk", or "target_group_arn".'
+            msg = (
+                'Use only one of "listener_arn", "load_balancer_pk", '
+                'or "target_group_arn".'
+            )
             raise LoadBalancerListener.OperationFailed(msg)
         kwargs = {}
         rules: Sequence[LoadBalancerListenerRule] = []
@@ -199,7 +196,7 @@ class LoadBalancerListenerRuleManager(Manager):
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise LoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e)) from e
         return response["TagDescriptions"]["Tags"]
 
 
@@ -227,9 +224,9 @@ class TargetGroupManager(Manager):
             for response in response_iterator:
                 tgs.extend(response["TargetGroups"])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise LoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e)) from e
         except self.client.exceptions.TargetGroupNotFoundException as e:
-            raise TargetGroup.DoesNotExist(str(e))
+            raise TargetGroup.DoesNotExist(str(e)) from e
         return [TargetGroup(tg) for tg in tgs]
 
     def list(self, load_balancer: str | None = None) -> Sequence["TargetGroup"]:
@@ -247,14 +244,14 @@ class TargetGroupManager(Manager):
             for response in response_iterator:
                 tgs.extend(response["TargetGroups"])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise LoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e)) from e
         return [TargetGroup(tg) for tg in tgs]
 
     def get_tags(self, arn: str) -> builtins.list[dict[str, str]]:
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
-            raise LoadBalancer.DoesNotExist(str(e))
+            raise LoadBalancer.DoesNotExist(str(e)) from e
         return response["TagDescriptions"]["Tags"]
 
 
@@ -266,9 +263,9 @@ class TargetGroupTargetManager(Manager):
             response = self.client.describe_target_health(
                 TargetGroupArn=target_group_arn
             )
-        except self.client.exceptions.TargetGroupNotFoundException:
+        except self.client.exceptions.TargetGroupNotFoundException as e:
             msg = f'TargetGroup("{target_group_arn}") does not exist in AWS'
-            raise TargetGroup.DoesNotExist(msg)
+            raise TargetGroup.DoesNotExist(msg) from e
         targets = []
         for data in response["TargetHealthDescriptions"]:
             target_data = data["Target"]
@@ -284,6 +281,7 @@ class TargetGroupTargetManager(Manager):
 
 
 class LoadBalancer(TagsMixin, Model):
+    #: Manager for ELBv2 load balancer records.
     objects = LoadBalancerManager()
 
     # ---------------------
@@ -345,6 +343,7 @@ class LoadBalancer(TagsMixin, Model):
 
 
 class LoadBalancerListener(Model):
+    #: Manager for ELBv2 listener records.
     objects = LoadBalancerListenerManager()
 
     # ---------------------
@@ -405,10 +404,12 @@ class LoadBalancerListener(Model):
 
 
 class LoadBalancerListenerRule(Model):
+    #: Manager for ELBv2 listener rule records.
     objects = LoadBalancerListenerRuleManager()
 
-    def __init__(self, data: dict[str, Any], listener_arn: str | None = None):
+    def __init__(self, data: dict[str, Any], listener_arn: str | None = None) -> None:
         super().__init__(data)
+        #: Listener ARN used to recover parent listener when payload omits it.
         self.listener_arn: str | None = listener_arn
 
     # ---------------------
@@ -452,12 +453,12 @@ class LoadBalancerListenerRule(Model):
         """
         .. note::
 
-            I'm making an important assumption here that the relevant target group is the one attached to the first
-            'forward' action on the rule, and that we only have one TargetGroup -- we're not using a weighted
-            ForwardConfig with a list of TargetGroupArns.
+            Deployfish assumes relevant target group is attached to first
+            ``forward`` action on rule and does not model weighted
+            ``ForwardConfig`` target-group lists.
 
-            If we ever start doing green/blue deployments with two services attached to the same listener rule, we'll
-            need to fix this.
+            If one rule forwards to multiple services later, this lookup must
+            become more precise.
         """
         if "target_group" not in self.cache:
             target_group = None
@@ -469,6 +470,7 @@ class LoadBalancerListenerRule(Model):
 
 
 class TargetGroup(Model):
+    #: Manager for ELBv2 target group records.
     objects = TargetGroupManager()
 
     # ---------------------
@@ -594,7 +596,10 @@ class TargetGroupTarget(Model):
                 # this is an instance
                 self.cache["target"] = Instance.objects.get(self.data["Id"])
             else:
-                msg = f'TargetGroupTarget("{self.pk}"): currently can\'t defereference targets of this type'
+                msg = (
+                    f'TargetGroupTarget("{self.pk}"): currently cannot '
+                    "dereference targets of this type"
+                )
                 raise self.OperationFailed(msg)
         return self.cache["target"]
 

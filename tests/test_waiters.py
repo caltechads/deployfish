@@ -31,9 +31,11 @@ class TestHookedWaiter:
         operation = MagicMock(return_value={"Status": "PENDING"})
         waiter = HookedWaiter("TestWaiter", config, operation)
         hook = MagicMock()
-        with patch("deployfish.core.waiters.time.sleep"):
-            with pytest.raises(WaiterError, match="Max attempts exceeded"):
-                waiter.wait(WaiterHooks=[hook])
+        with (
+            patch("deployfish.core.waiters.time.sleep"),
+            pytest.raises(WaiterError, match="Max attempts exceeded"),
+        ):
+            waiter.wait(WaiterHooks=[hook])
         assert hook.called
 
 
@@ -77,18 +79,18 @@ class TestECSTaskStatusHook:
             "stoppedAt": MagicMock(strftime=MagicMock(return_value="2026-01-01")),
         }
         hook = ECSTaskStatusHook([task])
-        with patch(
-            "deployfish.core.waiters.hooks.ecs.InvokedTask.objects.get",
-            return_value=task,
+        with (
+            patch(
+                "deployfish.core.waiters.hooks.ecs.InvokedTask.objects.get",
+                return_value=task,
+            ),
+            patch("deployfish.core.waiters.hooks.ecs.click.secho"),
+            patch("deployfish.core.waiters.hooks.ecs.tabulate", return_value="table"),
         ):
-            with patch("deployfish.core.waiters.hooks.ecs.click.secho"):
-                with patch(
-                    "deployfish.core.waiters.hooks.ecs.tabulate", return_value="table"
-                ):
-                    hook.success(
-                        "success",
-                        {},
-                        1,
-                        cluster="cluster",
-                        tasks=[task.arn],
-                    )
+            hook.success(
+                "success",
+                {},
+                1,
+                cluster="cluster",
+                tasks=[task.arn],
+            )

@@ -1,3 +1,4 @@
+from typing import cast
 from unittest.mock import patch
 
 import deployfish.core.adapters  # noqa: F401
@@ -5,18 +6,24 @@ from deployfish.core.models.appscaling import ScalableTarget, ScalingPolicy
 
 from tests.fixtures import APPLICATION_SCALING_YML
 
+EXPECTED_MIN_CAPACITY = 2
+EXPECTED_POLICY_COUNT = 2
+
 
 class TestScalableTargetModel:
     def test_new_from_application_scaling_yaml(self) -> None:
-        target = ScalableTarget.new(
-            APPLICATION_SCALING_YML,
-            "deployfish",
-            cluster="my-cluster",
-            service="my-service",
+        target = cast(
+            "ScalableTarget",
+            ScalableTarget.new(
+                APPLICATION_SCALING_YML,
+                "deployfish",
+                cluster="my-cluster",
+                service="my-service",
+            ),
         )
         assert target.data["ResourceId"] == "service/my-cluster/my-service"
-        assert target.data["MinCapacity"] == 2
-        assert len(target.policies) == 2
+        assert target.data["MinCapacity"] == EXPECTED_MIN_CAPACITY
+        assert len(target.policies) == EXPECTED_POLICY_COUNT
 
     def test_save_registers_target_and_policies(self) -> None:
         target = ScalableTarget.new(

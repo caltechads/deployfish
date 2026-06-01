@@ -1,3 +1,4 @@
+from typing import Any, cast
 from unittest.mock import patch
 
 import deployfish.core.adapters  # noqa: F401
@@ -12,32 +13,47 @@ class _SecretsHost(SecretsMixin):
     def secrets_prefix(self) -> str:
         return "cluster.service."
 
-    def get_cached(self, key, populator, args, kwargs=None):
-        return self.cache.get(key)
+    def get_cached(
+        self,
+        _key: str,
+        _populator: Any,
+        _args: list[Any],
+        _kwargs: dict[str, Any] | None = None,
+    ) -> dict[str, Secret] | None:
+        return cast("dict[str, Secret] | None", self.cache.get(_key))
 
 
 class TestSecretModel:
     def test_new_plain_secret(self) -> None:
-        secret = Secret.new(
-            {"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"
+        secret = cast(
+            "Secret",
+            Secret.new({"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"),
         )
-        assert secret.secret_name == "DEBUG"
+        assert secret.secret_name == "DEBUG"  # noqa: S105
         assert secret.value == "False"
         assert secret.is_secure is False
 
     def test_new_secure_secret(self) -> None:
-        secret = Secret.new(
-            {"value": "DB_PASSWORD:secure:arn:aws:kms:us-west-2:111:key/abc=secret"},
-            "deployfish",
-            cluster="c",
-            name="s",
+        secret = cast(
+            "Secret",
+            Secret.new(
+                {
+                    "value": (
+                        "DB_PASSWORD:secure:arn:aws:kms:us-west-2:111:key/abc=secret"
+                    )
+                },
+                "deployfish",
+                cluster="c",
+                name="s",
+            ),
         )
         assert secret.is_secure is True
         assert secret.data["Type"] == "SecureString"
 
     def test_save_calls_ssm_put_parameter(self) -> None:
-        secret = Secret.new(
-            {"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"
+        secret = cast(
+            "Secret",
+            Secret.new({"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"),
         )
         with patch.object(Secret.objects, "save", return_value=1) as save_mock:
             version = secret.save()
@@ -47,18 +63,22 @@ class TestSecretModel:
 
 class TestSecretsMixinWriteSecrets:
     def test_write_secrets_saves_each_secret(self) -> None:
-        secret = Secret.new(
-            {"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"
+        secret = cast(
+            "Secret",
+            Secret.new({"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"),
         )
         host = _SecretsHost({"DEBUG": secret})
-        with patch.object(secret, "save") as save_mock:
-            with patch.object(Secret.objects, "list_names", return_value=[]):
-                host.write_secrets()
+        with (
+            patch.object(secret, "save") as save_mock,
+            patch.object(Secret.objects, "list_names", return_value=[]),
+        ):
+            host.write_secrets()
         save_mock.assert_called_once()
 
     def test_write_secrets_prunes_removed_names(self) -> None:
-        secret = Secret.new(
-            {"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"
+        secret = cast(
+            "Secret",
+            Secret.new({"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"),
         )
         host = _SecretsHost({"DEBUG": secret})
         with (
@@ -74,9 +94,13 @@ class TestSecretsMixinWriteSecrets:
         delete_mock.assert_called_once_with(["cluster.service.OLD"])
 
     def test_diff_secrets_detects_changes(self) -> None:
-        ours = Secret.new({"value": "DEBUG=True"}, "deployfish", cluster="c", name="s")
-        theirs = Secret.new(
-            {"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"
+        ours = cast(
+            "Secret",
+            Secret.new({"value": "DEBUG=True"}, "deployfish", cluster="c", name="s"),
+        )
+        theirs = cast(
+            "Secret",
+            Secret.new({"value": "DEBUG=False"}, "deployfish", cluster="c", name="s"),
         )
         theirs.data["Name"] = ours.data["Name"]
         host = _SecretsHost({"DEBUG": ours})

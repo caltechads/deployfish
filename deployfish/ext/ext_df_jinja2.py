@@ -7,19 +7,30 @@ from cement.core.output import OutputHandler
 from cement.ext.ext_jinja2 import Jinja2OutputHandler, Jinja2TemplateHandler
 from cement.utils.misc import minimal_logger
 
-from deployfish.core.models import TargetGroup
 from deployfish.renderers import (
     LBListenerTableRenderer,
     TableRenderer,
     TargetGroupTableRenderer,
 )
+from deployfish.renderers.misc import target_group_listener_rules
 
+#: Logger used by Cement Jinja2 extension hooks.
 LOG = minimal_logger(__name__)
 
 
 def color(value: str, **kwargs) -> str:
     """
-    Render the string with click.style().
+    Render string with ``click.style``.
+
+    Args:
+        value: Value to colorize.
+
+    Keyword Args:
+        **kwargs: Keyword arguments forwarded to ``click.style``.
+
+    Returns:
+        Styled string.
+
     """
     return click.style(str(value), **kwargs)
 
@@ -32,18 +43,39 @@ def section_title(value: str, **kwargs) -> str:
         -----
 
     with optional click font manipulation for ``value``.
+
+    Args:
+        value: Title text to render.
+
+    Keyword Args:
+        **kwargs: Keyword arguments forwarded to ``click.style``.
+
+    Returns:
+        Rendered title and underline block.
+
     """
     if "fg" not in kwargs:
         kwargs["fg"] = "cyan"
-    lines = []
-    lines.append(click.style(str(value), **kwargs))
-    lines.append(click.style("-" * len(value), **kwargs))
+    lines = [
+        click.style(str(value), **kwargs),
+        click.style("-" * len(value), **kwargs),
+    ]
     return "\n".join(lines)
 
 
 def fromtimestamp(data: float, **_: Any) -> str:
     """
-    Convert a unix epoch timestamp to a datetime in our local timezone.
+    Convert Unix epoch timestamp to UTC datetime text.
+
+    Args:
+        data: Epoch timestamp in seconds or milliseconds.
+
+    Keyword Args:
+        **_: Ignored filter keyword arguments from Jinja.
+
+    Returns:
+        Formatted UTC timestamp string.
+
     """
     try:
         return datetime.fromtimestamp(data, UTC).strftime("%Y-%m-%d %H:%M:%S")
@@ -53,37 +85,30 @@ def fromtimestamp(data: float, **_: Any) -> str:
             "%Y-%m-%d %H:%M:%S"
         )
 
+
 def tabular(data: Sequence[Any], **kwargs: Any) -> str:
     """
-    Render a table.
+    Render sequence with ``TableRenderer``.
 
-    `kwargs` determine which columns are displayed, with the kwarg being the title of the column and the value
-    being the name of the attribute on the objects to display.  For example::
+    ``kwargs`` describe columns plus renderer options. Column keyword names
+    become headers after underscores are converted to spaces.
 
-        {{ obj.services|tabular(Name='name', Version='version', 'Desired': 'desiredCount', 'Running': 'runningCount') }}
+    Args:
+        data: Row objects to render.
 
-    Will display::
+    Keyword Args:
+        **kwargs: Column mappings and renderer options like ``ordering``,
+            ``date_format``, ``datetime_format``, ``float_precision``,
+            ``tablefmt``, and ``show_headers``.
 
+    Returns:
+        Rendered table string.
 
-
-    The keys of `columns` will be used as the column header in the table, and the values in `columns`
-    are the names of the attributes on our result objects that contain the data we want to render for that
-    column.
-
-    If the value has double underscores in it, e.g. "software__machine_name", this instructs TableRenderer to look
-    at an attribute/key on a sub-object. In this case, at the `machine_name` attribute/key of the `software` object
-    on our main object.
-
-    :param columns: a dict that determines the structure of the table
-    :param datetime_format Union[str, None]: if specified, use this to render any `datetime.datetime` objects we get
-    :param date_format Union[str, None]: if specified, use this to render any `datetime.date` objects we get
-    :param float_precision Union[int, None]: if specified, use this to determine the decimal precision
-                                             of any `float` objects we get
     """
     renderer_kwargs: dict[str, Any] = {}
     columns: dict[str, Any] = {}
-    for k, v in list(kwargs.items()):
-        if k in [
+    for key, value in list(kwargs.items()):
+        if key in [
             "ordering",
             "date_format",
             "datetime_format",
@@ -91,24 +116,22 @@ def tabular(data: Sequence[Any], **kwargs: Any) -> str:
             "tablefmt",
             "show_headers",
         ]:
-            renderer_kwargs[k] = v
-        elif k.endswith("_datatype"):
-            k = k.replace("_datatype", "")
-            k = k.replace("_", " ")
-            if k not in columns:
-                columns[k] = {}
-            columns[k]["datatype"] = v
-        elif k.endswith("_default"):
-            k = k.replace("_default", "")
-            k = k.replace("_", " ")
-            if k not in columns:
-                columns[k] = {}
-            columns[k]["default"] = v
+            renderer_kwargs[key] = value
+        elif key.endswith("_datatype"):
+            column_name = key.replace("_datatype", "").replace("_", " ")
+            if column_name not in columns:
+                columns[column_name] = {}
+            columns[column_name]["datatype"] = value
+        elif key.endswith("_default"):
+            column_name = key.replace("_default", "").replace("_", " ")
+            if column_name not in columns:
+                columns[column_name] = {}
+            columns[column_name]["default"] = value
         else:
-            k = k.replace("_", " ")
-            if k not in columns:
-                columns[k] = {}
-            columns[k]["key"] = v
+            column_name = key.replace("_", " ")
+            if column_name not in columns:
+                columns[column_name] = {}
+            columns[column_name]["key"] = value
 
     renderer = TableRenderer(columns, **renderer_kwargs)
     return renderer.render(data)
@@ -116,7 +139,14 @@ def tabular(data: Sequence[Any], **kwargs: Any) -> str:
 
 def target_group_table(data: Sequence[Any]) -> str:
     """
-    Render a table for a list of TargetGroups.
+    Render table for target groups.
+
+    Args:
+        data: Target-group-like row objects.
+
+    Returns:
+        Rendered table string.
+
     """
     columns = {
         "Name": "name",
@@ -131,7 +161,14 @@ def target_group_table(data: Sequence[Any]) -> str:
 
 def lb_listener_table(data: Sequence[Any]) -> str:
     """
-    Render a table for a list of elbv2 Listeners.
+    Render table for ELBv2 listeners.
+
+    Args:
+        data: Listener-like row objects.
+
+    Returns:
+        Rendered table string.
+
     """
     columns = {
         "Port": "port",
@@ -143,50 +180,6 @@ def lb_listener_table(data: Sequence[Any]) -> str:
     renderer = LBListenerTableRenderer(columns)
     return renderer.render(data)
 
-
-def target_group_listener_rules(obj: TargetGroup) -> str:
-    """
-    Given a ``TargetGroup`` iterate through its list of LoadBalancerListenerRule objects and return a human readable
-    description of those rules.
-
-    :param obj TargetGroup: a TargetGroup object
-
-    :rtype: str
-    """
-    rules = obj.rules
-    conditions = []
-    for rule in rules:
-        if "Conditions" in rule.data:
-            for condition in rule.data["Conditions"]:
-                if "HostHeaderConfig" in condition:
-                    for v in condition["HostHeaderConfig"]["Values"]:
-                        conditions.append(f"hostname:{v}")
-                if "HttpHeaderConfig" in condition:
-                    conditions.append(
-                        "header:{} -> {}".format(
-                            condition["HttpHeaderConfig"]["HttpHeaderName"],
-                            ",".join(condition["HttpHeaderConfig"]["Values"]),
-                        )
-                    )
-                if "PathPatternConfig" in condition:
-                    for v in condition["PathPatternConfig"]["Values"]:
-                        conditions.append(f"path:{v}")
-                if "QueryStringConfig" in condition:
-                    for v in condition["QueryStringConfig"]["Values"]:
-                        conditions.append("qs:{}={} -> ".format(v["Key"], v["Value"]))
-                if "SourceIpConfig" in condition:
-                    for v in condition["SourceIpConfig"]["Values"]:
-                        conditions.append(f"ip:{v} -> ")
-                if "HttpRequestMethod" in condition:
-                    for v in condition["HttpRequestMethod"]["Values"]:
-                        conditions.append(f"verb:{v} -> ")
-    if not conditions:
-        conditions.append(
-            f"forward:{obj.load_balancers[0].lb_type}:{obj.listeners[0].port}:{obj.listeners[0].protocol} -> CONTAINER:{obj.port}:{obj.protocol}"
-        )
-    return "\n".join(sorted(conditions))
-
-
 class DeployfishJinja2OutputHandler(Jinja2OutputHandler):
     """
     We're subclassing the cement Jinja2OutputHandler here so we can use our own
@@ -196,7 +189,17 @@ class DeployfishJinja2OutputHandler(Jinja2OutputHandler):
     class Meta:
         label = "df_jinja2"
 
-    def _setup(self, app):
+    def _setup(self, app: Any) -> None:
+        """
+        Bind custom template handler.
+
+        Args:
+            app: Cement application instance.
+
+        Side Effects:
+            Resolves and stores template handler on output handler.
+
+        """
         OutputHandler._setup(self, app)  # pylint: disable=protected-access
         self.templater = self.app.handler.resolve("template", "df_jinja2", setup=True)
 
@@ -210,7 +213,23 @@ class DeployfishJinja2TemplateHandler(Jinja2TemplateHandler):
     class Meta:
         label = "df_jinja2"
 
-    def load(self, *args, **kwargs):
+    def load(self, *args: Any, **kwargs: Any) -> tuple[Any, Any, Any]:
+        """
+        Load template content and register custom filters.
+
+        Args:
+            *args: Positional arguments forwarded to Cement loader.
+
+        Keyword Args:
+            **kwargs: Keyword arguments forwarded to Cement loader.
+
+        Returns:
+            Loaded template content tuple.
+
+        Side Effects:
+            Registers custom filters on Jinja environment.
+
+        """
         content, _type, _path = super().load(*args, **kwargs)
         self.env.filters["color"] = color
         self.env.filters["section_title"] = section_title
@@ -222,6 +241,16 @@ class DeployfishJinja2TemplateHandler(Jinja2TemplateHandler):
         return content, _type, _path
 
 
-def load(app):
+def load(app: Any) -> None:
+    """
+    Register deployfish Jinja2 handlers with Cement app.
+
+    Args:
+        app: Cement application instance.
+
+    Side Effects:
+        Registers output and template handlers.
+
+    """
     app.handler.register(DeployfishJinja2OutputHandler)
     app.handler.register(DeployfishJinja2TemplateHandler)

@@ -2,6 +2,8 @@
 
 import tempfile
 from copy import deepcopy
+from pathlib import PurePosixPath
+from typing import Any, Literal
 from unittest.mock import MagicMock, patch
 
 import deployfish.core.adapters  # noqa: F401
@@ -41,17 +43,21 @@ class TestServiceSSHNetworking:
         service = Service.new(deepcopy(FARGATE_SERVICE_YML), "deployfish")
         service.data["cluster"] = "foobar-cluster"
         service.data["serviceName"] = "foobar-test"
-        with patch.object(service.task_definition, "is_fargate", return_value=True):
-            with pytest.raises(Service.OperationFailed, match="FARGATE"):
-                service.ssh_interactive()
+        with (
+            patch.object(service.task_definition, "is_fargate", return_value=True),
+            pytest.raises(Service.OperationFailed, match="FARGATE"),
+        ):
+            service.ssh_interactive()
 
     def test_ssh_noninteractive_raises_for_fargate(self) -> None:
         service = Service.new(deepcopy(FARGATE_SERVICE_YML), "deployfish")
         service.data["cluster"] = "foobar-cluster"
         service.data["serviceName"] = "foobar-test"
-        with patch.object(service.task_definition, "is_fargate", return_value=True):
-            with pytest.raises(Service.OperationFailed, match="FARGATE"):
-                service.ssh_noninteractive("uptime")
+        with (
+            patch.object(service.task_definition, "is_fargate", return_value=True),
+            pytest.raises(Service.OperationFailed, match="FARGATE"),
+        ):
+            service.ssh_noninteractive("uptime")
 
     def test_ssh_tunnels_loads_from_config(self) -> None:
         service = Service.new(deepcopy(SERVICE_YML), "deployfish")
@@ -125,10 +131,16 @@ class TestSSHMixinHelpers:
             def arn(self) -> str | None:
                 return None
 
-            def get_cached(self, key, populator, args, kwargs=None):
+            def get_cached(
+                self,
+                _key: str,
+                _populator: Any,
+                _args: list[Any],
+                _kwargs: dict[str, Any] | None = None,
+            ) -> None:
                 return None
 
-            ssh_target = None
+            ssh_target: Instance | None = None
 
         with pytest.raises(SSHMixin.NoSSHTargetAvailable):
             _Host().ssh_interactive()
@@ -163,15 +175,18 @@ class TestSSHMixinHelpers:
             tmp.flush()
             success, _output, remote = SSHMixin.push_file(host, tmp.name)
         assert success is True
-        assert remote.startswith("/tmp/")
+        assert PurePosixPath(remote).parts[:2] == ("/", "tmp")
 
 
 class _DockerHost(DockerMixin):
+    config_section = "services"
+    objects = MagicMock()
+
     def __init__(self) -> None:
         self.cache: dict[str, object] = {}
         self.data: dict[str, object] = {}
         self._running_tasks: list[InvokedTask] = []
-        self._secrets: dict = {}
+        self._secrets: dict[str, Any] = {}
 
     @property
     def running_tasks(self) -> list[InvokedTask]:
@@ -190,10 +205,6 @@ class _DockerHost(DockerMixin):
         return None
 
     @property
-    def config_section(self) -> str:
-        return "services"
-
-    @property
     def cluster(self) -> MagicMock:
         cluster = MagicMock()
         cluster.name = "foobar-cluster"
@@ -206,14 +217,36 @@ class _DockerHost(DockerMixin):
         return td
 
     @property
-    def ssh_proxy_type(self) -> str:
+    def exec_enabled(self) -> bool:
+        return True
+
+    @property
+    def ssh_tunnels(self) -> list[Any]:
+        return []
+
+    @property
+    def secrets(self) -> dict[str, Any]:
+        return self._secrets
+
+    @secrets.setter
+    def secrets(self, value: dict[str, Any]) -> None:
+        self._secrets = value
+
+    @property
+    def ssh_proxy_type(self) -> Literal["bastion", "ssm"]:
         return "ssm"
 
     @property
     def secrets_prefix(self) -> str:
         return "cluster.service."
 
-    def get_cached(self, key, populator, args, kwargs=None):
+    def get_cached(
+        self,
+        _key: str,
+        _populator: Any,
+        _args: list[Any],
+        _kwargs: dict[str, Any] | None = None,
+    ) -> None:
         return None
 
     def reload_secrets(self) -> None:
@@ -222,7 +255,12 @@ class _DockerHost(DockerMixin):
     def write_secrets(self) -> None:
         return None
 
-    def diff_secrets(self, other, ignore_external: bool = False):
+    def diff_secrets(
+        self,
+        _other: Any,
+        ignore_external: bool = False,  # noqa: FBT001, FBT002
+    ) -> dict[str, Any]:
+        del ignore_external
         return {}
 
 
@@ -266,7 +304,7 @@ class TestDockerMixinPush:
             session_mock.return_value.profile_name = "dev"
             host.docker_ecs_exec()
         cmd = popen_mock.call_args[0][0]
-        assert "--profile dev" in cmd
+        assert "--profile dev" in cmd[2]
         process.wait.assert_called_once()
 
     def test_docker_exec_raises_without_running_tasks(self) -> None:

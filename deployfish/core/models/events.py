@@ -26,16 +26,16 @@ class EventTargetManager(Manager):
                 data = target
                 break
         if not data:
-            msg = f'No EventTarget for name="{pk}" in AWS on EventScheduleRule(pk="{rule.pk}")'
+            msg = (
+                f'No EventTarget for name="{pk}" in AWS on '
+                f'EventScheduleRule(pk="{rule.pk}")'
+            )
             raise EventTarget.DoesNotExist(msg)
         return EventTarget(data, rule=rule.data)
 
     def list(self, rule: "EventScheduleRule") -> Sequence["EventTarget"]:
         response = self.client.list_targets_by_rule(Rule=rule.pk)
-        targets = []
-        for target in response["Targets"]:
-            targets.append(EventTarget(target, rule=rule))
-        return targets
+        return [EventTarget(target, rule=rule) for target in response["Targets"]]
 
     def delete(self, obj: Model, **_) -> None:
         obj = cast("EventTarget", obj)
@@ -156,6 +156,7 @@ class EventTarget(Model):
         }
     """
 
+    #: Manager for EventBridge rule targets.
     objects = EventTargetManager()
 
     @classmethod
@@ -164,8 +165,11 @@ class EventTarget(Model):
         data, kwargs = cls.adapt(obj, source)
         return cls(data, rule=rule)
 
-    def __init__(self, data: dict[str, Any], rule: "EventScheduleRule" = None):
+    def __init__(
+        self, data: dict[str, Any], rule: "EventScheduleRule | None" = None
+    ) -> None:
         super().__init__(data)
+        #: Schedule rule that owns this target, if assigned.
         self.rule: EventScheduleRule | None = rule
 
     # ---------------------
@@ -191,13 +195,19 @@ class EventTarget(Model):
         :rtype: dict
         """
         if not self.rule:
-            msg = "EventTarget({}) has no EventScheduleRule associated with it.  Assign one with target.rule = rule"
+            msg = (
+                "EventTarget({}) has no EventScheduleRule associated with it. "
+                "Assign one with target.rule = rule"
+            )
             raise self.ImproperlyConfigured(msg)
         super().save()
 
     def delete(self) -> None:
         if not self.rule:
-            msg = "EventTarget({}) has no EventScheduleRule asociated with it.  Assign one with target.rule = rule"
+            msg = (
+                "EventTarget({}) has no EventScheduleRule associated with it. "
+                "Assign one with target.rule = rule"
+            )
             raise self.ImproperlyConfigured(msg)
         self.objects.delete(self, rule=self.rule)
 
@@ -211,12 +221,13 @@ class EventTarget(Model):
 
 class EventScheduleRule(Model):
     """
-    This is an AWS cron job.  We use them to run ECS tasks periodically.
+    AWS cron job that deployfish uses to run ECS tasks periodically.
 
     If the task has a schedule defined, manage an ECS CloudWatch event with the
     corresponding schedule, with the task as an event target.
     """
 
+    #: Manager for EventBridge schedule rules.
     objects = EventScheduleRuleManager()
 
     @classmethod
@@ -226,9 +237,10 @@ class EventScheduleRule(Model):
         rule.target = EventTarget.new(obj, source, rule=rule)
         return rule
 
-    def __init__(self, data):
+    def __init__(self, data: dict[str, Any]) -> None:
         super().__init__(data)
-        self.target = None
+        #: Target ECS task configuration associated with this rule, if any.
+        self.target: EventTarget | None = None
 
     # ---------------------
     # Model overrides
@@ -276,12 +288,15 @@ class EventScheduleRule(Model):
     # ----------------------------------
 
     def set_task_definition_arn(self, arn: str) -> None:
+        if self.target is None:
+            msg = f'EventScheduleRule("{self.pk}") has no target configured'
+            raise self.ImproperlyConfigured(msg)
         self.target.set_task_definition_arn(arn)
 
-    def enable(self):
+    def enable(self) -> None:
         self.objects.enable(self)
         self.reload_from_db()
 
-    def disable(self):
+    def disable(self) -> None:
         self.objects.disable(self)
         self.reload_from_db()

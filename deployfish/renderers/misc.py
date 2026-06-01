@@ -13,13 +13,15 @@ def target_group_listener_rules(obj: TargetGroup) -> str:
 
     """
     rules = obj.rules
-    conditions = []
+    conditions: list[str] = []
     for rule in rules:
         if "Conditions" in rule.data:
             for condition in rule.data["Conditions"]:
                 if "HostHeaderConfig" in condition:
-                    for v in condition["HostHeaderConfig"]["Values"]:
-                        conditions.append(f"hostname:{v}")
+                    conditions.extend(
+                        f"hostname:{value}"
+                        for value in condition["HostHeaderConfig"]["Values"]
+                    )
                 if "HttpHeaderConfig" in condition:
                     conditions.append(
                         "header:{} -> {}".format(
@@ -28,17 +30,25 @@ def target_group_listener_rules(obj: TargetGroup) -> str:
                         )
                     )
                 if "PathPatternConfig" in condition:
-                    for v in condition["PathPatternConfig"]["Values"]:
-                        conditions.append(f"path:{v}")
+                    conditions.extend(
+                        f"path:{value}"
+                        for value in condition["PathPatternConfig"]["Values"]
+                    )
                 if "QueryStringConfig" in condition:
-                    for v in condition["QueryStringConfig"]["Values"]:
-                        conditions.append("qs:{}={} -> ".format(v["Key"], v["Value"]))
+                    conditions.extend(
+                        "qs:{}={} -> ".format(value["Key"], value["Value"])
+                        for value in condition["QueryStringConfig"]["Values"]
+                    )
                 if "SourceIpConfig" in condition:
-                    for v in condition["SourceIpConfig"]["Values"]:
-                        conditions.append(f"ip:{v} -> ")
+                    conditions.extend(
+                        f"ip:{value} -> "
+                        for value in condition["SourceIpConfig"]["Values"]
+                    )
                 if "HttpRequestMethod" in condition:
-                    for v in condition["HttpRequestMethod"]["Values"]:
-                        conditions.append(f"verb:{v} -> ")
+                    conditions.extend(
+                        f"verb:{value} -> "
+                        for value in condition["HttpRequestMethod"]["Values"]
+                    )
     if not conditions:
         conditions.append(
             "forward:"

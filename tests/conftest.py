@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Generator
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -29,7 +30,7 @@ def _quiet_boto_logs() -> None:
 
 
 @pytest.fixture(autouse=True)
-def _mock_boto3_session() -> MagicMock:
+def _mock_boto3_session() -> Generator[MagicMock, None, None]:
     """Prevent tests from calling live AWS APIs."""
     with patch("deployfish.core.models.abstract.get_boto3_session") as get_session:
         session = MagicMock()
@@ -37,6 +38,12 @@ def _mock_boto3_session() -> MagicMock:
         session.client.return_value = client
         get_session.return_value = session
         yield client
+
+
+@pytest.fixture
+def mock_boto3_session(_mock_boto3_session: MagicMock) -> MagicMock:
+    """Alias underscore-prefixed boto fixture for tests that consume value."""
+    return _mock_boto3_session
 
 
 @pytest.fixture

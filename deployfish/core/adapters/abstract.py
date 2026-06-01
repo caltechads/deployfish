@@ -21,36 +21,60 @@ class Adapter:
         Raise this if data in the config source does not validate properly.
         """
 
-    def __init__(self, data: dict[str, Any], partial: bool = False, **kwargs) -> None:
+    def __init__(
+        self,
+        data: dict[str, Any],
+        partial: bool = False,  # noqa: FBT001, FBT002
+        **_kwargs: Any,
+    ) -> None:
         """
-        ``data`` is the raw data from our source.
+        Initialize adapter with raw source data.
+
+        Args:
+            data: Raw source data to adapt.
+            partial: Whether partial source payloads are allowed.
+
         """
         self.data: dict[str, Any] = data
         self.partial: bool = partial
 
-    def only_one_is_True(self, data: list[bool]) -> bool:
+    def only_one_is_True(self, data: list[bool]) -> bool:  # noqa: N802
         """
-        Look through the list ``data``, a list of boolean values, and return True if only one True is in the
-        list, False otherwise.
-        """
-        # FIXME: much better ways to do this
-        true_found = False
-        for v in data:
-            if v and not true_found:
-                true_found = True
-            elif v and true_found:
-                return False  # "Too Many Trues"
-        return true_found
+        Return whether exactly one value in ``data`` is truthy.
 
-    def set(
+        Args:
+            data: Boolean values to inspect.
+
+        Returns:
+            ``True`` when exactly one value is truthy.
+
+        """
+        return sum(data) == 1
+
+    def set(  # noqa: PLR0913
         self,
         data: dict[str, Any],
         source_key: str,
         dest_key: str | None = None,
         default: Any = NONE,
-        optional: bool = False,
+        optional: bool = False,  # noqa: FBT001, FBT002
         convert: Callable[[Any], Any] | None = None,
     ) -> None:
+        """
+        Copy one source value into output payload.
+
+        Args:
+            data: Destination payload being built.
+            source_key: Key to read from source data.
+            dest_key: Key to write in destination payload.
+            default: Fallback value when source key is missing.
+            optional: Whether missing source keys are allowed.
+            convert: Optional converter for copied values.
+
+        Side Effects:
+            Mutates ``data`` in place.
+
+        """
         if dest_key is None:
             dest_key = source_key
         if self.partial or optional:
@@ -65,9 +89,10 @@ class Adapter:
 
     def convert(self) -> tuple[Any, Any]:
         """
-        This method is the meat of the adapter -- it is what takes ``self.data`` and returns the
-        data structures needed to initialize our model.
+        Convert source payload into model constructor inputs.
 
-        The return type varies by what the model needs.
+        Returns:
+            Tuple of adapted model data and keyword arguments.
+
         """
         raise NotImplementedError

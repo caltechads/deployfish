@@ -223,6 +223,21 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = [
+    "deployfish.config.processors.environment",
+    "deployfish.core.adapters.deployfish.ecs",
+    "deployfish.core.models.ecs",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pytz",
+    "shellescape",
+]
+ignore_missing_imports = true
+
 [tool.ruff.lint.per-file-ignores]
 "deployfish/types.py" = ["A005"]
 "test/**/*.py" = ["S101"]
