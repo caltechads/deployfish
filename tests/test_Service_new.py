@@ -108,7 +108,9 @@ class TestService_new:
     def test_task_definition_executionRoleArn_is_set_correctly(self) -> None:
         data = deepcopy(SERVICE_YML)
         service = Service.new(data, "deployfish")
-        assert service.task_definition.data["executionRoleArn"] == "MY_EXECUTION_ROLE_ARN"
+        assert (
+            service.task_definition.data["executionRoleArn"] == "MY_EXECUTION_ROLE_ARN"
+        )
 
     def test_task_definition_containers_number_is_correct(self) -> None:
         data = deepcopy(SERVICE_YML)
@@ -123,7 +125,9 @@ class TestService_new:
     def test_task_definition_container_image_is_correct(self) -> None:
         data = deepcopy(SERVICE_YML)
         service = Service.new(data, "deployfish")
-        assert service.task_definition.containers[0].data["image"] == "foobar/foobar:0.1.0"
+        assert (
+            service.task_definition.containers[0].data["image"] == "foobar/foobar:0.1.0"
+        )
 
     def test_task_definition_container_cpu_is_correct(self) -> None:
         data = deepcopy(SERVICE_YML)
@@ -149,9 +153,15 @@ class TestService_new:
         service = Service.new(data, "deployfish")
         environment = service.task_definition.containers[0].data["environment"]
         assert {"name": "AWS_DEFAULT_REGION", "value": "us-west-2"} in environment
-        assert {"name": "DEPLOYFISH_SERVICE_NAME", "value": "foobar-test"} in environment
+        assert {
+            "name": "DEPLOYFISH_SERVICE_NAME",
+            "value": "foobar-test",
+        } in environment
         assert {"name": "DEPLOYFISH_ENVIRONMENT", "value": "test"} in environment
-        assert {"name": "DEPLOYFISH_CLUSTER_NAME", "value": "foobar-cluster"} in environment
+        assert {
+            "name": "DEPLOYFISH_CLUSTER_NAME",
+            "value": "foobar-cluster",
+        } in environment
 
     def test_task_definition_container_logConfiguration_is_correct(self) -> None:
         data = deepcopy(SERVICE_YML)

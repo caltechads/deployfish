@@ -44,20 +44,25 @@ def get_tunnel_target(obj: SupportsTunnelModel, choose: bool = False) -> Instanc
             click.secho("\nAvailable tunnel targets:", fg="green")
             click.secho("--------------------------\n", fg="green")
             for i, target in enumerate(obj.tunnel_targets):
-                rows.append([
-                    i + 1,
-                    click.style(target.name, fg="cyan"),
-                    target.pk,
-                    target.ip_address
-                ])
+                rows.append(
+                    [
+                        i + 1,
+                        click.style(target.name, fg="cyan"),
+                        target.pk,
+                        target.ip_address,
+                    ]
+                )
             click.secho(tabulate(rows, headers=["#", "Name", "Instance Id", "IP"]))
-            p = shell.Prompt("\nEnter the number of the instance you want: ", type=int, default=1)
+            p = shell.Prompt(
+                "\nEnter the number of the instance you want: ", type=int, default=1
+            )
             choice = p.prompt()
             target = obj.tunnel_targets[choice - 1]
     else:
         target = obj.tunnel_target
     if not target:
-        raise Instance.DoesNotExist(f'{obj.__class__.__name__}(pk="{obj.pk}") has no tunnel targets available')
+        msg = f'{obj.__class__.__name__}(pk="{obj.pk}") has no tunnel targets available'
+        raise Instance.DoesNotExist(msg)
     return target
 
 
@@ -82,15 +87,21 @@ def get_tunnel() -> SSHTunnel | None:
         click.secho("-------------------\n", fg="green")
         for i, name in enumerate(tunnels):
             entry = tunnels[name]
-            rows.append([
-                i + 1,
-                click.style(entry.name, fg="cyan"),
-                entry.host,
-                entry.host_port,
-                entry.local_port
-            ])
-        click.secho(tabulate(rows, headers=["#", "Name", "Target", "Target Port", "Local Port"]))
-        choice = click.prompt("\nEnter the number of the tunnel you want: ", type=int, default=1)
+            rows.append(
+                [
+                    i + 1,
+                    click.style(entry.name, fg="cyan"),
+                    entry.host,
+                    entry.host_port,
+                    entry.local_port,
+                ]
+            )
+        click.secho(
+            tabulate(rows, headers=["#", "Name", "Target", "Target Port", "Local Port"])
+        )
+        choice = click.prompt(
+            "\nEnter the number of the tunnel you want: ", type=int, default=1
+        )
         tunnel = tunnels[list(tunnels)[choice - 1]]
     return tunnel
 
@@ -99,7 +110,7 @@ def establish_tunnel(
     tunnel: SSHTunnel,
     obj: SupportsTunnelModel,
     choose: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> None:
     """
     Actually establish an SSH Tunnel.  This does not return until the user
@@ -123,29 +134,37 @@ def establish_tunnel(
     else:
         target = obj.tunnel_target
     if not target:
-        raise Instance.DoesNotExist("Couldn't find an instance to tunnel through.")
-    click.secho(f"\nEstablishing tunnel: {tunnel.host}:{tunnel.host_port} -> localhost:{tunnel.local_port}", fg="yellow")
+        msg = "Couldn't find an instance to tunnel through."
+        raise Instance.DoesNotExist(msg)
+    click.secho(
+        f"\nEstablishing tunnel: {tunnel.host}:{tunnel.host_port} -> localhost:{tunnel.local_port}",
+        fg="yellow",
+    )
     if obj.ssh_proxy_type == "bastion":
         bastion = target.bastion
         if bastion:
-            click.secho("{}: {}".format(
-                click.style("bastion host", fg="red", bold=True),
-                bastion.hostname,
-            ), fg="cyan")
-        else:
-            raise Instance.DoesNotExist(
-                "Current SSH settings require a bastion host, but no bastion host exists in the VPC."
+            click.secho(
+                "{}: {}".format(
+                    click.style("bastion host", fg="red", bold=True),
+                    bastion.hostname,
+                ),
+                fg="cyan",
             )
-    click.secho("{}: {} ({})\n".format(
-        click.style("intermediate host", fg="magenta", bold=True),
-        target.name,
-        target.ip_address,
-    ), fg="cyan")
+        else:
+            msg = "Current SSH settings require a bastion host, but no bastion host exists in the VPC."
+            raise Instance.DoesNotExist(msg)
+    click.secho(
+        "{}: {} ({})\n".format(
+            click.style("intermediate host", fg="magenta", bold=True),
+            target.name,
+            target.ip_address,
+        ),
+        fg="cyan",
+    )
     obj.tunnel(tunnel, verbose=verbose, tunnel_target=target)
 
 
 class BaseTunnel(Controller):
-
     class Meta:
         label = "base-tunnel"
         description = "Establish an ssh tunnel"
@@ -159,19 +178,22 @@ class BaseTunnel(Controller):
     @ex(
         help="Establish an ssh tunnel.",
         arguments=[
-            (["tunnel_name"], {
-                "help": 'The "name" for the tunnel in deployfish.yml',
-                "nargs": "?",
-                "default": None
-            }),
+            (
+                ["tunnel_name"],
+                {
+                    "help": 'The "name" for the tunnel in deployfish.yml',
+                    "nargs": "?",
+                    "default": None,
+                },
+            ),
             (
                 ["--verbose"],
                 {
                     "help": "Show all SSH output",
                     "default": False,
                     "action": "store_true",
-                    "dest": "verbose"
-                }
+                    "dest": "verbose",
+                },
             ),
             (
                 ["--choose"],
@@ -179,10 +201,10 @@ class BaseTunnel(Controller):
                     "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",
                     "default": False,
                     "action": "store_true",
-                    "dest": "choose"
-                }
+                    "dest": "choose",
+                },
             ),
-        ]
+        ],
     )
     def tunnel(self):
         """
@@ -202,11 +224,12 @@ class BaseTunnel(Controller):
         else:
             tunnel = get_tunnel()
         obj = tunnel.service
-        establish_tunnel(tunnel, obj, choose=self.app.pargs.choose, verbose=self.app.pargs.verbose)
+        establish_tunnel(
+            tunnel, obj, choose=self.app.pargs.choose, verbose=self.app.pargs.verbose
+        )
 
 
 class ObjectTunnelController(Controller):
-
     class Meta:
         label = "tunnel-base"
 
@@ -224,8 +247,8 @@ class ObjectTunnelController(Controller):
                     "help": "Show all SSH output",
                     "default": False,
                     "action": "store_true",
-                    "dest": "verbose"
-                }
+                    "dest": "verbose",
+                },
             ),
             (
                 ["--choose"],
@@ -233,10 +256,10 @@ class ObjectTunnelController(Controller):
                     "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",
                     "default": False,
                     "action": "store_true",
-                    "dest": "choose"
-                }
+                    "dest": "choose",
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def tunnel(self):
@@ -248,14 +271,14 @@ class ObjectTunnelController(Controller):
         try:
             tunnel = obj.ssh_tunnels[self.app.pargs.tunnel_name]
         except KeyError:
-            raise SSHTunnel.DoesNotExist(
-                f'{self.model.__name__}(pk="{obj.pk}") has no associated tunnel named "{self.app.pargs.tunnel_name}"'
-            )
-        establish_tunnel(tunnel, obj, choose=self.app.pargs.choose, verbose=self.app.pargs.verbose)
+            msg = f'{self.model.__name__}(pk="{obj.pk}") has no associated tunnel named "{self.app.pargs.tunnel_name}"'
+            raise SSHTunnel.DoesNotExist(msg)
+        establish_tunnel(
+            tunnel, obj, choose=self.app.pargs.choose, verbose=self.app.pargs.verbose
+        )
 
 
 class Tunnels(ReadOnlyCrudBase):
-
     class Meta:
         label = "tunnels"
         description = "Work with SSH Tunnel objects"
@@ -273,7 +296,7 @@ class Tunnels(ReadOnlyCrudBase):
         "Cluster": "cluster__name",
         "Local Port": "local_port",
         "Host": "host",
-        "Host Port": "host_port"
+        "Host Port": "host_port",
     }
 
     @ex(
@@ -285,8 +308,8 @@ class Tunnels(ReadOnlyCrudBase):
                     "help": "Filter by service name",
                     "action": "store",
                     "default": None,
-                    "dest": "service_name"
-                }
+                    "dest": "service_name",
+                },
             ),
             (
                 ["--port"],
@@ -294,10 +317,10 @@ class Tunnels(ReadOnlyCrudBase):
                     "help": "Filter by port.",
                     "action": "store",
                     "default": None,
-                    "dest": "port"
-                }
+                    "dest": "port",
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def list(self):

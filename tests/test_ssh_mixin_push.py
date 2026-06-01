@@ -108,6 +108,26 @@ class TestSSHMixinHelpers:
 
     def test_ssh_interactive_raises_without_target(self) -> None:
         class _Host(SSHMixin):
+            cache: dict[str, object] = {}
+            data: dict[str, object] = {}
+            config_section = "test"
+            objects = MagicMock()
+
+            @property
+            def pk(self) -> str:
+                return "host"
+
+            @property
+            def name(self) -> str:
+                return "host"
+
+            @property
+            def arn(self) -> str | None:
+                return None
+
+            def get_cached(self, key, populator, args, kwargs=None):
+                return None
+
             ssh_target = None
 
         with pytest.raises(SSHMixin.NoSSHTargetAvailable):
@@ -136,7 +156,9 @@ class TestSSHMixinHelpers:
         host.ssh_target = _instance()
         host.providers = SSHMixin.providers
         host.ssh_noninteractive.return_value = (True, "ok")
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", delete=False
+        ) as tmp:
             tmp.write("payload")
             tmp.flush()
             success, _output, remote = SSHMixin.push_file(host, tmp.name)
@@ -146,8 +168,10 @@ class TestSSHMixinHelpers:
 
 class _DockerHost(DockerMixin):
     def __init__(self) -> None:
-        self.cache: dict = {}
+        self.cache: dict[str, object] = {}
+        self.data: dict[str, object] = {}
         self._running_tasks: list[InvokedTask] = []
+        self._secrets: dict = {}
 
     @property
     def running_tasks(self) -> list[InvokedTask]:
@@ -156,6 +180,18 @@ class _DockerHost(DockerMixin):
     @property
     def pk(self) -> str:
         return "svc"
+
+    @property
+    def name(self) -> str:
+        return "svc"
+
+    @property
+    def arn(self) -> str | None:
+        return None
+
+    @property
+    def config_section(self) -> str:
+        return "services"
 
     @property
     def cluster(self) -> MagicMock:
@@ -172,6 +208,22 @@ class _DockerHost(DockerMixin):
     @property
     def ssh_proxy_type(self) -> str:
         return "ssm"
+
+    @property
+    def secrets_prefix(self) -> str:
+        return "cluster.service."
+
+    def get_cached(self, key, populator, args, kwargs=None):
+        return None
+
+    def reload_secrets(self) -> None:
+        self._secrets = {}
+
+    def write_secrets(self) -> None:
+        return None
+
+    def diff_secrets(self, other, ignore_external: bool = False):
+        return {}
 
 
 class TestDockerMixinPush:
@@ -203,9 +255,13 @@ class TestDockerMixinPush:
         process = MagicMock()
         with (
             patch("deployfish.core.ssh.get_boto3_session") as session_mock,
-            patch("deployfish.core.ssh.subprocess.Popen", return_value=process) as popen_mock,
+            patch(
+                "deployfish.core.ssh.subprocess.Popen", return_value=process
+            ) as popen_mock,
             patch("deployfish.core.ssh.signal.signal"),
-            patch("deployfish.core.ssh.build_sigint_handler", return_value=lambda *_: None),
+            patch(
+                "deployfish.core.ssh.build_sigint_handler", return_value=lambda *_: None
+            ),
         ):
             session_mock.return_value.profile_name = "dev"
             host.docker_ecs_exec()

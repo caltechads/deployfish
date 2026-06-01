@@ -1,6 +1,5 @@
-from collections.abc import Sequence
 from itertools import cycle
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import click
 from cement import App, ex, shell
@@ -13,12 +12,11 @@ from deployfish.types import SupportsService, SupportsSSHModel
 
 from .utils import handle_model_exceptions
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def get_ssh_target(
-    app: App,
-    obj: SupportsSSHModel,
-    choose: bool = False
-) -> Instance:
+
+def get_ssh_target(app: App, obj: SupportsSSHModel, choose: bool = False) -> Instance:
     """
     Return an ``Instance`` object to which the user can ssh.
 
@@ -42,8 +40,9 @@ def get_ssh_target(
         An Instance object.
 
     """
-    assert hasattr(obj, "ssh_targets"), \
+    assert hasattr(obj, "ssh_targets"), (
         f"{obj.__class__.__name__} objects do not have the .ssh_targets attribute"
+    )
     target = None
     if choose:
         if obj.ssh_targets:
@@ -51,12 +50,14 @@ def get_ssh_target(
             click.secho("\nAvailable ssh targets:", fg="green")
             click.secho("----------------------\n", fg="green")
             for i, entry in enumerate(obj.ssh_targets):
-                rows.append([
-                    i + 1,
-                    click.style(entry.name, fg="cyan"),
-                    entry.pk,
-                    entry.ip_address
-                ])
+                rows.append(
+                    [
+                        i + 1,
+                        click.style(entry.name, fg="cyan"),
+                        entry.pk,
+                        entry.ip_address,
+                    ]
+                )
             app.print(tabulate(rows, headers=["#", "Name", "Instance Id", "IP"]))
             p = shell.Prompt("\nEnter the number of the instance you want: ", default=1)
             choice = p.prompt()
@@ -64,14 +65,12 @@ def get_ssh_target(
     else:
         target = obj.ssh_target
     if not target:
-        raise Instance.DoesNotExist(
-            f'{obj.__class__.__name__}(pk="{obj.pk}") has no ssh targets available'
-        )
+        msg = f'{obj.__class__.__name__}(pk="{obj.pk}") has no ssh targets available'
+        raise Instance.DoesNotExist(msg)
     return target
 
 
 class ObjectSSHController(Controller):
-
     class Meta:
         label = "ssh-base"
 
@@ -88,7 +87,7 @@ class ObjectSSHController(Controller):
         "bright_yellow",
         "bright_cyan",
         "bright_magenta",
-        "bright_white"
+        "bright_white",
     ]
 
     @ex(
@@ -101,8 +100,8 @@ class ObjectSSHController(Controller):
                     "help": "Show all SSH output",
                     "default": False,
                     "action": "store_true",
-                    "dest": "verbose"
-                }
+                    "dest": "verbose",
+                },
             ),
             (
                 ["--choose"],
@@ -110,10 +109,10 @@ class ObjectSSHController(Controller):
                     "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",
                     "default": False,
                     "action": "store_true",
-                    "dest": "choose"
-                }
-            )
-        ]
+                    "dest": "choose",
+                },
+            ),
+        ],
     )
     @handle_model_exceptions
     def ssh(self):
@@ -125,7 +124,9 @@ class ObjectSSHController(Controller):
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        assert hasattr(obj, "ssh_target"), f"Objects of type {obj.__class__.__name__} do not support SSH actions"
+        assert hasattr(obj, "ssh_target"), (
+            f"Objects of type {obj.__class__.__name__} do not support SSH actions"
+        )
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
         target.ssh_interactive(verbose=self.app.pargs.verbose)
 
@@ -133,18 +134,18 @@ class ObjectSSHController(Controller):
         help="Run a shell command on one or all instances related to an object.",
         arguments=[
             (["pk"], {"help": "The primary key for the object in AWS"}),
-            (["command"], {
-                "help": "The primary key for the object in AWS",
-                "nargs": "+"
-            }),
+            (
+                ["command"],
+                {"help": "The primary key for the object in AWS", "nargs": "+"},
+            ),
             (
                 ["--verbose"],
                 {
                     "help": "Show all SSH output",
                     "default": False,
                     "action": "store_true",
-                    "dest": "verbose"
-                }
+                    "dest": "verbose",
+                },
             ),
             (
                 ["--choose"],
@@ -152,8 +153,8 @@ class ObjectSSHController(Controller):
                     "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",
                     "default": False,
                     "action": "store_true",
-                    "dest": "choose"
-                }
+                    "dest": "choose",
+                },
             ),
             (
                 ["--all"],
@@ -161,10 +162,10 @@ class ObjectSSHController(Controller):
                     "help": "Run the shell command on all instances related to our object.",
                     "default": False,
                     "action": "store_true",
-                    "dest": "all"
-                }
-            )
-        ]
+                    "dest": "all",
+                },
+            ),
+        ],
     )
     @handle_model_exceptions
     def run(self):
@@ -177,15 +178,21 @@ class ObjectSSHController(Controller):
         colors_cycle = cycle(self.COLORS)
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        assert hasattr(obj, "ssh_target"), f"Objects of type {obj.__class__.__name__} do not support SSH actions"
+        assert hasattr(obj, "ssh_target"), (
+            f"Objects of type {obj.__class__.__name__} do not support SSH actions"
+        )
         command = " ".join(self.app.pargs.command)
         if not self.app.pargs.all:
-            targets: Sequence[Instance] = [get_ssh_target(self.app, obj, choose=self.app.pargs.choose)]
+            targets: Sequence[Instance] = [
+                get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
+            ]
         else:
             targets = obj.ssh_targets
         for target in targets:
             color = next(colors_cycle)
-            success, output = target.ssh_noninteractive(command, verbose=self.app.pargs.verbose, ssh_target=target)
+            success, output = target.ssh_noninteractive(
+                command, verbose=self.app.pargs.verbose, ssh_target=target
+            )
             if success:
                 for line in output.split("\n"):
                     self.app.print(f"{click.style(target.name, fg=color)}: {line}")
@@ -196,7 +203,6 @@ class ObjectSSHController(Controller):
 
 
 class ObjectDockerExecController(Controller):
-
     class Meta:
         label = "exec-base"
 
@@ -204,9 +210,7 @@ class ObjectDockerExecController(Controller):
     loader: type[ObjectLoader] = ObjectLoader
 
     def get_ssh_exec_target(
-        self,
-        obj: SupportsService,
-        choose: bool = False
+        self, obj: SupportsService, choose: bool = False
     ) -> tuple[Instance | None, str | None]:
         """
         Return an (instance, container_name) tuple suitable for using to exec
@@ -233,10 +237,12 @@ class ObjectDockerExecController(Controller):
             the object choose its instance and container later.
 
         """
-        assert hasattr(obj, "ssh_targets"), \
+        assert hasattr(obj, "ssh_targets"), (
             f"{obj.__class__.__name__} objects do not have the .ssh_targets attribute"
-        assert hasattr(obj, "running_tasks"), \
+        )
+        assert hasattr(obj, "running_tasks"), (
             f"{obj.__class__.__name__} objects do not have the .running_tasks attribute"
+        )
         target = None
         container_name = None
         if choose:
@@ -244,7 +250,7 @@ class ObjectDockerExecController(Controller):
             # EC2 instance, even though Task.ssh_target can return None
             running_tasks = sorted(
                 obj.running_tasks,
-                key=lambda x: cast("Instance", x.ssh_target).tags["Name"]
+                key=lambda x: cast("Instance", x.ssh_target).tags["Name"],
             )
             rows = []
             click.secho("\nAvailable exec targets:", fg="green")
@@ -254,23 +260,41 @@ class ObjectDockerExecController(Controller):
             for task in running_tasks:
                 for container in task.containers:
                     ssh_target = cast("Instance", task.ssh_target)
-                    rows.append([
-                        number,
-                        click.style(ssh_target.tags["Name"], fg="cyan"),
-                        click.style(container.name, fg="yellow"),
-                        click.style(container.version, fg="yellow"),
-                        ssh_target.pk,
-                        ssh_target.ip_address
-                    ])
+                    rows.append(
+                        [
+                            number,
+                            click.style(ssh_target.tags["Name"], fg="cyan"),
+                            click.style(container.name, fg="yellow"),
+                            click.style(container.version, fg="yellow"),
+                            ssh_target.pk,
+                            ssh_target.ip_address,
+                        ]
+                    )
                     choices.append((task.ssh_target, container.name))
                     number += 1
-            self.app.print(tabulate(rows, headers=["#", "Instance", "Container", "Version", "Instance Id", "IP"]))
-            p = shell.Prompt("\nEnter the number of the container you want: ", default=1)
+            self.app.print(
+                tabulate(
+                    rows,
+                    headers=[
+                        "#",
+                        "Instance",
+                        "Container",
+                        "Version",
+                        "Instance Id",
+                        "IP",
+                    ],
+                )
+            )
+            p = shell.Prompt(
+                "\nEnter the number of the container you want: ", default=1
+            )
             choice = p.prompt()
             target, container_name = choices[int(choice) - 1]
         return target, container_name
 
-    def get_ecs_exec_target(self, obj: SupportsService, choose: bool = False) -> tuple[str | None, str | None]:
+    def get_ecs_exec_target(
+        self, obj: SupportsService, choose: bool = False
+    ) -> tuple[str | None, str | None]:
         """
         Return an (task_arn, container_name) tuple suitable for using to exec
         into a particular container on a particular instance.
@@ -296,8 +320,9 @@ class ObjectDockerExecController(Controller):
             the object choose its instance and container later.
 
         """
-        assert hasattr(obj, "running_tasks"), \
+        assert hasattr(obj, "running_tasks"), (
             f"{obj.__class__.__name__} objects do not have the .running_tasks attribute"
+        )
         task_arn = None
         container_name = None
         if choose:
@@ -309,17 +334,23 @@ class ObjectDockerExecController(Controller):
             choices = []
             for task in running_tasks:
                 for container in task.containers:
-                    rows.append([
-                        number,
-                        click.style(task.pk.split("/")[-1], fg="cyan"),
-                        click.style(task.availability_zone, fg="white"),
-                        click.style(container.name, fg="yellow"),
-                        click.style(container.version, fg="yellow"),
-                    ])
+                    rows.append(
+                        [
+                            number,
+                            click.style(task.pk.split("/")[-1], fg="cyan"),
+                            click.style(task.availability_zone, fg="white"),
+                            click.style(container.name, fg="yellow"),
+                            click.style(container.version, fg="yellow"),
+                        ]
+                    )
                     choices.append((task.arn, container.name))
                     number += 1
-            self.app.print(tabulate(rows, headers=["#", "Task", "Container", "Version"]))
-            p = shell.Prompt("\nEnter the number of the container you want: ", default=1)
+            self.app.print(
+                tabulate(rows, headers=["#", "Task", "Container", "Version"])
+            )
+            p = shell.Prompt(
+                "\nEnter the number of the container you want: ", default=1
+            )
             choice = p.prompt()
             task_arn, container_name = choices[int(choice) - 1]
         return task_arn, container_name
@@ -334,20 +365,20 @@ class ObjectDockerExecController(Controller):
                     "help": "Show all SSH output",
                     "default": False,
                     "action": "store_true",
-                    "dest": "verbose"
-                }
+                    "dest": "verbose",
+                },
             ),
             (
                 ["--choose"],
                 {
                     "help": 'Choose from all available targets for "docker exec", instead of having one '
-                            'chosen automatically.',
+                    "chosen automatically.",
                     "default": False,
                     "action": "store_true",
-                    "dest": "choose"
-                }
-            )
-        ]
+                    "dest": "choose",
+                },
+            ),
+        ],
     )
     @handle_model_exceptions
     def exec(self):
@@ -359,12 +390,16 @@ class ObjectDockerExecController(Controller):
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         if obj.exec_enabled:
-            task_arn, container_name = self.get_ecs_exec_target(obj, choose=self.app.pargs.choose)
+            task_arn, container_name = self.get_ecs_exec_target(
+                obj, choose=self.app.pargs.choose
+            )
             obj.docker_ecs_exec(task_arn=task_arn, container_name=container_name)
         else:
-            target, container_name = self.get_ssh_exec_target(obj, choose=self.app.pargs.choose)
+            target, container_name = self.get_ssh_exec_target(
+                obj, choose=self.app.pargs.choose
+            )
             obj.docker_ssh_exec(
                 ssh_target=target,
                 container_name=container_name,
-                verbose=self.app.pargs.verbose
+                verbose=self.app.pargs.verbose,
             )

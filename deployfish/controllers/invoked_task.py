@@ -9,7 +9,6 @@ from .utils import handle_model_exceptions
 
 
 class ECSInvokedTask(ReadOnlyCrudBase):
-
     class Meta:
         label = "invoked-tasks"
         description = "Work with Load Balancer objects"
@@ -32,7 +31,6 @@ class ECSInvokedTask(ReadOnlyCrudBase):
         "pk": "pk",
     }
 
-
     @ex(
         help="List Invoked Tasks in AWS",
         arguments=[
@@ -43,8 +41,8 @@ class ECSInvokedTask(ReadOnlyCrudBase):
                     "help": "Filter by service name",
                     "action": "store",
                     "default": None,
-                    "dest": "service"
-                }
+                    "dest": "service",
+                },
             ),
             (
                 ["--family"],
@@ -52,8 +50,8 @@ class ECSInvokedTask(ReadOnlyCrudBase):
                     "help": 'Filter by task family"',
                     "action": "store",
                     "default": None,
-                    "dest": "family"
-                }
+                    "dest": "family",
+                },
             ),
             (
                 ["--status"],
@@ -62,8 +60,8 @@ class ECSInvokedTask(ReadOnlyCrudBase):
                     "action": "store",
                     "default": "RUNNING",
                     "choices": ["RUNNING", "PENDING", "STOPPEd"],
-                    "dest": "status"
-                }
+                    "dest": "status",
+                },
             ),
             (
                 ["--launch-type"],
@@ -72,10 +70,10 @@ class ECSInvokedTask(ReadOnlyCrudBase):
                     "action": "store",
                     "default": "any",
                     "choices": ["any", "EC2", "FARGATE"],
-                    "dest": "launch_type"
-                }
+                    "dest": "launch_type",
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def list(self):
@@ -84,6 +82,6 @@ class ECSInvokedTask(ReadOnlyCrudBase):
             service=self.app.pargs.service,
             family=self.app.pargs.family,
             launch_type=self.app.pargs.launch_type,
-            status=self.app.pargs.status
+            status=self.app.pargs.status,
         )
         self.render_list(results)

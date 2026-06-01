@@ -14,7 +14,9 @@ class TestReadOnlyCrudController:
         controller = bind_controller(ECSService(), cement_app)
         cement_app.pargs.pk = "foobar-cluster:missing"
         loader = bind_service_loader(controller)
-        with patch.object(loader, "get_object_from_aws", side_effect=Service.DoesNotExist("nope")):
+        with patch.object(
+            loader, "get_object_from_aws", side_effect=Service.DoesNotExist("nope")
+        ):
             with patch("deployfish.controllers.crud.click.secho") as secho:
                 controller.exists()
         secho.assert_called_once()
@@ -46,8 +48,13 @@ class TestCrudDelete:
         with patch.object(loader, "get_object_from_deployfish", return_value=service):
             with patch.object(service, "reload_from_db"):
                 with patch.object(controller, "delete_waiter"):
-                    with patch("deployfish.controllers.crud.shell.Prompt", return_value=prompt):
-                        with patch("deployfish.controllers.crud.click.style", side_effect=lambda v, **_: v):
+                    with patch(
+                        "deployfish.controllers.crud.shell.Prompt", return_value=prompt
+                    ):
+                        with patch(
+                            "deployfish.controllers.crud.click.style",
+                            side_effect=lambda v, **_: v,
+                        ):
                             controller.delete()
         printed = " ".join(str(call) for call in cement_app.print.call_args_list)
         assert "ABORTED" in printed
@@ -63,8 +70,14 @@ class TestCrudDelete:
             with patch.object(service, "reload_from_db"):
                 with patch.object(service, "delete") as delete_mock:
                     with patch.object(controller, "delete_waiter"):
-                        with patch("deployfish.controllers.crud.shell.Prompt", return_value=prompt):
-                            with patch("deployfish.controllers.crud.click.style", side_effect=lambda v, **_: v):
+                        with patch(
+                            "deployfish.controllers.crud.shell.Prompt",
+                            return_value=prompt,
+                        ):
+                            with patch(
+                                "deployfish.controllers.crud.click.style",
+                                side_effect=lambda v, **_: v,
+                            ):
                                 controller.delete()
         delete_mock.assert_called_once()
 

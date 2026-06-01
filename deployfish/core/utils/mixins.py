@@ -77,12 +77,11 @@ class CodeNameVersionMixin(AnnotationMixin):
         try:
             result = subprocess.run(
                 command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True, check=False,
+                capture_output=True,
+                text=True,
+                check=False,
             )
-        except subprocess.CalledProcessError as e:
-            print(e.stderr)
+        except subprocess.CalledProcessError:
             raise
         if "image_name:" not in result.stdout:
             msg = "Makefile does not contain an image_name target"
@@ -91,9 +90,7 @@ class CodeNameVersionMixin(AnnotationMixin):
             msg = "Makefile does not contain a version target"
             raise ValueError(msg)
         context["name"] = (
-            subprocess.check_output(["make", "image_name"])
-            .decode("utf8")
-            .strip()
+            subprocess.check_output(["make", "image_name"]).decode("utf8").strip()
         )
         context["version"] = (
             subprocess.check_output(["make", "version"]).decode("utf8").strip()
@@ -196,8 +193,7 @@ class GitMixin(AnnotationMixin):
                     url=f"{origin_url}/src/" + "{version}/", label="{name}"
                 )
                 self.url_patterns["diff"] = self.__format_url(
-                    url=f"{origin_url}/branches/compare/"
-                     "{from_sha}..{to_sha}#diff",
+                    url=f"{origin_url}/branches/compare/{{from_sha}}..{{to_sha}}#diff",
                     label="{from_sha}..{to_sha}",
                 )
             elif p.github:
@@ -226,9 +222,7 @@ class GitMixin(AnnotationMixin):
         """
         # Get all tags, sorted by the authored_date on their associated commit.  We should have at least one tag -- the
         # one for this commit.
-        ordered_tags = sorted(
-            self.repo.tags, key=lambda x: x.commit.authored_date
-        )
+        ordered_tags = sorted(self.repo.tags, key=lambda x: x.commit.authored_date)
         if len(ordered_tags) >= 2:
             # If there are 2 or more tags, there was a previous version.
             # Extract info from the tag preceeding this one.
@@ -270,12 +264,10 @@ class GitMixin(AnnotationMixin):
         authors = set()
         for commit in changelog_commits:
             authors.add(commit.author.name)
-            d = datetime.datetime.fromtimestamp(
-                commit.committed_date
-            ).strftime("%Y/%m/%d")
-            commit_link = self.url_patterns["commit"].format(
-                sha=commit.hexsha[0:7]
+            d = datetime.datetime.fromtimestamp(commit.committed_date).strftime(
+                "%Y/%m/%d"
             )
+            commit_link = self.url_patterns["commit"].format(sha=commit.hexsha[0:7])
             changelog.append(
                 f"{commit_link} [{d}] {commit.summary} - {commit.author!s}"
             )
@@ -336,12 +328,10 @@ class GitChangelogMixin:
         authors = set()
         for commit in changelog_commits:
             authors.add(commit.author.name)
-            d = datetime.datetime.fromtimestamp(
-                commit.committed_date
-            ).strftime("%Y/%m/%d")
-            commit_link = self.url_patterns["commit"].format(
-                sha=commit.hexsha[0:7]
+            d = datetime.datetime.fromtimestamp(commit.committed_date).strftime(
+                "%Y/%m/%d"
             )
+            commit_link = self.url_patterns["commit"].format(sha=commit.hexsha[0:7])
             changelog.append(
                 f"{commit_link} [{d}] {commit.summary} - {commit.author!s}"
             )
@@ -358,9 +348,7 @@ class CodebuildMixin(AnnotationMixin):
     def annotate(self, values: dict[str, str]):
         super().annotate(values)
         values["status"] = (
-            "Success"
-            if "CODEBUILD_BUILD_SUCCEEDING" in os.environ
-            else "Failed"
+            "Success" if "CODEBUILD_BUILD_SUCCEEDING" in os.environ else "Failed"
         )
         values["region"] = os.environ["AWS_DEFAULT_REGION"]
         values["build_id"] = os.environ.get("CODEBUILD_BUILD_ID", None)

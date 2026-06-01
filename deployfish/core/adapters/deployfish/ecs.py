@@ -222,7 +222,7 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
     def __init__(
         self,
         data: dict[str, Any],
-        secrets: list[Secret] = None,
+        secrets: list[Secret] | None = None,
         extra_environment: dict[str, Any] | None = None,
         partial: bool = False,
     ) -> None:
@@ -546,7 +546,8 @@ class ContainerDefinitionAdapter(Adapter):
                 portMappings.append(mapping)
 
             else:
-                raise self.SchemaException(f"{mapping} is not a valid port mapping")
+                msg = f"{mapping} is not a valid port mapping"
+                raise self.SchemaException(msg)
         return portMappings
 
     def get_environment(self) -> list[dict[str, str]]:
@@ -647,7 +648,8 @@ class ContainerDefinitionAdapter(Adapter):
         logConfiguration: dict[str, Any] = {}
         if "logging" in self.data:
             if "driver" not in self.data["logging"]:
-                raise self.SchemaException('logging: block must contain "driver"')
+                msg = 'logging: block must contain "driver"'
+                raise self.SchemaException(msg)
             logConfiguration["logDriver"] = self.data["logging"]["driver"]
             if "options" in self.data["logging"]:
                 logConfiguration["options"] = self.data["logging"]["options"]
@@ -707,12 +709,7 @@ class ContainerDefinitionAdapter(Adapter):
             The ``cpu`` value for this container.
 
         """
-        if self.is_fargate:
-            default = None
-        elif self.partial:
-            default = None
-        else:
-            default = 256
+        default = None if self.is_fargate or self.partial else 256
         cpu = self.data.get("cpu", default)
         if isinstance(cpu, str):
             cpu = int(cpu)
@@ -721,11 +718,10 @@ class ContainerDefinitionAdapter(Adapter):
             if isinstance(task_cpu, str):
                 task_cpu = int(task_cpu)
             if cpu > task_cpu:
-                raise self.SchemaException(
-                    'container "{}": cpu is greater than the task cpu value'.format(
-                        self.data["name"]
-                    )
+                msg = 'container "{}": cpu is greater than the task cpu value'.format(
+                    self.data["name"]
                 )
+                raise self.SchemaException(msg)
         return cpu
 
     def get_memory(self) -> int | None:
@@ -758,11 +754,10 @@ class ContainerDefinitionAdapter(Adapter):
             if "memory" in self.task_definition_data:
                 return None
             if not self.partial:
-                raise self.SchemaException(
-                    'container "{}": memory is required for containers if not specified at the task level'.format(
-                        self.data["name"]
-                    )
+                msg = 'container "{}": memory is required for containers if not specified at the task level'.format(
+                    self.data["name"]
                 )
+                raise self.SchemaException(msg)
             return None
         memory = self.data["memory"]
         if isinstance(memory, str):
@@ -772,11 +767,10 @@ class ContainerDefinitionAdapter(Adapter):
             if isinstance(task_memory, str):
                 task_memory = int(task_memory)
             if memory > task_memory:
-                raise self.SchemaException(
-                    'container "{}": memory is greater than task memory'.format(
-                        self.data["name"]
-                    )
+                msg = 'container "{}": memory is greater than task memory'.format(
+                    self.data["name"]
                 )
+                raise self.SchemaException(msg)
         return memory
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -788,11 +782,10 @@ class ContainerDefinitionAdapter(Adapter):
         try:
             self.set(data, "memoryReservation", optional=True, convert=int)
         except ValueError:
-            raise self.SchemaException(
-                'container "{}": "memoryReservation" must be an integer'.format(
-                    self.data["name"]
-                )
+            msg = 'container "{}": "memoryReservation" must be an integer'.format(
+                self.data["name"]
             )
+            raise self.SchemaException(msg)
         if cpu is not None:
             data["cpu"] = cpu
         memory = self.get_memory()
@@ -809,11 +802,10 @@ class ContainerDefinitionAdapter(Adapter):
                     data["memory"] = 512
         if memoryReservation is not None and memory is not None:
             if memoryReservation >= memory:
-                raise self.SchemaException(
-                    'container "{}": "memoryReservation" must be less than "memory"'.format(
-                        self.data["name"]
-                    )
+                msg = 'container "{}": "memoryReservation" must be less than "memory"'.format(
+                    self.data["name"]
                 )
+                raise self.SchemaException(msg)
         if "ports" in self.data:
             data["portMappings"] = self.get_ports()
         self.set(data, "command", optional=True, convert=shlex.split)
@@ -1333,7 +1325,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
             for task in self.data["tasks"]:
                 # Preprocess the data to turn the old-style command definitions
                 # into the new style definitions
-                self._preprocess_task_data(task, service_td)
+                self._preprocess_task_data(task)
                 data_base, base_td = self._get_base_task_data(task, service_td)
                 # Now iterate through each item in task -> commands
                 for command in task["commands"]:
@@ -1561,7 +1553,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
             if data.get("launchType") == "FARGATE":
                 msg = (
                     '"autoscalinggroup_name" is EC2-only; do not supply this for '
-                    "FARGATE services"
+                    "FARGATE services; use application_scaling instead"
                 )
                 raise self.SchemaException(msg)
             kwargs["autoscalinggroup_name"] = self.data["autoscalinggroup_name"]

@@ -35,7 +35,6 @@ def get_deployfish_plugins() -> Generator[pkg_resources.EntryPoint, None, None]:
 
 
 class DeployfishCementPluginHandler(plugin.PluginHandler):
-
     """
     This class is an internal implementation of the
     :ref:`IPlugin <cement.core.plugin>` interface. It does not take any
@@ -60,7 +59,7 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
         self._enabled_plugins = []
         self._disabled_plugins = []
         self.entrypoints = {p.name: p for p in get_deployfish_plugins()}
-        LOG.debug("known plugins: %s" % (", ".join(self.entrypoints.keys())))
+        LOG.debug("known plugins: {}".format(", ".join(self.entrypoints.keys())))
 
         # parse all app configs for plugins. Note: these are already loaded from
         # files when app.config was setup.  The application configuration
@@ -74,21 +73,24 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
             if "enabled" not in self.app.config.keys(plugin_section):
                 continue
             if is_true(self.app.config.get(plugin_section, "enabled")):
-                LOG.debug("enabling plugin '%s' per application config" % _plugin)
+                LOG.debug(f"enabling plugin '{_plugin}' per application config")
                 if _plugin not in self._enabled_plugins:
                     self._enabled_plugins.append(_plugin)
                 if _plugin in self._disabled_plugins:
                     self._disabled_plugins.remove(_plugin)
             else:
-                LOG.debug("disabling plugin '%s' per application config" % _plugin)
+                LOG.debug(f"disabling plugin '{_plugin}' per application config")
                 if _plugin not in self._disabled_plugins:
                     self._disabled_plugins.append(_plugin)
                 if _plugin in self._enabled_plugins:
                     self._enabled_plugins.remove(_plugin)
 
     def load_plugin(self, plugin_name: str) -> None:  # pylint: disable=arguments-differ
-        LOG.debug("loading application plugin '%s'" % plugin_name)
-        if plugin_name in self.entrypoints and plugin_name not in self.get_loaded_plugins():
+        LOG.debug(f"loading application plugin '{plugin_name}'")
+        if (
+            plugin_name in self.entrypoints
+            and plugin_name not in self.get_loaded_plugins()
+        ):
             self._loaded_plugins.append(plugin_name)
             self.entrypoints[plugin_name].load()
             module_name = self.entrypoints[plugin_name].module_name
@@ -97,8 +99,7 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
             self._loaded_plugins.append(plugin_name)
         else:
             LOG.debug(
-                "no plugin named '%s' exists among the known 'deployfish.plugins' entrypoints"
-                % (plugin_name)
+                f"no plugin named '{plugin_name}' exists among the known 'deployfish.plugins' entrypoints"
             )
 
     def load_plugins(self, _: list[str]) -> None:
@@ -113,9 +114,12 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
             if plugin_name in self.get_enabled_plugins():
                 self.load_plugin(plugin_name)
                 if plugin_name not in self._loaded_plugins:
-                    raise exc.FrameworkError("Unable to load plugin '%s'." % plugin_name)
+                    msg = f"Unable to load plugin '{plugin_name}'."
+                    raise exc.FrameworkError(msg)
             else:
-                LOG.debug("found entrypoint for plugin {%s} but it is disabled in the config" % (plugin_name))
+                LOG.debug(
+                    f"found entrypoint for plugin {{{plugin_name}}} but it is disabled in the config"
+                )
 
     def get_loaded_plugins(self) -> list[str]:
         """List of plugins that have been loaded."""

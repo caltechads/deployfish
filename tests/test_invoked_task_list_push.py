@@ -25,7 +25,9 @@ class TestInvokedTaskManagerList:
         )
         assert len(tasks) == 1
 
-    def test_list_raises_when_service_missing(self, _mock_boto3_session: MagicMock) -> None:
+    def test_list_raises_when_service_missing(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         cluster_exc = type("ClusterNotFoundException", (Exception,), {})
         service_exc = type("ServiceNotFoundException", (Exception,), {})
@@ -35,7 +37,9 @@ class TestInvokedTaskManagerList:
         with pytest.raises(Service.DoesNotExist):
             InvokedTask.objects.list("foobar-cluster", service="missing")
 
-    def test_list_raises_when_cluster_missing(self, _mock_boto3_session: MagicMock) -> None:
+    def test_list_raises_when_cluster_missing(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         cluster_exc = type("ClusterNotFoundException", (Exception,), {})
         service_exc = type("ServiceNotFoundException", (Exception,), {})

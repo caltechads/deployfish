@@ -19,13 +19,18 @@ class TestServiceManagerCreate:
             patch.object(
                 service,
                 "render_for_create",
-                return_value={"cluster": "foobar-cluster", "serviceName": "foobar-test"},
+                return_value={
+                    "cluster": "foobar-cluster",
+                    "serviceName": "foobar-test",
+                },
             ),
         ):
             Service.objects.create(service)
         _mock_boto3_session.create_service.assert_called_once()
 
-    def test_create_skips_when_already_exists(self, _mock_boto3_session: MagicMock) -> None:
+    def test_create_skips_when_already_exists(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         service = Service.new(deepcopy(SERVICE_YML), "deployfish")
         service.data["cluster"] = "foobar-cluster"
         service.data["serviceName"] = "foobar-test"

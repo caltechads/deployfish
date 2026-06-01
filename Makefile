@@ -25,7 +25,7 @@ tox:
 	@tox
 
 napoleon-gate:
-	@.venv/bin/python bin/check_napoleon_gate.py
+	@.venv/bin/python bin/check_napoleon_gate.py --strict --target deployfish
 
 napoleon-gate-strict:
 	@.venv/bin/python bin/check_napoleon_gate.py --strict

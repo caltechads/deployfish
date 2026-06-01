@@ -43,7 +43,9 @@ def _paginate(pages: list[dict]) -> MagicMock:
 
 
 class TestTaskDefinitionManagerGaps:
-    def test_get_raises_when_client_exception(self, _mock_boto3_session: MagicMock) -> None:
+    def test_get_raises_when_client_exception(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         exc = type("ClientException", (Exception,), {})
         _mock_boto3_session.exceptions.ClientException = exc
         _mock_boto3_session.describe_task_definition.side_effect = exc("missing")
@@ -51,7 +53,9 @@ class TestTaskDefinitionManagerGaps:
             TaskDefinition.objects.get(TASK_DEF_ARN)
 
     def test_delete_raises_read_only(self) -> None:
-        td = TaskDefinition({"family": "f", "revision": 1, "taskDefinitionArn": TASK_DEF_ARN})
+        td = TaskDefinition(
+            {"family": "f", "revision": 1, "taskDefinitionArn": TASK_DEF_ARN}
+        )
         with pytest.raises(TaskDefinition.ReadOnly):
             TaskDefinition.objects.delete(td)
 
@@ -95,7 +99,11 @@ class TestAbstractTaskManagerGaps:
         task.schedule = schedule
         assert task.task_definition is not None
         with (
-            patch.object(EventScheduleRule.objects, "get", side_effect=EventScheduleRule.DoesNotExist),
+            patch.object(
+                EventScheduleRule.objects,
+                "get",
+                side_effect=EventScheduleRule.DoesNotExist,
+            ),
             patch.object(task.task_definition, "save", return_value=TASK_DEF_ARN),
             patch.object(schedule, "save"),
         ):
@@ -172,10 +180,17 @@ class TestStandaloneTaskManagerListAll:
     def test_filter_list_results_by_service_name(self) -> None:
         td = _task_definition_with_tags([])
         task = StandaloneTask(
-            {"name": "t", "cluster": "c", "service": "foobar-cluster:foobar-test", "task_type": "standalone"},
+            {
+                "name": "t",
+                "cluster": "c",
+                "service": "foobar-cluster:foobar-test",
+                "task_type": "standalone",
+            },
             task_definition=td,
         )
-        filtered = StandaloneTask.objects.filter_list_results([task], "foobar-*", None, None)
+        filtered = StandaloneTask.objects.filter_list_results(
+            [task], "foobar-*", None, None
+        )
         assert filtered == [task]
 
     def test_list_scheduled_filters_by_cluster_glob(self) -> None:
@@ -215,7 +230,12 @@ class TestServiceHelperTaskManagerListAll:
         service.data["serviceName"] = "foobar-test"
         helper_arn = "arn:aws:ecs:us-west-2:123:task-definition/helper-migrate:1"
         td = TaskDefinition(
-            {"family": "helper", "revision": 1, "taskDefinitionArn": helper_arn, "tags": {}},
+            {
+                "family": "helper",
+                "revision": 1,
+                "taskDefinitionArn": helper_arn,
+                "tags": {},
+            },
             containers=[],
         )
         td.tags["deployfish:command:migrate"] = helper_arn
@@ -259,7 +279,12 @@ class TestClusterManagerGaps:
 class TestTaskModelProperties:
     def test_render_for_display_with_schedule(self) -> None:
         td = TaskDefinition(
-            {"family": "f", "revision": 1, "taskDefinitionArn": TASK_DEF_ARN, "containerDefinitions": []},
+            {
+                "family": "f",
+                "revision": 1,
+                "taskDefinitionArn": TASK_DEF_ARN,
+                "containerDefinitions": [],
+            },
             containers=[],
         )
         schedule = MagicMock()

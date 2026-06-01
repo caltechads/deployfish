@@ -12,7 +12,9 @@ class TestCrudBaseUpdate:
         cement_app.pargs.name = "foobar-test"
         mock_service = MagicMock()
         loader = bind_service_loader(controller)
-        with patch.object(loader, "get_object_from_deployfish", return_value=mock_service):
+        with patch.object(
+            loader, "get_object_from_deployfish", return_value=mock_service
+        ):
             with patch.object(controller, "update_waiter"):
                 with patch(
                     "deployfish.controllers.crud.click.style",

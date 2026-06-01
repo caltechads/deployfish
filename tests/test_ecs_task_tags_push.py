@@ -70,7 +70,10 @@ class TestTaskTagImporter:
 
     def test_convert_capacity_provider_strategy(self) -> None:
         tags = [
-            {"key": "deployfish:capacityProviderStrategy.0", "value": "provider=FARGATE_SPOT;weight=2;base=1"},
+            {
+                "key": "deployfish:capacityProviderStrategy.0",
+                "value": "provider=FARGATE_SPOT;weight=2;base=1",
+            },
         ]
         data = TaskTagImporter().convert(tags)
         assert data["capacityProviderStrategy"][0]["capacityProvider"] == "FARGATE_SPOT"
@@ -78,7 +81,9 @@ class TestTaskTagImporter:
         assert data["capacityProviderStrategy"][0]["base"] == 1
 
     def test_convert_placement_constraint_distinct_instance(self) -> None:
-        tags = [{"key": "deployfish:placementConstraint.0", "value": "distinctInstance"}]
+        tags = [
+            {"key": "deployfish:placementConstraint.0", "value": "distinctInstance"}
+        ]
         data = TaskTagImporter().convert(tags)
         assert data["placementConstraints"] == [{"type": "distinctInstance"}]
 

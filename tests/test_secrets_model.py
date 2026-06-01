@@ -6,11 +6,14 @@ from deployfish.core.models.secrets import Secret, SecretsMixin
 
 class _SecretsHost(SecretsMixin):
     def __init__(self, secrets: dict[str, Secret]) -> None:
-        self.cache: dict = {"secrets": secrets}
+        self.cache: dict[str, object] = {"secrets": secrets}
 
     @property
     def secrets_prefix(self) -> str:
         return "cluster.service."
+
+    def get_cached(self, key, populator, args, kwargs=None):
+        return self.cache.get(key)
 
 
 class TestSecretModel:

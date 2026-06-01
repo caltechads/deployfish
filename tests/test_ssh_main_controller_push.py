@@ -54,7 +54,9 @@ class TestBastionSSHProviderExtended:
             InstanceId="i-bastion",
             PublicDnsName="bastion.example.com",
         )  # type: ignore[arg-type]
-        with patch.object(Instance, "bastion", new_callable=PropertyMock, return_value=bastion):
+        with patch.object(
+            Instance, "bastion", new_callable=PropertyMock, return_value=bastion
+        ):
             provider = BastionSSHProvider(instance, verbose=True)
             cmd = provider.tunnel(3306, "db.internal", 3306)
         assert "3306" in cmd
@@ -62,7 +64,9 @@ class TestBastionSSHProviderExtended:
 
     def test_ssh_without_bastion_raises(self) -> None:
         instance = _instance()
-        with patch.object(Instance, "bastion", new_callable=PropertyMock, return_value=None):
+        with patch.object(
+            Instance, "bastion", new_callable=PropertyMock, return_value=None
+        ):
             provider = BastionSSHProvider.__new__(BastionSSHProvider)
             AbstractSSHProvider.__init__(provider, instance)
             with pytest.raises(ValueError, match="bastion"):
@@ -71,7 +75,9 @@ class TestBastionSSHProviderExtended:
     def test_docker_exec_overrides_template(self) -> None:
         instance = _instance()
         bastion = _instance(InstanceId="i-bastion", PublicDnsName="bastion.example.com")  # type: ignore[arg-type]
-        with patch.object(Instance, "bastion", new_callable=PropertyMock, return_value=bastion):
+        with patch.object(
+            Instance, "bastion", new_callable=PropertyMock, return_value=bastion
+        ):
             provider = BastionSSHProvider(instance)
             assert "docker exec" in provider.docker_exec()
 
@@ -104,7 +110,9 @@ class TestDeployfishAppConfig:
             mock_config = MagicMock()
             mock_config.get_global_config.return_value = {"ssh": {"proxy": "ssm"}}
             with (
-                patch.object(type(app), "pargs", new_callable=PropertyMock, return_value=pargs),
+                patch.object(
+                    type(app), "pargs", new_callable=PropertyMock, return_value=pargs
+                ),
                 patch.object(app, "hook") as hook_mock,
                 patch.object(app, "config") as config_mock,
                 patch("deployfish.main.Config.new", return_value=mock_config),
@@ -124,7 +132,9 @@ class TestDeployfishAppConfig:
             pargs.deployfish_filename = "deployfish.yml"
             mock_config = MagicMock()
             with (
-                patch.object(type(app), "pargs", new_callable=PropertyMock, return_value=pargs),
+                patch.object(
+                    type(app), "pargs", new_callable=PropertyMock, return_value=pargs
+                ),
                 patch("deployfish.main.Config.new", return_value=mock_config),
             ):
                 cfg = app.raw_deployfish_config
@@ -160,7 +170,9 @@ class TestDeployfishAppConfig:
 
 
 class TestECSServiceControllerWaiters:
-    def test_service_waiter_passes_cluster_and_service(self, cement_app: MagicMock) -> None:
+    def test_service_waiter_passes_cluster_and_service(
+        self, cement_app: MagicMock
+    ) -> None:
         controller = bind_controller(ECSService(), cement_app)
         service = Service.new(deepcopy(SERVICE_YML), "deployfish")
         service.data["cluster"] = "foobar-cluster"
@@ -184,16 +196,23 @@ class TestECSServiceControllerWaiters:
         ):
             controller.delete_waiter(service)
 
-    def test_delete_waiter_reraises_other_waiter_errors(self, cement_app: MagicMock) -> None:
+    def test_delete_waiter_reraises_other_waiter_errors(
+        self, cement_app: MagicMock
+    ) -> None:
         controller = bind_controller(ECSService(), cement_app)
         service = MagicMock()
         service.name = "foobar-test"
         service.data = {"cluster": "foobar-cluster"}
-        with patch.object(
-            controller,
-            "wait",
-            side_effect=WaiterError("n", "reason", {"Error": {"Message": "FAILED"}}),
-        ), pytest.raises(WaiterError):
+        with (
+            patch.object(
+                controller,
+                "wait",
+                side_effect=WaiterError(
+                    "n", "reason", {"Error": {"Message": "FAILED"}}
+                ),
+            ),
+            pytest.raises(WaiterError),
+        ):
             controller.delete_waiter(service)
 
     def test_scale_runs_hooks_and_waiter(self, cement_app: MagicMock) -> None:

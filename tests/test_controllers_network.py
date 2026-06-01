@@ -33,7 +33,9 @@ class TestGetSSHTarget:
 class TestFargateVPCConfiguration:
     def test_fargate_service_yaml_includes_vpc_configuration(self) -> None:
         assert FARGATE_SERVICE_YML["vpc_configuration"]["subnets"] == ["subnet-abc123"]
-        assert FARGATE_SERVICE_YML["vpc_configuration"]["security_groups"] == ["sg-abc123"]
+        assert FARGATE_SERVICE_YML["vpc_configuration"]["security_groups"] == [
+            "sg-abc123"
+        ]
 
     def test_host_service_has_no_vpc_configuration(self) -> None:
         assert "vpc_configuration" not in SERVICE_YML

@@ -23,22 +23,19 @@ EC2_TASK_YML = {
             "image": "foobar/foobar:0.1.0",
             "cpu": 512,
             "memory": 512,
-            "environment": [
-                "AWS_DEFAULT_REGION=us-west-2"
-            ],
+            "environment": ["AWS_DEFAULT_REGION=us-west-2"],
             "logging": {
                 "driver": "awslogs",
                 "options": {
                     "awslog-group": "my_log_group",
                     "awslog-stream": "my_log_stream",
-                    "awslog-region": "us-west-2"
-                }
-            }
+                    "awslog-region": "us-west-2",
+                },
+            },
         }
     ],
     "config": [
-        "DEBUG=False"
-        "DB_HOST=my_rds_host",
+        "DEBUG=FalseDB_HOST=my_rds_host",
         "DB_NAME=foobar",
         "DB_USER=foobar_u",
         "DB_PASSWORD=the_db_password",
@@ -46,7 +43,7 @@ EC2_TASK_YML = {
         "XFF_TRUSTED_PROXY_DEPTH=4",
         "STATSD_HOST=statsd.example.com",
         "STATSD_PREFIX=foobar.test",
-    ]
+    ],
 }
 
 FARGATE_TASK_YML = {
@@ -66,22 +63,19 @@ FARGATE_TASK_YML = {
             "image": "foobar/foobar:0.1.0",
             "cpu": 512,
             "memory": 512,
-            "environment": [
-                "AWS_DEFAULT_REGION=us-west-2"
-            ],
+            "environment": ["AWS_DEFAULT_REGION=us-west-2"],
             "logging": {
                 "driver": "awslogs",
                 "options": {
                     "awslog-group": "my_log_group",
                     "awslog-stream": "my_log_stream",
-                    "awslog-region": "us-west-2"
-                }
-            }
+                    "awslog-region": "us-west-2",
+                },
+            },
         }
     ],
     "config": [
-        "DEBUG=False"
-        "DB_HOST=my_rds_host",
+        "DEBUG=FalseDB_HOST=my_rds_host",
         "DB_NAME=foobar",
         "DB_USER=foobar_u",
         "DB_PASSWORD=the_db_password",
@@ -89,29 +83,28 @@ FARGATE_TASK_YML = {
         "XFF_TRUSTED_PROXY_DEPTH=4",
         "STATSD_HOST=statsd.example.com",
         "STATSD_PREFIX=foobar.test",
-    ]
+    ],
 }
 
 
 class BaseTestStandaloneTaskAdapter_basic:
-
     CONFIG = None
 
     def setup_method(self) -> None:
         self.adapter = StandaloneTaskAdapter(deepcopy(self.CONFIG))
 
     def test_task_has_correct_name(self):
-        data, kwargs = self.adapter.convert()
+        data, _kwargs = self.adapter.convert()
         assert data["name"] == "foobar-test-mytask"
 
     def test_task_has_correct_family(self):
-        data, kwargs = self.adapter.convert()
+        _data, kwargs = self.adapter.convert()
         assert kwargs["task_definition"].data["family"] == "foobar-test-mytask"
 
     def test_family_set_to_name_if_no_family(self):
         config = deepcopy(self.CONFIG)
         del config["family"]
-        data, kwargs = StandaloneTaskAdapter(config).convert()
+        _data, kwargs = StandaloneTaskAdapter(config).convert()
         assert kwargs["task_definition"].data["family"] == "foobar-test-mytask"
 
     def test_task_has_correct_network_mode(self):
@@ -119,37 +112,37 @@ class BaseTestStandaloneTaskAdapter_basic:
         assert kwargs["task_definition"].data["networkMode"] == "bridge"
         config = deepcopy(self.CONFIG)
         config["network_mode"] = "host"
-        data, kwargs = StandaloneTaskAdapter(config).convert()
+        _data, kwargs = StandaloneTaskAdapter(config).convert()
         assert kwargs["task_definition"].data["networkMode"] == "host"
 
     def test_task_has_correct_cluster(self):
-        data, kwargs = self.adapter.convert()
+        data, _kwargs = self.adapter.convert()
         assert data["cluster"] == "foobar-cluster"
 
     def test_can_set_cluster(self):
         config = deepcopy(self.CONFIG)
         config["cluster"] = "new-foobar-cluster"
-        data, kwargs = StandaloneTaskAdapter(config).convert()
+        data, _kwargs = StandaloneTaskAdapter(config).convert()
         assert data["cluster"] == "new-foobar-cluster"
 
     def test_can_set_task_cpu(self):
         config = deepcopy(self.CONFIG)
         config["cpu"] = 1024
-        data, kwargs = StandaloneTaskAdapter(config).convert()
+        _data, kwargs = StandaloneTaskAdapter(config).convert()
         assert kwargs["task_definition"].data["cpu"] == "1024"
 
     def test_containers_have_correct_cpu(self):
-        data, kwargs = self.adapter.convert()
+        _data, kwargs = self.adapter.convert()
         assert kwargs["task_definition"].containers[0].data["cpu"] == 512
 
     def test_can_set_task_memory(self):
         config = deepcopy(self.CONFIG)
         config["memory"] = 2048
-        data, kwargs = StandaloneTaskAdapter(config).convert()
+        _data, kwargs = StandaloneTaskAdapter(config).convert()
         assert kwargs["task_definition"].data["memory"] == "2048"
 
     def test_containers_have_correct_memory(self):
-        data, kwargs = self.adapter.convert()
+        _data, kwargs = self.adapter.convert()
         assert kwargs["task_definition"].containers[0].data["memory"] == 512
 
     def test_vpc_configuration_set_correctly(self):
@@ -158,10 +151,14 @@ class BaseTestStandaloneTaskAdapter_basic:
         config["vpc_configuration"] = {
             "subnets": ["subnet-1", "subnet-2"],
             "security_groups": ["sg-1", "sg-2"],
-            "public_ip": "DISABLED"
+            "public_ip": "DISABLED",
         }
-        data, kwargs = StandaloneTaskAdapter(config).convert()
-        assert data["networkConfiguration"]["awsvpcConfiguration"] == { "subnets": ["subnet-1", "subnet-2"], "securityGroups": ["sg-1", "sg-2"], "assignPublicIp": "DISABLED" }
+        data, _kwargs = StandaloneTaskAdapter(config).convert()
+        assert data["networkConfiguration"]["awsvpcConfiguration"] == {
+            "subnets": ["subnet-1", "subnet-2"],
+            "securityGroups": ["sg-1", "sg-2"],
+            "assignPublicIp": "DISABLED",
+        }
 
     def test_network_mode_forced_to_awsvpc_if_we_have_vpc_configuration(self):
         """
@@ -171,25 +168,34 @@ class BaseTestStandaloneTaskAdapter_basic:
         config["vpc_configuration"] = {
             "subnets": ["subnet-1", "subnet-2"],
             "security_groups": ["sg-1", "sg-2"],
-            "public_ip": "DISABLED"
+            "public_ip": "DISABLED",
         }
-        data, kwargs = StandaloneTaskAdapter(config).convert()
+        _data, kwargs = StandaloneTaskAdapter(config).convert()
         assert kwargs["task_definition"].data["networkMode"] == "awsvpc"
 
     def test_DEPLOYFISH_TASK_NAME_in_container_environment(self):
-        data, kwargs = self.adapter.convert()
+        _data, kwargs = self.adapter.convert()
         environment = kwargs["task_definition"].containers[0].data["environment"]
-        assert {"name": "DEPLOYFISH_TASK_NAME", "value": "foobar-test-mytask"} in environment
+        assert {
+            "name": "DEPLOYFISH_TASK_NAME",
+            "value": "foobar-test-mytask",
+        } in environment
 
     def test_DEPLOYFISH_ENVIRONMENT_set_correctly_in_container_environment(self):
-        data, kwargs = self.adapter.convert()
+        _data, kwargs = self.adapter.convert()
         environment = kwargs["task_definition"].containers[0].data["environment"]
-        assert {"name": "DEPLOYFISH_ENVIRONMENT", "value": self.CONFIG["environment"]} in environment
+        assert {
+            "name": "DEPLOYFISH_ENVIRONMENT",
+            "value": self.CONFIG["environment"],
+        } in environment
 
     def test_DEPLOYFISH_CLUSTER_NAME_set_correctly_in_container_environment(self):
         data, kwargs = self.adapter.convert()
         environment = kwargs["task_definition"].containers[0].data["environment"]
-        assert {"name": "DEPLOYFISH_CLUSTER_NAME", "value": data["cluster"]} in environment
+        assert {
+            "name": "DEPLOYFISH_CLUSTER_NAME",
+            "value": data["cluster"],
+        } in environment
 
     def test_secrets_are_set_properly_in_task_definition(self):
         data, kwargs = self.adapter.convert()
@@ -198,52 +204,49 @@ class BaseTestStandaloneTaskAdapter_basic:
         td_secrets_names = sorted([s["name"] for s in td_secrets])
         td_secrets_pks = sorted([s["valueFrom"] for s in td_secrets])
         source_names = sorted([s.split("=", 1)[0] for s in self.CONFIG["config"]])
-        source_pks = sorted([
-            f"{data['cluster']}.task-{data['name']}.{s}" for s in source_names
-        ])
+        source_pks = sorted(
+            [f"{data['cluster']}.task-{data['name']}.{s}" for s in source_names]
+        )
         assert td_secrets_names == source_names
         assert td_secrets_pks == source_pks
 
 
 class TestStandaloneTaskAdapter_EC2(BaseTestStandaloneTaskAdapter_basic):
-
     CONFIG = EC2_TASK_YML
 
     def test_launch_type_is_not_set(self):
-        data, kwargs = self.adapter.convert()
+        data, _kwargs = self.adapter.convert()
         assert "launch_type" not in data
 
 
 class TestStandaloneTaskAdapter_FARGATE(BaseTestStandaloneTaskAdapter_basic):
-
     CONFIG = FARGATE_TASK_YML
 
     def test_launchType_is_set_to_FARGATE(self):
-        data, kwargs = self.adapter.convert()
+        data, _kwargs = self.adapter.convert()
         assert "launchType" in data
         assert data["launchType"] == "FARGATE"
 
     def test_task_definition_has_requiredCompatibiliies_set_to_FARGATE(self):
-        data, kwargs = self.adapter.convert()
+        _data, kwargs = self.adapter.convert()
         td = kwargs["task_definition"]
         assert "requiresCompatibilities" in td.data
         assert td.data["requiresCompatibilities"] == ["FARGATE"]
 
     def test_platformVersion_is_set_to_LATEST_if_not_provided(self):
-        data, kwargs = self.adapter.convert()
+        data, _kwargs = self.adapter.convert()
         assert "platformVersion" in data
         assert data["platformVersion"] == "LATEST"
 
     def test_platformVersion_is_set_if_provided(self):
         config = deepcopy(self.CONFIG)
         config["platform_version"] = "FOOBAR"
-        data, kwargs = StandaloneTaskAdapter(config).convert()
+        data, _kwargs = StandaloneTaskAdapter(config).convert()
         assert "platformVersion" in data
         assert data["platformVersion"] == "FOOBAR"
 
 
 class TestStandaloneTaskAdapter_schedule_EC2:
-
     CONFIG = deepcopy(EC2_TASK_YML)
     CONFIG["schedule"] = "cron(5 * * * ? *)"
     CONFIG["schedule_role"] = "MY_SCHEDULE_ROLE"
@@ -264,7 +267,9 @@ class TestStandaloneTaskAdapter_schedule_EC2:
         self.ClusterManager_get.return_value = Cluster(cluster_data)
 
         self.adapter = StandaloneTaskAdapter(deepcopy(self.CONFIG))
-        with patch("deployfish.core.models.ecs.ClusterManager.get", self.ClusterManager_get):
+        with patch(
+            "deployfish.core.models.ecs.ClusterManager.get", self.ClusterManager_get
+        ):
             self.data, self.kwargs = self.adapter.convert()
 
     def test_schedule_rule_is_returned(self):
@@ -286,17 +291,21 @@ class TestStandaloneTaskAdapter_schedule_EC2:
         assert self.kwargs["schedule"].target.data["EcsParameters"]["TaskCount"] == 1
 
     def test_schedule_rule_LaunchType_is_correct(self):
-        assert self.kwargs["schedule"].target.data["EcsParameters"]["LaunchType"] == "EC2"
+        assert (
+            self.kwargs["schedule"].target.data["EcsParameters"]["LaunchType"] == "EC2"
+        )
 
     def test_schedule_rule_Group_is_not_set(self):
         assert "Group" not in self.kwargs["schedule"].target.data["EcsParameters"]
 
     def test_schedule_rule_NetworkConfiguration_is_not_set(self):
-        assert "NetworkConfiguration" not in self.kwargs["schedule"].target.data["EcsParameters"]
+        assert (
+            "NetworkConfiguration"
+            not in self.kwargs["schedule"].target.data["EcsParameters"]
+        )
 
 
 class TestStandaloneTaskAdapter_schedule_FARGATE:
-
     CONFIG = deepcopy(FARGATE_TASK_YML)
     CONFIG["schedule"] = "cron(5 * * * ? *)"
     CONFIG["schedule_role"] = "MY_SCHEDULE_ROLE"
@@ -321,7 +330,9 @@ class TestStandaloneTaskAdapter_schedule_FARGATE:
         self.ClusterManager_get.return_value = Cluster(cluster_data)
 
         self.adapter = StandaloneTaskAdapter(deepcopy(self.CONFIG))
-        with patch("deployfish.core.models.ecs.ClusterManager.get", self.ClusterManager_get):
+        with patch(
+            "deployfish.core.models.ecs.ClusterManager.get", self.ClusterManager_get
+        ):
             self.data, self.kwargs = self.adapter.convert()
 
     def test_schedule_rule_is_returned(self):
@@ -343,13 +354,21 @@ class TestStandaloneTaskAdapter_schedule_FARGATE:
         assert self.kwargs["schedule"].target.data["EcsParameters"]["TaskCount"] == 1
 
     def test_schedule_rule_LaunchType_is_correct(self):
-        assert self.kwargs["schedule"].target.data["EcsParameters"]["LaunchType"] == "FARGATE"
+        assert (
+            self.kwargs["schedule"].target.data["EcsParameters"]["LaunchType"]
+            == "FARGATE"
+        )
 
     def test_schedule_rule_Group_is_not_set(self):
         assert "Group" not in self.kwargs["schedule"].target.data["EcsParameters"]
 
     def test_schedule_rule_NetworkConfiguration_is_set(self):
-        assert "NetworkConfiguration" in self.kwargs["schedule"].target.data["EcsParameters"]
-        nc = self.kwargs["schedule"].target.data["EcsParameters"]["NetworkConfiguration"]["awsvpcConfiguration"]
+        assert (
+            "NetworkConfiguration"
+            in self.kwargs["schedule"].target.data["EcsParameters"]
+        )
+        nc = self.kwargs["schedule"].target.data["EcsParameters"][
+            "NetworkConfiguration"
+        ]["awsvpcConfiguration"]
         assert nc["Subnets"] == ["subnet-1", "subnet-2"]
         assert nc["SecurityGroups"] == ["sg-1", "sg-2"]

@@ -15,6 +15,4 @@ def is_fnmatch_filter(f: str | None) -> bool:
         ``True`` if the string is a glob pattern, ``False`` otherwise.
 
     """
-    if f is not None and re.search(r"[\[?*]", f):
-        return True
-    return False
+    return bool(f is not None and re.search(r"[\[?*]", f))

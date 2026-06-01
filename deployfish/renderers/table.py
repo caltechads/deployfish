@@ -16,111 +16,82 @@ from .misc import target_group_listener_rules
 # Renderers
 # ========================
 
+
 class TableRenderer(AbstractRenderer):
     """
     Render a list of results as an ASCII table.
+
+    Args:
+        columns: Column configuration keyed by header label.
+        datetime_format: Override for ``datetime.datetime`` rendering.
+        date_format: Override for ``datetime.date`` rendering.
+        float_precision: Override for float rendering precision.
+        ordering: Optional header name to sort by. Prefix with ``-`` for desc.
+        tablefmt: Output style passed to ``tabulate``.
+        show_headers: Whether to include header row in output.
+
     """
 
+    #: Default format for ``datetime.datetime`` values.
     DEFAULT_DATETIME_FORMAT: str = "%Y-%m-%d %H:%M:%S"
+    #: Default format for ``datetime.date`` values.
     DEFAULT_DATE_FORMAT: str = "%Y-%m-%d"
+    #: Default decimal precision for floats.
     DEFAULT_FLOAT_PRECISION: int = 2
 
     def __init__(
         self,
         columns: dict[str, Any],
-        datetime_format: str = None,
-        date_format: str = None,
-        float_precision: int = None,
-        ordering: str = None,
+        datetime_format: str | None = None,
+        date_format: str | None = None,
+        float_precision: int | None = None,
+        ordering: str | None = None,
         tablefmt: str = "simple",
-        show_headers: bool = True
-    ):
+        show_headers: bool = True,  # noqa: FBT001, FBT002
+    ) -> None:
         """
-        `columns` is a dict that determines the structure of the table, like so:
+        Initialize table renderer.
 
-            {
-                'ID': 'id',
-                'Machine Name': 'machine_name',
-                'Name': 'name',
-            }
+        Args:
+            columns: Column configuration keyed by output header.
+            datetime_format: Override for datetime rendering.
+            date_format: Override for date rendering.
+            float_precision: Override for float rendering precision.
+            ordering: Optional header used for sorting.
+            tablefmt: Table format string passed to ``tabulate``.
+            show_headers: Whether to include table headers.
 
-        The keys of `columns` will be used as the column header in the table, and the values in `columns`
-        are the names of the attributes on our result objects that contain the data we want to render for that
-        column.
-
-        If the value has double underscores in it, e.g. "software__machine_name", this instructs ``TableRenderer`` to
-        look at an attribute/key on a sub-object. In this case, at the `machine_name` attribute/key of the `software`
-        object on our main object.
-
-        You can configure per column configuration by setting the value of the column to a dict, like so::
-
-            {
-                'Timestamp': {
-                    'key': 'lastThingTimestamp',
-                    'default': '',
-                    'datatype': 'timestamp'
-                }
-            }
-
-        In this dict, ``key`` is the name of the attributes/keys we'll look for in the objects we want to render.  Other
-        options::
-
-            * ``default``:  If the attribute/key is not present in our object, return the default value instead of
-                            raising an exception.
-            * ``datatype``:  Cast the value of this column to this datatype.  See "Manually specified datatypes", below.
-            * ``wrap``: Wrap the value to the specified number of columns
-            * ``length``: Just render the length of the value.  Useful for counting sub-objects
-
-
-        Automatcially detected data types:
-
-            * ``datetime.datetime``: render with .strftime() using the format given by either the ``datetime_format``
-              kwarg or (if not provided) self.DEFAULT_DATETIME_FORMAT
-            * ``datetime.date``: render with .strftime() using the format given by either the ``date_format``
-              kwarg or (if not provided) self.DEFAULT_DATE_FORMAT
-            * ``float``: render with decimal precision from either the ``float_precision`` kwarg or (if not provided)
-              self.DEFAULT_FLOAT_PRECISION
-            * ``str``: render as is
-
-            Available datatypes: ``timestamp``, which
-            converts an Unix epoch timestamp (seconds or milliseco
-                            raising an exception.
-
-        Manually specified data types:
-
-            These get specifed via the `datatype` kwarg on the column definition.
-
-            * ``timestamp``: the raw value is seconds or milliseconds since midnight Jan 1, 1970 UTC.  Convert to a
-              ``datetime.datetime`` and render with the rules from ``datetime.datetime``, above
-            * ``bytes``: the raw value is number of bytes.  Render in a human readable form (KiB, MB, GiB, etc.)
-
-
-        :param columns dict(str, str): a dict that determines the structure of the table
-        :param datetime_format Union[str, None]: if specified, use this to render any `datetime.datetime` objects we get
-        :param date_format Union[str, None]: if specified, use this to render any `datetime.date` objects we get
-        :param float_precision Union[int, None]: if specified, use this to determine the decimal precision
-                                                 of any `float` objects we get
-        :param tablefmt str: provide this to tabulate() to determine the table format
+        Raises:
+            AssertionError: ``columns`` was not a dict.
 
         """
         super().__init__()
-        assert isinstance(columns, dict), "TableRenderer: `columns` parameter to __init__ should be a dict"
+        assert isinstance(columns, dict), (
+            "TableRenderer: `columns` parameter to __init__ should be a dict"
+        )
 
+        #: Ordered column descriptors used when rendering rows.
         self.columns: list[str] = list(columns.values())
+        #: Header labels passed to ``tabulate``.
         self.headers: list[str] = list(columns.keys())
+        #: Datetime output format.
         self.datetime_format: str = datetime_format or self.DEFAULT_DATETIME_FORMAT
+        #: Date output format.
         self.date_format: str = date_format or self.DEFAULT_DATE_FORMAT
+        #: Float precision used by ``float_format``.
         self.float_precision: int = float_precision or self.DEFAULT_FLOAT_PRECISION
+        #: Cached format string for floats.
         self.float_format: str = f"{{:.{self.float_precision}f}}"
+        #: Optional header used for sorting.
         self.ordering: str | None = ordering
+        #: Output format passed to ``tabulate``.
         self.tablefmt: str = tablefmt
+        #: Whether rendered table includes headers.
         self.show_headers: bool = show_headers
 
     def get_value(self, obj: Any, column: dict[str, str] | str) -> Any:
-        if isinstance(column, dict):
-            data_key = column["key"]
-        else:
-            data_key = column
+        """Dereference one column from an object or rendered mapping."""
+        data_key = column["key"] if isinstance(column, dict) else column
         try:
             return getattr(obj, data_key)
         except AttributeError:
@@ -140,29 +111,27 @@ class TableRenderer(AbstractRenderer):
                 return column["default"]
 
         # This is for debugging our templates.  We should never get here in production.
-        from pprint import pprint
         if isinstance(obj, dict):
-            pprint(obj)
+            pass
         else:
-            print("dir(obj):\n")
-            pprint(dir(obj))
-            print("\nobj.render_for_display():\n")
-            pprint(obj.render_for_display())
+            pass
         raise RenderException(
             click.style(
                 f'\n\n{self.__class__.__name__}: Could not dereference "{data_key}"',
-                fg="red"
+                fg="red",
             )
         )
 
     def human_bytes(self, value: float, suffix: str = "B") -> str:
+        """Render byte count into human-readable units."""
         for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
             if abs(value) < 1024.0:
-                return "%3.1f%s%s" % (value, unit, suffix)
+                return f"{value:3.1f}{unit}{suffix}"
             value /= 1024.0
-        return "%.1f%s%s" % (value, "Yi", suffix)
+        return "{:.1f}{}{}".format(value, "Yi", suffix)
 
     def _default_cast(self, value: Any) -> str:
+        """Render values using builtin datatype formatting rules."""
         if isinstance(value, datetime.datetime):
             value = value.strftime(self.datetime_format)
         elif isinstance(value, datetime.date):
@@ -173,11 +142,15 @@ class TableRenderer(AbstractRenderer):
 
     def cast_column(self, obj: Any, value: Any, column: dict[str, str] | str) -> str:
         """
-        Try to reformat a value into a more human friendly form:
+        Reformat one value into a more human-friendly form.
 
-            * If the value is a `datetime.datetime`, render it with `.stftime(self.datetime_format)`
-            * If the value is a `datetime.date`, render it with `.stftime(self.date_format)`
-            * If the value is a `float`, render it with precision
+        Args:
+            obj: Source object being rendered.
+            value: Raw value extracted from ``obj``.
+            column: Column definition describing any special casting.
+
+        Returns:
+            Renderable string value.
 
         """
         if value == "":
@@ -190,10 +163,14 @@ class TableRenderer(AbstractRenderer):
             elif column["datatype"] == "timestamp":
                 value = int(value)
                 try:
-                    value = datetime.datetime.fromtimestamp(value).strftime(self.datetime_format)
+                    value = datetime.datetime.fromtimestamp(value).strftime(
+                        self.datetime_format
+                    )
                 except ValueError:
                     # This is an AWS timestamp in milliseconds, not seconds
-                    value = datetime.datetime.fromtimestamp(value / 1000.0).strftime(self.datetime_format)
+                    value = datetime.datetime.fromtimestamp(value / 1000.0).strftime(
+                        self.datetime_format
+                    )
                 value = self._default_cast(value)
             elif column["datatype"] == "bytes":
                 value = int(value)
@@ -205,21 +182,17 @@ class TableRenderer(AbstractRenderer):
 
     def render_column(self, obj: Any, column: dict[str, str] | str) -> str:
         """
-        Return the value to put in the table for the attribute named `column` on `obj`, a data object.
+        Render one column value for one row object.
 
-        Normally this tries returns the value either through `getattr(obj, column)` or through
-        ``obj.render_for_display()[column]``.  However, if there we have method named `render_{column}_value`, execute
-        that instead and return its value.
+        Args:
+            obj: Source object for the current row.
+            column: Column definition or attribute key.
 
-        :param obj: the data object
-        :param column str: the attribute to access on the `obj`
+        Returns:
+            Rendered column text.
 
-        :rtype: str
         """
-        if isinstance(column, dict):
-            key = column["key"]
-        else:
-            key = column
+        key = column["key"] if isinstance(column, dict) else column
         if hasattr(self, f"render_{column}_value"):
             value = getattr(self, f"render_{column}_value")(obj, key, column)
         else:
@@ -238,13 +211,13 @@ class TableRenderer(AbstractRenderer):
                     except IndexError:
                         ref = None
                 value = obj  # the last one should be the value we're looking for
-                value = self.cast_column(obj, value, column)
-                return value
+                return self.cast_column(obj, value, column)
             value = self.get_value(obj, column)
             value = self.cast_column(obj, value, column)
         return value
 
-    def render(self, data: Any, **_) -> str:
+    def render(self, data: Any, **_: Any) -> str:
+        """Render all rows into a formatted table string."""
         data = cast("list[Any]", data)
         table = []
         for obj in data:
@@ -269,33 +242,60 @@ class TableRenderer(AbstractRenderer):
 
 
 class TargetGroupTableRenderer(TableRenderer):
+    """Specialized renderer for ECS target groups."""
 
-    def render_load_balancers_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
+    def render_load_balancers_value(
+        self,
+        obj: TargetGroup,
+        key: str,
+        column: dict[str, str] | str,
+    ) -> str:
+        """Render attached load balancer names."""
         load_balancer_names = [lb.name for lb in obj.load_balancers]
         return "\n".join(load_balancer_names)
 
-    def render_targets_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
+    def render_targets_value(
+        self, obj: TargetGroup, key: str, column: dict[str, str] | str
+    ) -> str:
+        """Render target names."""
         target_names = [t.target.name for t in obj.targets]
         return "\n".join(target_names)
 
-    def render_rules_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
+    def render_rules_value(
+        self, obj: TargetGroup, key: str, column: dict[str, str] | str
+    ) -> str:
+        """Render listener rules attached to target group."""
         return target_group_listener_rules(obj)
 
-    def render_listener_port_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
+    def render_listener_port_value(
+        self,
+        obj: TargetGroup,
+        key: str,
+        column: dict[str, str] | str,
+    ) -> str:
+        """Render listener protocol/port pairs."""
         return "\n".join([f"{l.protocol}:{l.port!s}" for l in obj.listeners])
 
-    def render_container_port_value(self, obj: TargetGroup, key: str, column: dict[str, str] | str) -> str:
+    def render_container_port_value(
+        self,
+        obj: TargetGroup,
+        key: str,
+        column: dict[str, str] | str,
+    ) -> str:
+        """Render backing container protocol/port pair."""
         return "{}:{}".format(obj.data["Protocol"], obj.data["Port"])
 
 
 class LBListenerTableRenderer(TableRenderer):
+    """Specialized renderer for load balancer listeners."""
 
     def render_default_action_value(
         self,
         obj: LoadBalancerListener,
         key: str,
-        column: dict[str, str] | str
+        column: dict[str, str] | str,
     ) -> str:
+        """Render default listener actions."""
         actions = []
         for action in obj.data["DefaultActions"]:
             if action["Type"] == "forward":
@@ -315,10 +315,18 @@ class LBListenerTableRenderer(TableRenderer):
                 actions.append(action_string)
             elif action["Type"] == "fixed":
                 c = action["FixedResponseConfig"]
-                actions.append("fixed[{}]: {}".format(c["StatusCode"], c["ContentType"]))
+                actions.append(
+                    "fixed[{}]: {}".format(c["StatusCode"], c["ContentType"])
+                )
         return "\n".join(actions)
 
-    def render_certificates_value(self, obj: LoadBalancerListener, key: str, column: dict[str, str] | str) -> str:
+    def render_certificates_value(
+        self,
+        obj: LoadBalancerListener,
+        key: str,
+        column: dict[str, str] | str,
+    ) -> str:
+        """Render listener certificates."""
         certs = []
         if "Certificates" in obj.data:
             for cert in obj.data["Certificates"]:
@@ -332,5 +340,8 @@ class LBListenerTableRenderer(TableRenderer):
                     certs.append(arn_string)
         return "\n".join(certs)
 
-    def render_rules_value(self, obj: LoadBalancerListener, key: str, column: dict[str, str] | str) -> str:
+    def render_rules_value(
+        self, obj: LoadBalancerListener, key: str, column: dict[str, str] | str
+    ) -> str:
+        """Render count of non-default rules."""
         return str(len(obj.rules))

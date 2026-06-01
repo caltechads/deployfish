@@ -49,8 +49,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
     def get_environment(self):
         """Get the environment for a service."""
-        environment = self.obj.tags["Environment"]
-        return environment
+        return self.obj.tags["Environment"]
 
     def get_authors(self):
         """Get the authors for the most recent commits."""
@@ -59,8 +58,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
     def get_author_string(self):
         """Get the authors for the most recent commits."""
         authors = self.get_authors()
-        author_str = ", ".join(authors)
-        return author_str
+        return ", ".join(authors)
 
     def get_committer(self):
         """Get the committer for the most recent commits."""
@@ -82,8 +80,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
         """Get the name of the service."""
         name_env = self.obj.data["serviceName"]
         dash = name_env.rfind("-")
-        service_name = name_env[:dash]
-        return service_name
+        return name_env[:dash]
 
     def get_title(self):
         """Get the title for the message."""
@@ -94,8 +91,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
         local_tz = get_localzone()
         current_time = datetime.datetime.now(local_tz)
         formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S.%f%z")
-        formatted_time = formatted_time[:-2] + ":" + formatted_time[-2:]
-        return formatted_time
+        return formatted_time[:-2] + ":" + formatted_time[-2:]
 
     def get_description(self):
         """Get the description for the message."""
@@ -119,10 +115,7 @@ def process_service_update(app, obj, success=True, reason=None):
     try:
         queues = app.config.get("plugin.sqs", "queues")
     except configparser.NoOptionError:
-        app.print(
-            click.style("No SQS queues defined in `/.deployfish.yml", fg="red")
-        )
-        print("No SQS queues defined in `/.deployfish.yml")
+        app.print(click.style("No SQS queues defined in `/.deployfish.yml", fg="red"))
         return
     config_file = app.pargs.deployfish_filename
     repo_folder = os.path.dirname(config_file)
@@ -142,7 +135,5 @@ def process_service_update(app, obj, success=True, reason=None):
             queue_name=queue_name, aws_profile=queue_profile
         ).send_message(queue_type, message)
         app.print(
-            click.style(
-                f"Message submitted. ID: {response['MessageId']}.", fg="green"
-            )
+            click.style(f"Message submitted. ID: {response['MessageId']}.", fg="green")
         )

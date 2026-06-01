@@ -86,12 +86,7 @@ def _task_definition(version: str = "0.1.0") -> TaskDefinition:
 
 def _describe_services_by_name(**kwargs: Any) -> dict[str, list[dict[str, Any]]]:
     names = cast("list[str]", kwargs["services"])
-    return {
-        "services": [
-            _service_data(name=name.rsplit("/", 1)[-1])
-            for name in names
-        ]
-    }
+    return {"services": [_service_data(name=name.rsplit("/", 1)[-1]) for name in names]}
 
 
 @pytest.fixture

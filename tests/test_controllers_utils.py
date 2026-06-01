@@ -19,7 +19,8 @@ class TestHandleModelExceptions:
 
         @handle_model_exceptions
         def failing(_self) -> None:
-            raise Service.DoesNotExist("missing service")
+            msg = "missing service"
+            raise Service.DoesNotExist(msg)
 
         failing(controller)
         cement_app.print.assert_called_once()
@@ -33,7 +34,8 @@ class TestHandleModelExceptions:
 
         @handle_model_exceptions
         def failing(_self) -> None:
-            raise NoSuchConfigSectionItem("services", "missing")
+            msg = "services"
+            raise NoSuchConfigSectionItem(msg, "missing")
 
         failing(controller)
         printed = cement_app.print.call_args[0][0]
@@ -54,7 +56,8 @@ class TestHandleModelExceptions:
 
         @handle_model_exceptions
         def failing(_self) -> None:
-            raise Cluster.ReadOnly("read only")
+            msg = "read only"
+            raise Cluster.ReadOnly(msg)
 
         failing(controller)
         assert "read only" in cement_app.print.call_args[0][0]

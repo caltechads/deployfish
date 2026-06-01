@@ -27,7 +27,9 @@ class TestGetTunnelTarget:
         prompt.prompt.return_value = 1
         with patch("deployfish.controllers.tunnel.shell.Prompt", return_value=prompt):
             with patch("deployfish.controllers.tunnel.click.secho"):
-                with patch("deployfish.controllers.tunnel.tabulate", return_value="table"):
+                with patch(
+                    "deployfish.controllers.tunnel.tabulate", return_value="table"
+                ):
                     result = get_tunnel_target(obj, choose=True)
         assert result is target
 
@@ -53,7 +55,9 @@ class TestGetTunnel:
         ):
             with patch("deployfish.controllers.tunnel.click.prompt", return_value=1):
                 with patch("deployfish.controllers.tunnel.click.secho"):
-                    with patch("deployfish.controllers.tunnel.tabulate", return_value="table"):
+                    with patch(
+                        "deployfish.controllers.tunnel.tabulate", return_value="table"
+                    ):
                         result = get_tunnel()
         assert result is tunnel
 

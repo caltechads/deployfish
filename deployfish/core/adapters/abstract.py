@@ -21,7 +21,6 @@ class Adapter:
         Raise this if data in the config source does not validate properly.
         """
 
-
     def __init__(self, data: dict[str, Any], partial: bool = False, **kwargs) -> None:
         """
         ``data`` is the raw data from our source.
@@ -47,11 +46,11 @@ class Adapter:
         self,
         data: dict[str, Any],
         source_key: str,
-        dest_key: str = None,
+        dest_key: str | None = None,
         default: Any = NONE,
         optional: bool = False,
-        convert: Callable = None
-    ):
+        convert: Callable[[Any], Any] | None = None,
+    ) -> None:
         if dest_key is None:
             dest_key = source_key
         if self.partial or optional:
@@ -61,10 +60,10 @@ class Adapter:
             data[dest_key] = self.data.get(source_key, default)
         else:
             data[dest_key] = self.data[source_key]
-        if dest_key in data and convert:
+        if dest_key in data and convert is not None:
             data[dest_key] = convert(data[dest_key])
 
-    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+    def convert(self) -> tuple[Any, Any]:
         """
         This method is the meat of the adapter -- it is what takes ``self.data`` and returns the
         data structures needed to initialize our model.

@@ -38,24 +38,30 @@ def get_task(obj: Service, name: str) -> ServiceHelperTask:
             break
     if not task:
         lines = []
-        lines.append(click.style(f'No command named "{name}" exists on Service("{obj.pk}").\n', fg="red"))
+        lines.append(
+            click.style(
+                f'No command named "{name}" exists on Service("{obj.pk}").\n', fg="red"
+            )
+        )
         lines.append(click.style("Available helper tasks:\n", fg="cyan"))
         lines.append(
-            TableRenderer({
-                "Service": "serviceName",
-                "Name": "name",
-                "Revision": "family_revision",
-                "Version": "version",
-                "Launch Type": "launchType",
-                "Schedule": "schedule_expression"
-            }, ordering="Name").render(obj.helper_tasks)
+            TableRenderer(
+                {
+                    "Service": "serviceName",
+                    "Name": "name",
+                    "Revision": "family_revision",
+                    "Version": "version",
+                    "Launch Type": "launchType",
+                    "Schedule": "schedule_expression",
+                },
+                ordering="Name",
+            ).render(obj.helper_tasks)
         )
         raise ServiceHelperTask.DoesNotExist("\n".join(lines))
     return task
 
 
 class ECSServiceCommands(Controller):
-
     class Meta:
         label = "commands"
         description = "Work with Helper Tasks for an ECS Service"
@@ -85,7 +91,7 @@ class ECSServiceCommands(Controller):
         "Revision": "family_revision",
         "Version": "version",
         "Launch Type": "launchType",
-        "Schedule": "schedule_expression"
+        "Schedule": "schedule_expression",
     }
 
     def wait(self, operation: str, **kwargs) -> None:
@@ -103,8 +109,8 @@ class ECSServiceCommands(Controller):
     @ex(
         help="Show info about a command for an ECS Service in AWS",
         arguments=[
-            (["pk"], { "help" : "The primary key for the ECS Service in AWS"}),
-            (["command"], { "help" : "The command name"}),
+            (["pk"], {"help": "The primary key for the ECS Service in AWS"}),
+            (["command"], {"help": "The command name"}),
             (
                 ["--includes"],
                 {
@@ -113,13 +119,13 @@ class ECSServiceCommands(Controller):
                     "default": None,
                     "choices": ["secrets"],
                     "dest": "includes",
-                    "nargs": "+"
-                }
-            )
+                    "nargs": "+",
+                },
+            ),
         ],
         description="""
 Show info about a command associated with a Service that exists in AWS.
-"""
+""",
     )
     @handle_model_exceptions
     def info(self) -> None:
@@ -132,7 +138,9 @@ Show info about a command associated with a Service that exists in AWS.
         task = get_task(obj, self.app.pargs.command)
         context = {
             "obj": task,
-            "includes": self.app.pargs.includes if self.app.pargs.includes is not None else {}
+            "includes": self.app.pargs.includes
+            if self.app.pargs.includes is not None
+            else {},
         }
         self.app.render(context, template=self.info_template)
 
@@ -140,9 +148,7 @@ Show info about a command associated with a Service that exists in AWS.
 
     @ex(
         help="List the available commands for a Service in AWS.",
-        arguments=[
-            (["pk"], { "help" : "The primary key for the ECS Service in AWS"})
-        ]
+        arguments=[(["pk"], {"help": "The primary key for the ECS Service in AWS"})],
     )
     @handle_model_exceptions
     def list(self) -> None:
@@ -154,8 +160,7 @@ Show info about a command associated with a Service that exists in AWS.
         obj = cast("Service", obj)
         tasks = obj.helper_tasks
         renderer = TableRenderer(
-            columns=self.list_result_columns,
-            ordering=self.list_ordering
+            columns=self.list_result_columns, ordering=self.list_ordering
         )
         self.app.print(renderer.render(tasks))
 
@@ -163,9 +168,7 @@ Show info about a command associated with a Service that exists in AWS.
 
     @ex(
         help="Update command definitions in AWS independently of their Service - see description for caveats!",
-        arguments=[
-            (["pk"], { "help" : "The primary key for the ECS Service in AWS"})
-        ],
+        arguments=[(["pk"], {"help": "The primary key for the ECS Service in AWS"})],
         description="""
 Update all the Service's ServiceHelperTasks in AWS independently of the Service,
 and return the new task definition family:revision for each.
@@ -181,7 +184,7 @@ service update".  So to run these tasks, use the family:revision returned by
 this command with "deploy task run" instead of running them with
 "deploy service commands run".
 """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     @handle_model_exceptions
     def update(self) -> None:
@@ -192,7 +195,10 @@ this command with "deploy task run" instead of running them with
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         obj = cast("Service", obj)
         self.app.print(
-            click.style(f'\n\nUpdating ServiceHelperTasks associated with Service("{obj.pk}"):\n', fg="yellow")
+            click.style(
+                f'\n\nUpdating ServiceHelperTasks associated with Service("{obj.pk}"):\n',
+                fg="yellow",
+            )
         )
         for task in obj.helper_tasks:
             click.secho(f"UPDATE: {task.command} -> ", nl=False)
@@ -206,13 +212,13 @@ this command with "deploy task run" instead of running them with
     @ex(
         help="Enable the schedule for a command for a Service.",
         arguments=[
-            (["pk"], { "help" : "The primary key for the ECS Service in AWS"}),
-            (["command"], { "help" : "The command name"}),
+            (["pk"], {"help": "The primary key for the ECS Service in AWS"}),
+            (["command"], {"help": "The command name"}),
         ],
         description="""
 If a command for a Service has a schedule rule and that rule is currently
 disabled in AWS, enable it.
-"""
+""",
     )
     @handle_model_exceptions
     def enable(self) -> None:
@@ -225,19 +231,26 @@ disabled in AWS, enable it.
         obj = cast("Service", obj)
         command = get_task(obj, self.app.pargs.command)
         if command.schedule is None:
-            raise ServiceHelperTask.OperationFailed(
+            msg = (
                 f'ABORT: Command "{command.name}" on Service("{obj.pk}") has no schedule; '
-                'enabling only affects schedules.'
+                "enabling only affects schedules."
             )
+            raise ServiceHelperTask.OperationFailed(msg)
         command.enable_schedule()
         if command.schedule.enabled:
             self.app.print(
-                click.style(f'Schedule for command "{command.name}" on Service("{obj.pk}") is now ENABLED.', fg="green")
+                click.style(
+                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now ENABLED.',
+                    fg="green",
+                )
             )
             self.app.print(f"Schedule: {command.schedule_expression}")
         else:
             self.app.print(
-                click.style(f'Schedule for command "{command.name}" on Service("{obj.pk}") is now DISABLED.', fg="red")
+                click.style(
+                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now DISABLED.',
+                    fg="red",
+                )
             )
 
     # Disable
@@ -245,13 +258,13 @@ disabled in AWS, enable it.
     @ex(
         help="Disable the schedule for a command for a Service.",
         arguments=[
-            (["pk"], { "help" : "The primary key for the ECS Service in AWS"}),
-            (["command"], { "help" : "The command name"}),
+            (["pk"], {"help": "The primary key for the ECS Service in AWS"}),
+            (["command"], {"help": "The command name"}),
         ],
         description="""
 If a command for a Service has a schedule rule and that rule is currently
 enabled in AWS, disable it.
-"""
+""",
     )
     @handle_model_exceptions
     def disable(self) -> None:
@@ -264,22 +277,27 @@ enabled in AWS, disable it.
         obj = cast("Service", obj)
         command = get_task(obj, self.app.pargs.command)
         if command.schedule is None:
-            raise ServiceHelperTask.OperationFailed(
+            msg = (
                 f'ABORT: Command "{command.name}" on Service("{obj.pk}") has no schedule; '
-                'disabling only affects schedules.'
+                "disabling only affects schedules."
             )
+            raise ServiceHelperTask.OperationFailed(msg)
         command.disable_schedule()
         if command.schedule.enabled:
             self.app.print(
-                click.style(f'Schedule for command "{command.name}" on Service("{obj.pk}") is now ENABLED.', fg="green")
+                click.style(
+                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now ENABLED.',
+                    fg="green",
+                )
             )
             self.app.print(f"Schedule: {command.schedule_expression}")
         else:
             self.app.print(
-                click.style(f'Schedule for command "{command.name}" on Service("{obj.pk}") is now DISABLED.', fg="red")
+                click.style(
+                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now DISABLED.',
+                    fg="red",
+                )
             )
-
-
 
     # Run
 
@@ -292,8 +310,8 @@ enabled in AWS, disable it.
     @ex(
         help="Run one of a service's helper tasks",
         arguments=[
-            (["pk"], { "help" : "The primary key for the ECS Service in AWS"}),
-            (["command"], { "help" : "The command name"}),
+            (["pk"], {"help": "The primary key for the ECS Service in AWS"}),
+            (["command"], {"help": "The command name"}),
             (
                 ["--wait"],
                 {
@@ -301,12 +319,12 @@ enabled in AWS, disable it.
                     "action": "store_true",
                     "default": False,
                     "dest": "wait",
-                }
-            )
+                },
+            ),
         ],
         description="""
 Run a command associated with a Service that exists in AWS.
-"""
+""",
     )
     @handle_model_exceptions
     def run(self) -> None:
@@ -320,14 +338,18 @@ Run a command associated with a Service that exists in AWS.
         tasks = command.run()
         lines = []
         for task in tasks:
-            lines.append(click.style("\nStarted task: {}:{}\n".format(command.data["cluster"], task.arn), fg="green"))
+            lines.append(
+                click.style(
+                    "\nStarted task: {}:{}\n".format(command.data["cluster"], task.arn),
+                    fg="green",
+                )
+            )
         self.app.print("\n".join(lines))
         if self.app.pargs.wait:
             self.run_task_waiter(tasks)  # type: ignore
 
 
 class ECSServiceCommandLogs(Controller):
-
     class Meta:
         label = "command-logs"
         aliases = ["logs"]
@@ -344,8 +366,8 @@ class ECSServiceCommandLogs(Controller):
     @ex(
         help="Tail logs for a ServiceHelperTask.",
         arguments=[
-            (["pk"], { "help" : "The primary key for the ECS Service in AWS"}),
-            (["command"], { "help" : "The command name"}),
+            (["pk"], {"help": "The primary key for the ECS Service in AWS"}),
+            (["command"], {"help": "The command name"}),
             (
                 ["--mark"],
                 {
@@ -353,7 +375,7 @@ class ECSServiceCommandLogs(Controller):
                     "action": "store_true",
                     "default": False,
                     "dest": "mark",
-                }
+                },
             ),
             (
                 ["--sleep"],
@@ -362,7 +384,7 @@ class ECSServiceCommandLogs(Controller):
                     "type": int,
                     "default": 10,
                     "dest": "sleep",
-                }
+                },
             ),
             (
                 ["--filter-pattern"],
@@ -370,7 +392,7 @@ class ECSServiceCommandLogs(Controller):
                     "help": "Return only messages matching this filter.",
                     "default": None,
                     "dest": "filter_pattern",
-                }
+                },
             ),
         ],
         description="""
@@ -379,7 +401,7 @@ If a command for a Service uses "awslogs" as its logDriver, tail the logs for th
 For --filter-pattern syntax , see
 https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html
 """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     @handle_model_exceptions
     def tail(self) -> None:
@@ -395,7 +417,7 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
             command,
             sleep=self.app.pargs.sleep,
             mark=self.app.pargs.mark,
-            filter_pattern=self.app.pargs.filter_pattern
+            filter_pattern=self.app.pargs.filter_pattern,
         )
 
     # list
@@ -403,8 +425,8 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
     @ex(
         help="List log streams for a ServiceHelperTask.",
         arguments=[
-            (["pk"], { "help" : "The primary key for the ECS Service in AWS"}),
-            (["command"], { "help" : "The command name"}),
+            (["pk"], {"help": "The primary key for the ECS Service in AWS"}),
+            (["command"], {"help": "The command name"}),
             (
                 ["--limit"],
                 {
@@ -412,7 +434,7 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
                     "default": None,
                     "type": int,
                     "dest": "limit",
-                }
+                },
             ),
         ],
         description="""
@@ -422,7 +444,7 @@ log streams for that StandaloneTask.
 This can be useful when you have a command with a schedule to look at the dates on
 the streams to ensure that your command is actually running periodically.
 """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     @handle_model_exceptions
     def list(self) -> None:

@@ -7,6 +7,7 @@ from ..abstract import Adapter
 # Adapters
 # ------------------------
 
+
 class ECSServiceCPUAlarmAdapter(Adapter):
     """
     .. code-block:: python
@@ -26,23 +27,17 @@ class ECSServiceCPUAlarmAdapter(Adapter):
         super().__init__(data, **kwargs)
 
     def get_AlarmName(self) -> str:
-        if "<" in self.data["cpu"]:
-            direction = "low"
-        else:
-            direction = "high"
+        direction = "low" if "<" in self.data["cpu"] else "high"
         return f"{self.cluster}-{self.service}-{direction}"
 
     def get_AlarmDescription(self) -> str:
-        if ">" in self.data["cpu"]:
-            direction = "up"
-        else:
-            direction = "down"
+        direction = "up" if ">" in self.data["cpu"] else "down"
         return "Scale {} ECS service {} in cluster {} if service Average CPU is {} for {} seconds".format(
             direction,
             self.service,
             self.cluster,
             self.data["cpu"],
-            (int(self.data["periods"]) * int(self.data["check_every_seconds"]))
+            (int(self.data["periods"]) * int(self.data["check_every_seconds"])),
         )
 
     def get_ComparisonOperator(self) -> str:
@@ -69,7 +64,7 @@ class ECSServiceCPUAlarmAdapter(Adapter):
         data["Statistic"] = "Average"
         data["Dimensions"] = [
             {"Name": "ClusterName", "Value": self.cluster},
-            {"Name": "ServiceName", "Value": self.service}
+            {"Name": "ServiceName", "Value": self.service},
         ]
         data["Period"] = int(self.data["check_every_seconds"])
         data["Unit"] = self.data.get("unit", "Percent")

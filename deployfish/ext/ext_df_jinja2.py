@@ -1,4 +1,5 @@
-from datetime import datetime
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 import click
@@ -40,18 +41,19 @@ def section_title(value: str, **kwargs) -> str:
     return "\n".join(lines)
 
 
-def fromtimestamp(data: float, **_) -> str:
+def fromtimestamp(data: float, **_: Any) -> str:
     """
     Convert a unix epoch timestamp to a datetime in our local timezone.
     """
     try:
-        return datetime.fromtimestamp(data).strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.fromtimestamp(data, UTC).strftime("%Y-%m-%d %H:%M:%S")
     except ValueError:
         # This is an AWS timestamp with microseconds
-        return datetime.fromtimestamp(data / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.fromtimestamp(data / 1000.0, UTC).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
-
-def tabular(data: dict[str, Any], **kwargs) -> str:
+def tabular(data: Sequence[Any], **kwargs: Any) -> str:
     """
     Render a table.
 
@@ -81,7 +83,14 @@ def tabular(data: dict[str, Any], **kwargs) -> str:
     renderer_kwargs: dict[str, Any] = {}
     columns: dict[str, Any] = {}
     for k, v in list(kwargs.items()):
-        if k in ["ordering", "date_format", "datetime_format", "float_precision", "tablefmt", "show_headers"]:
+        if k in [
+            "ordering",
+            "date_format",
+            "datetime_format",
+            "float_precision",
+            "tablefmt",
+            "show_headers",
+        ]:
             renderer_kwargs[k] = v
         elif k.endswith("_datatype"):
             k = k.replace("_datatype", "")
@@ -105,7 +114,7 @@ def tabular(data: dict[str, Any], **kwargs) -> str:
     return renderer.render(data)
 
 
-def target_group_table(data: dict[str, Any]) -> str:
+def target_group_table(data: Sequence[Any]) -> str:
     """
     Render a table for a list of TargetGroups.
     """
@@ -114,13 +123,13 @@ def target_group_table(data: dict[str, Any]) -> str:
         "LB Port": "listener_port",
         "Rules": "rules",
         "Target Port": "container_port",
-        "Targets": "targets"
+        "Targets": "targets",
     }
     renderer = TargetGroupTableRenderer(columns)
     return renderer.render(data)
 
 
-def lb_listener_table(data: dict[str, Any]) -> str:
+def lb_listener_table(data: Sequence[Any]) -> str:
     """
     Render a table for a list of elbv2 Listeners.
     """
@@ -153,10 +162,12 @@ def target_group_listener_rules(obj: TargetGroup) -> str:
                     for v in condition["HostHeaderConfig"]["Values"]:
                         conditions.append(f"hostname:{v}")
                 if "HttpHeaderConfig" in condition:
-                    conditions.append("header:{} -> {}".format(
-                        condition["HttpHeaderConfig"]["HttpHeaderName"],
-                        ",".join(condition["HttpHeaderConfig"]["Values"])
-                    ))
+                    conditions.append(
+                        "header:{} -> {}".format(
+                            condition["HttpHeaderConfig"]["HttpHeaderName"],
+                            ",".join(condition["HttpHeaderConfig"]["Values"]),
+                        )
+                    )
                 if "PathPatternConfig" in condition:
                     for v in condition["PathPatternConfig"]["Values"]:
                         conditions.append(f"path:{v}")
@@ -170,7 +181,9 @@ def target_group_listener_rules(obj: TargetGroup) -> str:
                     for v in condition["HttpRequestMethod"]["Values"]:
                         conditions.append(f"verb:{v} -> ")
     if not conditions:
-        conditions.append(f"forward:{obj.load_balancers[0].lb_type}:{obj.listeners[0].port}:{obj.listeners[0].protocol} -> CONTAINER:{obj.port}:{obj.protocol}")
+        conditions.append(
+            f"forward:{obj.load_balancers[0].lb_type}:{obj.listeners[0].port}:{obj.listeners[0].protocol} -> CONTAINER:{obj.port}:{obj.protocol}"
+        )
     return "\n".join(sorted(conditions))
 
 
@@ -185,8 +198,7 @@ class DeployfishJinja2OutputHandler(Jinja2OutputHandler):
 
     def _setup(self, app):
         OutputHandler._setup(self, app)  # pylint: disable=protected-access
-        self.templater = self.app.handler.resolve("template", "df_jinja2",
-                                                  setup=True)
+        self.templater = self.app.handler.resolve("template", "df_jinja2", setup=True)
 
 
 class DeployfishJinja2TemplateHandler(Jinja2TemplateHandler):

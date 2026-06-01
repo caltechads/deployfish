@@ -19,7 +19,8 @@ def statefile_loader(
     if state_file_url == "s3://my-prod-statefile":
         with (TESTS_DIR / "terraform.tfstate.prod").open(encoding="utf-8") as f:
             return json.loads(f.read())
-    raise KeyError("unknown state file requested")
+    msg = "unknown state file requested"
+    raise KeyError(msg)
 
 
 class TestContainerDefinition_terraform_statefile_interpolation:
@@ -39,11 +40,15 @@ class TestContainerDefinition_terraform_statefile_interpolation:
         ]
         self.get_mock.assert_has_calls(calls)
 
-    def test_file_interpolation_gets_values_from_correct_statefile_for_services(self) -> None:
+    def test_file_interpolation_gets_values_from_correct_statefile_for_services(
+        self,
+    ) -> None:
         prod = self.config.get_section_item("services", "foobar-prod")
         assert prod["cluster"] == "foobar-cluster-prod"
         assert prod["load_balancer"]["load_balancer_name"] == "foobar-prod-elb"
-        assert prod["task_role_arn"] == "arn:aws:iam::324958023459:role/foobar-prod-task"
+        assert (
+            prod["task_role_arn"] == "arn:aws:iam::324958023459:role/foobar-prod-task"
+        )
         qa = self.config.get_section_item("services", "foobar-qa")
         assert qa["cluster"] == "foobar-cluster-qa"
         assert qa["load_balancer"]["load_balancer_name"] == "foobar-qa-elb"
@@ -67,7 +72,9 @@ class TestTunnelDefinition_terraform_interpolation:
         ]
         self.get_mock.assert_has_calls(calls)
 
-    def test_file_interpolation_gets_values_from_correct_statefile_for_tunnels(self) -> None:
+    def test_file_interpolation_gets_values_from_correct_statefile_for_tunnels(
+        self,
+    ) -> None:
         qa = self.config.get_section_item("tunnels", "mysql-qa")
         assert qa["host"] == "foo-qa.c970jsizrrcy.us-west-2.rds.amazonaws.com"
         assert qa["port"] == "3306"
@@ -90,11 +97,15 @@ class TestContainerDefinition_load_yaml:
             self.config = Config.new(filename=str(config_yml), env_file=str(env_file))
 
     def test_terraform_simple_interpolation(self) -> None:
-        assert self.config.get_service("foobar-prod")["cluster"] == "foobar-cluster-prod"
+        assert (
+            self.config.get_service("foobar-prod")["cluster"] == "foobar-cluster-prod"
+        )
 
     def test_terraform_nested_dict_interpolation(self) -> None:
         assert (
-            self.config.get_service("foobar-prod")["load_balancer"]["load_balancer_name"]
+            self.config.get_service("foobar-prod")["load_balancer"][
+                "load_balancer_name"
+            ]
             == "foobar-elb-prod"
         )
 
@@ -105,24 +116,36 @@ class TestContainerDefinition_load_yaml:
         )
 
     def test_terraform_list_output_interpolation(self) -> None:
-        assert self.config.get_service("foobar-prod")["vpc_configuration"]["security_groups"] == [
+        assert self.config.get_service("foobar-prod")["vpc_configuration"][
+            "security_groups"
+        ] == [
             "sg-1234567",
             "sg-2345678",
             "sg-3456789",
         ]
 
     def test_terraform_map_output_interpolation(self) -> None:
-        assert self.config.get_service("output-test")["vpc_configuration"]["subnets"] == [
+        assert self.config.get_service("output-test")["vpc_configuration"][
+            "subnets"
+        ] == [
             "subnet-1234567",
         ]
-        assert self.config.get_service("output-test")["vpc_configuration"]["security_groups"] == [
+        assert self.config.get_service("output-test")["vpc_configuration"][
+            "security_groups"
+        ] == [
             "sg-1234567",
         ]
-        assert self.config.get_service("output-test")["vpc_configuration"]["public_ip"] == "DISABLED"
+        assert (
+            self.config.get_service("output-test")["vpc_configuration"]["public_ip"]
+            == "DISABLED"
+        )
 
     def test_environment_simple_interpolation(self) -> None:
         assert self.config.get_service("foobar-prod")["config"][0] == "FOOBAR=hi_mom"
-        assert self.config.get_service("foobar-prod")["config"][2] == "FOO_BAR_PREFIX=oh_no/test"
+        assert (
+            self.config.get_service("foobar-prod")["config"][2]
+            == "FOO_BAR_PREFIX=oh_no/test"
+        )
         assert (
             self.config.get_service("foobar-prod")["config"][3]
             == "FOO_BAR_SECRET=)(#jlk329!!3$3093%%.__)"
@@ -147,11 +170,16 @@ class TestContainerDefinition_load_yaml_no_interpolate:
             )
 
     def test_simple_interpolation(self) -> None:
-        assert self.config.get_service("foobar-prod")["cluster"] == "${terraform.cluster_name}"
+        assert (
+            self.config.get_service("foobar-prod")["cluster"]
+            == "${terraform.cluster_name}"
+        )
 
     def test_nested_dict_interpolation(self) -> None:
         assert (
-            self.config.get_service("foobar-prod")["load_balancer"]["load_balancer_name"]
+            self.config.get_service("foobar-prod")["load_balancer"][
+                "load_balancer_name"
+            ]
             == "${terraform.elb_id}"
         )
 
@@ -162,7 +190,10 @@ class TestContainerDefinition_load_yaml_no_interpolate:
         )
 
     def test_environment_simple_interpolation(self) -> None:
-        assert self.config.get_service("foobar-prod")["config"][0] == "FOOBAR=${env.FOOBAR_ENV}"
+        assert (
+            self.config.get_service("foobar-prod")["config"][0]
+            == "FOOBAR=${env.FOOBAR_ENV}"
+        )
         assert (
             self.config.get_service("foobar-prod")["config"][2]
             == "FOO_BAR_PREFIX=${env.FOO_BAR_PREFIX_ENV}/test"

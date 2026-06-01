@@ -34,11 +34,7 @@ def parse_secret_string(secret_string: str) -> tuple[str, dict[str, Any]]:
         else:
             break
         i += 1
-    kwargs: dict[str, Any] = {
-        "Value": value,
-        "DataType": "text",
-        "Tier": "Standard"
-    }
+    kwargs: dict[str, Any] = {"Value": value, "DataType": "text", "Tier": "Standard"}
     if is_secure:
         kwargs["Type"] = "SecureString"
         kwargs["KeyId"] = kms_key_id
@@ -51,17 +47,23 @@ def parse_secret_string(secret_string: str) -> tuple[str, dict[str, Any]]:
 # Mixins
 # ------------------------
 
-class SecretsMixin:
 
+class SecretsMixin:
     data: dict[str, Any]
 
-    def get_secrets(self, cluster: str, name: str, decrypt: bool = True) -> list[Secret]:
+    def get_secrets(
+        self, cluster: str, name: str, decrypt: bool = True
+    ) -> list[Secret]:
         secrets = None
         if "config" in self.data:
             secrets = []
             for secret in self.data["config"]:
                 try:
-                    secrets.append(Secret.new({"value": secret}, "deployfish", cluster=cluster, name=name))
+                    secrets.append(
+                        Secret.new(
+                            {"value": secret}, "deployfish", cluster=cluster, name=name
+                        )
+                    )
                 except SecretAdapter.ExternalParameterException:
                     # handle globs
                     secrets.extend(ExternalSecret.objects.list(secret, decrypt=decrypt))
@@ -72,8 +74,8 @@ class SecretsMixin:
 # Adapters
 # ------------------------
 
-class SecretAdapter(Adapter):
 
+class SecretAdapter(Adapter):
     class ExternalParameterException(Exception):
         pass
 
@@ -86,9 +88,7 @@ class SecretAdapter(Adapter):
             self.prefix = "{}-".format(kwargs["prefix"])
 
     def is_external(self) -> bool:
-        if ("=" not in self.data["value"] or ":external" in self.data["value"]):
-            return True
-        return False
+        return bool("=" not in self.data["value"] or ":external" in self.data["value"])
 
     def split(self) -> tuple[str, str]:
         definition: str = deepcopy(self.data["value"])
@@ -98,7 +98,7 @@ class SecretAdapter(Adapter):
         if delimiter_loc > 0:
             key = definition[:delimiter_loc]
             if len(definition) > delimiter_loc + 1:
-                value = definition[delimiter_loc + 1:].strip('"')
+                value = definition[delimiter_loc + 1 :].strip('"')
         return key, value
 
     def parse(self) -> tuple[str, dict[str, Any]]:
@@ -113,9 +113,8 @@ class SecretAdapter(Adapter):
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
         if self.is_external():
-            raise self.ExternalParameterException(
-                "This is an external parameter; use ExternalParametersAdapter instead"
-            )
+            msg = "This is an external parameter; use ExternalParametersAdapter instead"
+            raise self.ExternalParameterException(msg)
         key, kwargs = self.parse()
         data = {}
         if self.cluster and self.name:

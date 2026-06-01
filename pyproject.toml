@@ -49,6 +49,7 @@ dependencies = [
     "setuptools < 80",
     "simplesqs >= 0.4.0",
     "toml >= 0.10.2",
+    "debugpy>=1.8.21",
 ]
 
 [dependency-groups]
@@ -199,7 +200,30 @@ exclude_lines = [
 fail_under = 80
 show_missing = true
 
+[tool.mypy]
+python_version = "3.11"
+files = ["deployfish", "tests"]
+
+[[tool.mypy.overrides]]
+module = [
+    "boto3",
+    "boto3.*",
+    "botocore",
+    "botocore.*",
+    "cement",
+    "cement.*",
+    "debugpy",
+    "jsondiff",
+    "simplesqs",
+    "simplesqs.*",
+    "slackfin",
+    "tabulate",
+    "yaml",
+]
+ignore_missing_imports = true
+
 [tool.ruff.lint.per-file-ignores]
+"deployfish/types.py" = ["A005"]
 "test/**/*.py" = ["S101"]
 "test/*.py" = ["S101"]
 "tests/**/*.py" = ["S101"]

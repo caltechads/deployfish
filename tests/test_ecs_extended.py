@@ -11,7 +11,9 @@ from tests.fixtures import FARGATE_SERVICE_YML, SERVICE_YML, STANDALONE_TASK_YML
 
 class TestClusterModel:
     def test_cluster_name_property(self) -> None:
-        cluster = Cluster({"clusterName": "foobar-cluster", "clusterArn": "arn:cluster:1"})
+        cluster = Cluster(
+            {"clusterName": "foobar-cluster", "clusterArn": "arn:cluster:1"}
+        )
         assert cluster.name == "foobar-cluster"
         assert cluster.pk == "foobar-cluster"
 
@@ -38,7 +40,9 @@ class TestStandaloneTaskExtended:
     def test_standalone_task_run_delegates_to_objects(self) -> None:
         task = StandaloneTask.new(deepcopy(STANDALONE_TASK_YML), "deployfish")
         invoked = MagicMock()
-        with patch.object(StandaloneTask.objects, "run", return_value=[invoked]) as run_mock:
+        with patch.object(
+            StandaloneTask.objects, "run", return_value=[invoked]
+        ) as run_mock:
             result = task.run()
         run_mock.assert_called_once_with(task)
         assert result == [invoked]

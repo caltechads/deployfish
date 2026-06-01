@@ -24,12 +24,17 @@ from deployfish.types import SupportsCache, SupportsModel
 
 
 class LazyAttributeMixin(SupportsCache):
-
     def __init__(self) -> None:
         self.cache: dict[str, Any] = {}
         super().__init__()
 
-    def get_cached(self, key: str, populator: Callable, args: list[Any], kwargs: dict[str, Any] = None) -> Any:
+    def get_cached(
+        self,
+        key: str,
+        populator: Callable,
+        args: list[Any],
+        kwargs: dict[str, Any] | None = None,
+    ) -> Any:
         kwargs = kwargs or {}
         if key not in self.cache:
             self.cache[key] = populator(*args, **kwargs)
@@ -40,7 +45,6 @@ class LazyAttributeMixin(SupportsCache):
 
 
 class Manager:
-
     service: str
 
     def __init__(self):
@@ -61,7 +65,8 @@ class Manager:
         raise NotImplementedError
 
     def save(self, obj: "Model", **_) -> Any:
-        raise obj.ReadOnly(f"Cannot modify {obj.__class__.__name__} objects with deployfish.")
+        msg = f"Cannot modify {obj.__class__.__name__} objects with deployfish."
+        raise obj.ReadOnly(msg)
 
     def exists(self, pk: str) -> bool:
         try:
@@ -73,7 +78,8 @@ class Manager:
     list: Callable[..., Sequence["Model"]]
 
     def delete(self, obj: "Model", **_) -> None:
-        raise obj.ReadOnly(f"Cannot modify {obj.__class__.__name__} objects with deployfish.")
+        msg = f"Cannot modify {obj.__class__.__name__} objects with deployfish."
+        raise obj.ReadOnly(msg)
 
     def diff(self, obj: "Model") -> dict[str, Any]:
         aws_obj = self.get(obj.pk)
@@ -86,18 +92,21 @@ class Manager:
     def get_waiter(self, waiter_name: str):
         config = self.client._get_waiter_config()  # pylint:disable=protected-access
         if not config:
-            raise ValueError("Waiter does not exist: %s" % waiter_name)
+            msg = f"Waiter does not exist: {waiter_name}"
+            raise ValueError(msg)
         model = waiter.WaiterModel(config)
         mapping = {}
         for name in model.waiter_names:
             mapping[xform_name(name)] = name
         if waiter_name not in mapping:
-            raise ValueError("Waiter does not exist: %s" % waiter_name)
-        return create_hooked_waiter_with_client(mapping[waiter_name], model, self.client)
+            msg = f"Waiter does not exist: {waiter_name}"
+            raise ValueError(msg)
+        return create_hooked_waiter_with_client(
+            mapping[waiter_name], model, self.client
+        )
 
 
 class Model(LazyAttributeMixin, SupportsModel):
-
     objects: Manager
     adapters = importer_registry
     config_section: str = "NO_SECTION"
@@ -107,30 +116,25 @@ class Model(LazyAttributeMixin, SupportsModel):
         We tried to get a single object but it does not exist in AWS.
         """
 
-
     class MultipleObjectsReturned(BaseMultipleObjectsReturned):
         """
         We expected to retrieve only one object but got multiple objects.
         """
-
 
     class ImproperlyConfigured(ObjectImproperlyConfigured):
         """
         Deployfish, our Manager or the model itself is not properly configured.
         """
 
-
     class ReadOnly(ObjectReadOnly):
         """
         This is a read only model; no writes to AWS permitted.
         """
 
-
     class OperationFailed(BaseOperationFailed):
         """
         We did a call to AWS we expected to succeed, but it failed.
         """
-
 
     @classmethod
     def adapt(cls, obj: dict[str, Any], source: str, **kwargs):
@@ -195,8 +199,7 @@ class Model(LazyAttributeMixin, SupportsModel):
         return self.render()
 
     def render(self) -> dict[str, Any]:
-        data = deepcopy(self.data)
-        return data
+        return deepcopy(self.data)
 
     def save(self):
         return self.objects.save(self)
@@ -216,8 +219,16 @@ class Model(LazyAttributeMixin, SupportsModel):
         if not other:
             other = self.objects.get(self.pk)
         if self.__class__ != other.__class__:
-            raise ValueError(f"{other!s} is not a {self.__class__.__name__}")
-        return json.loads(diff(other.render_for_diff(), self.render_for_diff(), syntax="explicit", dump=True))
+            msg = f"{other!s} is not a {self.__class__.__name__}"
+            raise ValueError(msg)
+        return json.loads(
+            diff(
+                other.render_for_diff(),
+                self.render_for_diff(),
+                syntax="explicit",
+                dump=True,
+            )
+        )
 
     def reload_from_db(self) -> None:
         self.purge_cache()

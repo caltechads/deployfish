@@ -11,7 +11,9 @@ from tests.fixtures import SERVICE_YML
 
 
 class TestExportEnvironmentSecrets:
-    def test_export_environment_secrets_builds_dotenv(self, cement_app: MagicMock) -> None:
+    def test_export_environment_secrets_builds_dotenv(
+        self, cement_app: MagicMock
+    ) -> None:
         controller = bind_controller(ECSServiceSecrets(), cement_app)
         service = Service.new(deepcopy(SERVICE_YML), "deployfish")
         service_yml = deepcopy(SERVICE_YML)
@@ -67,7 +69,9 @@ class TestSecretsControllerRender:
             with patch.object(service, "reload_secrets"):
                 controller.show()
         cement_app.render.assert_called_once()
-        assert cement_app.render.call_args.kwargs["template"] == controller.show_template
+        assert (
+            cement_app.render.call_args.kwargs["template"] == controller.show_template
+        )
 
     def test_diff_renders_diff_template(self, cement_app: MagicMock) -> None:
         controller = bind_controller(ECSServiceSecrets(), cement_app)
@@ -84,4 +88,6 @@ class TestSecretsControllerRender:
                     ):
                         controller.diff()
         cement_app.render.assert_called_once()
-        assert cement_app.render.call_args.kwargs["template"] == controller.diff_template
+        assert (
+            cement_app.render.call_args.kwargs["template"] == controller.diff_template
+        )

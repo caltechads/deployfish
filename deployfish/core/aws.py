@@ -10,13 +10,11 @@ boto3_session: boto3.session.Session | None = None
 
 
 class AWSSessionBuilder:
-
     class NoSuchAWSProfile(Exception):
         """
         We raise this if the AWS profile defined in the deployfish.yml file
         does not exist in the user's ``~/.aws/config`` file.
         """
-
 
     class ForbiddenAWSAccountId(Exception):
         pass
@@ -36,9 +34,8 @@ class AWSSessionBuilder:
         if not os.path.exists(filename):
             return {}
         if not os.access(filename, os.R_OK):
-            raise ConfigProcessingFailed(
-                f"Deployfish config file '{filename}' exists but is not readable"
-            )
+            msg = f"Deployfish config file '{filename}' exists but is not readable"
+            raise ConfigProcessingFailed(msg)
         with open(filename, encoding="utf-8") as f:
             return yaml.load(f, Loader=yaml.FullLoader)
 
@@ -65,26 +62,23 @@ class AWSSessionBuilder:
         if not filename:
             filename = "deployfish.yml"
         config = self.load_config(filename)
-        if config and use_aws_section:
-            aws_config = config.get("aws", {})
-        else:
-            aws_config = {}
+        aws_config = config.get("aws", {}) if config and use_aws_section else {}
         sess = self.__get_boto3_session(config=aws_config)
-        if ("allowed_account_ids" in aws_config or "forbidden_account_ids" in aws_config):
+        if "allowed_account_ids" in aws_config or "forbidden_account_ids" in aws_config:
             account_id = sess.client("sts").get_caller_identity().get("Account")
             if "allowed_account_ids" in aws_config:
                 if account_id not in aws_config["allowed_account_ids"]:
-                    raise self.ForbiddenAWSAccountId(
-                        f"Account ID {account_id} is not in the list of allowed_account_ids"
-                    )
+                    msg = f"Account ID {account_id} is not in the list of allowed_account_ids"
+                    raise self.ForbiddenAWSAccountId(msg)
             if "forbidden_account_ids" in aws_config:
                 if account_id in aws_config["forbidden_account_ids"]:
-                    raise self.ForbiddenAWSAccountId(
-                        f"Account ID {account_id} is in the list of forbidden_account_ids"
-                    )
+                    msg = f"Account ID {account_id} is in the list of forbidden_account_ids"
+                    raise self.ForbiddenAWSAccountId(msg)
         return sess
 
-    def __get_boto3_session(self, config: dict[str, Any] = None) -> boto3.session.Session:
+    def __get_boto3_session(
+        self, config: dict[str, Any] | None = None
+    ) -> boto3.session.Session:
         if config:
             # If an API access key pair is provided in the 'aws' section, that
             # has priority
@@ -92,23 +86,23 @@ class AWSSessionBuilder:
                 session = boto3.session.Session(
                     aws_access_key_id=config.get("access_key"),
                     aws_secret_access_key=config.get("secret_key"),
-                    region_name=config.get("region")
+                    region_name=config.get("region"),
                 )
             # If an AWS profile in the 'aws' section, that comes next
             elif "profile" in config:
                 profile = config.get("profile")
                 if profile not in boto3.session.Session().available_profiles:
-                    raise self.NoSuchAWSProfile(f"AWS profile '{profile}' does not exist in your ~/.aws/config")
+                    msg = (
+                        f"AWS profile '{profile}' does not exist in your ~/.aws/config"
+                    )
+                    raise self.NoSuchAWSProfile(msg)
                 session = boto3.session.Session(
-                    profile_name=config.get("profile"),
-                    region_name=config.get("region")
+                    profile_name=config.get("profile"), region_name=config.get("region")
                 )
             else:
                 # We have an 'aws' section, but it has neither credentials nor
                 # a profile, so possibly it just has a region.
-                session = boto3.session.Session(
-                    region_name=config.get("region")
-                )
+                session = boto3.session.Session(region_name=config.get("region"))
         else:
             # There was no 'aws' section in our config, so just leave it up to
             # the normal AWS credentials resolution
@@ -119,7 +113,7 @@ class AWSSessionBuilder:
 def build_boto3_session(
     filename: str,
     boto3_session_override: boto3.session.Session = None,
-    use_aws_section: bool = True
+    use_aws_section: bool = True,
 ) -> None:
     """
     Build a boto3 session object from the deployfish.yml file, commandline flags and
@@ -137,11 +131,13 @@ def build_boto3_session(
     if boto3_session_override:
         boto3_session = boto3_session_override
     else:
-        boto3_session = AWSSessionBuilder().new(filename, use_aws_section=use_aws_section)
+        boto3_session = AWSSessionBuilder().new(
+            filename, use_aws_section=use_aws_section
+        )
 
 
 def get_boto3_session(
-    boto3_session_override: boto3.session.Session = None
+    boto3_session_override: boto3.session.Session = None,
 ) -> boto3.session.Session:
     """
     Get the boto3 session object that we've built, or the one that was passed in

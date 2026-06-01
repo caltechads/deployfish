@@ -44,7 +44,9 @@ registry.register("ScalableTarget", "deployfish", ECSServiceScalableTargetAdapte
 registry.register("Secret", "deployfish", SecretAdapter)
 
 # service_discovery
-registry.register("ServiceDiscoveryService", "deployfish", ServiceDiscoveryServiceAdapter)
+registry.register(
+    "ServiceDiscoveryService", "deployfish", ServiceDiscoveryServiceAdapter
+)
 
 # ssh tunnels
 registry.register("SSHTunnel", "deployfish", SSHTunnelAdapter)

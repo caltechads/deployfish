@@ -28,7 +28,10 @@ PARAM_VALUE = {
 class TestSecretManager:
     def test_get_parameter(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
-        client.get_parameters.return_value = {"Parameters": [PARAM_VALUE], "InvalidParameters": []}
+        client.get_parameters.return_value = {
+            "Parameters": [PARAM_VALUE],
+            "InvalidParameters": [],
+        }
         _paginate(client, [{"Parameters": [PARAM_META]}])
         secret = Secret.objects.get("cluster.service.DEBUG")
         assert secret.value == "False"
@@ -63,7 +66,10 @@ class TestSecretManager:
     def test_list_returns_secrets(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
         _paginate(client, [{"Parameters": [PARAM_META]}])
-        client.get_parameters.return_value = {"Parameters": [PARAM_VALUE], "InvalidParameters": []}
+        client.get_parameters.return_value = {
+            "Parameters": [PARAM_VALUE],
+            "InvalidParameters": [],
+        }
         secrets = Secret.objects.list("cluster.service.")
         assert len(secrets) == 1
         assert secrets[0].secret_name == "DEBUG"

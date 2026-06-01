@@ -21,7 +21,9 @@ class TestServiceManagerSaveUpdate:
         client = _mock_boto3_session
         service = _service()
         with patch.object(Service.objects, "exists", return_value=False):
-            with patch.object(service, "render_for_create", return_value={"cluster": "foobar-cluster"}):
+            with patch.object(
+                service, "render_for_create", return_value={"cluster": "foobar-cluster"}
+            ):
                 Service.objects.save(service)
         client.create_service.assert_called_once()
 
@@ -29,11 +31,15 @@ class TestServiceManagerSaveUpdate:
         client = _mock_boto3_session
         service = _service()
         with patch.object(Service.objects, "exists", return_value=True):
-            with patch.object(service, "render_for_update", return_value={"cluster": "foobar-cluster"}):
+            with patch.object(
+                service, "render_for_update", return_value={"cluster": "foobar-cluster"}
+            ):
                 Service.objects.save(service)
         client.update_service.assert_called_once()
 
-    def test_create_raises_when_cluster_missing(self, _mock_boto3_session: MagicMock) -> None:
+    def test_create_raises_when_cluster_missing(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         exc = type("ClusterNotFoundException", (Exception,), {})
         client.exceptions.ClusterNotFoundException = exc
@@ -54,11 +60,15 @@ class TestServiceManagerSaveUpdate:
 
 
 class TestStandaloneTaskSave:
-    def test_save_registers_task_definition(self, _mock_boto3_session: MagicMock) -> None:
+    def test_save_registers_task_definition(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         from deployfish.core.models.events import EventScheduleRule
 
         task = StandaloneTask.new(deepcopy(STANDALONE_TASK_YML), "deployfish")
-        with patch.object(task.task_definition, "save", return_value="arn:task-def:new") as save_mock:
+        with patch.object(
+            task.task_definition, "save", return_value="arn:task-def:new"
+        ) as save_mock:
             with patch.object(
                 EventScheduleRule.objects,
                 "get",
@@ -70,11 +80,14 @@ class TestStandaloneTaskSave:
 
     def test_delete_unschedules_task(self, _mock_boto3_session: MagicMock) -> None:
         task = StandaloneTask.new(deepcopy(STANDALONE_TASK_YML), "deployfish")
-        with patch(
-            "deployfish.core.models.ecs.EventScheduleRule.objects.exists",
-            return_value=True,
-        ), patch(
-            "deployfish.core.models.ecs.EventScheduleRule.objects.delete",
-        ) as delete_mock:
+        with (
+            patch(
+                "deployfish.core.models.ecs.EventScheduleRule.objects.exists",
+                return_value=True,
+            ),
+            patch(
+                "deployfish.core.models.ecs.EventScheduleRule.objects.delete",
+            ) as delete_mock,
+        ):
             StandaloneTask.objects.delete(task)
         delete_mock.assert_called_once()

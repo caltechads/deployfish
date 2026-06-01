@@ -6,12 +6,12 @@ from ..abstract import Adapter
 
 
 class EventTargetAdapter(Adapter):
-
     def get_cluster_arn(self) -> str:
         try:
             cluster = Cluster.objects.get(self.data["cluster"])
         except Cluster.DoesNotExist as e:
-            raise self.SchemaException(f"EventTarget: {e!s}")
+            msg = f"EventTarget: {e!s}"
+            raise self.SchemaException(msg)
         return cluster.arn
 
     def get_vpc_configuration(self) -> dict[str, Any]:
@@ -23,7 +23,9 @@ class EventTargetAdapter(Adapter):
             if "security_groups" in source:
                 data["SecurityGroups"] = source["security_groups"]
             if "public_ip" in source:
-                data["AssignPublicIp"] = "ENABLED" if source["public_ip"] else "DISABLED"
+                data["AssignPublicIp"] = (
+                    "ENABLED" if source["public_ip"] else "DISABLED"
+                )
         return data
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -48,7 +50,6 @@ class EventTargetAdapter(Adapter):
 
 
 class EventScheduleRuleAdapter(Adapter):
-
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
         data = {}
         data["Name"] = "deployfish-" + self.data["name"]

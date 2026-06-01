@@ -14,7 +14,9 @@ CLUSTER_DATA = {
 
 EC2_CLUSTER_DATA = {
     **CLUSTER_DATA,
-    "defaultCapacityProviderStrategy": [{"capacityProvider": "EC2-capacity", "weight": 1}],
+    "defaultCapacityProviderStrategy": [
+        {"capacityProvider": "EC2-capacity", "weight": 1}
+    ],
 }
 
 

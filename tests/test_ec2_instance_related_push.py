@@ -45,7 +45,9 @@ class TestInstanceRelatedObjects:
         }
         instance = Instance(data)
         asg = MagicMock(spec=AutoscalingGroup)
-        with patch.object(AutoscalingGroup.objects, "get", return_value=asg) as get_mock:
+        with patch.object(
+            AutoscalingGroup.objects, "get", return_value=asg
+        ) as get_mock:
             assert instance.autoscaling_group is asg
             assert instance.autoscaling_group is asg
         get_mock.assert_called_once_with("ecs-asg")

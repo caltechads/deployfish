@@ -84,7 +84,9 @@ class TestServiceManager:
         with pytest.raises(Service.DoesNotExist):
             Service.objects.get("foobar-cluster:foobar-test")
 
-    def test_get_raises_when_cluster_missing(self, _mock_boto3_session: MagicMock) -> None:
+    def test_get_raises_when_cluster_missing(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         exc = type("ClusterNotFoundException", (Exception,), {})
         client.exceptions.ClusterNotFoundException = exc
@@ -111,7 +113,9 @@ class TestServiceManager:
 
 
 class TestInvokedTaskManager:
-    def test_list_tasks_returns_invoked_tasks(self, _mock_boto3_session: MagicMock) -> None:
+    def test_list_tasks_returns_invoked_tasks(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         client.list_tasks.return_value = {
             "taskArns": ["arn:aws:ecs:us-west-2:123:task/cluster/abc"],

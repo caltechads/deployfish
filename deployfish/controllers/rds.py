@@ -11,7 +11,6 @@ from .utils import handle_model_exceptions
 
 
 class RDSRDSInstance(ReadOnlyCrudBase):
-
     class Meta:
         label = "rds"
         description = "Work with RDS Instances"
@@ -35,7 +34,7 @@ class RDSRDSInstance(ReadOnlyCrudBase):
         "Version": "EngineVersion",
         "Mult AZ": "multi_az",
         "Hostname": "hostname",
-        "Root User": "root_user"
+        "Root User": "root_user",
     }
 
     @ex(
@@ -48,7 +47,7 @@ not Secrets Manager enabled, just print the username of the root user.
 
 The {pk} is the name of the RDS instance.
 """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     @handle_model_exceptions
     def credentials(self) -> None:
@@ -60,4 +59,6 @@ The {pk} is the name of the RDS instance.
             self.app.print(f"Password: {obj.root_password}")
         else:
             self.app.print(f"Username: {obj.root_user}")
-            self.app.print(click.style("Password is not in AWS Secrets Manager", fg="red"))
+            self.app.print(
+                click.style("Password is not in AWS Secrets Manager", fg="red")
+            )

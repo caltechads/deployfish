@@ -8,6 +8,7 @@ from ..abstract import Adapter
 # Adapters
 # ------------------------
 
+
 class ECSServiceScalingPolicyAdapter(Adapter):
     """
     .. code-block:: python
@@ -27,10 +28,7 @@ class ECSServiceScalingPolicyAdapter(Adapter):
         super().__init__(data, **kwargs)
 
     def get_PolicyName(self) -> str:
-        if int(self.data["scale_by"]) < 0:
-            direction = "scale-down"
-        else:
-            direction = "scale-up"
+        direction = "scale-down" if int(self.data["scale_by"]) < 0 else "scale-up"
         return f"{self.cluster}-{self.service}-{direction}"
 
     def get_ResourceId(self) -> str:
@@ -64,14 +62,11 @@ class ECSServiceScalingPolicyAdapter(Adapter):
             "AdjustmentType": "ChangeInCapacity",
             "StepAdjustments": [adjustment],
             "Cooldown": int(self.data["cooldown"]),
-            "MetricAggregationType": "Average"
+            "MetricAggregationType": "Average",
         }
         kwargs = {}
         kwargs["alarm"] = CloudwatchAlarm.new(
-            self.data,
-            "deployfish",
-            cluster=self.cluster,
-            service=self.service
+            self.data, "deployfish", cluster=self.cluster, service=self.service
         )
         return data, kwargs
 
@@ -119,17 +114,21 @@ class ECSServiceScalableTargetAdapter(Adapter):
         data["RoleARN"] = self.data["role_arn"]
         kwargs = {}
         policies = []
-        policies.append(ScalingPolicy.new(
-            self.data["scale-up"],
-            "deployfish",
-            cluster=self.cluster,
-            service=self.service
-        ))
-        policies.append(ScalingPolicy.new(
-            self.data["scale-down"],
-            "deployfish",
-            cluster=self.cluster,
-            service=self.service
-        ))
+        policies.append(
+            ScalingPolicy.new(
+                self.data["scale-up"],
+                "deployfish",
+                cluster=self.cluster,
+                service=self.service,
+            )
+        )
+        policies.append(
+            ScalingPolicy.new(
+                self.data["scale-down"],
+                "deployfish",
+                cluster=self.cluster,
+                service=self.service,
+            )
+        )
         kwargs["policies"] = policies
         return data, kwargs

@@ -10,7 +10,6 @@ from .abstract import Manager, Model
 
 
 class ServiceDiscoveryNamespaceManager(Manager):
-
     service = "servicediscovery"
 
     def get(self, pk: str, **_) -> "ServiceDiscoveryNamespace":
@@ -19,23 +18,23 @@ class ServiceDiscoveryNamespaceManager(Manager):
             try:
                 response = self.client.get_namespace(Id=pk)
             except self.client.exceptions.NamespaceNotFound:
-                raise ServiceDiscoveryNamespace.DoesNotExist(
-                    f'No Service Discovery namespace with id="{pk}" exists in AWS.'
-                )
+                msg = f'No Service Discovery namespace with id="{pk}" exists in AWS.'
+                raise ServiceDiscoveryNamespace.DoesNotExist(msg)
             return ServiceDiscoveryNamespace(response["Namespace"])
         # Assume this is a namespace['Name']
         namespaces = self.list(private_only=True)
         for namespace in namespaces:
             if namespace.name == pk:
                 return namespace
-        raise ServiceDiscoveryNamespace.DoesNotExist(
-            f'No Service Discovery namespace with name="{pk}" exists in AWS.'
-        )
+        msg = f'No Service Discovery namespace with name="{pk}" exists in AWS.'
+        raise ServiceDiscoveryNamespace.DoesNotExist(msg)
 
     def list(self, private_only: bool = False) -> Sequence["ServiceDiscoveryNamespace"]:
         kwargs = {}
         if private_only:
-            kwargs["Filters"] = [{"Name": "TYPE", "Values": ["DNS_PRIVATE"], "Condition": "EQ"}]
+            kwargs["Filters"] = [
+                {"Name": "TYPE", "Values": ["DNS_PRIVATE"], "Condition": "EQ"}
+            ]
         paginator = self.client.get_paginator("list_namespaces")
         response_iterator = paginator.paginate(**kwargs)
         namespaces = []
@@ -45,7 +44,6 @@ class ServiceDiscoveryNamespaceManager(Manager):
 
 
 class ServiceDiscoveryServiceManager(Manager):
-
     service = "servicediscovery"
 
     def _get_with_id(self, pk: str) -> "ServiceDiscoveryService":
@@ -55,12 +53,13 @@ class ServiceDiscoveryServiceManager(Manager):
         try:
             response = self.client.get_service(Id=pk)
         except self.client.exceptions.ServiceNotFound:
-            raise ServiceDiscoveryService.DoesNotExist(
-                f'No Service Discovery service with id="{pk}" exists in AWS.'
-            )
+            msg = f'No Service Discovery service with id="{pk}" exists in AWS.'
+            raise ServiceDiscoveryService.DoesNotExist(msg)
         return ServiceDiscoveryService(response["Namespace"])
 
-    def _get_with_namespace_and_service_name(self, pk: str) -> "ServiceDiscoveryService":
+    def _get_with_namespace_and_service_name(
+        self, pk: str
+    ) -> "ServiceDiscoveryService":
         """
         Pk looks like '{namespace_pk}:{service_name}'
         """
@@ -71,9 +70,8 @@ class ServiceDiscoveryServiceManager(Manager):
         for service in services:
             if service.name == service_name:
                 return service
-        raise ServiceDiscoveryService.DoesNotExist(
-            f'No Service Discovery service with name="{pk}" exists in namespace "{namespace_pk}" in AWS.'
-        )
+        msg = f'No Service Discovery service with name="{pk}" exists in namespace "{namespace_pk}" in AWS.'
+        raise ServiceDiscoveryService.DoesNotExist(msg)
 
     def _get_with_bare_service_name(self, pk: str) -> "ServiceDiscoveryService":
         """
@@ -86,13 +84,11 @@ class ServiceDiscoveryServiceManager(Manager):
             if service.name == pk:
                 found.append(service)
         if len(found) == 0:
-            raise ServiceDiscoveryService.DoesNotExist(
-                f'No Service Discovery service with name="{pk}" exists in AWS.'
-            )
+            msg = f'No Service Discovery service with name="{pk}" exists in AWS.'
+            raise ServiceDiscoveryService.DoesNotExist(msg)
         if len(found) > 1:
-            raise ServiceDiscoveryService.MultipleObjectsReturned(
-                f'More than one Service Discovery service with name="{pk}" exists in AWS.'
-            )
+            msg = f'More than one Service Discovery service with name="{pk}" exists in AWS.'
+            raise ServiceDiscoveryService.MultipleObjectsReturned(msg)
         # We have to do this because the NamespaceId is not included in the services returned by
         # self.client.list_services, but is included in self.client.get_service
         return self.get(found[0].pk)
@@ -111,12 +107,16 @@ class ServiceDiscoveryServiceManager(Manager):
             return self._get_with_namespace_and_service_name(pk)
         return self._get_with_bare_service_name(pk)
 
-    def list(self, namespace: Union[str, "ServiceDiscoveryNamespace"] = None) -> Sequence["ServiceDiscoveryService"]:
+    def list(
+        self, namespace: Union[str, "ServiceDiscoveryNamespace"] = None
+    ) -> Sequence["ServiceDiscoveryService"]:
         kwargs = {}
         if namespace:
             if not isinstance(namespace, ServiceDiscoveryNamespace):
                 namespace = ServiceDiscoveryNamespace.objects.get(namespace)
-            kwargs["Filters"] = [{"Name": "NAMESPACE_ID", "Values": [namespace.pk], "Condition": "EQ"}]
+            kwargs["Filters"] = [
+                {"Name": "NAMESPACE_ID", "Values": [namespace.pk], "Condition": "EQ"}
+            ]
         namespace = cast("ServiceDiscoveryNamespace", namespace)
         paginator = self.client.get_paginator("list_services")
         response_iterator = paginator.paginate(**kwargs)
@@ -139,39 +139,35 @@ class ServiceDiscoveryServiceManager(Manager):
         try:
             response = self.client.create_service(**obj.render_for_create())
         except self.client.exceptions.NamespaceNotFound:
-            raise ServiceDiscoveryService.NamespaceNotFound(
-                f'No Service Discovery namespace with name="{obj.namespace_name}" exists in AWS'
-            )
+            msg = f'No Service Discovery namespace with name="{obj.namespace_name}" exists in AWS'
+            raise ServiceDiscoveryService.NamespaceNotFound(msg)
         return response["Services"][0]["Arn"]
 
     def update(self, obj: "ServiceDiscoveryService") -> str:
         try:
             response = self.client.update_service(**obj.render_for_update())
         except self.client.exceptions.ServiceNotFound:
-            raise ServiceDiscoveryService.DoesNotExist(
-                f'No Service Discovery service with id="{obj.pk}" exists in AWS.'
-            )
+            msg = f'No Service Discovery service with id="{obj.pk}" exists in AWS.'
+            raise ServiceDiscoveryService.DoesNotExist(msg)
         return response["Services"][0]["Arn"]
 
     def delete(self, obj: Model, **_) -> None:
         try:
             self.client.delete_service(obj.pk)
         except self.client.exceptions.ServiceNotFound:
-            raise ServiceDiscoveryService.DoesNotExist(
-                f'No Service Discovery service with id="{obj.pk}" exists in AWS.'
-            )
+            msg = f'No Service Discovery service with id="{obj.pk}" exists in AWS.'
+            raise ServiceDiscoveryService.DoesNotExist(msg)
         except self.client.exceptions.ResourceInUse:
-            raise ServiceDiscoveryService.OperationFailed(
-                f'Service Discovery service with id="{obj.pk}" cannot be deleted because it is in use.'
-            )
+            msg = f'Service Discovery service with id="{obj.pk}" cannot be deleted because it is in use.'
+            raise ServiceDiscoveryService.OperationFailed(msg)
 
 
 # ----------------------------------------
 # Models
 # ----------------------------------------
 
-class ServiceDiscoveryNamespace(Model):
 
+class ServiceDiscoveryNamespace(Model):
     objects = ServiceDiscoveryNamespaceManager()
 
     # ---------------------
@@ -241,7 +237,6 @@ class ServiceDiscoveryService(Model):
         The namespace that this service is configured with does not exist in AWS.
         """
 
-
     def __init__(self, data: dict[str, Any], **kwargs):
         self.namespace_name: str | None = kwargs.pop("namespace_name", None)
         super().__init__(data, **kwargs)
@@ -293,9 +288,8 @@ class ServiceDiscoveryService(Model):
 
     def save(self) -> str:
         if not self.namespace:
-            raise self.ImproperlyConfigured(
-                f'Service Discovery service "{self.name}" has no namespace assigned'
-            )
+            msg = f'Service Discovery service "{self.name}" has no namespace assigned'
+            raise self.ImproperlyConfigured(msg)
         self.data["NamespaceId"] = self.namespace.pk
         self.data["DnsConfig"]["NamespaceId"] = self.namespace.pk
         return super().save()
@@ -314,7 +308,9 @@ class ServiceDiscoveryService(Model):
             self.cache["namespace"] = None
             return None
         try:
-            return self.get_cached("namespace", ServiceDiscoveryNamespace.objects.get, [pk])
+            return self.get_cached(
+                "namespace", ServiceDiscoveryNamespace.objects.get, [pk]
+            )
         except ServiceDiscoveryNamespace.DoesNotExist:
             self.cache["namespace"] = None
             return None

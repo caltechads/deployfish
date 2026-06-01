@@ -72,8 +72,14 @@ class TestTerraform_lookup:
             Mock(return_value=self.tfstate),
         ):
             self.terraform.load({"environment": "qa"})
-        assert self.terraform.lookup("lookup1", {"{environment}": "qa"}) == "foobar-cluster-qa"
-        assert self.terraform.lookup("lookup1", {"{environment}": "prod"}) == "foobar-cluster-prod"
+        assert (
+            self.terraform.lookup("lookup1", {"{environment}": "qa"})
+            == "foobar-cluster-qa"
+        )
+        assert (
+            self.terraform.lookup("lookup1", {"{environment}": "prod"})
+            == "foobar-cluster-prod"
+        )
         assert self.terraform.lookup("lookup4", {}) == [
             "sg-1234567",
             "sg-2345678",

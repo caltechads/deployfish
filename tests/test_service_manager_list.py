@@ -5,7 +5,9 @@ from deployfish.core.models.ecs import Service
 
 def _cluster_paginator(client: MagicMock, clusters: list[str]) -> MagicMock:
     paginator = MagicMock()
-    paginator.paginate.return_value = [{"clusterArns": [f"arn:aws:ecs:1:cluster/{name}" for name in clusters]}]
+    paginator.paginate.return_value = [
+        {"clusterArns": [f"arn:aws:ecs:1:cluster/{name}" for name in clusters]}
+    ]
     return paginator
 
 

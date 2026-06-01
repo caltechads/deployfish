@@ -133,9 +133,10 @@ class TestTargetGroupRelatedProperties:
             },
             listener_arn=listener.arn,
         )
-        with patch.object(
-            LoadBalancerListenerRule.objects, "list", return_value=[rule]
-        ), patch.object(LoadBalancer.objects, "get_many", return_value=[lb]):
+        with (
+            patch.object(LoadBalancerListenerRule.objects, "list", return_value=[rule]),
+            patch.object(LoadBalancer.objects, "get_many", return_value=[lb]),
+        ):
             with patch.object(
                 LoadBalancerListener.objects, "list", return_value=[listener]
             ):

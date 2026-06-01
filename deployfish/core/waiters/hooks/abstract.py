@@ -2,7 +2,6 @@ import click
 
 
 class AbstractWaiterHook:
-
     def __init__(self, obj):
         self.obj = obj
 
@@ -69,6 +68,6 @@ class AbstractWaiterHook:
             self.waiting(status, response, num_attempts, **kwargs)
         elif status == "success":
             self.success(status, response, num_attempts, **kwargs)
-        elif status == "failure" or status == "error" or status == "timeout":
+        elif status in {"failure", "error", "timeout"}:
             self.failure(status, response, num_attempts, **kwargs)
         self.cleanup(status, response, num_attempts, **kwargs)

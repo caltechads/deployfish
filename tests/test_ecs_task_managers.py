@@ -32,16 +32,23 @@ class TestTaskDefinitionManager:
     def test_get_raises_on_client_error(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
         client.exceptions.ClientException = type("ClientException", (Exception,), {})
-        client.describe_task_definition.side_effect = client.exceptions.ClientException("missing")
+        client.describe_task_definition.side_effect = client.exceptions.ClientException(
+            "missing"
+        )
         with pytest.raises(TaskDefinition.DoesNotExist):
             TaskDefinition.objects.get("missing:1")
 
-    def test_save_registers_task_definition(self, _mock_boto3_session: MagicMock) -> None:
+    def test_save_registers_task_definition(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         client.register_task_definition.return_value = {
             "taskDefinition": {"taskDefinitionArn": "arn:new:1"},
         }
-        td = TaskDefinition(TASK_DEF_DATA, containers=[ContainerDefinition(TASK_DEF_DATA["containerDefinitions"][0])])
+        td = TaskDefinition(
+            TASK_DEF_DATA,
+            containers=[ContainerDefinition(TASK_DEF_DATA["containerDefinitions"][0])],
+        )
         with patch.object(td, "render", return_value={"family": "foobar-test"}):
             arn = TaskDefinition.objects.save(td)
         assert arn == "arn:new:1"
@@ -56,7 +63,11 @@ class TestTaskDefinitionManager:
         paginator = MagicMock()
         client.get_paginator.return_value = paginator
         paginator.paginate.return_value = [
-            {"taskDefinitionArns": ["arn:aws:ecs:us-west-2:123:task-definition/foobar-test:1"]},
+            {
+                "taskDefinitionArns": [
+                    "arn:aws:ecs:us-west-2:123:task-definition/foobar-test:1"
+                ]
+            },
         ]
         with patch.object(TaskDefinition.objects, "get") as get_mock:
             get_mock.return_value = TaskDefinition(TASK_DEF_DATA, containers=[])

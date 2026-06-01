@@ -15,7 +15,9 @@ from deployfish.exceptions import ConfigProcessingFailed
 class TestEnvironmentConfigProcessor:
     def test_missing_env_file_raises_by_default(self) -> None:
         config = MagicMock()
-        with pytest.raises(AbstractConfigProcessor.ProcessingFailed, match="does not exist"):
+        with pytest.raises(
+            AbstractConfigProcessor.ProcessingFailed, match="does not exist"
+        ):
             EnvironmentConfigProcessor(
                 config,
                 {"env_file": "/no/such/env_file.env"},
@@ -37,8 +39,12 @@ class TestEnvironmentConfigProcessor:
         env_path.write_text("KEY=value\n", encoding="utf-8")
         config = MagicMock()
         processor = EnvironmentConfigProcessor(config, {})
-        with patch("builtins.open", side_effect=OSError(errno.EACCES, "Permission denied")):
-            with pytest.raises(AbstractConfigProcessor.ProcessingFailed, match="not readable"):
+        with patch(
+            "builtins.open", side_effect=OSError(errno.EACCES, "Permission denied")
+        ):
+            with pytest.raises(
+                AbstractConfigProcessor.ProcessingFailed, match="not readable"
+            ):
                 processor._load_env_file(str(env_path))
 
     def test_import_env_merges_os_environ(self, tmp_path) -> None:
@@ -76,14 +82,17 @@ class TestTerraformEnterpriseState:
             AbstractTerraformState.__init__(state, terraform_config, {})
             state.api_token = "test-token"
             state.loaded = False
-        with patch.object(
-            state,
-            "get_terraform_state_download_url",
-            return_value="https://example.com/state",
-        ), patch(
-            "deployfish.config.processors.terraform.requests.get",
-            return_value=MagicMock(text='{"modules": []}'),
-        ) as requests_get:
+        with (
+            patch.object(
+                state,
+                "get_terraform_state_download_url",
+                return_value="https://example.com/state",
+            ),
+            patch(
+                "deployfish.config.processors.terraform.requests.get",
+                return_value=MagicMock(text='{"modules": []}'),
+            ) as requests_get,
+        ):
             requests_get.return_value.text = __import__("json").dumps(tfstate)
             state.load({})
         assert state.terraform_lookups["cluster_name"]["value"] == "prod-cluster"
@@ -95,5 +104,7 @@ class TestTerraformEnterpriseState:
             "lookups": {},
         }
         with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(ConfigProcessingFailed, match="No Terraform Enterprise API token"):
+            with pytest.raises(
+                ConfigProcessingFailed, match="No Terraform Enterprise API token"
+            ):
                 TerraformEnterpriseState(terraform_config, {})

@@ -2,6 +2,7 @@
 import contextlib
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 import click
@@ -65,14 +66,14 @@ def post_arg_parse_build_boto3_session(app: "DeployfishApp") -> None:
     """
     app.log.debug("building boto3 session")
     build_boto3_session(
-        app.pargs.deployfish_filename,
-        use_aws_section=not app.pargs.no_use_aws_section
+        app.pargs.deployfish_filename, use_aws_section=not app.pargs.no_use_aws_section
     )
 
 
 # ------------------
 # The cement app
 # ------------------
+
 
 class DeployfishApp(App):
     """Deployfish primary application."""
@@ -145,30 +146,28 @@ class DeployfishApp(App):
             LogsCloudWatchLogGroup,
             LogsCloudWatchLogStream,
             RDSRDSInstance,
-            Tunnels
+            Tunnels,
         ]
 
         # define hooks
         define_hooks = [
-            "pre_config_interpolate",    # hook(app: App, obj: Type[Config])
-            "pre_object_create",         # hook(app: App, obj: Model)
-            "post_object_create",        # hook(app: App, obj: Model, success: bool = True, reason: str = None)
-            "pre_object_update",         # hook(app: App, obj: Model)
-            "post_object_update",        # hook(app: App, obj: Model, success: bool = True, reason: str = None)
-            "pre_object_delete",         # hook(app: App, obj: Model)
-            "post_object_delete",        # hook(app: App, obj: Model, success: bool =  True, reason: str = None)
-            "pre_service_scale",         # hook(app: App, obj: Service, count: int)
-            "post_service_scale",        # hook(app: App, obj: Service, count: int)
-            "pre_service_restart",       # hook(app: App, obj: Service)
-            "post_service_restart",      # hook(app: App, obj: Service)
-            "pre_cluster_scale",         # hook(app: App, obj: Cluster, count: int)
-            "post_cluster_scale",        # hook(app: App, obj: Cluster, count: int)
+            "pre_config_interpolate",  # hook(app: App, obj: Type[Config])
+            "pre_object_create",  # hook(app: App, obj: Model)
+            "post_object_create",  # hook(app: App, obj: Model, success: bool = True, reason: str = None)
+            "pre_object_update",  # hook(app: App, obj: Model)
+            "post_object_update",  # hook(app: App, obj: Model, success: bool = True, reason: str = None)
+            "pre_object_delete",  # hook(app: App, obj: Model)
+            "post_object_delete",  # hook(app: App, obj: Model, success: bool =  True, reason: str = None)
+            "pre_service_scale",  # hook(app: App, obj: Service, count: int)
+            "post_service_scale",  # hook(app: App, obj: Service, count: int)
+            "pre_service_restart",  # hook(app: App, obj: Service)
+            "post_service_restart",  # hook(app: App, obj: Service)
+            "pre_cluster_scale",  # hook(app: App, obj: Cluster, count: int)
+            "post_cluster_scale",  # hook(app: App, obj: Cluster, count: int)
         ]
 
         # register hooks
-        hooks = [
-            ("post_argument_parsing", post_arg_parse_build_boto3_session)
-        ]
+        hooks = [("post_argument_parsing", post_arg_parse_build_boto3_session)]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -191,19 +190,24 @@ class DeployfishApp(App):
         if not self._deployfish_config:
             ignore_missing_environment = False
             if (
-                self.pargs.ignore_missing_environment or
-                os.environ.get("DEPLOYFISH_IGNORE_MISSING_ENVIRONMENT", "false").lower() == "true"
+                self.pargs.ignore_missing_environment
+                or os.environ.get(
+                    "DEPLOYFISH_IGNORE_MISSING_ENVIRONMENT", "false"
+                ).lower()
+                == "true"
             ):
                 ignore_missing_environment = True
             config_kwargs: dict[str, Any] = {
                 "filename": self.pargs.deployfish_filename,
                 "env_file": self.pargs.env_file,
                 "tfe_token": self.pargs.tfe_token,
-                "ignore_missing_environment": ignore_missing_environment
+                "ignore_missing_environment": ignore_missing_environment,
             }
             self._deployfish_config = Config.new(**config_kwargs)
             if "proxy" not in self._deployfish_config.get_global_config("ssh"):
-                self._deployfish_config.ssh_provider_type = self.config.get("deployfish", "ssh_provider")
+                self._deployfish_config.ssh_provider_type = self.config.get(
+                    "deployfish", "ssh_provider"
+                )
         return self._deployfish_config
 
     @property
@@ -221,7 +225,7 @@ class DeployfishApp(App):
             config_kwargs: dict[str, Any] = {
                 "filename": self.pargs.deployfish_filename,
                 "ignore_missing_environment": True,
-                "interpolate": False
+                "interpolate": False,
             }
             self._raw_deployfish_config = Config.new(**config_kwargs)
         return self._raw_deployfish_config
@@ -232,7 +236,8 @@ class DeployfishApp(App):
 # ==========================================
 
 
-def main():
+def main() -> None:
+    """Run Deployfish CLI entrypoint."""
     maybe_do_cli_debugging(sys.argv)
 
     with DeployfishApp() as app:
@@ -240,33 +245,34 @@ def main():
         try:
             app.run()
 
-        except AssertionError as e:
-            print("AssertionError > %s" % e.args[0])
+        except AssertionError:
             app.exit_code = 1
 
             if app.debug is True:
                 import traceback
+
                 traceback.print_exc()
 
         except UnauthorizedSSOTokenError as ex:
             click.secho(str(ex), fg="red")
             app.exit_code = 1
 
-        except DeployfishAppError as e:
-            print("DeployfishAppError > %s" % e.args[0])
+        except DeployfishAppError as ex:
             app.exit_code = 1
+            print(ex)  # noqa: T201
 
             if app.debug is True:
                 import traceback
+
                 traceback.print_exc()
 
-        except CaughtSignal as e:
+        except CaughtSignal as ex:
             # Default Cement signals are SIGINT and SIGTERM, exit 0 (non-error)
-            print("\n%s" % e)
             app.exit_code = 0
+            print(f"Caught signal {ex.signum}")  # noqa: T201
 
 
-def maybe_do_cli_debugging(argv):
+def maybe_do_cli_debugging(argv: list[str]) -> None:
     """
     Call this to enable client-style debugging of a python script if the user
     passed --debugpy on the command line (can't use --debug because Cement uses it).
@@ -287,12 +293,14 @@ def maybe_do_cli_debugging(argv):
         try:
             # Redirect stderr to /dev/null to avoid printing debugpy's error message.
             # We have our own.
-            with open(os.devnull, "w") as devnull, contextlib.redirect_stderr(devnull):
+            with Path(os.devnull).open("w") as devnull, contextlib.redirect_stderr(
+                devnull
+            ):
                 debugpy.connect(("localhost", 5678))
         except ConnectionRefusedError:
-            print("No debug server is running at localhost:5678.")
+            print("Could not connect to debugpy at localhost:5678")  # noqa: T201
         else:
-            print("Connected to debug server at localhost:5678.")
+            pass
         # Remove the --debug flag because django will complain about it.
         argv.remove("--debugpy")
 

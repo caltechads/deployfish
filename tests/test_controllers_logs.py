@@ -27,7 +27,9 @@ class TestTailTaskLogs:
         app = MagicMock()
         task = _awslogs_task()
         event = {
-            "timestamp": MagicMock(strftime=MagicMock(return_value="2026-01-01 00:00:00.000000")),
+            "timestamp": MagicMock(
+                strftime=MagicMock(return_value="2026-01-01 00:00:00.000000")
+            ),
             "message": "hello world\n",
         }
         tailer = iter([[event], []])
@@ -37,7 +39,9 @@ class TestTailTaskLogs:
             "deployfish.controllers.logs.CloudWatchLogGroup.objects.get",
             return_value=group,
         ):
-            with patch("deployfish.controllers.logs.click.style", side_effect=lambda v, **_: v):
+            with patch(
+                "deployfish.controllers.logs.click.style", side_effect=lambda v, **_: v
+            ):
                 tail_task_logs(app, task, sleep=0, mark=True)
         app.print.assert_called()
         group.get_event_tailer.assert_called_once()

@@ -16,7 +16,10 @@ class TestECSAdapterGaps:
     def test_fargate_adapter_sets_launch_type(self) -> None:
         adapter = ServiceAdapter(deepcopy(FARGATE_SERVICE_YML))
         _service_data, kwargs = adapter.convert()
-        assert kwargs.get("launch_type") == "FARGATE" or _service_data.get("launchType") == "FARGATE"
+        assert (
+            kwargs.get("launch_type") == "FARGATE"
+            or _service_data.get("launchType") == "FARGATE"
+        )
 
     def test_service_adapter_includes_task_definition(self) -> None:
         adapter = ServiceAdapter(deepcopy(SERVICE_YML))

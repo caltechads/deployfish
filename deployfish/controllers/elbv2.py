@@ -10,7 +10,6 @@ from .utils import handle_model_exceptions
 
 
 class EC2LoadBalancer(ReadOnlyCrudBase):
-
     class Meta:
         label = "lbs"
         description = "Work with Load Balancer objects"
@@ -31,9 +30,8 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
         "Type": "lb_type",
         "Scheme": "scheme",
         "VPC": "VpcId",
-        "Hostname": "DNSName"
+        "Hostname": "DNSName",
     }
-
 
     @ex(
         help="List Load Balancers in AWS",
@@ -44,8 +42,8 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
                     "help": "Filter by VPC ID",
                     "action": "store",
                     "default": None,
-                    "dest": "vpc_id"
-                }
+                    "dest": "vpc_id",
+                },
             ),
             (
                 ["--name"],
@@ -53,8 +51,8 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
                     "help": 'Filter by load balancer name, with globs. Ex: "foo*", "*foo"',
                     "action": "store",
                     "default": None,
-                    "dest": "name"
-                }
+                    "dest": "name",
+                },
             ),
             (
                 ["--type"],
@@ -63,8 +61,8 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
                     "action": "store",
                     "default": "any",
                     "choices": ["any", "application", "network"],
-                    "dest": "lb_type"
-                }
+                    "dest": "lb_type",
+                },
             ),
             (
                 ["--scheme"],
@@ -73,10 +71,10 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
                     "action": "store",
                     "default": "any",
                     "choices": ["any", "internet-facing", "internal"],
-                    "dest": "scheme"
-                }
+                    "dest": "scheme",
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def list(self):
@@ -84,13 +82,12 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
             vpc_id=self.app.pargs.vpc_id,
             lb_type=self.app.pargs.lb_type,
             scheme=self.app.pargs.scheme,
-            name=self.app.pargs.name
+            name=self.app.pargs.name,
         )
         self.render_list(results)
 
 
 class EC2LoadBalancerListener(ReadOnlyCrudBase):
-
     class Meta:
         label = "listeners"
         description = "Work with Load Balancer Listener objects"
@@ -112,15 +109,12 @@ class EC2LoadBalancerListener(ReadOnlyCrudBase):
         "Port": "Port",
         "Protocol": "Protocol",
         "Rules": {"key": "rules", "length": True},
-        "ARN": "arn"
+        "ARN": "arn",
     }
-
 
     @ex(
         help="List Load Balancer Listeners in AWS",
-        arguments=[
-            (["load_balancer"], {"help": "Load balancer name or ARN"})
-        ]
+        arguments=[(["load_balancer"], {"help": "Load balancer name or ARN"})],
     )
     @handle_model_exceptions
     def list(self):
@@ -129,7 +123,6 @@ class EC2LoadBalancerListener(ReadOnlyCrudBase):
 
 
 class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
-
     class Meta:
         label = "target-groups"
         description = "Work with Load Balancer Target Group objects"
@@ -152,9 +145,8 @@ class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
         "Rules": "rules",
         "Protocol": "Protocol",
         "Target Port": "Port",
-        "Targets": "targets"
+        "Targets": "targets",
     }
-
 
     @ex(
         help="List Load Balancer Target Groups in AWS",
@@ -165,14 +157,12 @@ class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
                     "help": 'Filter by load balancer name or ARN"',
                     "action": "store",
                     "default": None,
-                    "dest": "load_balancer"
-                }
+                    "dest": "load_balancer",
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def list(self):
-        results = self.model.objects.list(
-            load_balancer=self.app.pargs.load_balancer
-        )
+        results = self.model.objects.list(load_balancer=self.app.pargs.load_balancer)
         self.render_list(results)

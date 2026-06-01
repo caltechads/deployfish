@@ -33,7 +33,11 @@ class TestGetSSHTargetChoose:
         service = Service.new(deepcopy(SERVICE_YML), "deployfish")
         prompt = MagicMock()
         prompt.prompt.return_value = "2"
-        with patch.object(type(service), "ssh_targets", property(lambda _self: [target_a, target_b])):
-            with patch("deployfish.controllers.network.shell.Prompt", return_value=prompt):
+        with patch.object(
+            type(service), "ssh_targets", property(lambda _self: [target_a, target_b])
+        ):
+            with patch(
+                "deployfish.controllers.network.shell.Prompt", return_value=prompt
+            ):
                 result = get_ssh_target(app, service, choose=True)
         assert result is target_b

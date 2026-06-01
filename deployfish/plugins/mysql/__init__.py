@@ -17,4 +17,6 @@ def add_template_dir(app: App):
 def load(app: App) -> None:
     app.handler.register(MysqlController)
     app.hook.register("post_setup", add_template_dir)
-    app.hook.register("pre_config_interpolate", pre_config_interpolate_add_mysql_section)
+    app.hook.register(
+        "pre_config_interpolate", pre_config_interpolate_add_mysql_section
+    )

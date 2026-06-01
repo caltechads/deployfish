@@ -11,7 +11,6 @@ from .mixins import TagsManagerMixin, TagsMixin
 
 
 class EFSFileSystemManager(TagsManagerMixin, Manager):
-
     service: str = "efs"
 
     def get(self, pk: str, **_) -> "EFSFileSystem":
@@ -20,9 +19,8 @@ class EFSFileSystemManager(TagsManagerMixin, Manager):
         except botocore.exceptions.ClientError:
             # FIXME: can we get ClientError for reasons other than the filesystem does
             # not exist?
-            raise EFSFileSystem.DoesNotExist(
-                f'No EFS file system with id "{pk}" exists in AWS'
-            )
+            msg = f'No EFS file system with id "{pk}" exists in AWS'
+            raise EFSFileSystem.DoesNotExist(msg)
         return EFSFileSystem(response["FileSystems"][0])
 
     def list(self) -> Sequence["EFSFileSystem"]:
@@ -34,8 +32,8 @@ class EFSFileSystemManager(TagsManagerMixin, Manager):
 # Models
 # ----------------------------------------
 
-class EFSFileSystem(TagsMixin, Model):
 
+class EFSFileSystem(TagsMixin, Model):
     objects = EFSFileSystemManager()
 
     @property

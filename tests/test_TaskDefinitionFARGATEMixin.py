@@ -113,7 +113,9 @@ class TestTaskDefinitionFARGATEMixin_EC2:
         with pytest.raises(SchemaException, match="Task memory must be greater than"):
             mixin.set_task_memory(data, container_data)
 
-    def test_memory_too_small_for_container_memoryReservation_raises_SchemaException(self) -> None:
+    def test_memory_too_small_for_container_memoryReservation_raises_SchemaException(
+        self,
+    ) -> None:
         data = deepcopy(TASK_DATA_EC2)
         container_data = deepcopy(CONTAINER_DATA)
         del container_data[0]["memory"]
@@ -176,7 +178,9 @@ class TestTaskDefinitionFARGATEMixin_FARGATE:
         mixin.set_task_memory(data, container_data)
         assert data["memory"] == "1024"
 
-    def test_memory_is_set_based_on_container_memoryReservation_if_not_provided(self) -> None:
+    def test_memory_is_set_based_on_container_memoryReservation_if_not_provided(
+        self,
+    ) -> None:
         data = deepcopy(TASK_DATA_FARGATE)
         container_data = deepcopy(CONTAINER_DATA)
         del container_data[0]["memory"]
@@ -218,7 +222,9 @@ class TestTaskDefinitionFARGATEMixin_FARGATE:
         with pytest.raises(SchemaException, match="Task memory must be greater than"):
             mixin.set_task_memory(data, container_data)
 
-    def test_memory_too_small_for_container_memoryReservation_raises_SchemaException(self) -> None:
+    def test_memory_too_small_for_container_memoryReservation_raises_SchemaException(
+        self,
+    ) -> None:
         data = deepcopy(TASK_DATA_FARGATE)
         container_data = deepcopy(CONTAINER_DATA)
         del container_data[0]["memory"]

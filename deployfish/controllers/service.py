@@ -35,7 +35,6 @@ def valid_date(s):
 
 
 class ECSService(CrudBase):
-
     class Meta:
         label = "service"
         description = "Work with ECS Service objects"
@@ -49,7 +48,7 @@ class ECSService(CrudBase):
         "info": "Show details about an ECS Service object from AWS",
         "create": "Create an ECS Service in AWS from what is in deployfish.yml",
         "update": "Update an ECS Service in AWS from what is in deployfish.yml",
-        "delete": "Delete an ECS Service from AWS"
+        "delete": "Delete an ECS Service from AWS",
     }
 
     info_template: str = "detail--service.jinja2"
@@ -80,16 +79,13 @@ class ECSService(CrudBase):
         "AZ": "availabilityZone",
         "Family": "taskDefinition__family_revision",
         "Launch Type": "launchType",
-        "created": "createdAt"
+        "created": "createdAt",
     }
 
     def service_waiter(self, obj: Model, **kwargs) -> None:
         kwargs["WaiterHooks"] = [ECSDeploymentStatusWaiterHook(obj)]
         timeout_minutes = os.environ.get("DEPLOYFISH_SERVICE_UPDATE_TIMEOUT", 15)
-        kwargs["WaiterConfig"] = {
-            "Delay": 10,
-            "MaxAttempts": timeout_minutes * 6
-        }
+        kwargs["WaiterConfig"] = {"Delay": 10, "MaxAttempts": timeout_minutes * 6}
         kwargs["services"] = [obj.name]
         kwargs["cluster"] = obj.data["cluster"]
         self.wait("services_stable", **kwargs)
@@ -109,8 +105,8 @@ class ECSService(CrudBase):
                     "default": None,
                     "choices": ["secrets", "deployments"],
                     "dest": "includes",
-                    "nargs": "+"
-                }
+                    "nargs": "+",
+                },
             ),
             (
                 ["--excludes"],
@@ -120,9 +116,9 @@ class ECSService(CrudBase):
                     "default": None,
                     "choices": ["events"],
                     "dest": "excludes",
-                    "nargs": "+"
-                }
-            )
+                    "nargs": "+",
+                },
+            ),
         ],
     )
     @handle_model_exceptions
@@ -145,8 +141,8 @@ class ECSService(CrudBase):
                     "help": 'Filter by cluster name, with globs. Ex: "foo*", "*foo"',
                     "action": "store",
                     "default": None,
-                    "dest": "cluster_name"
-                }
+                    "dest": "cluster_name",
+                },
             ),
             (
                 ["--service-name"],
@@ -154,8 +150,8 @@ class ECSService(CrudBase):
                     "help": 'Filter by service name, with globs. Ex: "foo*", "*foo"',
                     "action": "store",
                     "default": None,
-                    "dest": "service_name"
-                }
+                    "dest": "service_name",
+                },
             ),
             (
                 ["--launch-type"],
@@ -164,8 +160,8 @@ class ECSService(CrudBase):
                     "action": "store",
                     "default": "any",
                     "choices": ["any", "EC2", "FARGATE"],
-                    "dest": "launch_type"
-                }
+                    "dest": "launch_type",
+                },
             ),
             (
                 ["--scheduling-strategy"],
@@ -174,8 +170,8 @@ class ECSService(CrudBase):
                     "action": "store",
                     "default": "any",
                     "choices": ["any", "REPLICA", "DAEMON"],
-                    "dest": "scheduling_strategy"
-                }
+                    "dest": "scheduling_strategy",
+                },
             ),
             (
                 ["--updated-since"],
@@ -184,10 +180,10 @@ class ECSService(CrudBase):
                     "action": "store",
                     "default": None,
                     "dest": "updated_since",
-                    "type": valid_date
-                }
+                    "type": valid_date,
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def list(self):
@@ -196,7 +192,7 @@ class ECSService(CrudBase):
             service_name=self.app.pargs.service_name,
             launch_type=self.app.pargs.launch_type,
             scheduling_strategy=self.app.pargs.scheduling_strategy,
-            updated_since=self.app.pargs.updated_since
+            updated_since=self.app.pargs.updated_since,
         )
         self.render_list(results)
 
@@ -229,10 +225,10 @@ class ECSService(CrudBase):
                 ["count"],
                 {
                     "help": "Set the number of tasks for the service to this",
-                    "type": int
-                }
+                    "type": int,
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def scale(self):
@@ -249,7 +245,10 @@ class ECSService(CrudBase):
         obj.scale(count)
         self.scale_services_waiter(obj)  # type: ignore
         self.app.print(
-            click.style(f'\n\nScaled {self.model.__name__}("{obj.pk}") to {count} tasks.', fg="green")
+            click.style(
+                f'\n\nScaled {self.model.__name__}("{obj.pk}") to {count} tasks.',
+                fg="green",
+            )
         )
         for _ in self.app.hook.run("post_service_scale", self.app, obj, count):
             pass
@@ -264,10 +263,10 @@ class ECSService(CrudBase):
                     "help": "Kill off all the tasks at once instead of iterating through them",
                     "default": False,
                     "action": "store_true",
-                    "dest": "hard"
-                }
-            )
-        ]
+                    "dest": "hard",
+                },
+            ),
+        ],
     )
     @handle_model_exceptions
     def restart(self):
@@ -275,16 +274,24 @@ class ECSService(CrudBase):
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         obj = cast("Service", obj)
         try:
-            obj.restart(hard=self.app.pargs.hard, waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)])
+            obj.restart(
+                hard=self.app.pargs.hard,
+                waiter_hooks=[ECSDeploymentStatusWaiterHook(obj)],
+            )
         except DockerMixin.NoRunningTasks:
-            return click.secho(f'\n\nNo running tasks for {self.model.__name__}("{obj.pk}").', fg="yellow")
-        return click.secho(f'\n\nRestarted tasks for {self.model.__name__}("{obj.pk}").', fg="green")
+            return click.secho(
+                f'\n\nNo running tasks for {self.model.__name__}("{obj.pk}").',
+                fg="yellow",
+            )
+        return click.secho(
+            f'\n\nRestarted tasks for {self.model.__name__}("{obj.pk}").', fg="green"
+        )
 
     @ex(
         help="List the running tasks for an ECS Service in AWS.",
         arguments=[
             (["pk"], {"help": "The primary key for the ECS Service"}),
-        ]
+        ],
     )
     @handle_model_exceptions
     def running_tasks(self):
@@ -293,7 +300,7 @@ class ECSService(CrudBase):
         results = obj.running_tasks
         renderer = TableRenderer(
             columns=self.running_tasks_result_columns,
-            ordering=self.running_tasks_ordering
+            ordering=self.running_tasks_ordering,
         )
         self.app.print(renderer.render(results))
 
@@ -301,7 +308,7 @@ class ECSService(CrudBase):
         help="Show what we would do if we were to update an ECS Service in AWS. (Experimental)",
         arguments=[
             (["pk"], {"help": "The primary key for the ECS Service"}),
-        ]
+        ],
     )
     @handle_model_exceptions
     def plan(self):
@@ -327,12 +334,11 @@ class ECSService(CrudBase):
                 # See render_diff macro in plan--service.jinja2 to see how the line markers are located.
                 "debug": self.app.debug,
             },
-            template=self.plan_template
+            template=self.plan_template,
         )
 
 
 class ECSServiceStandaloneTasks(Controller):
-
     class Meta:
         label = "service-standalonetasks"
         stacked_on = "service"
@@ -347,7 +353,7 @@ class ECSServiceStandaloneTasks(Controller):
         help="List StandaloneTasks related to a Service from configuration in deployfish.yml",
         arguments=[
             (["pk"], {"help": "The primary key for the ECS Service"}),
-        ]
+        ],
     )
     @handle_model_exceptions
     def list_related_tasks(self):
@@ -366,15 +372,17 @@ class ECSServiceStandaloneTasks(Controller):
         """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(
-            self.app.pargs.pk,
-            factory_kwargs={"load_secrets": False}
+            self.app.pargs.pk, factory_kwargs={"load_secrets": False}
         )
         tasks = []
         config = self.app.deployfish_config.cooked
         if "tasks" in config:
             for task_data in config["tasks"]:
                 if "service" in task_data:
-                    if (task_data["service"] == obj.pk or task_data["service"] == obj.name):
+                    if (
+                        task_data["service"] == obj.pk
+                        or task_data["service"] == obj.name
+                    ):
                         tasks.append(task_data["name"])
             tasks.sort()
         if tasks:
@@ -387,7 +395,7 @@ class ECSServiceStandaloneTasks(Controller):
         help="Update a StandaloneTasks related to a Service from configuration in deployfish.yml",
         arguments=[
             (["pk"], {"help": "The primary key for the ECS Service"}),
-        ]
+        ],
     )
     @handle_model_exceptions
     def update_related_tasks(self):
@@ -409,19 +417,26 @@ class ECSServiceStandaloneTasks(Controller):
         """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(
-            self.app.pargs.pk,
-            factory_kwargs={"load_secrets": False}
+            self.app.pargs.pk, factory_kwargs={"load_secrets": False}
         )
         tasks = []
         config = self.app.deployfish_config.cooked
         if "tasks" in config:
             for task_data in config["tasks"]:
                 if "service" in task_data:
-                    if (task_data["service"] == obj.pk or task_data["service"] == obj.name):
+                    if (
+                        task_data["service"] == obj.pk
+                        or task_data["service"] == obj.name
+                    ):
                         tasks.append(task_data["name"])
             tasks.sort()
         if tasks:
-            self.app.print(click.style(f'\n\nUpdating StandaloneTasks related to Service("{obj.pk}"):\n', fg="yellow"))
+            self.app.print(
+                click.style(
+                    f'\n\nUpdating StandaloneTasks related to Service("{obj.pk}"):\n',
+                    fg="yellow",
+                )
+            )
             for task in tasks:
                 task = loader.get_object_from_deployfish(task, model=StandaloneTask)
                 arn = task.save()
@@ -433,7 +448,6 @@ class ECSServiceStandaloneTasks(Controller):
 
 
 class ECSServiceSecrets(ObjectSecretsController):
-
     class Meta:
         label = "config"
         description = "Manage AWS Parameter Store secrets for an ECS Service"
@@ -453,7 +467,6 @@ class ECSServiceSecrets(ObjectSecretsController):
 
 
 class ECSServiceSSH(ObjectSSHController):
-
     class Meta:
         label = "service-ssh"
         description = "SSH to instances for an ECS Service"
@@ -471,7 +484,6 @@ class ECSServiceSSH(ObjectSSHController):
 
 
 class ECSServiceDockerExec(ObjectDockerExecController):
-
     class Meta:
         label = "service-exec"
         description = "Exec into containers for an ECS Service"
@@ -488,7 +500,6 @@ class ECSServiceDockerExec(ObjectDockerExecController):
 
 
 class ECSServiceTunnel(ObjectTunnelController):
-
     class Meta:
         label = "service-tunnel"
         description = "Establish an ssh tunnel"

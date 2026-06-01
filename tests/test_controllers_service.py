@@ -17,9 +17,12 @@ class TestECSServiceController:
         mock_service.exists = False
         mock_service.pk = "foobar-cluster:foobar-test"
         loader = bind_service_loader(controller)
-        with patch.object(
-            loader, "get_object_from_deployfish", return_value=mock_service
-        ), patch.object(controller, "create_waiter"):
+        with (
+            patch.object(
+                loader, "get_object_from_deployfish", return_value=mock_service
+            ),
+            patch.object(controller, "create_waiter"),
+        ):
             with patch("deployfish.controllers.crud.click.secho"):
                 controller.create()
         mock_service.save.assert_called_once()
@@ -43,9 +46,10 @@ class TestECSServiceController:
         aws_service = Service.new(deepcopy(SERVICE_YML), "deployfish")
         aws_service.appscaling = None
         loader = bind_service_loader(controller)
-        with patch.object(
-            loader, "get_object_from_deployfish", return_value=df_service
-        ), patch.object(loader, "get_object_from_aws", return_value=aws_service):
+        with (
+            patch.object(loader, "get_object_from_deployfish", return_value=df_service),
+            patch.object(loader, "get_object_from_aws", return_value=aws_service),
+        ):
             controller.plan()
         cement_app.render.assert_called_once()
         render_context = cement_app.render.call_args[0][0]

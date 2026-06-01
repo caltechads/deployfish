@@ -3,12 +3,14 @@ from deployfish.core.models import TargetGroup
 
 def target_group_listener_rules(obj: TargetGroup) -> str:
     """
-    Given a ``TargetGroup`` iterate through its list of LoadBalancerListenerRule objects and return a human readable
-    description of those rules.
+    Return listener-rule summaries for one target group.
 
-    :param obj TargetGroup: a TargetGroup object
+    Args:
+        obj: Target group to summarize.
 
-    :rtype: str
+    Returns:
+        Newline-joined listener rule descriptions.
+
     """
     rules = obj.rules
     conditions = []
@@ -19,10 +21,12 @@ def target_group_listener_rules(obj: TargetGroup) -> str:
                     for v in condition["HostHeaderConfig"]["Values"]:
                         conditions.append(f"hostname:{v}")
                 if "HttpHeaderConfig" in condition:
-                    conditions.append("header:{} -> {}".format(
-                        condition["HttpHeaderConfig"]["HttpHeaderName"],
-                        ",".join(condition["HttpHeaderConfig"]["Values"])
-                    ))
+                    conditions.append(
+                        "header:{} -> {}".format(
+                            condition["HttpHeaderConfig"]["HttpHeaderName"],
+                            ",".join(condition["HttpHeaderConfig"]["Values"]),
+                        )
+                    )
                 if "PathPatternConfig" in condition:
                     for v in condition["PathPatternConfig"]["Values"]:
                         conditions.append(f"path:{v}")
@@ -36,5 +40,9 @@ def target_group_listener_rules(obj: TargetGroup) -> str:
                     for v in condition["HttpRequestMethod"]["Values"]:
                         conditions.append(f"verb:{v} -> ")
     if not conditions:
-        conditions.append(f"forward:{obj.load_balancers[0].lb_type}:{obj.listeners[0].port}:{obj.listeners[0].protocol} -> CONTAINER:{obj.port}:{obj.protocol}")
+        conditions.append(
+            "forward:"
+            f"{obj.load_balancers[0].lb_type}:{obj.listeners[0].port}:"
+            f"{obj.listeners[0].protocol} -> CONTAINER:{obj.port}:{obj.protocol}"
+        )
     return "\n".join(sorted(conditions))

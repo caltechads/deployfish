@@ -31,31 +31,36 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
                 fg = "yellow"
             else:
                 fg = "white"
-            rows.append([
-                click.style(d["status"], fg=fg),
-                click.style(d["taskDefinition"], fg=fg),
-                click.style(str(d["desiredCount"]), fg=fg),
-                click.style(str(d["pendingCount"]), fg=fg),
-                click.style(str(d["runningCount"]), fg=fg)
-            ])
-        click.secho(tabulate(rows, headers=["Status", "Task def", "Desired", "Pending", "Running"]))
+            rows.append(
+                [
+                    click.style(d["status"], fg=fg),
+                    click.style(d["taskDefinition"], fg=fg),
+                    click.style(str(d["desiredCount"]), fg=fg),
+                    click.style(str(d["pendingCount"]), fg=fg),
+                    click.style(str(d["runningCount"]), fg=fg),
+                ]
+            )
+        click.secho(
+            tabulate(
+                rows, headers=["Status", "Task def", "Desired", "Pending", "Running"]
+            )
+        )
 
     def display_events(self, events: list[dict[str, Any]]) -> None:
         rows = []
         events = sorted(events, key=lambda x: x["createdAt"])
         events.reverse()
         for e in events:
-            if e["createdAt"] < self.timestamp:
-                fg = "white"
-            else:
-                fg = "yellow"
+            fg = "white" if e["createdAt"] < self.timestamp else "yellow"
             if e["createdAt"] < self.start:
                 break
             timestamp = e["createdAt"]
-            rows.append([
-                click.style(timestamp.strftime("%Y-%m-%d %H:%M:%S"), fg=fg),
-                click.style("\n".join(wrap(e["message"], 80)), fg=fg)
-            ])
+            rows.append(
+                [
+                    click.style(timestamp.strftime("%Y-%m-%d %H:%M:%S"), fg=fg),
+                    click.style("\n".join(wrap(e["message"], 80)), fg=fg),
+                ]
+            )
         click.secho(tabulate(rows, headers=["Timestamp", "Message"]))
 
     def waiting(self, status, response, num_attempts, **kwargs):
@@ -77,6 +82,7 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
 
     def failure(self, status, response, num_attempts, **kwargs):
         click.secho("\n\nService failed to stabilize!", fg="red")
+
     error = failure
 
     def timeout(self, status, response, num_attempts, **kwargs):
@@ -101,7 +107,6 @@ class ECSTaskStatusHook(AbstractWaiterHook):
         cluster = kwargs["cluster"]
         tasks = [InvokedTask.objects.get(f"{cluster}:{arn}") for arn in kwargs["tasks"]]
         table = []
-        print()
         for i, task in enumerate(tasks):
             row = [
                 i,
@@ -115,7 +120,11 @@ class ECSTaskStatusHook(AbstractWaiterHook):
             else:
                 row.append("Not Started")
             table.append(row)
-        click.secho(tabulate(table, headers=["#", "Cluster", "ID", "Status", "Created", "Started"]))
+        click.secho(
+            tabulate(
+                table, headers=["#", "Cluster", "ID", "Status", "Created", "Started"]
+            )
+        )
         self.mark(status, response, num_attempts, **kwargs)
 
     def success(self, status, response, num_attempts, **kwargs):
@@ -131,11 +140,15 @@ class ECSTaskStatusHook(AbstractWaiterHook):
                 task.arn.rsplit("/", 1)[1],
                 task.data["lastStatus"],
                 task.data["stopCode"],
-                task.data["stoppedAt"].strftime("%Y-%m-%d %H:%M:%S")
+                task.data["stoppedAt"].strftime("%Y-%m-%d %H:%M:%S"),
             ]
             table.append(row)
-        click.secho(tabulate(table, headers=["#", "Cluster", "ID", "Status", "Stop Code", "Stopped"]))
-        print()
+        click.secho(
+            tabulate(
+                table, headers=["#", "Cluster", "ID", "Status", "Stop Code", "Stopped"]
+            )
+        )
+
     failure = success
     error = success
 
@@ -173,7 +186,11 @@ class ECSTaskLogsHook(AbstractWaiterHook):
             else:
                 row.append("Not Started")
             table.append(row)
-        click.secho(tabulate(table, headers=["#", "Cluster", "ID", "Status", "Created", "Started"]))
+        click.secho(
+            tabulate(
+                table, headers=["#", "Cluster", "ID", "Status", "Created", "Started"]
+            )
+        )
         click.secho("\n")
         self.mark(status, response, num_attempts, **kwargs)
 
@@ -190,10 +207,15 @@ class ECSTaskLogsHook(AbstractWaiterHook):
                 task.arn.rsplit("/", 1)[1],
                 task.data["lastStatus"],
                 task.data["stopCode"],
-                task.data["stoppedAt"].strftime("%Y-%m-%d %H:%M:%S")
+                task.data["stoppedAt"].strftime("%Y-%m-%d %H:%M:%S"),
             ]
             table.append(row)
-        click.secho(tabulate(table, headers=["#", "Cluster", "ID", "Status", "Stop Code", "Stopped"]))
+        click.secho(
+            tabulate(
+                table, headers=["#", "Cluster", "ID", "Status", "Stop Code", "Stopped"]
+            )
+        )
+
     failure = success
     error = success
 

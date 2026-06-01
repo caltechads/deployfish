@@ -1,3 +1,4 @@
+from datetime import UTC
 from unittest.mock import MagicMock, patch
 
 from deployfish.core.waiters.hooks.ecs import ECSDeploymentStatusWaiterHook
@@ -20,10 +21,10 @@ class TestECSDeploymentStatusWaiterHook:
         secho.assert_called_once()
 
     def test_display_events_renders_recent_events(self) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         hook = ECSDeploymentStatusWaiterHook(MagicMock())
-        now = datetime.now(timezone.utc).astimezone(hook.our_timezone)
+        now = datetime.now(UTC).astimezone(hook.our_timezone)
         events = [{"createdAt": now, "message": "service stable"}]
         with patch("deployfish.core.waiters.hooks.ecs.click.secho") as secho:
             hook.display_events(events)

@@ -11,8 +11,8 @@ from .secrets import Secret
 # Managers
 # ----------------------------------------
 
-class SSHTunnelManager(Manager):
 
+class SSHTunnelManager(Manager):
     def get(self, pk: str, **_) -> "SSHTunnel":
         config = get_config()
         section = config.get_section("tunnels")
@@ -21,16 +21,23 @@ class SSHTunnelManager(Manager):
             tunnels[tunnel["name"]] = tunnel
         if pk in tunnels:
             return cast("SSHTunnel", SSHTunnel.new(tunnels[pk], "deployfish"))
-        raise SSHTunnel.DoesNotExist(
+        msg = (
             f'Could not find an ssh tunnel config named "{pk}" indeployfish.yml:tunnels'
         )
+        raise SSHTunnel.DoesNotExist(msg)
 
-    def list(self, service_name: str = None, port: int = None) -> Sequence["SSHTunnel"]:
+    def list(
+        self, service_name: str | None = None, port: int | None = None
+    ) -> Sequence["SSHTunnel"]:
         config = get_config()
         section = config.get_section("tunnels")
-        tunnels = [cast("SSHTunnel", SSHTunnel.new(tunnel, "deployfish")) for tunnel in section]
+        tunnels = [
+            cast("SSHTunnel", SSHTunnel.new(tunnel, "deployfish")) for tunnel in section
+        ]
         if service_name:
-            tunnels = [tunnel for tunnel in tunnels if tunnel.data["service"] == service_name]
+            tunnels = [
+                tunnel for tunnel in tunnels if tunnel.data["service"] == service_name
+            ]
         elif port:
             tunnels = [tunnel for tunnel in tunnels if tunnel.data["port"] == port]
         return tunnels
@@ -39,6 +46,7 @@ class SSHTunnelManager(Manager):
 # ----------------------------------------
 # Models
 # ----------------------------------------
+
 
 class SSHTunnel(Model):
     """
@@ -105,9 +113,8 @@ class SSHTunnel(Model):
                 try:
                     value = self.secret(key).value
                 except Secret.DoesNotExist:
-                    raise self.OperationFailed(
-                        f'SSHTunnel(pk="{self.name}"): Service(pk="{self.service.pk}") has no secret named "{key}"'
-                    )
+                    msg = f'SSHTunnel(pk="{self.name}"): Service(pk="{self.service.pk}") has no secret named "{key}"'
+                    raise self.OperationFailed(msg)
                 return value
         return self.data[key]
 
@@ -140,7 +147,9 @@ class SSHTunnel(Model):
             data = config.get_section_item("services", self.data["service"])
             # We actually want the live service here -- no point in tunneling to a service that doesn't
             # exist or is out of date with deployfish.yml
-            self.cache["service"] = Service.objects.get(f'{data["cluster"]}:{data["name"]}')
+            self.cache["service"] = Service.objects.get(
+                f"{data['cluster']}:{data['name']}"
+            )
         return self.cache["service"]
 
     @service.setter

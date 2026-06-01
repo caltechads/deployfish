@@ -21,11 +21,14 @@ def _paginate(client: MagicMock, pages: list[dict]) -> None:
 
 class _SecretsHost(SecretsMixin):
     def __init__(self) -> None:
-        self.cache: dict = {}
+        self.cache: dict[str, object] = {}
 
     @property
     def secrets_prefix(self) -> str:
         return "cluster.service."
+
+    def get_cached(self, key, populator, args, kwargs=None):
+        return self.cache.get(key)
 
 
 class TestSecretsMixin:
@@ -36,7 +39,11 @@ class TestSecretsMixin:
         secret.save = MagicMock()
         host.secrets = {"KEEP": secret}
         with (
-            patch.object(Secret.objects, "list_names", return_value=["cluster.service.KEEP", "cluster.service.OLD"]),
+            patch.object(
+                Secret.objects,
+                "list_names",
+                return_value=["cluster.service.KEEP", "cluster.service.OLD"],
+            ),
             patch.object(Secret.objects, "delete_many_by_name") as delete_mock,
         ):
             host.write_secrets()
@@ -56,7 +63,7 @@ class TestSecretsMixin:
         ours.name = "DEBUG"
         ours.render_for_diff.return_value = {"Value": "False"}
         host.secrets = {"DEBUG": ours}
-        external = ExternalSecret({"name": "ext", "valueFrom": "/path"})
+        ExternalSecret({"name": "ext", "valueFrom": "/path"})
         other_secret = MagicMock()
         other_secret.name = "DEBUG"
         other_secret.render_for_diff.return_value = {"Value": "True"}
@@ -117,10 +124,16 @@ class TestServiceDiscoveryExtended:
         "Arn": "arn:aws:servicediscovery:us-west-2:123:service/srv-hex123",
         "Name": "api",
         "NamespaceId": "ns-abc123",
-        "DNSConfig": {"NamespaceId": "ns-abc123", "RoutingPolicy": "MULTIVALUE", "DnsRecords": []},
+        "DNSConfig": {
+            "NamespaceId": "ns-abc123",
+            "RoutingPolicy": "MULTIVALUE",
+            "DnsRecords": [],
+        },
     }
 
-    def test_namespace_get_raises_not_found(self, _mock_boto3_session: MagicMock) -> None:
+    def test_namespace_get_raises_not_found(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         exc = type("NamespaceNotFound", (Exception,), {})
         client.exceptions.NamespaceNotFound = exc
@@ -128,17 +141,22 @@ class TestServiceDiscoveryExtended:
         with pytest.raises(ServiceDiscoveryNamespace.DoesNotExist):
             ServiceDiscoveryNamespace.objects.get("ns-missing")
 
-    def test_namespace_get_by_name_not_found(self, _mock_boto3_session: MagicMock) -> None:
+    def test_namespace_get_by_name_not_found(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         _paginate(client, [{"Namespaces": []}])
         with pytest.raises(ServiceDiscoveryNamespace.DoesNotExist):
             ServiceDiscoveryNamespace.objects.get("missing.internal")
 
-    def test_service_get_by_namespace_and_name(self, _mock_boto3_session: MagicMock) -> None:
-        client = _mock_boto3_session
+    def test_service_get_by_namespace_and_name(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         namespace = ServiceDiscoveryNamespace(self.NS_DATA)
         with (
-            patch.object(ServiceDiscoveryNamespace.objects, "get", return_value=namespace),
+            patch.object(
+                ServiceDiscoveryNamespace.objects, "get", return_value=namespace
+            ),
             patch.object(
                 ServiceDiscoveryService.objects,
                 "list",
@@ -148,11 +166,15 @@ class TestServiceDiscoveryExtended:
             service = ServiceDiscoveryService.objects.get("ns-abc123:api")
         assert service.name == "api"
 
-    def test_service_get_bare_name_resolves_pk(self, _mock_boto3_session: MagicMock) -> None:
+    def test_service_get_bare_name_resolves_pk(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         stub = ServiceDiscoveryService(self.SERVICE_DATA)
         with (
             patch.object(ServiceDiscoveryService.objects, "list", return_value=[stub]),
-            patch.object(ServiceDiscoveryService.objects, "get", return_value=stub) as get_mock,
+            patch.object(
+                ServiceDiscoveryService.objects, "get", return_value=stub
+            ) as get_mock,
         ):
             service = ServiceDiscoveryService.objects.get("api")
         get_mock.assert_called_once_with("api")
@@ -167,7 +189,9 @@ class TestServiceDiscoveryExtended:
             with pytest.raises(ServiceDiscoveryService.MultipleObjectsReturned):
                 ServiceDiscoveryService.objects.get("api")
 
-    def test_service_delete_raises_when_not_found(self, _mock_boto3_session: MagicMock) -> None:
+    def test_service_delete_raises_when_not_found(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         svc = ServiceDiscoveryService(self.SERVICE_DATA)
         exc = type("ServiceNotFound", (Exception,), {})

@@ -55,7 +55,11 @@ class TestCloudWatchLogStreamManager:
     def test_newest_stream_from_group(self) -> None:
         group = CloudWatchLogGroup({"logGroupName": "/ecs/app", "arn": "arn:logs:1"})
         stream = CloudWatchLogStream(
-            {"logGroupName": "/ecs/app", "logStreamName": "stream/new", "creationTime": 2000}
+            {
+                "logGroupName": "/ecs/app",
+                "logStreamName": "stream/new",
+                "creationTime": 2000,
+            }
         )
         with patch.object(CloudWatchLogStream.objects, "list", return_value=[stream]):
             assert group.newest_stream() is stream

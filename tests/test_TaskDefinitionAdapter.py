@@ -30,7 +30,7 @@ class TestTaskDefinitionAdapter:
             secrets=secrets,
             extra_environment={"DEPLOYFISH_SERVICE_NAME": "foobar-test"},
         )
-        data, kwargs = adapter.convert()
+        _data, kwargs = adapter.convert()
         container_data = kwargs["containers"][0][0]
         env_names = {entry["name"] for entry in container_data["environment"]}
         assert "DEPLOYFISH_SERVICE_NAME" in env_names

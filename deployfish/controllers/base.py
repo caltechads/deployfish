@@ -19,11 +19,11 @@ from deployfish.core.models import Model, Service, StandaloneTask
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Controller
 from deployfish.types import SupportsModelWithSecrets
 
-VERSION_BANNER = """
-deployfish-%s: Manage the lifecycle of AWS ECS services
+VERSION_BANNER = f"""
+deployfish-{get_version()}: Manage the lifecycle of AWS ECS services
 ---
-%s
-""" % (get_version(), get_version_banner())
+{get_version_banner()}
+"""
 
 
 def filename_envvar(s):
@@ -43,12 +43,19 @@ def maybe_rename_existing_file(env_file: str, obj: SupportsModelWithSecrets) -> 
 
     """
     if os.path.exists(env_file):
-        new_filename = "{}.{}".format(env_file, datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
+        new_filename = "{}.{}".format(
+            env_file, datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        )
         while os.path.exists(new_filename):
             time.sleep(1)
-            new_filename = "{}.{}".format(env_file, datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
+            new_filename = "{}.{}".format(
+                env_file, datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            )
         os.rename(env_file, new_filename)
-        click.secho(f'{obj.__class__.__name__}("{obj.name}"): renamed existing env_file to {new_filename}', fg="yellow")
+        click.secho(
+            f'{obj.__class__.__name__}("{obj.name}"): renamed existing env_file to {new_filename}',
+            fg="yellow",
+        )
 
 
 class Base(Controller):
@@ -61,7 +68,7 @@ class Base(Controller):
         # controller level arguments. ex: 'deploy --version'
         arguments = [
             ### add a version banner
-            (["-v", "--version"], {"action" : "version", "version" : VERSION_BANNER}),
+            (["-v", "--version"], {"action": "version", "version": VERSION_BANNER}),
             (
                 ["-f", "--filename"],
                 {
@@ -69,17 +76,17 @@ class Base(Controller):
                     "action": "store",
                     "default": "deployfish.yml",
                     "help": "Path to the deployfish config file",
-                    "type": filename_envvar
-                }
+                    "type": filename_envvar,
+                },
             ),
             (
                 ["--no-use-aws-section"],
                 {
-                    "action" : "store_true",
+                    "action": "store_true",
                     "dest": "no_use_aws_section",
                     "default": False,
-                    "help": "Ignore the aws: section in deployfish.yml"
-                }
+                    "help": "Ignore the aws: section in deployfish.yml",
+                },
             ),
             (
                 ["-e", "--env_file"],
@@ -87,8 +94,8 @@ class Base(Controller):
                     "dest": "env_file",
                     "action": "store",
                     "default": None,
-                    "help": "Path to an environment file to use for ${env.VAR} replacements"
-                }
+                    "help": "Path to an environment file to use for ${env.VAR} replacements",
+                },
             ),
             (
                 ["-t", "--tfe_token"],
@@ -96,8 +103,8 @@ class Base(Controller):
                     "dest": "tfe_token",
                     "action": "store",
                     "default": None,
-                    "help": "Terraform Enterprise API Token"
-                }
+                    "help": "Terraform Enterprise API Token",
+                },
             ),
             (
                 ["--ignore-missing-environment"],
@@ -105,11 +112,10 @@ class Base(Controller):
                     "dest": "ignore_missing_environment",
                     "action": "store_true",
                     "default": False,
-                    "help": "Don't stop processing deployfish.yml if we can't dereference an ${env.VAR}"
-                }
+                    "help": "Don't stop processing deployfish.yml if we can't dereference an ${env.VAR}",
+                },
             ),
         ]
-
 
     def _default(self):
         """Default action if no sub-command is passed."""
@@ -117,7 +123,6 @@ class Base(Controller):
 
 
 class BaseService(ECSService):
-
     class Meta:
         label = "base-service"
         stacked_on = "base"
@@ -125,7 +130,6 @@ class BaseService(ECSService):
 
 
 class BaseServiceSecrets(ECSServiceSecrets):
-
     class Meta:
         label = "base-config"
         aliases = ["config"]
@@ -146,18 +150,20 @@ class BaseServiceSecrets(ECSServiceSecrets):
         """
         loader = self.loader(self)
         raw = loader.get_object_from_deployfish(
-            name,
-            model=model,
-            factory_kwargs={"load_secrets": False}
+            name, model=model, factory_kwargs={"load_secrets": False}
         )
-        assert hasattr(raw, "secrets_prefix"), f'Models of type "{raw.__class__.__name__} do not have secrets.'
+        assert hasattr(raw, "secrets_prefix"), (
+            f'Models of type "{raw.__class__.__name__} do not have secrets.'
+        )
         obj = cast("SupportsModelWithSecrets", raw)
         maybe_rename_existing_file(env_file, obj)
         contents = self.export_environment_secrets(obj)
         with open(env_file, "w", encoding="utf-8") as fd:
             fd.write(contents)
-            click.secho(f'{obj.__class__.__name__}("{obj.name}"): exported live secrets to env_file {env_file}', fg="green")
-
+            click.secho(
+                f'{obj.__class__.__name__}("{obj.name}"): exported live secrets to env_file {env_file}',
+                fg="green",
+            )
 
     @ex(help="Download data for all env_files defined in deployfish.yml sections")
     @handle_model_exceptions
@@ -171,8 +177,16 @@ class BaseServiceSecrets(ECSServiceSecrets):
         # fix missing environment variables
         self.app.pargs.ignore_missing_environment = True
         config = self.app.raw_deployfish_config
-        services = {item["name"]: item["env_file"] for item in config.services if "env_file" in item}
-        tasks = {item["name"]: item["env_file"] for item in config.tasks if "env_file" in item}
+        services = {
+            item["name"]: item["env_file"]
+            for item in config.services
+            if "env_file" in item
+        }
+        tasks = {
+            item["name"]: item["env_file"]
+            for item in config.tasks
+            if "env_file" in item
+        }
         for service, env_file in list(services.items()):
             self._write_env_file(env_file, service, Service)
         for task, env_file in list(tasks.items()):
@@ -180,14 +194,12 @@ class BaseServiceSecrets(ECSServiceSecrets):
 
 
 class BaseServiceSSH(ECSServiceSSH):
-
     class Meta:
         label = "base-ssh"
         stacked_on = "base"
 
 
 class BaseServiceDockerExec(ECSServiceDockerExec):
-
     class Meta:
         label = "base-exec"
         stacked_on = "base"

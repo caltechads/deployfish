@@ -14,15 +14,13 @@ from .mixins import TagsMixin
 
 
 class ClassicLoadBalancerManager(Manager):
-
     service = "elb"
 
     def get(self, pk: str, **_) -> "ClassicLoadBalancer":
         instances = self.get_many([pk])
         if len(instances) > 1:
-            raise ClassicLoadBalancer.MultipleObjectsReturned(
-                f"Got more than one load balancer when searching for pk={pk}"
-            )
+            msg = f"Got more than one load balancer when searching for pk={pk}"
+            raise ClassicLoadBalancer.MultipleObjectsReturned(msg)
         return instances[0]
 
     def get_many(self, pks: list[str], **kwargs) -> Sequence["ClassicLoadBalancer"]:
@@ -39,16 +37,12 @@ class ClassicLoadBalancerManager(Manager):
             m = re.search(r"Cannot find Load Balancer (?P<lbname>[0-9A-Za-z]+)", msg)
             if m:
                 lbname = m.group("lbname")
-            raise ClassicLoadBalancer.DoesNotExist(
-                f'No Classic Load Balancer with name "{lbname}" exists in AWS'
-            )
+            msg_0 = f'No Classic Load Balancer with name "{lbname}" exists in AWS'
+            raise ClassicLoadBalancer.DoesNotExist(msg_0)
         return [ClassicLoadBalancer(lb) for lb in lbs]
 
     def list(
-        self,
-        vpc_id: str = None,
-        scheme: str = "any",
-        name: str = None
+        self, vpc_id: str | None = None, scheme: str = "any", name: str | None = None
     ) -> Sequence["ClassicLoadBalancer"]:
         paginator = self.client.get_paginator("describe_load_balancers")
         response_iterator = paginator.paginate()
@@ -59,12 +53,13 @@ class ClassicLoadBalancerManager(Manager):
             except self.client.exceptions.AccessPointNotFoundException as e:
                 msg = e.args[0]
                 lbname = "Unknown"
-                m = re.search(r"Cannot find Load Balancer (?P<lbname>[0-9A-Za-z]+)", msg)
+                m = re.search(
+                    r"Cannot find Load Balancer (?P<lbname>[0-9A-Za-z]+)", msg
+                )
                 if m:
                     lbname = m.group("lbname")
-                raise ClassicLoadBalancer.DoesNotExist(
-                    f'No Classic Load Balancer with name "{lbname}" exists in AWS'
-                )
+                msg_0 = f'No Classic Load Balancer with name "{lbname}" exists in AWS'
+                raise ClassicLoadBalancer.DoesNotExist(msg_0)
         lbs = []
         for lb in lb_data:
             if name and not fnmatch.fnmatch(lb["LoadBalancerName"], name):
@@ -82,16 +77,16 @@ class ClassicLoadBalancerManager(Manager):
 
 
 class ClassicLoadBalancerTargetManager(Manager):
-
     service = "elb"
 
     def list(self, load_balancer_name: str) -> Sequence["ClassicLoadBalancerTarget"]:
         try:
-            response = self.client.describe_instance_health(LoadBalancerName=load_balancer_name)
-        except self.client.exceptions.AccessPointNotFoundException:
-            raise ClassicLoadBalancer.DoesNotExist(
-                f'No Classic Load Balancer named "{load_balancer_name}" exists in AWS'
+            response = self.client.describe_instance_health(
+                LoadBalancerName=load_balancer_name
             )
+        except self.client.exceptions.AccessPointNotFoundException:
+            msg = f'No Classic Load Balancer named "{load_balancer_name}" exists in AWS'
+            raise ClassicLoadBalancer.DoesNotExist(msg)
         targets = []
         for data in response["InstanceStates"]:
             instance = Instance.objects.get(data["InstanceId"])
@@ -103,8 +98,8 @@ class ClassicLoadBalancerTargetManager(Manager):
 # Models
 # ----------------------------------------
 
-class ClassicLoadBalancer(TagsMixin, Model):
 
+class ClassicLoadBalancer(TagsMixin, Model):
     objects = ClassicLoadBalancerManager()
 
     lb_type: str = "Classic (ELB)"
@@ -145,7 +140,10 @@ class ClassicLoadBalancer(TagsMixin, Model):
     def ssl_certificate_arn(self) -> str | None:
         cert_id = None
         for listener in self.data["ListenerDescriptions"]:
-            if "SSLCertificateId" in listener["Listener"] and listener["Listener"]["SSLCertificateId"]:
+            if (
+                "SSLCertificateId" in listener["Listener"]
+                and listener["Listener"]["SSLCertificateId"]
+            ):
                 cert_id = listener["Listener"]["SSLCertificateId"]
         return cert_id
 
@@ -163,7 +161,6 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
 
 class ClassicLoadBalancerTarget(TagsMixin, Model):
-
     objects = ClassicLoadBalancerTargetManager()
 
     def __init__(self, data: dict[str, Any], instance: Instance) -> None:

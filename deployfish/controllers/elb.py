@@ -1,4 +1,3 @@
-
 from cement import ex
 
 from deployfish.core.models import ClassicLoadBalancer, Model
@@ -8,7 +7,6 @@ from .utils import handle_model_exceptions
 
 
 class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
-
     class Meta:
         label = "elbs"
         description = "Work with Classic Load Balancer objects"
@@ -28,7 +26,7 @@ class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
         "Name": "LoadBalancerName",
         "Scheme": "scheme",
         "VPC": "VPCId",
-        "Hostname": "DNSName"
+        "Hostname": "DNSName",
     }
 
     @ex(
@@ -40,8 +38,8 @@ class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
                     "help": "Filter by VPC ID",
                     "action": "store",
                     "default": None,
-                    "dest": "vpc_id"
-                }
+                    "dest": "vpc_id",
+                },
             ),
             (
                 ["--name"],
@@ -49,8 +47,8 @@ class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
                     "help": 'Filter by load balancer name, with globs. Ex: "foo*", "*foo"',
                     "action": "store",
                     "default": None,
-                    "dest": "name"
-                }
+                    "dest": "name",
+                },
             ),
             (
                 ["--scheme"],
@@ -59,16 +57,16 @@ class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
                     "action": "store",
                     "default": "any",
                     "choices": ["any", "internet-facing", "internal"],
-                    "dest": "scheme"
-                }
+                    "dest": "scheme",
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def list(self):
         results = self.model.objects.list(
             vpc_id=self.app.pargs.vpc_id,
             scheme=self.app.pargs.scheme,
-            name=self.app.pargs.name
+            name=self.app.pargs.name,
         )
         self.render_list(results)

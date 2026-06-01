@@ -49,7 +49,9 @@ class TestJinjaFilters:
                 "targets": 2,
             },
         )()
-        with patch.object(TargetGroupTableRenderer, "render", return_value="table-output"):
+        with patch.object(
+            TargetGroupTableRenderer, "render", return_value="table-output"
+        ):
             assert target_group_table([row]) == "table-output"
 
     def test_lb_listener_table_renders(self) -> None:
@@ -70,7 +72,9 @@ class TestJinjaFilters:
     def test_target_group_listener_rules_host_header(self) -> None:
         tg = type("TG", (), {})()
         rule = type("Rule", (), {})()
-        rule.data = {"Conditions": [{"HostHeaderConfig": {"Values": ["api.example.com"]}}]}
+        rule.data = {
+            "Conditions": [{"HostHeaderConfig": {"Values": ["api.example.com"]}}]
+        }
         tg.rules = [rule]
         result = target_group_listener_rules(tg)
         assert "hostname:api.example.com" in result

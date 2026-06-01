@@ -393,11 +393,12 @@ def _write_baseline(path: Path, violations: list[Violation]) -> None:
 
 def _print_violations(title: str, violations: list[Violation]) -> None:
     """Render violations to stdout."""
-    print(title)
+    sys.stdout.write(f"{title}\n")
     for violation in violations:
-        print(
+        sys.stdout.write(
             f"{violation.path}:{violation.line} "
             f"{violation.code} {violation.symbol} - {violation.message}"
+            "\n"
         )
 
 
@@ -410,7 +411,7 @@ def main() -> int:
         default=argparse.SUPPRESS,
         help=(
             "Path to check (can be passed multiple times; defaults to "
-            "tfreporter if omitted)"
+            "deployfish if omitted)"
         ),
     )
     parser.add_argument(
@@ -432,7 +433,7 @@ def main() -> int:
 
     raw_targets = getattr(args, "target", None)
     if raw_targets is None:
-        raw_targets = ["tfreporter"]
+        raw_targets = ["deployfish"]
     targets = [Path(item).resolve() for item in raw_targets]
     baseline_path = Path(args.baseline).resolve()
 
@@ -444,39 +445,40 @@ def main() -> int:
 
     if args.write_baseline:
         _write_baseline(baseline_path, violations)
-        print(
-            f"Wrote baseline with {len(violations)} violations to {baseline_path}"
+        sys.stdout.write(
+            f"Wrote baseline with {len(violations)} violations to {baseline_path}\n"
         )
         return 0
 
     if args.strict:
         if violations:
             _print_violations("Strict mode violations:", violations)
-            print(f"Found {len(violations)} total violations.")
+            sys.stdout.write(f"Found {len(violations)} total violations.\n")
             return 1
-        print("No doc-quality violations found in strict mode.")
+        sys.stdout.write("No doc-quality violations found in strict mode.\n")
         return 0
 
     baseline_keys = _load_baseline_keys(baseline_path)
     if not baseline_path.exists():
-        print(
+        sys.stderr.write(
             "No baseline found. Run with --write-baseline first or use --strict.",
-            file=sys.stderr,
         )
         return 2
 
     new_violations = [item for item in violations if item.key not in baseline_keys]
     if new_violations:
         _print_violations("New violations (not in baseline):", new_violations)
-        print(
+        sys.stdout.write(
             f"Found {len(new_violations)} new violations "
             f"({len(violations)} total, {len(baseline_keys)} baseline keys)."
+            "\n"
         )
         return 1
 
-    print(
+    sys.stdout.write(
         "Napoleon gate passed: no new violations "
         f"({len(violations)} total, {len(baseline_keys)} baseline keys)."
+        "\n"
     )
     return 0
 

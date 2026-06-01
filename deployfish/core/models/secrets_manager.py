@@ -22,22 +22,19 @@ class SMSecretManager(TagsManagerMixin, Manager):
         try:
             response = self.client.describe_secret(SecretId=pk)
         except self.client.exceptions.ResourceNotFoundException:
-            raise SMSecret.DoesNotExist(
-                f'No SMSecret with id "{pk}" exists in AWS'
-            )
+            msg = f'No SMSecret with id "{pk}" exists in AWS'
+            raise SMSecret.DoesNotExist(msg)
         return SMSecret(response)
 
     def get_value(self, pk: str) -> str:
         try:
             response = self.client.get_secret_value(SecretId=pk)
         except self.client.exceptions.ResourceNotFoundException:
-            raise SMSecret.DoesNotExist(
-                f'No SMSecret with id "{pk}" exists in AWS'
-            )
+            msg = f'No SMSecret with id "{pk}" exists in AWS'
+            raise SMSecret.DoesNotExist(msg)
         except self.client.exceptions.ResourceNotFoundException as e:
-            raise SMSecret.OperationFailed(
-                f'Could not decrypt SMSecret("{pk}")'
-            ) from e
+            msg = f'Could not decrypt SMSecret("{pk}")'
+            raise SMSecret.OperationFailed(msg) from e
 
         if "SecretBinary" in response:
             # SecretBinary is a base64 encoded bytes array.  We need to decode
@@ -57,8 +54,8 @@ class SMSecretManager(TagsManagerMixin, Manager):
 # Models
 # ----------------------------------------
 
-class SMSecret(TagsMixin, Model):
 
+class SMSecret(TagsMixin, Model):
     objects = SMSecretManager()
 
     @property

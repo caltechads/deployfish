@@ -1,8 +1,8 @@
 import builtins
+import contextlib
 import json
-import sys
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Protocol
 
 from jsondiff import diff
 
@@ -10,33 +10,25 @@ from deployfish.types import SupportsCache
 
 from .abstract import Manager, Model
 
-if sys.version_info >= (3, 8):
-    from typing import Protocol
-else:
-    from typing import Protocol
-
-
 # ----------------------------------------
 # Protocols
 # ----------------------------------------
 
+
 class SupportsSecrets(SupportsCache, Protocol):
+    @property
+    def secrets_prefix(self) -> str: ...
 
     @property
-    def secrets_prefix(self) -> str:
-        ...
-
-    @property
-    def secrets(self) -> dict[str, "Secret"]:
-        ...
+    def secrets(self) -> dict[str, "Secret"]: ...
 
 
 # ----------------------------------------
 # Mixins
 # ----------------------------------------
 
-class SecretsMixin:
 
+class SecretsMixin:
     @property
     def secrets_prefix(self) -> str:
         raise NotImplementedError
@@ -52,10 +44,8 @@ class SecretsMixin:
     def write_secrets(self: SupportsSecrets) -> None:
         # Add and update secrets we do need
         for secret in list(self.secrets.values()):
-            try:
+            with contextlib.suppress(secret.ReadOnly):
                 secret.save()
-            except secret.ReadOnly:
-                pass
         # now delete any secrets that we no longer need
         if self.secrets:
             aws_pks = Secret.objects.list_names(self.secrets_prefix)
@@ -68,7 +58,9 @@ class SecretsMixin:
         if "secrets" in self.cache:
             del self.cache["secrets"]
 
-    def diff_secrets(self: SupportsSecrets, other: Sequence["Secret"], ignore_external: bool = False) -> dict[str, Any]:
+    def diff_secrets(
+        self: SupportsSecrets, other: Sequence["Secret"], ignore_external: bool = False
+    ) -> dict[str, Any]:
         """
         Diff our list of Secrets against `other`.
 
@@ -82,9 +74,11 @@ class SecretsMixin:
         if ignore_external:
             other = [s for s in other if not isinstance(s, ExternalSecret)]
         if self.secrets:
-            our_secrets = sorted(list(self.secrets.values()), key=lambda x: x.name)
+            our_secrets = sorted(self.secrets.values(), key=lambda x: x.name)
             if ignore_external:
-                our_secrets = [s for s in our_secrets if not isinstance(s, ExternalSecret)]
+                our_secrets = [
+                    s for s in our_secrets if not isinstance(s, ExternalSecret)
+                ]
             us = {s.name: s.render_for_diff() for s in our_secrets}
         if other:
             their_secrets = sorted(other, key=lambda x: x.name)
@@ -96,6 +90,7 @@ class SecretsMixin:
 # Managers
 # ----------------------------------------
 
+
 class SecretManager(Manager):
     """
     Manage our SSM Parameter Store parameters.   This differs from
@@ -106,36 +101,41 @@ class SecretManager(Manager):
 
     service = "ssm"
 
-    def __init__(self, model: type["Secret"] | type["ExternalSecret"], readonly: bool = False) -> None:
+    def __init__(
+        self, model: type["Secret"] | type["ExternalSecret"], readonly: bool = False
+    ) -> None:
         self.model = model
         self.readonly = readonly
         super().__init__()
 
-    def _describe_parameters(self, key: str, option: str = "prefix") -> list[dict[str, Any]]:
-        if option == "prefix":
-            option = "BeginsWith"
-        else:
-            option = "Equals"
+    def _describe_parameters(
+        self, key: str, option: str = "prefix"
+    ) -> list[dict[str, Any]]:
+        option = "BeginsWith" if option == "prefix" else "Equals"
         paginator = self.client.get_paginator("describe_parameters")
         response_iterator = paginator.paginate(
-            ParameterFilters=[
-                {"Key": "Name", "Option": option, "Values": [key]}
-            ]
+            ParameterFilters=[{"Key": "Name", "Option": option, "Values": [key]}]
         )
         parameters = []
         for page in response_iterator:
             parameters.extend(page["Parameters"])
         return parameters
 
-    def _get_parameter_values(self, names: list[str], decrypt: bool = True) -> tuple[dict[str, Any], list[str]]:
+    def _get_parameter_values(
+        self, names: list[str], decrypt: bool = True
+    ) -> tuple[dict[str, Any], list[str]]:
         # get_parameters only accepts 10 or fewer names in the Names kwarg, so we have to
         # split names into sub lists of 10 of fewer names and iterate
-        names_chunks = [names[i * 10:(i + 1) * 10] for i in range((len(names) + 9) // 10)]
+        names_chunks = [
+            names[i * 10 : (i + 1) * 10] for i in range((len(names) + 9) // 10)
+        ]
         parameters = []
         non_existant = []
         for chunk in names_chunks:
             try:
-                response = self.client.get_parameters(Names=chunk, WithDecryption=decrypt)
+                response = self.client.get_parameters(
+                    Names=chunk, WithDecryption=decrypt
+                )
             except self.client.exceptions.InvalidKeyId as e:
                 raise self.model.DecryptionFailed(str(e))
             if response.get("InvalidParameters"):
@@ -151,7 +151,8 @@ class SecretManager(Manager):
         values, non_existant_parameters = self._get_parameter_values([pk])
         params = self._describe_parameters(pk, option="equals")
         if non_existant_parameters:
-            raise Secret.DoesNotExist(f"No secret named {pk} exists in AWS")
+            msg = f"No secret named {pk} exists in AWS"
+            raise Secret.DoesNotExist(msg)
         data = params[0]
         data["ARN"] = values[pk]["ARN"]
         data["Value"] = values[pk]["Value"]
@@ -188,11 +189,7 @@ class SecretManager(Manager):
             secrets.append(self.convert(data))
         # Fake the non-existant parameters
         for param in non_existant_parameters:
-            data = {
-                "Name": param,
-                "Type": "String",
-                "Tier": "Standard"
-            }
+            data = {"Name": param, "Type": "String", "Tier": "Standard"}
             secrets.append(self.convert(data))
         return secrets
 
@@ -226,7 +223,8 @@ class SecretManager(Manager):
         if not self.readonly:
             response = self.client.put_parameter(**obj.render_for_create())
             return response["Version"]
-        raise self.model.ReadOnly("This Secret is read only.")
+        msg = "This Secret is read only."
+        raise self.model.ReadOnly(msg)
 
     def delete_many_by_name(self, pks: builtins.list[str]) -> None:
         if len(pks) <= 10:
@@ -234,13 +232,14 @@ class SecretManager(Manager):
         else:
             # delete_parameters() will only take 10 params at a time, so we have
             # to split it up if we have more than 10
-            chunks = [pks[i * 10:(i + 1) * 10] for i in range((len(pks) + 9) // 10)]
+            chunks = [pks[i * 10 : (i + 1) * 10] for i in range((len(pks) + 9) // 10)]
             for chunk in chunks:
                 self.client.delete_parameters(Names=chunk)
 
     def delete(self, obj: Model, **_) -> None:
         if self.readonly:
-            raise self.model.ReadOnly("This Secret is read only.")
+            msg = "This Secret is read only."
+            raise self.model.ReadOnly(msg)
         try:
             self.client.delete_parameter(Name=obj.pk)
         except self.client.exceptions.ParameterNotFound:
@@ -250,6 +249,7 @@ class SecretManager(Manager):
 # ----------------------------------------
 # Models
 # ----------------------------------------
+
 
 class Secret(Model):
     """
@@ -353,8 +353,7 @@ class Secret(Model):
             del data["LastModifiedDate"]
             del data["LastModifiedUser"]
             del data["Version"]
-        obj = self.__class__(data, self.secret_name)
-        return obj
+        return self.__class__(data, self.secret_name)
 
     def __str__(self) -> str:
         line = f"{self.secret_name}={self.value}"
@@ -364,7 +363,6 @@ class Secret(Model):
 
 
 class ExternalSecret(Secret):
-
     objects: SecretManager
 
 

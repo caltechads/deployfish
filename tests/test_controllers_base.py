@@ -45,8 +45,12 @@ class TestBaseServiceSecretsSync:
         mock_service.name = "foobar-test"
         mock_service.secrets_prefix = "prefix."
         loader = bind_service_loader(controller)
-        with patch.object(loader, "get_object_from_deployfish", return_value=mock_service):
-            with patch.object(controller, "export_environment_secrets", return_value="A=1\n"):
+        with patch.object(
+            loader, "get_object_from_deployfish", return_value=mock_service
+        ):
+            with patch.object(
+                controller, "export_environment_secrets", return_value="A=1\n"
+            ):
                 with patch("deployfish.controllers.base.click.secho"):
                     controller.sync()
         assert env_file.read_text(encoding="utf-8") == "A=1\n"

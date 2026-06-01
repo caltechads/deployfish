@@ -1,7 +1,9 @@
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 from deployfish.core.loaders import ObjectLoader, ServiceLoader
+from deployfish.ext.ext_df_argparse import DeployfishArgparseController
 
 
 @pytest.fixture
@@ -18,28 +20,36 @@ def cement_app() -> MagicMock:
     return app
 
 
-def bind_controller(controller: object, app: MagicMock) -> object:
+def bind_controller(
+    controller: DeployfishArgparseController,
+    app: MagicMock,
+) -> DeployfishArgparseController:
     controller.app = app
     return controller
 
 
-def bind_loader_factory(controller: object, loader: ObjectLoader) -> ObjectLoader:
-    loader_cls = loader.__class__
-
-    def loader_factory(_ctrl: object) -> ObjectLoader:
+def bind_loader_factory(
+    controller: DeployfishArgparseController,
+    loader: ObjectLoader,
+) -> ObjectLoader:
+    def loader_factory(_ctrl: DeployfishArgparseController) -> ObjectLoader:
         return loader
 
-    loader_factory.DeployfishSectionDoesNotExist = (
+    loader_factory_any = cast("Any", loader_factory)
+
+    loader_factory_any.DeployfishSectionDoesNotExist = (
         ObjectLoader.DeployfishSectionDoesNotExist
     )
-    loader_factory.DeployfishObjectDoesNotExist = (
+    loader_factory_any.DeployfishObjectDoesNotExist = (
         ObjectLoader.DeployfishObjectDoesNotExist
     )
-    loader_factory.ObjectNotManaged = ObjectLoader.ObjectNotManaged
-    loader_factory.ReadOnly = ObjectLoader.ReadOnly
-    controller.loader = loader_factory  # type: ignore[attr-defined]
+    loader_factory_any.ObjectNotManaged = ObjectLoader.ObjectNotManaged
+    loader_factory_any.ReadOnly = ObjectLoader.ReadOnly
+    controller.loader = loader_factory_any
     return loader
 
 
-def bind_service_loader(controller: object) -> ServiceLoader:
-    return bind_loader_factory(controller, ServiceLoader(controller))
+def bind_service_loader(controller: DeployfishArgparseController) -> ServiceLoader:
+    loader = ServiceLoader(controller)
+    bind_loader_factory(controller, loader)
+    return loader

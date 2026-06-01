@@ -58,7 +58,9 @@ class TestBastionSSHProvider:
 
         instance = _instance(ip="10.0.0.5")
         bastion = _instance(instance_id="i-bastion", ip="54.0.0.1", name="bastion")
-        with patch.object(Instance, "bastion", new_callable=PropertyMock, return_value=bastion):
+        with patch.object(
+            Instance, "bastion", new_callable=PropertyMock, return_value=bastion
+        ):
             provider = BastionSSHProvider(instance, verbose=False)
             command = provider.ssh("uptime")
         assert bastion.hostname in command

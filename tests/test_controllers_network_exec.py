@@ -37,6 +37,8 @@ class TestObjectDockerExecController:
         with patch("deployfish.controllers.network.shell.Prompt", return_value=prompt):
             with patch("deployfish.controllers.network.tabulate"):
                 with patch("deployfish.controllers.network.click.secho"):
-                    instance, container_name = controller.get_ssh_exec_target(obj, choose=True)
+                    instance, container_name = controller.get_ssh_exec_target(
+                        obj, choose=True
+                    )
         assert instance is target
         assert container_name == "app"

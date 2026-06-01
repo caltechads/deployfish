@@ -22,23 +22,26 @@ if TYPE_CHECKING:
 
 
 class TerraformStateFactory:
-
     @staticmethod
-    def new(terraform_config: dict[str, Any], context: dict[str, Any]) -> "AbstractTerraformState":
+    def new(
+        terraform_config: dict[str, Any], context: dict[str, Any]
+    ) -> "AbstractTerraformState":
         if "organization" in terraform_config:
             return TerraformEnterpriseState(terraform_config, context)
         if "statefile" in terraform_config:
             return TerraformS3State(terraform_config, context)
-        raise SchemaException(
-            'Could not determine location of the Terraform statefile. Ensure that you define either '
+        msg = (
+            "Could not determine location of the Terraform statefile. Ensure that you define either "
             '"organization" and "workspace" (for Terraform Enterprise) or "statefile" (for S3 hosted '
             'Terraform state) in your "terraform:" section of deployfish.yml'
         )
+        raise SchemaException(msg)
 
 
 class AbstractTerraformState:
-
-    def __init__(self, terraform_config: dict[str, Any], context: dict[str, Any]) -> None:
+    def __init__(
+        self, terraform_config: dict[str, Any], context: dict[str, Any]
+    ) -> None:
         self.context: dict[str, Any] = context
         self.terraform_config: dict[str, Any] = terraform_config
         self.loaded: bool = False
@@ -55,16 +58,14 @@ class AbstractTerraformState:
 
 
 class TerraformS3State(AbstractTerraformState):
-
-    def __init__(self, terraform_config: dict[str, Any], context: dict[str, Any]) -> None:
+    def __init__(
+        self, terraform_config: dict[str, Any], context: dict[str, Any]
+    ) -> None:
         super().__init__(terraform_config, context)
         self.replacements: dict[str, str] = {}
 
     def _get_state_file_from_s3(
-        self,
-        state_file_url: str,
-        profile: str = None,
-        region: str = None
+        self, state_file_url: str, profile: str | None = None, region: str | None = None
     ) -> dict[str, Any]:
         """
         Retrive our statefile from S3
@@ -82,8 +83,9 @@ class TerraformS3State(AbstractTerraformState):
             state_file = key.get()["Body"].read().decode("utf-8")
         except botocore.exceptions.ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":
-                raise NoSuchTerraformStateFile(f"Could not find Terraform state file {state_file_url}")
-            raise ex
+                msg = f"Could not find Terraform state file {state_file_url}"
+                raise NoSuchTerraformStateFile(msg)
+            raise
         return json.loads(state_file)
 
     def _load_pre_version_12(self, tfstate: dict[str, Any]) -> None:
@@ -107,7 +109,7 @@ class TerraformS3State(AbstractTerraformState):
             tfstate = self._get_state_file_from_s3(
                 statefile_url,
                 profile=self.terraform_config.get("profile", None),
-                region=self.terraform_config.get("region", None)
+                region=self.terraform_config.get("region", None),
             )
             major, minor, _ = tfstate["terraform_version"].split(".")
             if int(major) >= 1 or (int(major) == 0 and int(minor) >= 12):
@@ -116,35 +118,41 @@ class TerraformS3State(AbstractTerraformState):
                 self._load_pre_version_12(tfstate)
             # If our statefile URL has no replacments in it, we don't need to load this again
             self.loaded = not any(
-                r in self.terraform_config["statefile"] for r in AbstractConfigProcessor.REPLACEMENTS
+                r in self.terraform_config["statefile"]
+                for r in AbstractConfigProcessor.REPLACEMENTS
             )
 
 
 class TerraformEnterpriseState(AbstractTerraformState):
-
     TERRAFORM_API_ENDPOINT: str = "https://app.terraform.io/api/v2"
 
-    def __init__(self, terraform_config: dict[str, Any], context: dict[str, Any]) -> None:
+    def __init__(
+        self, terraform_config: dict[str, Any], context: dict[str, Any]
+    ) -> None:
         super().__init__(terraform_config, context)
         if "workspace" not in self.terraform_config:
-            raise SchemaException(
-                'In the "terraform:" section, if you define "organization", you must also define "workspace"'
-            )
+            msg = 'In the "terraform:" section, if you define "organization", you must also define "workspace"'
+            raise SchemaException(msg)
         if "tfe_token" in self.context:
             self.api_token: str = self.context["tfe_token"]
         if "ATLAS_TOKEN" in os.environ:
             self.api_token = cast("str", os.getenv("ATLAS_TOKEN"))
         if not hasattr(self, "tfe_token"):
-            raise ConfigProcessingFailed("Terraform Enterprise State: No Terraform Enterprise API token provided!")
+            msg = "Terraform Enterprise State: No Terraform Enterprise API token provided!"
+            raise ConfigProcessingFailed(msg)
 
     def get_terraform_state_download_url(self) -> str:
         endpoint = self.TERRAFORM_API_ENDPOINT + "/state-versions?"
-        org_filter = "filter[organization][name]=" + self.terraform_config["organization"]
-        workspace_filter = "filter[workspace][name]=" + self.terraform_config["workspace"]
+        org_filter = (
+            "filter[organization][name]=" + self.terraform_config["organization"]
+        )
+        workspace_filter = (
+            "filter[workspace][name]=" + self.terraform_config["workspace"]
+        )
         web_request = endpoint + org_filter + "&" + workspace_filter
         headers = {
             "Authorization": "Bearer " + self.api_token,
-            "Content-Type": "application/vnd.api+json"
+            "Content-Type": "application/vnd.api+json",
         }
         response = requests.get(web_request, headers=headers)
         data = json.loads(response.text)
@@ -197,15 +205,11 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
         try:
             self.terraform = TerraformStateFactory.new(config.raw["terraform"], context)
         except KeyError:
-            raise self.SkipConfigProcessing('Skipping terraform state processing: no "terraform" section')
+            msg = 'Skipping terraform state processing: no "terraform" section'
+            raise self.SkipConfigProcessing(msg)
 
     def replace(
-        self,
-        obj: list | dict,
-        key: Any,
-        value: str,
-        section_name: str,
-        item_name: str
+        self, obj: list | dict, key: Any, value: str, section_name: str, item_name: str
     ) -> None:
         """
         Perform string replacements on ``value``, a string value in our
@@ -239,7 +243,9 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
         m = self.TERRAFORM_RE.search(value)
         if m:
             if section_name == "tunnels":
-                replacers = self.get_deployfish_replacements("services", cast("dict", obj)["service"])
+                replacers = self.get_deployfish_replacements(
+                    "services", cast("dict", obj)["service"]
+                )
             else:
                 replacers = self.get_deployfish_replacements(section_name, item_name)
             try:
@@ -249,13 +255,10 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
             try:
                 tfvalue = self.terraform.lookup(m.group("key"), replacers)
             except KeyError:
-                raise self.ProcessingFailed(
-                    'Config["{}"]["{}"]: There is no terraform output named "{}" in the statefile'.format(
-                        section_name,
-                        item_name,
-                        m.group("key")
-                    )
+                msg = 'Config["{}"]["{}"]: There is no terraform output named "{}" in the statefile'.format(
+                    section_name, item_name, m.group("key")
                 )
+                raise self.ProcessingFailed(msg)
             if isinstance(tfvalue, (list, tuple, dict)):
                 obj[key] = tfvalue
             elif isinstance(tfvalue, int):

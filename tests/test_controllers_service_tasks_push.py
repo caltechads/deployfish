@@ -41,7 +41,9 @@ class TestECSServiceStandaloneTasksPush:
         task = MagicMock(spec=StandaloneTask)
         task.name = "migrate"
         task.save.return_value = "arn:aws:ecs:1:task-definition/migrate:3"
-        with patch.object(loader, "get_object_from_deployfish", side_effect=[service, task]):
+        with patch.object(
+            loader, "get_object_from_deployfish", side_effect=[service, task]
+        ):
             with patch("deployfish.controllers.service.click.secho"):
                 controller.update_related_tasks()
         task.save.assert_called_once()

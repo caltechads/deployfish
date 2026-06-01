@@ -17,6 +17,7 @@ from deployfish.exceptions import (
 # Decorators
 # ========================
 
+
 def handle_model_exceptions(func: Callable) -> Callable:
     """
     This decorator cathces all the kinds of execptions we expect to see in normal
@@ -39,14 +40,17 @@ def handle_model_exceptions(func: Callable) -> Callable:
             SchemaException,
             ConfigProcessingFailed,
             NoSuchConfigSection,
-            SSHMixin.NoSSHTargetAvailable
+            SSHMixin.NoSSHTargetAvailable,
         ) as e:
             self.app.print(click.style(str(e), fg="red"))
         except NoSuchConfigSectionItem as e:
             lines = []
             lines.append(click.style(f"ERROR: {e!s}", fg="red"))
             lines.append(
-                click.style(f'Available {self.model.__name__}s in the "{e.section}:" section of deployfish.yml:', fg="cyan")
+                click.style(
+                    f'Available {self.model.__name__}s in the "{e.section}:" section of deployfish.yml:',
+                    fg="cyan",
+                )
             )
             for item in self.app.deployfish_config.get_section(e.section):
                 lines.append("  {}".format(item["name"]))
@@ -61,4 +65,5 @@ def handle_model_exceptions(func: Callable) -> Callable:
             self.app.print("\n".join(lines))
         else:
             return obj
+
     return inner

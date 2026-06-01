@@ -14,14 +14,15 @@ from .mixins import TagsManagerMixin, TagsMixin
 # Managers
 # ----------------------------------------
 
-class VPCManager(Manager):
 
+class VPCManager(Manager):
     service = "ec2"
 
     def get(self, pk: str, **_) -> "VPC":
         instances = self.get_many([pk])
         if len(instances) > 1:
-            raise VPC.MultipleObjectsReturned(f"Got more than one VPC when searching for pk={pk}")
+            msg = f"Got more than one VPC when searching for pk={pk}"
+            raise VPC.MultipleObjectsReturned(msg)
         return instances[0]
 
     def get_many(self, pks: list[str], **kwargs) -> Sequence["VPC"]:
@@ -49,7 +50,7 @@ class VPCManager(Manager):
             raise
         return [VPC(data) for data in vpcs]
 
-    def list(self, name: str = None) -> Sequence["VPC"]:
+    def list(self, name: str | None = None) -> Sequence["VPC"]:
         paginator = self.client.get_paginator("describe_vpcs")
         response_iterator = paginator.paginate()
         vpc_data = []
@@ -71,7 +72,6 @@ class VPCManager(Manager):
 
 
 class SubnetManager(Manager):
-
     service = "ec2"
 
     def get(self, pk: str, **_) -> "Subnet":
@@ -83,7 +83,7 @@ class SubnetManager(Manager):
             raise
         return Subnet(response["Subnets"][0])
 
-    def list(self, vpc_id: str = None) -> "builtins.list[Subnet]":
+    def list(self, vpc_id: str | None = None) -> "builtins.list[Subnet]":
         paginator = self.client.get_paginator("describe_subnets")
         kwargs = {}
         if vpc_id:
@@ -96,23 +96,16 @@ class SubnetManager(Manager):
 
     def get_tags(self, pk: str) -> builtins.list[dict[str, str]]:
         response = self.client.describe_tags(
-            Filters=[{
-                "Name": "resource-id",
-                "Values": [pk]
-            }]
+            Filters=[{"Name": "resource-id", "Values": [pk]}]
         )
         return response["Tags"]
 
 
 class SecurityGroupManager(Manager):
-
     service: str = "ec2"
 
     def get(self, pk: str, **_) -> "SecurityGroup":
-        if pk.startswith("sg-"):
-            kwargs = {"GroupIds": [pk]}
-        else:
-            kwargs = {"GroupNames": [pk]}
+        kwargs = {"GroupIds": [pk]} if pk.startswith("sg-") else {"GroupNames": [pk]}
         try:
             response = self.client.describe_security_groups(**kwargs)
         except botocore.exceptions.ClientError as e:
@@ -121,7 +114,7 @@ class SecurityGroupManager(Manager):
             raise
         return SecurityGroup(response["SecurityGroups"][0])
 
-    def list(self, vpc_id: str = None) -> list["SecurityGroup"]:
+    def list(self, vpc_id: str | None = None) -> list["SecurityGroup"]:
         paginator = self.client.get_paginator("describe_security_groups")
         kwargs = {}
         if vpc_id:
@@ -134,7 +127,6 @@ class SecurityGroupManager(Manager):
 
 
 class AutoscalingGroupManager(Manager):
-
     service = "autoscaling"
 
     def get(self, pk: str, **_) -> "AutoscalingGroup":
@@ -145,15 +137,13 @@ class AutoscalingGroupManager(Manager):
         except botocore.exceptions.ClientError:
             # FIXME: there are other ClientErrors.  This may say we have other
             # issues than the group doesn't exist
-            raise AutoscalingGroup.DoesNotExist(
-                f'No Autoscaling Group named "{pk}" exists in AWS'
-            )
+            msg = f'No Autoscaling Group named "{pk}" exists in AWS'
+            raise AutoscalingGroup.DoesNotExist(msg)
         try:
             return AutoscalingGroup(response["AutoScalingGroups"][0])
         except IndexError:
-            raise AutoscalingGroup.DoesNotExist(
-                f'No Autoscaling Group named "{pk}" exists in AWS'
-            )
+            msg = f'No Autoscaling Group named "{pk}" exists in AWS'
+            raise AutoscalingGroup.DoesNotExist(msg)
 
     def list(self) -> list["AutoscalingGroup"]:
         response = self.client.describe_auto_scaling_groups()
@@ -164,22 +154,20 @@ class AutoscalingGroupManager(Manager):
 
 
 class InstanceManager(TagsManagerMixin, Manager):
-
     service = "ec2"
 
-    def get(self, pk: str, vpc_id: str = None, **_) -> "Instance":
+    def get(self, pk: str, vpc_id: str | None = None, **_) -> "Instance":
         instances = self.get_many([pk], vpc_id=vpc_id)
         if len(instances) > 1:
-            raise Instance.MultipleObjectsReturned(
-                "Got more than one instance when searching for pk={}, vpc_id={}: {}".format(
-                    pk,
-                    vpc_id,
-                    ", ".join([instance.pk for instance in instances])
-                )
+            msg = "Got more than one instance when searching for pk={}, vpc_id={}: {}".format(
+                pk, vpc_id, ", ".join([instance.pk for instance in instances])
             )
+            raise Instance.MultipleObjectsReturned(msg)
         return instances[0]
 
-    def get_many(self, pks: list[str], vpc_id: str = None, **_) -> Sequence["Instance"]:
+    def get_many(
+        self, pks: list[str], vpc_id: str | None = None, **_
+    ) -> Sequence["Instance"]:
         ec2_kwargs: dict[str, Any] = {}
         names = []
         for pk in pks:
@@ -209,11 +197,11 @@ class InstanceManager(TagsManagerMixin, Manager):
 
     def list(
         self,
-        vpc_ids: list[str] = None,
-        image_ids: list[str] = None,
-        instance_types: list[str] = None,
-        subnet_ids: list[str] = None,
-        tags: list[str] = None,
+        vpc_ids: list[str] | None = None,
+        image_ids: list[str] | None = None,
+        instance_types: list[str] | None = None,
+        subnet_ids: list[str] | None = None,
+        tags: list[str] | None = None,
     ) -> Sequence["Instance"]:
         ec2_kwargs: dict[str, Any] = {}
         if any([vpc_ids, image_ids, instance_types, subnet_ids, tags]):
@@ -221,18 +209,23 @@ class InstanceManager(TagsManagerMixin, Manager):
             if vpc_ids is not None:
                 ec2_kwargs["Filters"].append({"Name": "vpc-id", "Values": [vpc_ids]})
             if image_ids is not None:
-                ec2_kwargs["Filters"].append({"Name": "image-id", "Values": [image_ids]})
+                ec2_kwargs["Filters"].append(
+                    {"Name": "image-id", "Values": [image_ids]}
+                )
             if instance_types is not None:
-                ec2_kwargs["Filters"].append({"Name": "instance-type", "Values": [instance_types]})
+                ec2_kwargs["Filters"].append(
+                    {"Name": "instance-type", "Values": [instance_types]}
+                )
             if subnet_ids is not None:
-                ec2_kwargs["Filters"].append({"Name": "subnet-ids", "Values": [subnet_ids]})
+                ec2_kwargs["Filters"].append(
+                    {"Name": "subnet-ids", "Values": [subnet_ids]}
+                )
             if tags is not None:
                 for tag in tags:
                     tag_name, tag_value = tag.split(":")
-                    ec2_kwargs["Filters"].append({
-                        "Name": f"tag:{tag_name}",
-                        "Values": [tag_value]
-                    })
+                    ec2_kwargs["Filters"].append(
+                        {"Name": f"tag:{tag_name}", "Values": [tag_value]}
+                    )
         paginator = self.client.get_paginator("describe_instances")
         response_iterator = paginator.paginate()
         instances = []
@@ -246,8 +239,8 @@ class InstanceManager(TagsManagerMixin, Manager):
 # Models
 # ----------------------------------------
 
-class AutoscalingGroup(Model):
 
+class AutoscalingGroup(Model):
     # FIXME: add SSHMixin, and enable sshing to this autoscaling group
 
     objects = AutoscalingGroupManager()
@@ -273,7 +266,7 @@ class AutoscalingGroup(Model):
         return self.get_cached(
             "instances",
             Instance.objects.get_many,
-            [instance["InstanceId"] for instance in self.data["Instances"]]
+            [instance["InstanceId"] for instance in self.data["Instances"]],
         )
 
     def scale(self, count: int, force: bool = True) -> None:
@@ -288,15 +281,18 @@ class AutoscalingGroup(Model):
                     max_size = count
             else:
                 if count < min_size:
-                    raise self.OperationFailed('AutoscalingGroup.scale(): count "{}" is less than MinSize.')
+                    msg = 'AutoscalingGroup.scale(): count "{}" is less than MinSize.'
+                    raise self.OperationFailed(msg)
                 if count > max_size:
-                    raise self.OperationFailed('AutoscalingGroup.scale(): count "{}" is greater than than MaxSize.')
+                    msg = 'AutoscalingGroup.scale(): count "{}" is greater than than MaxSize.'
+                    raise self.OperationFailed(msg)
             self.data["MinSize"] = min_size
             self.data["MaxSize"] = max_size
             self.data["DesiredCapacity"] = count
             self.save()
         else:
-            raise self.DoesNotExist(f'No Autoscaling Group named "{self.pk}" exists in AWS')
+            msg = f'No Autoscaling Group named "{self.pk}" exists in AWS'
+            raise self.DoesNotExist(msg)
 
     def render_for_update(self) -> dict[str, Any]:
         data = {}
@@ -311,7 +307,6 @@ class AutoscalingGroup(Model):
 
 
 class Instance(TagsMixin, SSHMixin, Model):
-
     objects = InstanceManager()
 
     def __init__(self, data: dict[str, Any]) -> None:
@@ -364,7 +359,9 @@ class Instance(TagsMixin, SSHMixin, Model):
             except KeyError:
                 self.cache["autoscaling_group"] = None
             else:
-                self.cache["autoscaling_group"] = AutoscalingGroup.objects.get(autoscalinggroup_name)
+                self.cache["autoscaling_group"] = AutoscalingGroup.objects.get(
+                    autoscalinggroup_name
+                )
         return self.cache["autoscaling_group"]
 
     @property
@@ -400,7 +397,6 @@ class Instance(TagsMixin, SSHMixin, Model):
 
 
 class VPC(TagsMixin, Model):
-
     objects = VPCManager()
 
     @property
@@ -423,10 +419,7 @@ class VPC(TagsMixin, Model):
     def bastion(self) -> Instance | None:
         try:
             return self.get_cached(
-                "bastion",
-                Instance.objects.get,
-                ["Name:bastion*"],
-                {"vpc_id": self.pk}
+                "bastion", Instance.objects.get, ["Name:bastion*"], {"vpc_id": self.pk}
             )
         except self.DoesNotExist:
             self.cache["bastion"] = None
@@ -439,7 +432,7 @@ class VPC(TagsMixin, Model):
                 "provisioner",
                 Instance.objects.get,
                 ["Name:provisioner*"],
-                {"vpc_id": self.pk}
+                {"vpc_id": self.pk},
             )
         except self.DoesNotExist:
             self.cache["provisioner"] = None
@@ -447,7 +440,6 @@ class VPC(TagsMixin, Model):
 
 
 class Subnet(TagsMixin, Model):
-
     objects = SubnetManager()
 
     # ---------------------
@@ -498,7 +490,6 @@ class Subnet(TagsMixin, Model):
 
 
 class SecurityGroup(TagsMixin, Model):
-
     objects = SecurityGroupManager()
 
     @property

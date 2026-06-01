@@ -27,7 +27,9 @@ TARGET_DATA = {
 class TestScalingPolicyManager:
     def test_get_policy(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
-        client.describe_scaling_policies.return_value = {"ScalingPolicies": [POLICY_DATA]}
+        client.describe_scaling_policies.return_value = {
+            "ScalingPolicies": [POLICY_DATA]
+        }
         alarm = MagicMock()
         with patch.object(CloudwatchAlarm.objects, "get", return_value=alarm):
             policy = ScalingPolicy.objects.get("scale-up")
@@ -41,7 +43,9 @@ class TestScalingPolicyManager:
 
     def test_list_policies(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
-        client.describe_scaling_policies.return_value = {"ScalingPolicies": [POLICY_DATA]}
+        client.describe_scaling_policies.return_value = {
+            "ScalingPolicies": [POLICY_DATA]
+        }
         with patch.object(CloudwatchAlarm.objects, "get", return_value=MagicMock()):
             policies = ScalingPolicy.objects.list("cluster", "service")
         assert len(policies) == 1
@@ -56,9 +60,11 @@ class TestScalingPolicyManager:
 class TestScalableTargetManager:
     def test_get_target(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
-        client.describe_scalable_targets.return_value = {"ScalableTargets": [TARGET_DATA]}
+        client.describe_scalable_targets.return_value = {
+            "ScalableTargets": [TARGET_DATA]
+        }
         with patch.object(ScalingPolicy.objects, "list", return_value=[]):
-            target = ScalableTarget.objects.get("service/cluster/service")
+            ScalableTarget.objects.get("service/cluster/service")
 
     def test_save_registers_target(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session

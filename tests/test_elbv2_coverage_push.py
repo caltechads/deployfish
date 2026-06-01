@@ -55,8 +55,11 @@ class TestLoadBalancerManagerPush:
     def test_list_filters_scheme_and_name(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
         _paginate(client, [{"LoadBalancers": [LB_DATA]}])
-        lbs = LoadBalancer.objects.list(name="test-*", scheme="internet-facing", vpc_id="vpc-123")
+        lbs = LoadBalancer.objects.list(
+            name="test-*", scheme="internet-facing", vpc_id="vpc-123"
+        )
         assert len(lbs) == 1
+
 
 class TestTargetGroupManagerPush:
     def test_get_target_group(self, _mock_boto3_session: MagicMock) -> None:

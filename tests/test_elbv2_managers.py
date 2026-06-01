@@ -108,7 +108,9 @@ class TestLoadBalancerListenerRuleManager:
             "RuleArn": "arn:rule/1",
             "Priority": "1",
             "Conditions": [],
-            "Actions": [{"Type": "forward", "TargetGroupArn": TG_DATA["TargetGroupArn"]}],
+            "Actions": [
+                {"Type": "forward", "TargetGroupArn": TG_DATA["TargetGroupArn"]}
+            ],
         }
         _paginate(client, [{"Rules": [rule_data]}])
         rules = LoadBalancerListenerRule.objects.list(

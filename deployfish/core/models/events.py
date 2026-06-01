@@ -8,14 +8,15 @@ from .abstract import Manager, Model
 # Managers
 # ----------------------------------------
 
-class EventTargetManager(Manager):
 
+class EventTargetManager(Manager):
     service = "events"
 
     def get(self, pk: str, **kwargs) -> "EventTarget":
         rule: EventScheduleRule | None = kwargs.get("rule")
         if not rule:
-            raise ValueError('"rule" kwarg is required')
+            msg = '"rule" kwarg is required'
+            raise ValueError(msg)
         if not pk.startswith("deployfish-"):
             pk = "deployfish-" + pk
         response = self.client.list_targets_by_rule(Rule=rule.pk)
@@ -25,9 +26,8 @@ class EventTargetManager(Manager):
                 data = target
                 break
         if not data:
-            raise EventTarget.DoesNotExist(
-                f'No EventTarget for name="{pk}" in AWS on EventScheduleRule(pk="{rule.pk}")'
-            )
+            msg = f'No EventTarget for name="{pk}" in AWS on EventScheduleRule(pk="{rule.pk}")'
+            raise EventTarget.DoesNotExist(msg)
         return EventTarget(data, rule=rule.data)
 
     def list(self, rule: "EventScheduleRule") -> Sequence["EventTarget"]:
@@ -49,7 +49,6 @@ class EventTargetManager(Manager):
 
 
 class EventScheduleRuleManager(Manager):
-
     service = "events"
 
     def get(self, pk: str, **_) -> "EventScheduleRule":
@@ -57,9 +56,8 @@ class EventScheduleRuleManager(Manager):
             pk = "deployfish-" + pk
         response = self.client.list_rules(NamePrefix=pk, Limit=1)
         if not response["Rules"]:
-            raise EventScheduleRule.DoesNotExist(
-                f'No EventScheduleRule for name="{pk}" exists in AWS'
-            )
+            msg = f'No EventScheduleRule for name="{pk}" exists in AWS'
+            raise EventScheduleRule.DoesNotExist(msg)
         data = response["Rules"][0]
         rule = EventScheduleRule(data)
         rule.target = EventTarget.objects.get(pk, rule=rule)
@@ -103,8 +101,7 @@ class EventScheduleRuleManager(Manager):
         """
         if not obj.enabled:
             self.client.enable_rule(
-                Name=obj.name,
-                EventBusName=obj.data["EventBusName"]
+                Name=obj.name, EventBusName=obj.data["EventBusName"]
             )
 
     def disable(self, obj: "EventScheduleRule") -> None:
@@ -118,14 +115,14 @@ class EventScheduleRuleManager(Manager):
         """
         if obj.enabled:
             self.client.disable_rule(
-                Name=obj.name,
-                EventBusName=obj.data["EventBusName"]
+                Name=obj.name, EventBusName=obj.data["EventBusName"]
             )
 
 
 # ----------------------------------------
 # Models
 # ----------------------------------------
+
 
 class EventTarget(Model):
     """
@@ -194,16 +191,14 @@ class EventTarget(Model):
         :rtype: dict
         """
         if not self.rule:
-            raise self.ImproperlyConfigured(
-                "EventTarget({}) has no EventScheduleRule associated with it.  Assign one with target.rule = rule"
-            )
+            msg = "EventTarget({}) has no EventScheduleRule associated with it.  Assign one with target.rule = rule"
+            raise self.ImproperlyConfigured(msg)
         super().save()
 
     def delete(self) -> None:
         if not self.rule:
-            raise self.ImproperlyConfigured(
-                "EventTarget({}) has no EventScheduleRule asociated with it.  Assign one with target.rule = rule"
-            )
+            msg = "EventTarget({}) has no EventScheduleRule asociated with it.  Assign one with target.rule = rule"
+            raise self.ImproperlyConfigured(msg)
         self.objects.delete(self, rule=self.rule)
 
     # ----------------------------

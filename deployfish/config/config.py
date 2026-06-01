@@ -56,11 +56,7 @@ class Config:
 
     #: The list of sections in our config file that will be processed
     #: by our :py:class:`deployfish.config.processors.ConfigProcessor`
-    processable_sections: list[str] = [
-        "services",
-        "tasks",
-        "tunnels"
-    ]
+    processable_sections: list[str] = ["services", "tasks", "tunnels"]
 
     @classmethod
     def new(cls, **kwargs) -> "Config":
@@ -96,8 +92,8 @@ class Config:
     def __init__(
         self,
         filename: str,
-        raw_config: dict[str, Any] = None,
-        boto3_session: boto3.session.Session = None
+        raw_config: dict[str, Any] | None = None,
+        boto3_session: boto3.session.Session = None,
     ) -> None:
         # FIXME: we're accepting boto3_session as a kwarg, but we never do anything with it
         self.filename: str = filename
@@ -142,11 +138,11 @@ class Config:
 
         """
         if not os.path.exists(filename):
-            raise ConfigProcessingFailed(f"Couldn't find deployfish config file '{filename}'")
+            msg = f"Couldn't find deployfish config file '{filename}'"
+            raise ConfigProcessingFailed(msg)
         if not os.access(filename, os.R_OK):
-            raise ConfigProcessingFailed(
-                f"Deployfish config file '{filename}' exists but is not readable"
-            )
+            msg = f"Deployfish config file '{filename}' exists but is not readable"
+            raise ConfigProcessingFailed(msg)
         with open(filename, encoding="utf-8") as f:
             return yaml.load(f, Loader=yaml.FullLoader)
 
@@ -293,6 +289,7 @@ class Config:
             value: the new SSH provider type.  Must be either 'bastion' or 'ssm'.
 
         """
-        assert value in ["bastion", "ssm"], \
+        assert value in ["bastion", "ssm"], (
             f"Invalid SSH provider type: {value}.  Valid values are 'bastion' and 'ssm'"
+        )
         self.set_global_config("ssh", "proxy", value)

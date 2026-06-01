@@ -13,7 +13,9 @@ class TestInvokedTaskManagerExtended:
             "lastStatus": "RUNNING",
         }
         client.describe_tasks.return_value = {"tasks": [task_data], "failures": []}
-        task = InvokedTask.objects.get("foobar-cluster:arn:aws:ecs:us-west-2:123:task/cluster/abc")
+        task = InvokedTask.objects.get(
+            "foobar-cluster:arn:aws:ecs:us-west-2:123:task/cluster/abc"
+        )
         assert task.data["lastStatus"] == "RUNNING"
 
     def test_get_raises_when_task_missing(self, _mock_boto3_session: MagicMock) -> None:

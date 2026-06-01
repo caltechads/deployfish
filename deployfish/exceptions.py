@@ -4,12 +4,10 @@ class SchemaException(Exception):
     """
 
 
-
 class ObjectDoesNotExist(Exception):
     """
     We tried to get a single object but it does not exist in AWS.
     """
-
 
 
 class MultipleObjectsReturned(Exception):
@@ -18,12 +16,10 @@ class MultipleObjectsReturned(Exception):
     """
 
 
-
 class ObjectImproperlyConfigured(Exception):
     """
     Deployfish, our model's manager Manager or the model itself is not properly configured.
     """
-
 
 
 class ObjectReadOnly(Exception):
@@ -32,12 +28,10 @@ class ObjectReadOnly(Exception):
     """
 
 
-
 class OperationFailed(Exception):
     """
     We tried to do something we expected to succeed, but it failed.
     """
-
 
 
 class NoSuchConfigSection(Exception):
@@ -83,12 +77,10 @@ class DeployfishAppError(Exception):
     """Generic errors."""
 
 
-
 class NoSuchTerraformStateFile(Exception):
     """
     deployfish.yml references a Terraform state file that doesn't exist.
     """
-
 
 
 class ConfigProcessingFailed(Exception):
@@ -97,10 +89,8 @@ class ConfigProcessingFailed(Exception):
     """
 
 
-
 class SkipConfigProcessing(Exception):
     """
     This is used to skip processing steps when looping through the variable substitution classes
     while processing variable substitutions in deployfish.yml.
     """
-

@@ -26,16 +26,22 @@ class TestConfigModule:
         )
         with patch(
             "deployfish.config.processors.terraform.TerraformStateConfigProcessor.replace",
-            side_effect=lambda obj, key, value, *args, **kwargs: setattr(obj, key, value) or value,
+            side_effect=lambda obj, key, value, *args, **kwargs: (
+                setattr(obj, key, value) or value
+            ),
         ):
             config = Config.new(filename=str(yml), interpolate=False)
         item = config.get_raw_section_item("services", "foobar-test")
         assert item["name"] == "foobar-test"
 
-    def test_get_section_item_from_fixture_shape(self, minimal_deployfish_yml: Path) -> None:
+    def test_get_section_item_from_fixture_shape(
+        self, minimal_deployfish_yml: Path
+    ) -> None:
         with patch(
             "deployfish.config.processors.terraform.TerraformStateConfigProcessor.replace",
-            side_effect=lambda obj, key, value, *args, **kwargs: setattr(obj, key, value) or value,
+            side_effect=lambda obj, key, value, *args, **kwargs: (
+                setattr(obj, key, value) or value
+            ),
         ):
             config = Config.new(filename=str(minimal_deployfish_yml), interpolate=False)
         item = config.get_section_item("services", "foobar-test")

@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 
 class ConfigProcessor:
-
     class ProcessingFailed(ConfigProcessingFailed):
         pass
 

@@ -12,7 +12,9 @@ class AdapterRegistry:
     def __init__(self) -> None:
         self.adapters: dict[str, dict[str, type[Adapter]]] = {}
 
-    def register(self, model_name: str, source: str, adapter_class: type["Adapter"]) -> None:
+    def register(
+        self, model_name: str, source: str, adapter_class: type["Adapter"]
+    ) -> None:
         """
         Register a new Adapter class with a model and a source.
 

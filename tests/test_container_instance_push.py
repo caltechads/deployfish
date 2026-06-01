@@ -19,7 +19,9 @@ class TestContainerInstanceManager:
         with pytest.raises(Cluster.ReadOnly):
             ContainerInstance.objects.delete(ci)
 
-    def test_list_raises_cluster_not_found(self, _mock_boto3_session: MagicMock) -> None:
+    def test_list_raises_cluster_not_found(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         exc = type("ClusterNotFoundException", (Exception,), {})
         client.exceptions.ClusterNotFoundException = exc

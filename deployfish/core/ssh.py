@@ -55,8 +55,10 @@ def build_sigint_handler(p: subprocess.Popen) -> Callable:
         A function suitable for registering with :py:func:`signal.signal`.
 
     """
+
     def sigint_handler(signum, frame):
         p.send_signal(signal.SIGINT)
+
     return sigint_handler
 
 
@@ -75,16 +77,18 @@ class AbstractSSHProvider:
     """
 
     def __init__(self, instance: "Instance", verbose: bool = False) -> None:
-        assert instance is not None, \
+        assert instance is not None, (
             f"{self.__class__.__name__}.instance must not be None"
-        assert instance.__class__.__name__ == "Instance", \
+        )
+        assert instance.__class__.__name__ == "Instance", (
             f"{self.__class__.__name__}.instance must be an Instance object"
+        )
         #: The instance through which we will ssh
         self.instance = instance
         #: If the caller specified ``verbose=True``, we send SSH the ``-vv`` flag.
         self.ssh_verbose_flag = "-vv" if verbose else ""
 
-    def ssh(self, command: str = None) -> str:
+    def ssh(self, command: str | None = None) -> str:
         """
         Return a shell command suitable for establish an interactive ssh session.
 
@@ -181,7 +185,7 @@ class SSMSSHProvider(AbstractSSHProvider):
     Where ``{the profile name}`` is the name of your non-default profile.
     """
 
-    def ssh(self, command: str = None) -> str:
+    def ssh(self, command: str | None = None) -> str:
         """
         Return a shell command suitable for establishing an interactive ssh session.
 
@@ -229,8 +233,7 @@ class SSMSSHProvider(AbstractSSHProvider):
         ssh_target = self.instance.pk
         if profile_name:
             ssh_target = f"{self.instance.pk}.{profile_name}"
-        cmd = f"ssh {self.ssh_verbose_flag} -N -L {local_port}:{target_host}:{host_port} {ssh_target}"
-        return cmd
+        return f"ssh {self.ssh_verbose_flag} -N -L {local_port}:{target_host}:{host_port} {ssh_target}"
 
     def push(self, filename: str, run: bool = False) -> str:
         """
@@ -258,27 +261,30 @@ class BastionSSHProvider(AbstractSSHProvider):
 
     def __init__(self, instance: "Instance", verbose: bool = False) -> None:
         super().__init__(instance, verbose=verbose)
-        assert self.instance.bastion is not None, \
+        assert self.instance.bastion is not None, (
             f"{self.__class__.__name__}.instance has no bastion host"
+        )
 
-    def ssh(self, command: str = None) -> str:
+    def ssh(self, command: str | None = None) -> str:
         # If the caller specified --verbose, have SSH print everything. Otherwise, have SSH print nothing.
         flags = self.ssh_verbose_flag or "-q"
         if not command:
             command = ""
         hop2 = f"ssh {flags} -o StrictHostKeyChecking=no -A -t {self.instance.ip_address} {shellescape.quote(command)}"
         if not self.instance.bastion:
-            raise ValueError("No bastion host found")
-        cmd = f"ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{self.instance.bastion.hostname} {shellescape.quote(hop2)}"
-        return cmd
+            msg = "No bastion host found"
+            raise ValueError(msg)
+        return f"ssh {flags} -o StrictHostKeyChecking=no -A -t ec2-user@{self.instance.bastion.hostname} {shellescape.quote(hop2)}"
 
     def tunnel(self, local_port: int, target_host: str, host_port: int) -> str:
         if not self.instance.bastion:
-            raise ValueError("No bastion host found")
+            msg = "No bastion host found"
+            raise ValueError(msg)
         interim_port = random.randrange(10000, 64000, 1)
-        cmd = (f"ssh {self.ssh_verbose_flag} -L {local_port}:localhost:{interim_port} ec2-user@{self.instance.bastion.hostname}"
-               f" ssh -L {interim_port}:{target_host}:{host_port} {self.instance.ip_address}")
-        return cmd
+        return (
+            f"ssh {self.ssh_verbose_flag} -L {local_port}:localhost:{interim_port} ec2-user@{self.instance.bastion.hostname}"
+            f" ssh -L {interim_port}:{target_host}:{host_port} {self.instance.ip_address}"
+        )
 
     def docker_exec(self) -> str:
         # FIXME: the "head -1" here crudely handles the case where we have
@@ -294,10 +300,9 @@ class BastionSSHProvider(AbstractSSHProvider):
 
 
 class SSHMixin(SupportsCache, SupportsModel):
-
     providers: dict[str, type[AbstractSSHProvider]] = {
         "ssm": SSMSSHProvider,
-        "bastion": BastionSSHProvider
+        "bastion": BastionSSHProvider,
     }
     DEFAULT_PROVIDER: str = "ssm"
 
@@ -368,7 +373,9 @@ class SSHMixin(SupportsCache, SupportsModel):
             data = data.file
         return isinstance(data, IOBase)
 
-    def ssh_interactive(self, ssh_target: "Instance" = None, verbose: bool = False) -> None:
+    def ssh_interactive(
+        self, ssh_target: "Instance" = None, verbose: bool = False
+    ) -> None:
         """
         Do an interactive SSH session to Instance.  This method will not exit
         until the user ends the ssh sesison.
@@ -387,15 +394,16 @@ class SSHMixin(SupportsCache, SupportsModel):
             provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
             subprocess.call(provider.ssh(), shell=True)
         else:
-            raise self.NoSSHTargetAvailable(f"No ssh targets are available for {self}")
+            msg = f"No ssh targets are available for {self}"
+            raise self.NoSSHTargetAvailable(msg)
 
     def ssh_noninteractive(
         self,
         command: str,
         verbose: bool = False,
-        output = None,
-        input_data = None,
-        ssh_target: "Instance" = None
+        output=None,
+        input_data=None,
+        ssh_target: "Instance" = None,
     ) -> tuple[bool, str]:
         """
         Run a command on ``ssh_target`` via ssh. This method will not exit until
@@ -420,7 +428,8 @@ class SSHMixin(SupportsCache, SupportsModel):
         if ssh_target is None:
             ssh_target = self.ssh_target
         if not ssh_target:
-            raise self.NoSSHTargetAvailable(f"No ssh targets are available for {self}")
+            msg = f"No ssh targets are available for {self}"
+            raise self.NoSSHTargetAvailable(msg)
         stdout = output if self.__is_or_has_file(output) else subprocess.PIPE
         input_string = None
         if input_data:
@@ -432,8 +441,7 @@ class SSHMixin(SupportsCache, SupportsModel):
         else:
             stdin = None
         provider: AbstractSSHProvider = self.providers[self.ssh_proxy_type](
-            ssh_target,
-            verbose=verbose
+            ssh_target, verbose=verbose
         )
         if not command.startswith("ssh"):
             # Wrap the command in an ssh command
@@ -445,7 +453,7 @@ class SSHMixin(SupportsCache, SupportsModel):
                 stdin=stdin,
                 stderr=stdout,
                 shell=True,
-                universal_newlines=True
+                universal_newlines=True,
             )
         except subprocess.CalledProcessError as err:
             output = ""
@@ -462,7 +470,7 @@ class SSHMixin(SupportsCache, SupportsModel):
         self,
         tunnel: "SSHTunnel",
         verbose: bool = False,
-        tunnel_target: "Instance" = None
+        tunnel_target: "Instance" = None,
     ) -> None:
         """
         Establish an SSH tunnel.  This will not exit until the tunnel is closed by the user.
@@ -478,21 +486,17 @@ class SSHMixin(SupportsCache, SupportsModel):
         if not tunnel_target:
             tunnel_target = self.tunnel_target
         if tunnel_target:
-            provider = self.providers[self.ssh_proxy_type](tunnel_target, verbose=verbose)
-            cmd = provider.tunnel(
-                tunnel.local_port,
-                tunnel.host,
-                tunnel.host_port
+            provider = self.providers[self.ssh_proxy_type](
+                tunnel_target, verbose=verbose
             )
+            cmd = provider.tunnel(tunnel.local_port, tunnel.host, tunnel.host_port)
             subprocess.call(cmd, shell=True)
         else:
-            raise self.NoSSHTargetAvailable(f"No tunnel targets are available for {self}")
+            msg = f"No tunnel targets are available for {self}"
+            raise self.NoSSHTargetAvailable(msg)
 
     def push_file(
-        self,
-        input_filename: str,
-        verbose: bool = False,
-        ssh_target: "Instance" = None
+        self, input_filename: str, verbose: bool = False, ssh_target: "Instance" = None
     ) -> tuple[bool, str, str]:
         """
         Upload a file via ssh to a remote instance.
@@ -512,17 +516,14 @@ class SSHMixin(SupportsCache, SupportsModel):
             command = provider.push(remote_filename)
             with open(input_filename, encoding="utf-8") as ifd:
                 success, output = self.ssh_noninteractive(
-                    command,
-                    verbose=verbose,
-                    input_data=ifd,
-                    ssh_target=ssh_target
+                    command, verbose=verbose, input_data=ifd, ssh_target=ssh_target
                 )
             return success, output, remote_filename
-        raise self.NoSSHTargetAvailable(f"No ssh targets are available for {self}")
+        msg = f"No ssh targets are available for {self}"
+        raise self.NoSSHTargetAvailable(msg)
 
 
 class DockerMixin(SSHMixin, SupportsService):
-
     class NoRunningTasks(Exception):
         pass
 
@@ -539,8 +540,8 @@ class DockerMixin(SSHMixin, SupportsService):
     def docker_ssh_exec(
         self,
         ssh_target: "Instance" = None,
-        container_name: str = None,
-        verbose: bool = False
+        container_name: str | None = None,
+        verbose: bool = False,
     ) -> None:
         """
         Exec into a container running on an EC2 backed ECS Service.
@@ -562,25 +563,22 @@ class DockerMixin(SSHMixin, SupportsService):
                 # Arbitrarily exec into the first container in our object
                 container_name = self.running_tasks[0].containers[0].name
         else:
-            raise self.NoRunningTasks(
-                f"{self.__class__.__name__}(pk={self.pk}) has no running tasks."
-            )
+            msg = f"{self.__class__.__name__}(pk={self.pk}) has no running tasks."
+            raise self.NoRunningTasks(msg)
         ssh_target = cast("Instance", ssh_target)
         click.echo(
-            f'Connecting to {click.style(ssh_target.name, fg="cyan")} and execing into container {click.style(container_name, fg="cyan")} ...'
+            f"Connecting to {click.style(ssh_target.name, fg='cyan')} and execing into container {click.style(container_name, fg='cyan')} ..."
         )
         provider = self.providers[self.ssh_proxy_type](ssh_target, verbose=verbose)
         cmd = provider.docker_exec().format(
             self.task_definition.data["family"],
-            cast("str", container_name).replace("_", "")
+            cast("str", container_name).replace("_", ""),
         )
         cmd = provider.ssh_command(cmd)
         subprocess.call(cmd, shell=True)
 
     def docker_ecs_exec(
-        self,
-        task_arn: str = None,
-        container_name: str = None
+        self, task_arn: str | None = None, container_name: str | None = None
     ) -> None:
         """
         Exec into a container using the ECS Exec capability of AWS Systems
@@ -613,7 +611,8 @@ class DockerMixin(SSHMixin, SupportsService):
                 # Arbitrarily exec into the first container in our object
                 container_name = self.running_tasks[0].containers[0].name
         else:
-            raise self.NoRunningTasks(f"{self.__class__.__name__}(pk={self.pk}) has no running tasks.")
+            msg = f"{self.__class__.__name__}(pk={self.pk}) has no running tasks."
+            raise self.NoRunningTasks(msg)
         profile_name = get_boto3_session().profile_name
         if profile_name:
             cmd = f"aws --profile {profile_name} ecs execute-command"

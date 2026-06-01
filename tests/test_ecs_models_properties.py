@@ -50,7 +50,9 @@ class TestServiceProperties:
         service.data["cluster"] = "foobar-cluster"
         service.data["serviceName"] = "foobar-test"
         invoked = MagicMock()
-        with patch.object(InvokedTask.objects, "list", return_value=[invoked]) as list_mock:
+        with patch.object(
+            InvokedTask.objects, "list", return_value=[invoked]
+        ) as list_mock:
             tasks = service.running_tasks
         list_mock.assert_called_once_with("foobar-cluster", service="foobar-test")
         assert tasks == [invoked]

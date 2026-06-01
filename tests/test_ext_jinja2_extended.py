@@ -36,6 +36,8 @@ class TestTabularExtended:
 
     def test_tabular_with_default_column(self) -> None:
         row = {"name": "alpha"}
-        with patch.object(TableRenderer, "render", return_value="rendered") as render_mock:
+        with patch.object(
+            TableRenderer, "render", return_value="rendered"
+        ) as render_mock:
             assert tabular([row], Name="name", Name_default="n/a") == "rendered"
         assert render_mock.called

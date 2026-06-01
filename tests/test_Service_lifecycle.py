@@ -42,9 +42,13 @@ class TestServiceSave:
                 with patch.object(
                     service.task_definition, "save", return_value="arn:aws:ecs:task:2"
                 ):
-                    with patch.object(service, "_Service__update_service_discovery") as update_sd:
+                    with patch.object(
+                        service, "_Service__update_service_discovery"
+                    ) as update_sd:
                         with patch.object(Service.objects, "save"):
-                            with patch.object(service, "_Service__update_appscaling") as update_appscaling:
+                            with patch.object(
+                                service, "_Service__update_appscaling"
+                            ) as update_appscaling:
                                 service.save()
         update_sd.assert_called_once_with(None)
         update_appscaling.assert_called_once_with(None)
@@ -56,12 +60,15 @@ class TestServiceRestart:
         task_one = MagicMock()
         task_two = MagicMock()
         waiter = MagicMock()
-        with patch.object(
-            Service,
-            "running_tasks",
-            new_callable=PropertyMock,
-            return_value=[task_one, task_two],
-        ), patch.object(Service.objects, "get_waiter", return_value=waiter):
+        with (
+            patch.object(
+                Service,
+                "running_tasks",
+                new_callable=PropertyMock,
+                return_value=[task_one, task_two],
+            ),
+            patch.object(Service.objects, "get_waiter", return_value=waiter),
+        ):
             service.restart(hard=False)
         task_one.delete.assert_called_once()
         task_two.delete.assert_called_once()
@@ -72,12 +79,15 @@ class TestServiceRestart:
         task_one = MagicMock()
         task_two = MagicMock()
         waiter = MagicMock()
-        with patch.object(
-            Service,
-            "running_tasks",
-            new_callable=PropertyMock,
-            return_value=[task_one, task_two],
-        ), patch.object(Service.objects, "get_waiter", return_value=waiter):
+        with (
+            patch.object(
+                Service,
+                "running_tasks",
+                new_callable=PropertyMock,
+                return_value=[task_one, task_two],
+            ),
+            patch.object(Service.objects, "get_waiter", return_value=waiter),
+        ):
             service.restart(hard=True)
         task_one.delete.assert_called_once()
         task_two.delete.assert_called_once()
@@ -85,7 +95,9 @@ class TestServiceRestart:
 
     def test_restart_raises_when_no_running_tasks(self) -> None:
         service = Service.new(deepcopy(SERVICE_YML), "deployfish")
-        with patch.object(Service, "running_tasks", new_callable=PropertyMock, return_value=[]):
+        with patch.object(
+            Service, "running_tasks", new_callable=PropertyMock, return_value=[]
+        ):
             with pytest.raises(DockerMixin.NoRunningTasks):
                 service.restart()
 

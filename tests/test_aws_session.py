@@ -37,7 +37,9 @@ class TestAWSSessionBuilderNew:
         builder = AWSSessionBuilder()
         with patch("deployfish.core.aws.boto3.session.Session") as session_cls:
             session_cls.return_value.available_profiles = ["default"]
-            with pytest.raises(AWSSessionBuilder.NoSuchAWSProfile, match="missing-profile"):
+            with pytest.raises(
+                AWSSessionBuilder.NoSuchAWSProfile, match="missing-profile"
+            ):
                 builder.new(str(config_path))
 
     def test_forbidden_account_id_raises(self, tmp_path) -> None:
@@ -48,12 +50,17 @@ class TestAWSSessionBuilderNew:
         )
         builder = AWSSessionBuilder()
         session = MagicMock()
-        session.client.return_value.get_caller_identity.return_value = {"Account": "111111111111"}
-        with patch.object(
-            AWSSessionBuilder,
-            "_AWSSessionBuilder__get_boto3_session",
-            return_value=session,
-        ), pytest.raises(AWSSessionBuilder.ForbiddenAWSAccountId):
+        session.client.return_value.get_caller_identity.return_value = {
+            "Account": "111111111111"
+        }
+        with (
+            patch.object(
+                AWSSessionBuilder,
+                "_AWSSessionBuilder__get_boto3_session",
+                return_value=session,
+            ),
+            pytest.raises(AWSSessionBuilder.ForbiddenAWSAccountId),
+        ):
             builder.new(str(config_path))
 
     def test_allowed_account_id_passes(self, tmp_path) -> None:
@@ -64,7 +71,9 @@ class TestAWSSessionBuilderNew:
         )
         builder = AWSSessionBuilder()
         session = MagicMock()
-        session.client.return_value.get_caller_identity.return_value = {"Account": "222222222222"}
+        session.client.return_value.get_caller_identity.return_value = {
+            "Account": "222222222222"
+        }
         with patch.object(
             AWSSessionBuilder,
             "_AWSSessionBuilder__get_boto3_session",

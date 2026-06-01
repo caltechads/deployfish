@@ -2,7 +2,6 @@ from typing import Any
 
 
 class SSHConfigMixin:
-
     data: dict[str, Any]
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:

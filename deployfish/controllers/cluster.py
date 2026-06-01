@@ -30,7 +30,6 @@ def valid_date(s):
 
 
 class ECSCluster(CrudBase):
-
     class Meta:
         label = "cluster"
         description = "Work with ECS Cluster objects"
@@ -55,7 +54,7 @@ class ECSCluster(CrudBase):
         "Instances": "registeredContainerInstancesCount",
         "Services": "activeServicesCount",
         "Running Tasks": "runningTasksCount",
-        "Pending Tasks": "pendingTasksCount"
+        "Pending Tasks": "pendingTasksCount",
     }
 
     def _scale_instances(self, obj: Cluster, count: int, force: bool) -> None:
@@ -78,7 +77,8 @@ class ECSCluster(CrudBase):
 
         """
         if obj.autoscaling_group is None:
-            raise ObjectDoesNotExist(f"Cluster(pk={obj.pk}) has no autoscaling group to scale")
+            msg = f"Cluster(pk={obj.pk}) has no autoscaling group to scale"
+            raise ObjectDoesNotExist(msg)
         try:
             obj.scale(count, force=force)
         except AutoscalingGroup.OperationFailed as e:
@@ -88,28 +88,36 @@ class ECSCluster(CrudBase):
                 lines = []
                 lines.append(
                     'Desired count {} is less than MinSize of {} on AutoscalingGroup "{}".'.format(
-                        count,
-                        asg.data["MinSize"],
-                        asg.name
+                        count, asg.data["MinSize"], asg.name
                     )
                 )
                 lines.append("\nEither:")
-                lines.append(f"  (1) use --force to also reduce AutoscalingGroup MinSize to {count}")
+                lines.append(
+                    f"  (1) use --force to also reduce AutoscalingGroup MinSize to {count}"
+                )
                 lines.append("  (2) specify count >= {}".format(asg.data["MinSize"]))
             else:
                 lines = []
                 lines.append(
                     'Desired count {} is greater than MaxSize of {} on AutoscalingGroup "{}".'.format(
-                        count,
-                        asg.data["MaxSize"],
-                        asg.name
+                        count, asg.data["MaxSize"], asg.name
                     )
                 )
                 lines.append("\nEither:")
-                lines.append(f"  (1) use --force to also increase AutoscalingGroup MaxSize to {count}")
-                lines.append("  (2) specify count <= {}".format(obj.autoscaling_group.data["MaxSize"]))
+                lines.append(
+                    f"  (1) use --force to also increase AutoscalingGroup MaxSize to {count}"
+                )
+                lines.append(
+                    "  (2) specify count <= {}".format(
+                        obj.autoscaling_group.data["MaxSize"]
+                    )
+                )
             raise AutoscalingGroup.OperationFailed("\n".join(lines))
-        self.app.print(click.style(f'Set count for Cluster("{obj.pk}") to {count} instances.', fg="green"))
+        self.app.print(
+            click.style(
+                f'Set count for Cluster("{obj.pk}") to {count} instances.', fg="green"
+            )
+        )
 
     @ex(
         help="List ECS Clusters from AWS",
@@ -120,10 +128,10 @@ class ECSCluster(CrudBase):
                     "help": 'Filter by cluster name, with globs. Ex: "foo*", "*foo"',
                     "action": "store",
                     "default": None,
-                    "dest": "cluster_name"
-                }
+                    "dest": "cluster_name",
+                },
             )
-        ]
+        ],
     )
     @handle_model_exceptions
     def list(self):
@@ -138,8 +146,8 @@ class ECSCluster(CrudBase):
                 ["count"],
                 {
                     "help": "Set the number of tasks for the cluster to this",
-                    "type": int
-                }
+                    "type": int,
+                },
             ),
             (
                 ["--force"],
@@ -147,10 +155,10 @@ class ECSCluster(CrudBase):
                     "help": "Set the number of tasks for the cluster to this",
                     "action": "store_true",
                     "default": False,
-                    "dest": "force"
-                }
+                    "dest": "force",
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def scale(self):
@@ -172,14 +180,14 @@ class ECSCluster(CrudBase):
         "AZ": "availabilityZone",
         "Family": "taskDefinition__family_revision",
         "Launch Type": "launchType",
-        "created": "createdAt"
+        "created": "createdAt",
     }
 
     @ex(
         help="List the running tasks for an ECS Service in AWS.",
         arguments=[
             (["pk"], {"help": "The primary key for the ECS Service"}),
-        ]
+        ],
     )
     @handle_model_exceptions
     def running_tasks(self):
@@ -188,13 +196,12 @@ class ECSCluster(CrudBase):
         results = obj.running_tasks
         renderer = TableRenderer(
             columns=self.running_tasks_result_columns,
-            ordering=self.running_tasks_ordering
+            ordering=self.running_tasks_ordering,
         )
         self.app.print(renderer.render(results))
 
 
 class ECSClusterSSH(ObjectSSHController):
-
     class Meta:
         label = "cluster-ssh"
         description = "SSH to instances for an ECS Cluster"

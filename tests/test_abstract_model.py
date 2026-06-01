@@ -62,7 +62,9 @@ class TestModelDiffAndEquality:
         service = _service_without_appscaling()
         aws_service = _service_without_appscaling()
         with patch.object(service, "render_for_diff", return_value={"field": "old"}):
-            with patch.object(aws_service, "render_for_diff", return_value={"field": "new"}):
+            with patch.object(
+                aws_service, "render_for_diff", return_value={"field": "new"}
+            ):
                 with patch.object(Service.objects, "get", return_value=aws_service):
                     result = Service.objects.diff(service)
         assert result

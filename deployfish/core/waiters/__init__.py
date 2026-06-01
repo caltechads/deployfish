@@ -31,8 +31,7 @@ def create_hooked_waiter_with_client(waiter_name, waiter_model, client):
     """
     single_waiter_config = waiter_model.get_waiter(waiter_name)
     operation_name = xform_name(single_waiter_config.operation)
-    operation_method = NormalizedOperationMethod(
-        getattr(client, operation_name))
+    operation_method = NormalizedOperationMethod(getattr(client, operation_name))
 
     # Create a new wait method that will serve as a proxy to the underlying
     # Waiter.wait method. This is needed to attach a docstring to the
@@ -45,22 +44,19 @@ def create_hooked_waiter_with_client(waiter_name, waiter_model, client):
         event_emitter=client.meta.events,
         service_model=client.meta.service_model,
         service_waiter_model=waiter_model,
-        include_signature=False
+        include_signature=False,
     )
 
     # Rename the waiter class based on the type of waiter.
-    waiter_class_name = str("%s.HookedWaiter.%s" % (
-        get_service_module_name(client.meta.service_model),
-        waiter_name))
+    waiter_class_name = str(
+        f"{get_service_module_name(client.meta.service_model)}.HookedWaiter.{waiter_name}"
+    )
 
     # Create the new waiter class
-    documented_waiter_cls = type(
-        waiter_class_name, (HookedWaiter,), {"wait": wait})
+    documented_waiter_cls = type(waiter_class_name, (HookedWaiter,), {"wait": wait})
 
     # Return an instance of the new waiter class.
-    return documented_waiter_cls(
-        waiter_name, single_waiter_config, operation_method
-    )
+    return documented_waiter_cls(waiter_name, single_waiter_config, operation_method)
 
 
 class HookedWaiter:
@@ -165,7 +161,7 @@ class HookedWaiter:
                     # can just handle here by raising an exception.
                     raise WaiterError(
                         name=self.name,
-                        reason="An error occurred (%s): %s" % (
+                        reason="An error occurred ({}): {}".format(
                             response["Error"].get("Code", "Unknown"),
                             response["Error"].get("Message", "Unknown"),
                         ),
@@ -178,13 +174,10 @@ class HookedWaiter:
                 hook(current_state, response, num_attempts, **kwargs)
             # ----------------------------------------
             if current_state == "success":
-                logger.debug("Waiting complete, waiter matched the "
-                             "success state.")
+                logger.debug("Waiting complete, waiter matched the success state.")
                 return
             if current_state == "failure":
-                reason = "Waiter encountered a terminal failure state: %s" % (
-                    acceptor.explanation
-                )
+                reason = f"Waiter encountered a terminal failure state: {acceptor.explanation}"
                 raise WaiterError(
                     name=self.name,
                     reason=reason,
@@ -200,9 +193,7 @@ class HookedWaiter:
                 if last_matched_acceptor is None:
                     reason = "Max attempts exceeded"
                 else:
-                    reason = "Max attempts exceeded. Previously accepted state: %s" % (
-                        acceptor.explanation
-                    )
+                    reason = f"Max attempts exceeded. Previously accepted state: {acceptor.explanation}"
                 raise WaiterError(
                     name=self.name,
                     reason=reason,

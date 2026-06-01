@@ -62,6 +62,8 @@ class TestECSServiceStandaloneTasksController:
         mock_service.name = "foobar-test"
         loader = bind_service_loader(controller)
         cement_app.deployfish_config.cooked = {"tasks": []}
-        with patch.object(loader, "get_object_from_deployfish", return_value=mock_service):
+        with patch.object(
+            loader, "get_object_from_deployfish", return_value=mock_service
+        ):
             controller.list_related_tasks()
         cement_app.print.assert_called_once_with("No related tasks.")

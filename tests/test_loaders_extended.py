@@ -26,6 +26,8 @@ class TestObjectLoaderExtended:
         controller.app = MagicMock()
         loader = ServiceLoader(controller)
         with patch.object(loader, "dereference_identifier", return_value="c:s"):
-            with patch.object(Service.objects, "get", return_value=MagicMock()) as get_mock:
+            with patch.object(
+                Service.objects, "get", return_value=MagicMock()
+            ) as get_mock:
                 loader.get_object_from_aws("c:s")
         get_mock.assert_called_once_with("c:s")

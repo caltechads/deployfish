@@ -1,3 +1,4 @@
+import contextlib
 from collections.abc import Sequence
 from typing import Any
 
@@ -9,19 +10,17 @@ from .abstract import Manager, Model
 
 
 class CloudwatchAlarmManager(Manager):
-
     service = "cloudwatch"
 
     def get(self, pk: str, **kwargs) -> "CloudwatchAlarm":
         response = self.client.describe_alarms(AlarmNames=[pk])
         if response.get("MetricAlarms"):
             return CloudwatchAlarm(response["MetricAlarms"][0])
-        raise CloudwatchAlarm.DoesNotExist(f'No Cloudwatch Alarm with name "{pk}" exists in AWS')
+        msg = f'No Cloudwatch Alarm with name "{pk}" exists in AWS'
+        raise CloudwatchAlarm.DoesNotExist(msg)
 
     def list(self, cluster: str, service: str, **kwargs) -> Sequence["CloudwatchAlarm"]:
-        response = self.client.describe_alarms(
-            AlarmNamePrefix=[f"{cluster}-{service}"]
-        )
+        response = self.client.describe_alarms(AlarmNamePrefix=[f"{cluster}-{service}"])
         if "MetricAlarms" in response:
             return [CloudwatchAlarm(d) for d in response["MetricAlarms"]]
         return []
@@ -31,18 +30,16 @@ class CloudwatchAlarmManager(Manager):
         self.client.put_metric_alarm(**obj.render_for_create())
 
     def delete(self, obj: Model, **kwargs) -> None:
-        try:
+        with contextlib.suppress(self.client.exceptions.ResourceNotFound):
             self.client.delete_alarms(AlarmNames=[obj.pk])
-        except self.client.exceptions.ResourceNotFound:
-            pass
 
 
 # ----------------------------------------
 # Models
 # ----------------------------------------
 
-class CloudwatchAlarm(Model):
 
+class CloudwatchAlarm(Model):
     objects = CloudwatchAlarmManager()
 
     @property

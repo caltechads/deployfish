@@ -13,16 +13,14 @@ from .secrets_manager import SMSecret
 
 
 class RDSManager(TagsManagerMixin, Manager):
-
     service: str = "rds"
 
     def get(self, pk: str, **_) -> "RDSInstance":
         try:
             response = self.client.describe_db_instances(DBInstanceIdentifier=pk)
         except self.client.exceptions.DBInstanceNotFoundFault:
-            raise RDSInstance.DoesNotExist(
-                f'No RDSInstance with id "{pk}" exists in AWS'
-            )
+            msg = f'No RDSInstance with id "{pk}" exists in AWS'
+            raise RDSInstance.DoesNotExist(msg)
         return RDSInstance(response["DBInstances"][0])
 
     def list(self) -> Sequence["RDSInstance"]:
@@ -34,8 +32,8 @@ class RDSManager(TagsManagerMixin, Manager):
 # Models
 # ----------------------------------------
 
-class RDSInstance(TagsMixin, Model):
 
+class RDSInstance(TagsMixin, Model):
     objects = RDSManager()
 
     @property
@@ -124,9 +122,8 @@ class RDSInstance(TagsMixin, Model):
                 secret = SMSecret.objects.get(cast("str", self.secret_arn))
                 self.cache["root_password"] = secret.value
             return json.loads(self.cache["root_password"])["password"]
-        raise self.OperationFailed(
-            f"RDSInstance({self.pk}) does not have a secrets manager backed password"
-        )
+        msg = f"RDSInstance({self.pk}) does not have a secrets manager backed password"
+        raise self.OperationFailed(msg)
 
     @property
     def secret_status(self) -> str | None:
@@ -164,7 +161,9 @@ class RDSInstance(TagsMixin, Model):
         if "subnets" not in self.cache:
             self.cache["subnets"] = []
             for subnet in self.data["DBSubnetGroup"]["Subnets"]:
-                self.cache["subnets"].append(Subnet.objects.get(pk=subnet["SubnetIdentifier"]))
+                self.cache["subnets"].append(
+                    Subnet.objects.get(pk=subnet["SubnetIdentifier"])
+                )
         return self.cache["subnets"]
 
     @property

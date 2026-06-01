@@ -57,7 +57,8 @@ class TestSecretAdapter:
         except SecretAdapter.ExternalParameterException:
             pass
         else:
-            raise AssertionError("expected ExternalParameterException")
+            msg = "expected ExternalParameterException"
+            raise AssertionError(msg)
 
 
 class TestSecretsMixinGetSecrets:

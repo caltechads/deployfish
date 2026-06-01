@@ -19,7 +19,6 @@ from .utils import handle_model_exceptions
 
 
 class ECSStandaloneTask(CrudBase):
-
     class Meta:
         label = "task"
         description = "Work with ECS Standalone Task objects"
@@ -31,7 +30,7 @@ class ECSStandaloneTask(CrudBase):
         "info": "Show details about an ECS Standalone Task object from AWS",
         "create": "Create an ECS StandaloneTask in AWS from what is in deployfish.yml",
         "update": "Update an ECS StandaloneTask in AWS from what is in deployfish.yml",
-        "delete": "Delete an ECS StandaloneTask from AWS"
+        "delete": "Delete an ECS StandaloneTask from AWS",
     }
 
     info_template: str = "detail--standalonetask.jinja2"
@@ -49,7 +48,7 @@ class ECSStandaloneTask(CrudBase):
         "Launch Type": "launchType",
         "Revision": "revision",
         "Version": "version",
-        "Schedule": "schedule_expression"
+        "Schedule": "schedule_expression",
     }
 
     # --------------------
@@ -69,8 +68,8 @@ class ECSStandaloneTask(CrudBase):
                     "default": None,
                     "choices": ["secrets"],
                     "dest": "includes",
-                    "nargs": "+"
-                }
+                    "nargs": "+",
+                },
             ),
             (
                 ["--excludes"],
@@ -80,9 +79,9 @@ class ECSStandaloneTask(CrudBase):
                     "default": None,
                     "choices": ["events"],
                     "dest": "excludes",
-                    "nargs": "+"
-                }
-            )
+                    "nargs": "+",
+                },
+            ),
         ],
     )
     @handle_model_exceptions
@@ -104,24 +103,24 @@ class ECSStandaloneTask(CrudBase):
                 {
                     "help": 'Filter by cluster name, with globs. Ex: "foo*", "*foo"',
                     "default": None,
-                    "dest": "cluster_name"
-                }
+                    "dest": "cluster_name",
+                },
             ),
             (
                 ["--service-name"],
                 {
                     "help": 'Filter by service name, with globs. Ex: "foo*", "*foo"',
                     "default": None,
-                    "dest": "service_name"
-                }
+                    "dest": "service_name",
+                },
             ),
             (
                 ["--task-name"],
                 {
                     "help": 'Filter by task name, with globs. Ex: "foo*", "*foo"',
                     "default": None,
-                    "dest": "task_name"
-                }
+                    "dest": "task_name",
+                },
             ),
             (
                 ["--task-type"],
@@ -129,8 +128,8 @@ class ECSStandaloneTask(CrudBase):
                     "help": "Filter by task type.",
                     "default": "standalone",
                     "choices": ["any", "standalone", "service_helper"],
-                    "dest": "task_type"
-                }
+                    "dest": "task_type",
+                },
             ),
             (
                 ["--scheduled-only"],
@@ -138,8 +137,8 @@ class ECSStandaloneTask(CrudBase):
                     "help": "Only list tasks that have schedules",
                     "action": "store_true",
                     "default": False,
-                    "dest": "scheduled_only"
-                }
+                    "dest": "scheduled_only",
+                },
             ),
             (
                 ["--all-revisions"],
@@ -148,9 +147,9 @@ class ECSStandaloneTask(CrudBase):
                     "action": "store_true",
                     "default": False,
                     "dest": "all_revisions",
-                }
+                },
             ),
-        ]
+        ],
     )
     @handle_model_exceptions
     def list(self):
@@ -160,7 +159,7 @@ class ECSStandaloneTask(CrudBase):
             task_type=self.app.pargs.task_type,
             cluster_name=self.app.pargs.cluster_name,
             service_name=self.app.pargs.service_name,
-            task_name=self.app.pargs.task_name
+            task_name=self.app.pargs.task_name,
         )
         self.render_list(results)
 
@@ -168,9 +167,7 @@ class ECSStandaloneTask(CrudBase):
 
     @ex(
         help="Create an object in AWS",
-        arguments=[
-            (["name"], {"help": "The name of the item from deployfish.yml"})
-        ]
+        arguments=[(["name"], {"help": "The name of the item from deployfish.yml"})],
     )
     @handle_model_exceptions
     def create(self):
@@ -180,16 +177,15 @@ class ECSStandaloneTask(CrudBase):
 
     @ex(
         help="Delete an object from AWS",
-        arguments=[
-            (["name"], {"help": "The name of the item from deployfish.yml"})
-        ]
+        arguments=[(["name"], {"help": "The name of the item from deployfish.yml"})],
     )
     @handle_model_exceptions
     def delete(self):
         """
         Delete an object from AWS by primary key.
         """
-        raise StandaloneTask.OperationFailed("StandaloneTasks cannot be deleted.")
+        msg = "StandaloneTasks cannot be deleted."
+        raise StandaloneTask.OperationFailed(msg)
 
     # Enable
 
@@ -200,7 +196,7 @@ class ECSStandaloneTask(CrudBase):
         ],
         description="""
 If a StandaloneTask has a schedule rule and that rule is currently disabled in AWS, enable it.
-"""
+""",
     )
     @handle_model_exceptions
     def enable(self) -> None:
@@ -212,19 +208,26 @@ If a StandaloneTask has a schedule rule and that rule is currently disabled in A
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         obj = cast("StandaloneTask", obj)
         if obj.schedule is None:
-            raise StandaloneTask.OperationFailed(
+            msg = (
                 f'ABORT: StandaloneTask("{obj.name}") has no schedule; '
-                'enabling only affects schedules.'
+                "enabling only affects schedules."
             )
+            raise StandaloneTask.OperationFailed(msg)
         obj.enable_schedule()
         if obj.schedule.enabled:
             self.app.print(
-                click.style(f'Schedule for StandaloneTask("{obj.name}") now ENABLED.', fg="green")
+                click.style(
+                    f'Schedule for StandaloneTask("{obj.name}") now ENABLED.',
+                    fg="green",
+                )
             )
             self.app.print(f"Schedule: {obj.schedule_expression}")
         else:
             self.app.print(
-                click.style(f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.', fg="red")
+                click.style(
+                    f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.',
+                    fg="red",
+                )
             )
 
     # Disable
@@ -236,7 +239,7 @@ If a StandaloneTask has a schedule rule and that rule is currently disabled in A
         ],
         description="""
 If a StandaloneTask has a schedule rule and that rule is currently enabled in AWS, disable it.
-"""
+""",
     )
     @handle_model_exceptions
     def disable(self) -> None:
@@ -247,19 +250,26 @@ If a StandaloneTask has a schedule rule and that rule is currently enabled in AW
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         obj = cast("StandaloneTask", obj)
         if obj.schedule is None:
-            raise StandaloneTask.OperationFailed(
+            msg = (
                 f'ABORT: StandaloneTask("{obj.name}") has no schedule; '
-                'disabling only affects schedules.'
+                "disabling only affects schedules."
             )
+            raise StandaloneTask.OperationFailed(msg)
         obj.disable_schedule()
         if obj.schedule.enabled:
             self.app.print(
-                click.style(f'Schedule for StandaloneTask("{obj.name}") now ENABLED.', fg="green")
+                click.style(
+                    f'Schedule for StandaloneTask("{obj.name}") now ENABLED.',
+                    fg="green",
+                )
             )
             self.app.print(f"Schedule: {obj.schedule_expression}")
         else:
             self.app.print(
-                click.style(f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.', fg="red")
+                click.style(
+                    f'Schedule for StandaloneTask("{obj.name}") is now DISABLED.',
+                    fg="red",
+                )
             )
 
     # Run
@@ -281,12 +291,12 @@ If a StandaloneTask has a schedule rule and that rule is currently enabled in AW
                     "action": "store_true",
                     "default": False,
                     "dest": "wait",
-                }
-            )
+                },
+            ),
         ],
         description="""
 Run a StandaloneTask that exists in AWS.
-"""
+""",
     )
     @handle_model_exceptions
     def run(self) -> None:
@@ -300,7 +310,12 @@ Run a StandaloneTask that exists in AWS.
         lines = []
         for task in tasks:
             lines.append(
-                click.style("\nStarted task: {}:{}\n".format(standalone_task.data["cluster"], task.arn), fg="green")
+                click.style(
+                    "\nStarted task: {}:{}\n".format(
+                        standalone_task.data["cluster"], task.arn
+                    ),
+                    fg="green",
+                )
             )
         self.app.print("\n".join(lines))
         if self.app.pargs.wait:
@@ -310,7 +325,7 @@ Run a StandaloneTask that exists in AWS.
         help="Show what we would do if we were to update an ECS StandaloneTask in AWS. (Experimental)",
         arguments=[
             (["pk"], {"help": "The primary key for the ECS StandaloneTask"}),
-        ]
+        ],
     )
     @handle_model_exceptions
     def plan(self):
@@ -336,12 +351,11 @@ Run a StandaloneTask that exists in AWS.
                 # See render_diff macro in plan--service.jinja2 to see how the line markers are located.
                 "debug": self.app.debug,
             },
-            template=self.plan_template
+            template=self.plan_template,
         )
 
 
 class ECSStandaloneTaskSecrets(ObjectSecretsController):
-
     class Meta:
         label = "task-secrets"
         aliases = ["config"]
@@ -354,7 +368,6 @@ class ECSStandaloneTaskSecrets(ObjectSecretsController):
 
 
 class ECSStandaloneTaskLogs(Controller):
-
     class Meta:
         label = "task-logs"
         aliases = ["logs"]
@@ -379,7 +392,7 @@ class ECSStandaloneTaskLogs(Controller):
                     "action": "store_true",
                     "default": False,
                     "dest": "mark",
-                }
+                },
             ),
             (
                 ["--sleep"],
@@ -388,7 +401,7 @@ class ECSStandaloneTaskLogs(Controller):
                     "type": int,
                     "default": 10,
                     "dest": "sleep",
-                }
+                },
             ),
             (
                 ["--filter-pattern"],
@@ -396,7 +409,7 @@ class ECSStandaloneTaskLogs(Controller):
                     "help": "Return only messages matching this filter.",
                     "default": None,
                     "dest": "filter_pattern",
-                }
+                },
             ),
         ],
         description="""
@@ -405,7 +418,7 @@ If a StandaloneTask uses "awslogs" as its logDriver, tail the logs for that comm
 For --filter-pattern syntax , see
 https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html
 """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     @handle_model_exceptions
     def tail(self) -> None:
@@ -420,7 +433,7 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
             obj,
             sleep=self.app.pargs.sleep,
             mark=self.app.pargs.mark,
-            filter_pattern=self.app.pargs.filter_pattern
+            filter_pattern=self.app.pargs.filter_pattern,
         )
 
     # list
@@ -436,7 +449,7 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
                     "default": None,
                     "type": int,
                     "dest": "limit",
-                }
+                },
             ),
         ],
         description="""
@@ -446,7 +459,7 @@ log streams for that StandaloneTask.
 This can be useful when you have a command with a schedule to look at the dates on
 the streams to ensure that your command is actually running periodically.
 """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     @handle_model_exceptions
     def list(self) -> None:

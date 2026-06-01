@@ -18,7 +18,9 @@ class TestCloudWatchLogGroup:
 
     def test_get_event_tailer(self) -> None:
         group = CloudWatchLogGroup({"logGroupName": "/ecs/myapp", "arn": "arn:logs:1"})
-        tailer = group.get_event_tailer(stream_prefix="prefix", sleep=5, filter_pattern="ERROR")
+        tailer = group.get_event_tailer(
+            stream_prefix="prefix", sleep=5, filter_pattern="ERROR"
+        )
         assert isinstance(tailer, CloudWatchLogGroupTailer)
         assert tailer.kwargs["logStreamNamePrefix"] == "prefix"
         assert tailer.kwargs["filterPattern"] == "ERROR"
@@ -55,7 +57,9 @@ class TestCloudWatchLogStreamIterator:
             "events": [{"timestamp": 1_700_000_000_000, "message": "hello"}],
             "nextForwardToken": "token-1",
         }
-        with patch("deployfish.core.models.cloudwatchlogs.get_boto3_session") as session_mock:
+        with patch(
+            "deployfish.core.models.cloudwatchlogs.get_boto3_session"
+        ) as session_mock:
             session_mock.return_value.client.return_value = client
             iterator = CloudWatchLogStreamIterator(stream, sleep=0)
             events = next(iterator)

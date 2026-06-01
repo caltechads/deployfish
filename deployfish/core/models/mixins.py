@@ -1,14 +1,7 @@
-import sys
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from deployfish.exceptions import SchemaException
 from deployfish.types import SupportsModel
-
-if sys.version_info >= (3, 8):
-    from typing import Protocol
-else:
-    from typing import Protocol
-
 
 if TYPE_CHECKING:
     from .abstract import Manager, Model
@@ -22,16 +15,14 @@ if TYPE_CHECKING:
 # It is so stupid that I have to do these protocols to make type checking happy
 # on mixins We really want an Intersection[] type, but one does not exist yet.
 
-class SupportsTags(SupportsModel, Protocol):
 
+class SupportsTags(SupportsModel, Protocol):
     _tags: dict[str, str]
 
     @property
-    def tags(self) -> dict[str, str]:
-        ...
+    def tags(self) -> dict[str, str]: ...
 
-    def import_tags(self, aws_tags: list[dict[str, str]]) -> None:
-        ...
+    def import_tags(self, aws_tags: list[dict[str, str]]) -> None: ...
 
 
 # ----------------------
@@ -40,7 +31,6 @@ class SupportsTags(SupportsModel, Protocol):
 
 
 class TagsManagerMixin:
-
     def get_tags(self, obj: "Model") -> list[dict[str, str]]:
         raise NotImplementedError
 
@@ -49,7 +39,6 @@ class TagsManagerMixin:
 
 
 class TagsMixin:
-
     objects: "Manager"
 
     data: dict[str, Any]
@@ -97,7 +86,6 @@ class TagsMixin:
 
 
 class TaskDefinitionFARGATEMixin:
-
     data: dict[str, Any]
     containers: list["ContainerDefinition"]
 
@@ -106,9 +94,46 @@ class TaskDefinitionFARGATEMixin:
         256: [512, 1024, 2048],
         512: [1024, 2048, 3072, 4096],
         1024: [2048, 3072, 4096, 5120, 6144, 7168, 8192],
-        2048: [4096, 5120, 6144, 7168, 8192, 9216, 10240, 11264, 12288, 13312, 14336, 15360, 16384],
-        4096: [8192, 9216, 10240, 11264, 12288, 13312, 14336, 15360, 16384, 17408, 18432, 19456,
-               20480, 21504, 22528, 23552, 24576, 25600, 26624, 27648, 28672, 29696, 30720]
+        2048: [
+            4096,
+            5120,
+            6144,
+            7168,
+            8192,
+            9216,
+            10240,
+            11264,
+            12288,
+            13312,
+            14336,
+            15360,
+            16384,
+        ],
+        4096: [
+            8192,
+            9216,
+            10240,
+            11264,
+            12288,
+            13312,
+            14336,
+            15360,
+            16384,
+            17408,
+            18432,
+            19456,
+            20480,
+            21504,
+            22528,
+            23552,
+            24576,
+            25600,
+            26624,
+            27648,
+            28672,
+            29696,
+            30720,
+        ],
     }
 
     def is_fargate(self) -> bool:
@@ -116,7 +141,9 @@ class TaskDefinitionFARGATEMixin:
         If this is a FARGATE task definition, return ``True``.  Otherwise return
         ``False``.
         """
-        return "requiresCompatibilities" in self.data and self.data["requiresCompatibilities"] == ["FARGATE"]
+        return "requiresCompatibilities" in self.data and self.data[
+            "requiresCompatibilities"
+        ] == ["FARGATE"]
 
     def _get_container_cpu_usage(self, container_data: list[dict[str, Any]]) -> int:
         """
@@ -140,9 +167,7 @@ class TaskDefinitionFARGATEMixin:
         return max_container_cpu
 
     def _set_fargate_task_cpu(
-        self,
-        cpu_required: int,
-        source: dict[str, Any] = None
+        self, cpu_required: int, source: dict[str, Any] | None = None
     ) -> int | None:
         """
         For FARGATE tasks, task cpu is required and must be one of the values
@@ -173,14 +198,13 @@ class TaskDefinitionFARGATEMixin:
             try:
                 cpu = int(self.data["cpu"])
             except ValueError as e:
-                raise SchemaException("Task cpu must be an integer") from e
+                msg = "Task cpu must be an integer"
+                raise SchemaException(msg) from e
             if cpu not in self.VALID_FARGATE_CPU:
-                raise SchemaException(
-                    "Task cpu of {}MB is not valid for FARGATE tasks.  Choose one of {}".format(
-                        cpu,
-                        ", ".join([str(c) for c in self.VALID_FARGATE_CPU])
-                    )
+                msg = "Task cpu of {}MB is not valid for FARGATE tasks.  Choose one of {}".format(
+                    cpu, ", ".join([str(c) for c in self.VALID_FARGATE_CPU])
                 )
+                raise SchemaException(msg)
         else:
             for fg_cpu in self.VALID_FARGATE_CPU:
                 if fg_cpu >= cpu_required:
@@ -188,10 +212,7 @@ class TaskDefinitionFARGATEMixin:
                     break
         return cpu
 
-    def _set_ec2_task_cpu(
-        self,
-        source: dict[str, Any] = None
-    ) -> int | None:
+    def _set_ec2_task_cpu(self, source: dict[str, Any] | None = None) -> int | None:
         """
         For EC2 tasks, set task cpu if 'cpu' is provided, don't set otherwise.
 
@@ -211,14 +232,15 @@ class TaskDefinitionFARGATEMixin:
             try:
                 cpu = int(self.data["cpu"])
             except ValueError as e:
-                raise SchemaException("Task cpu must be an integer") from e
+                msg = "Task cpu must be an integer"
+                raise SchemaException(msg) from e
         return cpu
 
     def set_task_cpu(
         self,
         data: dict[str, Any],
         container_data: list[dict[str, Any]],
-        source: dict[str, Any] = None
+        source: dict[str, Any] | None = None,
     ) -> None:
         """
         Set task cpu requirement, based on whether this is a FARGATE task or an
@@ -245,10 +267,11 @@ class TaskDefinitionFARGATEMixin:
             cpu = self._set_ec2_task_cpu(source=source)
         if cpu is not None:
             if cpu_required > cpu:
-                raise SchemaException(
+                msg = (
                     f"You set task cpu to {cpu} but your container cpu sums to {cpu_required}."
                     "Task cpu must be greater than the sum of container cpu."
                 )
+                raise SchemaException(msg)
             # we calculate cpu as an int, but register_task_definition wants a str
             data["cpu"] = str(cpu)
 
@@ -282,7 +305,7 @@ class TaskDefinitionFARGATEMixin:
         self,
         data: dict[str, Any],
         memory_required: int,
-        source: dict[str, Any] = None
+        source: dict[str, Any] | None = None,
     ) -> int | None:
         """
         Return the value we should set for our
@@ -332,30 +355,29 @@ class TaskDefinitionFARGATEMixin:
                 cpu_index = self.VALID_FARGATE_CPU.index(cpu) + 1
                 # FIXME: find the lowest valid fargate CPU level that supports
                 # the amount of memory we need
-                raise SchemaException(
-                    "When using the FARGATE launch_type with task cpu={}, the maximum memory available is {}MB, but your containers need a minimum of {}MB. Set your task cpu to one of {}.".format(   # noqa:E501  # pylint:disable=line-too-long
-                        cpu,
-                        self.VALID_FARGATE_MEMORY[cpu][-1],
-                        memory_required,
-                        ", ".join([str(cpu) for cpu in self.VALID_FARGATE_CPU[cpu_index:]])
-                    )
+                msg = "When using the FARGATE launch_type with task cpu={}, the maximum memory available is {}MB, but your containers need a minimum of {}MB. Set your task cpu to one of {}.".format(  # noqa:E501  # pylint:disable=line-too-long
+                    cpu,
+                    self.VALID_FARGATE_MEMORY[cpu][-1],
+                    memory_required,
+                    ", ".join([str(cpu) for cpu in self.VALID_FARGATE_CPU[cpu_index:]]),
                 )
+                raise SchemaException(msg)
         else:
             try:
                 memory = int(self.data["memory"])
             except ValueError as e:
-                raise SchemaException("Task memory must be an integer") from e
+                msg = "Task memory must be an integer"
+                raise SchemaException(msg) from e
             if memory not in self.VALID_FARGATE_MEMORY[cpu]:
-                raise SchemaException(
-                    "When using the FARGATE launch_type with task cpu={}, your requested task memory of {}MB is not valid. Valid task memory values for that cpu level are: {}".format(  # noqa:E501  # pylint:disable=line-too-long
-                        cpu,
-                        memory,
-                        ", ".join([str(m) for m in self.VALID_FARGATE_MEMORY[cpu]])
-                    )
+                msg = "When using the FARGATE launch_type with task cpu={}, your requested task memory of {}MB is not valid. Valid task memory values for that cpu level are: {}".format(  # noqa:E501  # pylint:disable=line-too-long
+                    cpu,
+                    memory,
+                    ", ".join([str(m) for m in self.VALID_FARGATE_MEMORY[cpu]]),
                 )
+                raise SchemaException(msg)
         return memory
 
-    def _set_ec2_task_memory(self, source: dict[str, Any] = None) -> int | None:
+    def _set_ec2_task_memory(self, source: dict[str, Any] | None = None) -> int | None:
         """
         For EC2 tasks, set task memory if 'memory' is provided, don't set otherwise.
         """
@@ -366,14 +388,15 @@ class TaskDefinitionFARGATEMixin:
             try:
                 memory = int(self.data["memory"])
             except ValueError as e:
-                raise SchemaException("Task memory must be an integer") from e
+                msg = "Task memory must be an integer"
+                raise SchemaException(msg) from e
         return memory
 
     def set_task_memory(
         self,
         data: dict[str, Any],
         container_data: list[dict[str, Any]],
-        source: dict[str, Any] = None
+        source: dict[str, Any] | None = None,
     ) -> None:
         """
         Set the task level "memory" setting.
@@ -404,16 +427,16 @@ class TaskDefinitionFARGATEMixin:
             memory = self._set_ec2_task_memory(source=source)
         if memory is not None:
             if memory_required > 0 and memory < memory_required:
-                raise SchemaException(
-                    "Task memory is {}MB but your container memory sums to {}MB. Task memory must be greater than the sum of container memory.".format(  # noqa:E501  # pylint:disable=line-too-long
-                        memory,
-                        memory_required
-                    )
+                msg = "Task memory is {}MB but your container memory sums to {}MB. Task memory must be greater than the sum of container memory.".format(  # noqa:E501  # pylint:disable=line-too-long
+                    memory, memory_required
                 )
+                raise SchemaException(msg)
             # We calculate memory as an int, but register_task_definition() wants a str
             data["memory"] = str(memory)
 
-    def autofill_fargate_parameters(self, data: dict[str, Any], source: dict[str, Any] = None) -> None:
+    def autofill_fargate_parameters(
+        self, data: dict[str, Any], source: dict[str, Any] | None = None
+    ) -> None:
         container_data = [c.data for c in self.containers]
         self.set_task_cpu(data, container_data, source=source)
         self.set_task_memory(data, container_data, source=source)

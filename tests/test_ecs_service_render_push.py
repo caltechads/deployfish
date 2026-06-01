@@ -30,7 +30,6 @@ def _service_from_aws() -> Service:
             "pendingCount": 0,
             "createdAt": "2025-01-01T00:00:00Z",
             "serviceArn": "arn:aws:ecs:us-west-2:123:service/foobar-cluster/foobar-test",
-            "clusterArn": "arn:aws:ecs:us-west-2:123:cluster/foobar-cluster",
             "events": [{"message": "steady"}],
             "deployments": [{"status": "PRIMARY", "createdAt": "2025-01-01T00:00:00Z"}],
             "networkConfiguration": {

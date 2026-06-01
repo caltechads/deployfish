@@ -34,7 +34,11 @@ class TestServiceManagerUpdateSave:
         service.data["enableExecuteCommand"] = False
         with (
             patch.object(Service.objects, "exists", return_value=True),
-            patch.object(service, "render_for_update", return_value={"cluster": "foobar-cluster", "service": "foobar-test"}),
+            patch.object(
+                service,
+                "render_for_update",
+                return_value={"cluster": "foobar-cluster", "service": "foobar-test"},
+            ),
         ):
             Service.objects.update(service)
         _mock_boto3_session.update_service.assert_called_once()
@@ -46,7 +50,9 @@ class TestServiceManagerUpdateSave:
             with pytest.raises(Service.DoesNotExist):
                 Service.objects.update(service)
 
-    def test_update_raises_when_not_active(self, _mock_boto3_session: MagicMock) -> None:
+    def test_update_raises_when_not_active(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         service = Service(SERVICE_DATA)
         service.data["cluster"] = "foobar-cluster"
         exc = type("ServiceNotActiveException", (Exception,), {})
@@ -83,7 +89,9 @@ class TestServiceManagerUpdateSave:
     def test_scale_calls_update_service(self, _mock_boto3_session: MagicMock) -> None:
         service = Service(SERVICE_DATA)
         service.data["cluster"] = "foobar-cluster"
-        with patch.object(service, "render_for_scale", return_value={"desiredCount": 5}):
+        with patch.object(
+            service, "render_for_scale", return_value={"desiredCount": 5}
+        ):
             Service.objects.scale(service, 5)
         _mock_boto3_session.update_service.assert_called_once()
 

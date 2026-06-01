@@ -16,8 +16,8 @@ from .utils import handle_model_exceptions
 # Controllers
 # ========================
 
-class ReadOnlyCrudBase(Controller):
 
+class ReadOnlyCrudBase(Controller):
     class Meta:
         label = "ro-crud-base"
 
@@ -53,9 +53,7 @@ class ReadOnlyCrudBase(Controller):
 
     @ex(
         help="Show whether an object exists in AWS",
-        arguments=[
-            (["pk"], {"help": "The primary key for the object in AWS"})
-        ],
+        arguments=[(["pk"], {"help": "The primary key for the object in AWS"})],
     )
     @handle_model_exceptions
     def exists(self) -> None:
@@ -66,17 +64,20 @@ class ReadOnlyCrudBase(Controller):
         try:
             obj = loader.get_object_from_aws(self.app.pargs.pk)
         except self.model.DoesNotExist:
-            click.secho(f'{self.model.__name__}(pk="{self.app.pargs.pk}") does not exist in AWS.', fg="red")
+            click.secho(
+                f'{self.model.__name__}(pk="{self.app.pargs.pk}") does not exist in AWS.',
+                fg="red",
+            )
         else:
-            click.secho(f'{self.model.__name__}(pk="{obj.pk}") exists in AWS.', fg="green")
+            click.secho(
+                f'{self.model.__name__}(pk="{obj.pk}") exists in AWS.', fg="green"
+            )
 
     # Info
 
     @ex(
         help="Show info about an object in AWS",
-        arguments=[
-            (["pk"], {"help": "The primary key for the object in AWS"})
-        ],
+        arguments=[(["pk"], {"help": "The primary key for the object in AWS"})],
     )
     @handle_model_exceptions
     def info(self) -> None:
@@ -97,8 +98,7 @@ class ReadOnlyCrudBase(Controller):
 
         """
         renderer = TableRenderer(
-            columns=self.list_result_columns,
-            ordering=self.list_ordering
+            columns=self.list_result_columns, ordering=self.list_ordering
         )
         self.app.print(renderer.render(results))
 
@@ -113,7 +113,6 @@ class ReadOnlyCrudBase(Controller):
 
 
 class CrudBase(ReadOnlyCrudBase):
-
     class Meta:
         label = "crud-base"
 
@@ -170,9 +169,7 @@ class CrudBase(ReadOnlyCrudBase):
 
     @ex(
         help="Create an object in AWS",
-        arguments=[
-            (["name"], {"help": "The name of the item from deployfish.yml"})
-        ]
+        arguments=[(["name"], {"help": "The name of the item from deployfish.yml"})],
     )
     @handle_model_exceptions
     def create(self):
@@ -181,12 +178,14 @@ class CrudBase(ReadOnlyCrudBase):
         """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(
-            self.app.pargs.name,
-            factory_kwargs=self.create_kwargs
+            self.app.pargs.name, factory_kwargs=self.create_kwargs
         )
         if obj.exists:
             self.app.print(
-                click.style(f"{self.model.__name__}(pk={obj.pk}) already exists in AWS!", fg="red")
+                click.style(
+                    f"{self.model.__name__}(pk={obj.pk}) already exists in AWS!",
+                    fg="red",
+                )
             )
             return
         for _ in self.app.hook.run("pre_object_create", self.app, obj):
@@ -197,13 +196,21 @@ class CrudBase(ReadOnlyCrudBase):
         try:
             self.create_waiter(obj)
         except botocore.exceptions.WaiterError as e:
-            for _ in self.app.hook.run("post_object_create", self.app, obj, success=False, reason=e.kwargs["reason"]):
+            for _ in self.app.hook.run(
+                "post_object_create",
+                self.app,
+                obj,
+                success=False,
+                reason=e.kwargs["reason"],
+            ):
                 pass
             raise
         else:
             for _ in self.app.hook.run("post_object_create", self.app):
                 pass
-        self.app.print(click.style(f'\n\nCreated {self.model.__name__}("{obj.pk}").', fg="green"))
+        self.app.print(
+            click.style(f'\n\nCreated {self.model.__name__}("{obj.pk}").', fg="green")
+        )
 
     # Update
 
@@ -212,9 +219,7 @@ class CrudBase(ReadOnlyCrudBase):
 
     @ex(
         help="Update an object in AWS",
-        arguments=[
-            (["name"], {"help": "The name of the item from deployfish.yml"})
-        ]
+        arguments=[(["name"], {"help": "The name of the item from deployfish.yml"})],
     )
     @handle_model_exceptions
     def update(self):
@@ -223,24 +228,34 @@ class CrudBase(ReadOnlyCrudBase):
         """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(
-            self.app.pargs.name,
-            factory_kwargs=self.update_kwargs
+            self.app.pargs.name, factory_kwargs=self.update_kwargs
         )
         self.app.print(
-            click.style(f'\n\nUpdating {self.model.__name__}("{obj.pk}") to this:\n\n', fg="yellow")
+            click.style(
+                f'\n\nUpdating {self.model.__name__}("{obj.pk}") to this:\n\n',
+                fg="yellow",
+            )
         )
         self.app.render({"obj": obj}, template=self.update_template)
         obj.save()
         try:
             self.update_waiter(obj)
         except botocore.exceptions.WaiterError as e:
-            for _ in self.app.hook.run("post_object_update", self.app, obj, success=False, reason=e.kwargs["reason"]):
+            for _ in self.app.hook.run(
+                "post_object_update",
+                self.app,
+                obj,
+                success=False,
+                reason=e.kwargs["reason"],
+            ):
                 pass
             raise
         else:
             for _ in self.app.hook.run("post_object_update", self.app, obj):
                 pass
-        self.app.print(click.style(f'\n\nUpdated {self.model.__name__}("{obj.pk}").', fg="green"))
+        self.app.print(
+            click.style(f'\n\nUpdated {self.model.__name__}("{obj.pk}").', fg="green")
+        )
 
     # Delete
 
@@ -249,9 +264,7 @@ class CrudBase(ReadOnlyCrudBase):
 
     @ex(
         help="Delete an object from AWS",
-        arguments=[
-            (["name"], {"help": "The name of the item from deployfish.yml"})
-        ]
+        arguments=[(["name"], {"help": "The name of the item from deployfish.yml"})],
     )
     @handle_model_exceptions
     def delete(self):
@@ -260,26 +273,39 @@ class CrudBase(ReadOnlyCrudBase):
         """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(
-            self.app.pargs.name,
-            factory_kwargs=self.delete_kwargs
+            self.app.pargs.name, factory_kwargs=self.delete_kwargs
         )
         obj.reload_from_db()
-        self.app.print(click.style(f'\nDeleting {self.model.__name__}("{obj.pk}")\n', fg="red"))
+        self.app.print(
+            click.style(f'\nDeleting {self.model.__name__}("{obj.pk}")\n', fg="red")
+        )
         self.app.render({"obj": obj}, template=self.delete_template)
-        self.app.print(f'\nIf you really want to do this, answer "{obj.name}" to the question below.\n')
+        self.app.print(
+            f'\nIf you really want to do this, answer "{obj.name}" to the question below.\n'
+        )
         p = shell.Prompt(f"What {self.model.__name__} do you want to delete? ")
         value = p.prompt()
         if value == obj.name:
             obj.delete()
         else:
-            self.app.print(click.style(f"ABORTED: not deleting {self.model.__name__}({obj.pk})."))
+            self.app.print(
+                click.style(f"ABORTED: not deleting {self.model.__name__}({obj.pk}).")
+            )
         try:
             self.delete_waiter(obj)  # type: ignore
         except botocore.exceptions.WaiterError as e:
-            for _ in self.app.hook.run("post_object_delete", self.app, obj, success=False, reason=e.kwargs["reason"]):
+            for _ in self.app.hook.run(
+                "post_object_delete",
+                self.app,
+                obj,
+                success=False,
+                reason=e.kwargs["reason"],
+            ):
                 pass
             raise
         else:
             for _ in self.app.hook.run("post_object_delete", self.app):
                 pass
-        self.app.print(click.style(f'Deleted {self.model.__name__}("{obj.pk}")', fg="cyan"))
+        self.app.print(
+            click.style(f'Deleted {self.model.__name__}("{obj.pk}")', fg="cyan")
+        )

@@ -307,9 +307,12 @@ class TestLogsControllersGaps:
         loader = MagicMock()
         loader.get_object_from_aws.return_value = group
         controller.loader = MagicMock(return_value=loader)
-        with patch(
-            "deployfish.controllers.logs.click.style", side_effect=lambda v, **_: v
-        ), patch.object(group, "get_event_tailer", return_value=tailer):
+        with (
+            patch(
+                "deployfish.controllers.logs.click.style", side_effect=lambda v, **_: v
+            ),
+            patch.object(group, "get_event_tailer", return_value=tailer),
+        ):
             controller.tail()
         assert cement_app.print.call_count >= 2
 
@@ -350,8 +353,11 @@ class TestLogsControllersGaps:
         loader = MagicMock()
         loader.get_object_from_aws.return_value = stream
         controller.loader = MagicMock(return_value=loader)
-        with patch(
-            "deployfish.controllers.logs.click.style", side_effect=lambda v, **_: v
-        ), patch.object(stream, "get_event_tailer", return_value=tailer):
+        with (
+            patch(
+                "deployfish.controllers.logs.click.style", side_effect=lambda v, **_: v
+            ),
+            patch.object(stream, "get_event_tailer", return_value=tailer),
+        ):
             controller.tail()
         cement_app.print.assert_called_once()

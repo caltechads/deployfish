@@ -54,7 +54,9 @@ class TestCreateHookedWaiterWithClient:
             "deployfish.core.waiters.get_service_module_name",
             return_value="ecs",
         ):
-            waiter = create_hooked_waiter_with_client("ServicesStable", waiter_model, client)
+            waiter = create_hooked_waiter_with_client(
+                "ServicesStable", waiter_model, client
+            )
         assert waiter.name == "ServicesStable"
 
 
@@ -80,7 +82,9 @@ class TestECSTaskStatusHook:
             return_value=task,
         ):
             with patch("deployfish.core.waiters.hooks.ecs.click.secho"):
-                with patch("deployfish.core.waiters.hooks.ecs.tabulate", return_value="table"):
+                with patch(
+                    "deployfish.core.waiters.hooks.ecs.tabulate", return_value="table"
+                ):
                     hook.success(
                         "success",
                         {},

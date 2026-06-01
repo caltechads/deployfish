@@ -56,13 +56,19 @@ class TestVPCManagerGaps:
             **VPC_DATA,
             "Tags": [{"Name": "Name", "Value": "main-vpc"}],
         }
-        other_vpc = {**VPC_DATA, "VpcId": "vpc-456", "Tags": [{"Name": "Name", "Value": "other"}]}
-        with patch.object(VPC, "__init__", lambda self, data: Model.__init__(self, data)):
+        other_vpc = {
+            **VPC_DATA,
+            "VpcId": "vpc-456",
+            "Tags": [{"Name": "Name", "Value": "other"}],
+        }
+        with patch.object(VPC, "__init__", Model.__init__):
             _paginate(client, [{"Vpcs": [named_vpc, other_vpc]}])
             vpcs = VPC.objects.list(name="main*")
         assert len(vpcs) == 1
 
-    def test_list_skips_unnamed_when_filtering(self, _mock_boto3_session: MagicMock) -> None:
+    def test_list_skips_unnamed_when_filtering(
+        self, _mock_boto3_session: MagicMock
+    ) -> None:
         client = _mock_boto3_session
         no_name = {**VPC_DATA, "VpcId": "vpc-noname", "Tags": []}
         _paginate(client, [{"Vpcs": [no_name]}])
@@ -74,7 +80,9 @@ class TestSecurityGroupManagerGaps:
     def test_get_by_group_name(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
         client.describe_security_groups.return_value = {
-            "SecurityGroups": [{"GroupId": "sg-abc", "GroupName": "default", "VpcId": "vpc-123"}],
+            "SecurityGroups": [
+                {"GroupId": "sg-abc", "GroupName": "default", "VpcId": "vpc-123"}
+            ],
         }
         sg = SecurityGroup.objects.get("default")
         assert sg.pk == "sg-abc"
@@ -110,7 +118,18 @@ class TestInstanceManagerGaps:
         client = _mock_boto3_session
         _paginate(
             client,
-            [{"Reservations": [{"Instances": [INSTANCE_DATA, {**INSTANCE_DATA, "InstanceId": "i-2"}]}]}],
+            [
+                {
+                    "Reservations": [
+                        {
+                            "Instances": [
+                                INSTANCE_DATA,
+                                {**INSTANCE_DATA, "InstanceId": "i-2"},
+                            ]
+                        }
+                    ]
+                }
+            ],
         )
         with pytest.raises(Instance.MultipleObjectsReturned):
             Instance.objects.get("i-abc123")
@@ -137,7 +156,9 @@ class TestAutoscalingGroupManager:
 
     def test_get_and_list(self, _mock_boto3_session: MagicMock) -> None:
         client = _mock_boto3_session
-        client.describe_auto_scaling_groups.return_value = {"AutoScalingGroups": [self.ASG_DATA]}
+        client.describe_auto_scaling_groups.return_value = {
+            "AutoScalingGroups": [self.ASG_DATA]
+        }
         asg = AutoscalingGroup.objects.get("ecs-asg")
         assert asg.name == "ecs-asg"
         listed = AutoscalingGroup.objects.list()
@@ -195,7 +216,9 @@ class TestClassicLoadBalancerManager:
         _paginate(client, [{"LoadBalancerDescriptions": [self.LB_DATA]}])
         lb = ClassicLoadBalancer.objects.get("my-elb")
         assert lb.pk == "my-elb"
-        listed = ClassicLoadBalancer.objects.list(name="my-*", vpc_id="vpc-123", scheme="internet-facing")
+        listed = ClassicLoadBalancer.objects.list(
+            name="my-*", vpc_id="vpc-123", scheme="internet-facing"
+        )
         assert len(listed) == 1
 
     def test_target_list(self, _mock_boto3_session: MagicMock) -> None:
