@@ -3,9 +3,8 @@ import os
 import unittest
 from unittest.mock import Mock
 
-from testfixtures import Replacer, compare
-
 from deployfish.config.processors.terraform import TerraformS3State
+from testfixtures import Replacer, compare
 
 YAML = {
     "statefile": "s3://foobar/baz",

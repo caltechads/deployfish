@@ -2197,8 +2197,9 @@ class Service(
 
     def __init__(self, data: dict[str, Any], **kwargs):
         self.autoscalinggroup_name: str | None = None
+        #: Cached SSH proxy type; loaded from config on first access.
+        self._ssh_proxy_type: Literal["bastion", "ssm"] | None = None
         super().__init__(data, **kwargs)
-        self._ssh_proxy_type: Literal["bastion", "ssm"] = super().ssh_proxy_type
 
     # ---------------------
     # Model overrides
@@ -2795,6 +2796,8 @@ class Service(
             "bastion" or "ssm"
 
         """
+        if self._ssh_proxy_type is None:
+            self._ssh_proxy_type = super().ssh_proxy_type
         if self.task_definition.is_fargate():
             self._ssh_proxy_type = "ssm"
         return self._ssh_proxy_type

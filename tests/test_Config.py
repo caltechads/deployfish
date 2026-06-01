@@ -4,9 +4,8 @@ import unittest
 from typing import Any
 from unittest.mock import Mock, call
 
-from testfixtures import Replacer
-
 from deployfish.config.config import Config
+from testfixtures import Replacer
 
 
 def statefile_loader(state_file_url, profile: str = None, region: str = None) -> dict[str, Any]:

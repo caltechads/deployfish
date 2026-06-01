@@ -4,12 +4,11 @@ import unittest
 from copy import deepcopy
 from unittest.mock import Mock
 
-from testfixtures import Replacer
-
 import deployfish.core.adapters  # noqa:F401
 from deployfish.core.adapters import ServiceHelperTaskAdapter
 from deployfish.core.models import Cluster, Service
 from deployfish.exceptions import SchemaException  # noqa:F401
+from testfixtures import Replacer
 
 logging.getLogger("boto3").setLevel(logging.CRITICAL)
 logging.getLogger("botocore").setLevel(logging.CRITICAL)
