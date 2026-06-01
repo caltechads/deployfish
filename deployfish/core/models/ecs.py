@@ -2638,8 +2638,10 @@ class Service(
 
     @property
     def autoscaling_group(self) -> AutoscalingGroup | None:
-        if "autoscaling_group" in self.cache:
-            if hasattr(self, "autoscalinggroup_name"):
+        if "autoscaling_group" not in self.cache:
+            if self.launch_type == "FARGATE":
+                self.cache["autoscaling_group"] = None
+            elif self.autoscalinggroup_name:
                 self.cache["autoscaling_group"] = AutoscalingGroup.objects.get(self.autoscalinggroup_name)
             else:
                 self.cache["autoscaling_group"] = self.cluster.autoscaling_group

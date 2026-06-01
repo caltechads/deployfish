@@ -1,11 +1,12 @@
 from copy import deepcopy
 
 import deployfish.core.adapters  # noqa: F401
+import pytest
 from deployfish.core.adapters import ServiceAdapter
 from deployfish.core.models.appscaling import ScalableTarget
 from deployfish.core.models.ecs import TaskDefinition
 
-from tests.fixtures import APPLICATION_SCALING_YML, SERVICE_YML
+from tests.fixtures import APPLICATION_SCALING_YML, FARGATE_SERVICE_YML, SERVICE_YML
 
 
 class TestServiceAdapter:
@@ -79,6 +80,24 @@ class TestServiceAdapter:
         adapter = ServiceAdapter(deepcopy(SERVICE_YML))
         _service_data, kwargs = adapter.convert()
         assert "appscaling" not in kwargs
+
+    def test_convert_fargate_rejects_autoscalinggroup_name(self) -> None:
+        data = deepcopy(FARGATE_SERVICE_YML)
+        data["autoscalinggroup_name"] = "my-asg"
+
+        with pytest.raises(
+            ServiceAdapter.SchemaException,
+            match=r"autoscalinggroup_name.*EC2-only.*FARGATE.*application_scaling",
+        ):
+            ServiceAdapter(data).convert()
+
+    def test_convert_fargate_omits_autoscalinggroup_name(self) -> None:
+        data = deepcopy(FARGATE_SERVICE_YML)
+        adapter = ServiceAdapter(data)
+
+        _service_data, kwargs = adapter.convert()
+
+        assert "autoscalinggroup_name" not in kwargs
 
     def test_load_secrets_false_skips_secrets(self) -> None:
         adapter = ServiceAdapter(deepcopy(SERVICE_YML), load_secrets=False)

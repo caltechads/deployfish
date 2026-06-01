@@ -1,22 +1,26 @@
 """Service and TaskDefinition property coverage."""
 
 from copy import deepcopy
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import deployfish.core.adapters  # noqa: F401
+from deployfish.core.models.ec2 import AutoscalingGroup
 from deployfish.core.models.ecs import Service
 from deployfish.core.models.elb import ClassicLoadBalancer
 from deployfish.core.models.elbv2 import TargetGroup
 from deployfish.core.models.secrets import Secret
 
-from tests.fixtures import SERVICE_YML
+from tests.fixtures import FARGATE_SERVICE_YML, SERVICE_YML
 
 
 def _service() -> Service:
     service = Service.new(deepcopy(SERVICE_YML), "deployfish")
     service.data["cluster"] = "foobar-cluster"
     service.data["serviceName"] = "foobar-test"
-    service.data["taskDefinition"] = "arn:aws:ecs:us-west-2:123:task-definition/foobar-test:1"
+    service.data["taskDefinition"] = (
+        "arn:aws:ecs:us-west-2:123:task-definition/foobar-test:1"
+    )
     return service
 
 
@@ -34,11 +38,17 @@ class TestServiceRelatedObjects:
     def test_load_balancers_target_group(self) -> None:
         service = _service()
         service.data["loadBalancers"] = [
-            {"targetGroupArn": "arn:aws:elasticloadbalancing:us-west-2:123:targetgroup/tg/1"},
+            {
+                "targetGroupArn": (
+                    "arn:aws:elasticloadbalancing:us-west-2:123:targetgroup/tg/1"
+                ),
+            },
         ]
         tg = TargetGroup(
             {
-                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-west-2:123:targetgroup/tg/1",
+                "TargetGroupArn": (
+                    "arn:aws:elasticloadbalancing:us-west-2:123:targetgroup/tg/1"
+                ),
                 "TargetGroupName": "tg",
                 "Port": 80,
                 "Protocol": "HTTP",
@@ -46,7 +56,7 @@ class TestServiceRelatedObjects:
             }
         )
         with patch.object(TargetGroup.objects, "get", return_value=tg):
-            lbs = service.load_balancers
+            lbs = cast("list[dict[str, Any]]", service.load_balancers)
         assert lbs[0]["TargetGroup"] is tg
 
     def test_load_balancers_classic(self) -> None:
@@ -61,7 +71,7 @@ class TestServiceRelatedObjects:
             }
         )
         with patch.object(ClassicLoadBalancer.objects, "get", return_value=clb):
-            lbs = service.load_balancers
+            lbs = cast("list[dict[str, Any]]", service.load_balancers)
         assert lbs[0]["LoadBalancer"] is clb
 
     def test_appscaling_property_and_setter(self) -> None:
@@ -78,6 +88,35 @@ class TestServiceRelatedObjects:
         service.appscaling = None
         assert service.appscaling is None
 
+    def test_autoscaling_group_none_for_fargate(self) -> None:
+        service = Service.new(deepcopy(FARGATE_SERVICE_YML), "deployfish")
+        service.data["cluster"] = "foobar-cluster"
+        service.data["serviceName"] = "foobar-test"
+
+        assert service.autoscaling_group is None
+
+    def test_autoscaling_group_uses_explicit_override_for_ec2(self) -> None:
+        service = _service()
+        service.autoscalinggroup_name = "my-asg"
+        asg = MagicMock(spec=AutoscalingGroup)
+
+        with patch.object(
+            AutoscalingGroup.objects,
+            "get",
+            return_value=asg,
+        ) as get_mock:
+            assert service.autoscaling_group is asg
+
+        get_mock.assert_called_once_with("my-asg")
+
+    def test_autoscaling_group_falls_back_to_cluster_for_ec2(self) -> None:
+        service = _service()
+        cluster = MagicMock()
+        cluster.autoscaling_group = MagicMock(spec=AutoscalingGroup)
+        service.cache["cluster"] = cluster
+
+        assert service.autoscaling_group is cluster.autoscaling_group
+
     def test_service_discovery_from_registry(self) -> None:
         from deployfish.core.models.service_discovery import ServiceDiscoveryService
 
@@ -88,7 +127,11 @@ class TestServiceRelatedObjects:
                 "Id": "srv-1",
                 "Arn": "arn:registry:1",
                 "Name": "api",
-                "DNSConfig": {"NamespaceId": "ns-1", "RoutingPolicy": "MULTIVALUE", "DnsRecords": []},
+                "DNSConfig": {
+                    "NamespaceId": "ns-1",
+                    "RoutingPolicy": "MULTIVALUE",
+                    "DnsRecords": [],
+                },
             }
         )
         with patch.object(ServiceDiscoveryService.objects, "get", return_value=sd):
@@ -99,8 +142,11 @@ class TestServiceRelatedObjects:
 
         service = _service()
         invoked = MagicMock(spec=InvokedTask)
-        with patch.object(InvokedTask.objects, "list", return_value=[invoked]) as list_mock:
+        with patch.object(
+            InvokedTask.objects,
+            "list",
+            return_value=[invoked],
+        ) as list_mock:
             tasks = service.running_tasks
         list_mock.assert_called_once_with("foobar-cluster", service="foobar-test")
         assert tasks == [invoked]
-

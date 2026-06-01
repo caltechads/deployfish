@@ -22,6 +22,12 @@ class TestECSServiceScalingPolicyAdapter:
         assert data["PolicyName"] == "my-cluster-my-service-scale-up"
         assert data["ResourceId"] == "service/my-cluster/my-service"
         assert data["ScalableDimension"] == "ecs:service:DesiredCount"
+        assert kwargs["alarm"].data["MetricName"] == "CPUUtilization"
+        assert kwargs["alarm"].data["Namespace"] == "AWS/ECS"
+        assert kwargs["alarm"].data["Dimensions"] == [
+            {"Name": "ClusterName", "Value": "my-cluster"},
+            {"Name": "ServiceName", "Value": "my-service"},
+        ]
         assert (
             data["StepScalingPolicyConfiguration"]["StepAdjustments"][0][
                 "ScalingAdjustment"
