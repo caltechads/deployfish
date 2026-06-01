@@ -23,3 +23,12 @@ tox:
 	# install tox and tox-pyenv in that ve
 	# activate that ve before running this
 	@tox
+
+napoleon-gate:
+	@.venv/bin/python bin/check_napoleon_gate.py
+
+napoleon-gate-strict:
+	@.venv/bin/python bin/check_napoleon_gate.py --strict
+
+napoleon-gate-baseline:
+	@.venv/bin/python bin/check_napoleon_gate.py --write-baseline

@@ -1,3 +1,104 @@
+[project]
+name = "deployfish"
+version = "1.16.0"
+authors = [
+    {name = "Caltech IMSS ADS", email = "imss-ads-staff@caltech.edu"},
+]
+maintainers = [
+    {name = "Chris Malek", email = "cmalek@caltech.edu"},
+    {name = "Glenn Bach", email = "glenn@caltech.edu"},
+    {name = "Katarina Liu", email = "kml@caltech.edu"},
+]
+requires-python = ">= 3.11"
+description = "AWS ECS related deployment tools"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Installation/Setup",
+    "Topic :: System :: Systems Administration",
+    "Typing :: Typed",
+]
+dependencies = [
+    "boto3 >= 1.26.36",
+    "cement==3.0.10",
+    "click >= 6.7",
+    "colorlog",
+    "jinja2 >= 2.11",
+    "jsondiff2 >= 1.2.3",
+    "pytz",
+    "PyYAML >= 5.1",
+    "requests >= 2.18.4",
+    "shellescape >= 3.8.1",
+    "tabulate >= 0.8.1",
+    "typing_extensions",
+    "tzlocal >= 4.0.1",
+    "docker >= 7.1.0",
+    "slack_sdk >= 3.31.0",
+    "slackfin >= 0.2.2",
+    "gitpython >= 3.1.43",
+    "giturlparse >= 0.12.0",
+    "setuptools < 80",
+    "simplesqs >= 0.4.0",
+    "toml >= 0.10.2",
+]
+
+[dependency-groups]
+docs = [
+  "Sphinx>=7",
+  "sphinx_rtd_theme == 2.0.0",
+  "sphinxcontrib-images >= 0.9.4",
+  "setuptools>=75.1.0",
+]
+test = [
+  "pytest>=8.3.4",
+  "pytest-cov>=6.0.0",
+  "pytest-mock>=3.14.0",
+  "pytest-env>=0.8.1",
+  "pytest-timeout>=2.1.0",
+  "pytest-xdist>=3.5.0",
+  "pytest-randomly>=3.12.0",
+  "testfixtures>=12.0.0",
+]
+dev = [
+  "icecream>=2.1.5",
+  "ipython>=7.23.0",
+  "ruff>=0.15.11",
+  "mypy>=1.20.1",
+]
+
+[project.urls]
+Respository = "https://github.com/caltechads/deployfish"
+Documentation = "https://deployfish.readthedocs.io/en/latest/"
+
+[project.scripts]
+deploy = "deployfish.main:main"
+dpy = "deployfish.main:main"
+
+[tool.uv]
+python-preference = "only-system"
+default-groups = ["docs", "test"]
+
+[tool.setuptools.package-data]
+deployfish = ["py.typed", "templates/*.jinja2", "templates/macros/*.jinja2"]
+
+[tool.setuptools]
+# ...
+# By default, include-package-data is true in pyproject.toml, so you do
+# NOT have to specify this line.
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+
 [build-system]
 requires = [
     "setuptools >= 48",
@@ -16,7 +117,7 @@ target-version = "py312"
 # Tell ruff that this project's python code all lives inside the {{cookiecutter.project_python_name}} subfolder.
 src = ["deployfish"]
 # Don't lint the venv, the test code, or the migrations.
-exclude = [".venv", "*/tests/*"]
+exclude = [".venv"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
@@ -82,3 +183,30 @@ ignore = [
     "TD003",    # Missing issue link on the line following this TODO
     "TRY003",   # external messages in exceptions are too verbose
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"test/**/*.py" = ["S101"]
+"test/*.py" = ["S101"]
+
+[tool.vulture]
+# Configuration for vulture: https://github.com/jendrikseipp/vulture
+# Install in your virtual environment and run:
+# python -m vulture | tail -r | less
+# The below configuration tries to remove some false positives, but there are
+# still many, for example for model properties used only in templates.
+# See also:
+# https://adamj.eu/tech/2023/07/12/django-clean-up-unused-code-vulture/
+exclude = [
+  "test/*.py",
+]
+ignore_decorators = [
+  # pytest
+  "@pytest.fixture",
+]
+ignore_names = [
+]
+paths = [
+  "deployfish",
+]
+min_confidence = 70
+sort_by_size = true

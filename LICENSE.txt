@@ -1,5 +1,5 @@
-Copyright 2011-17 California Institute of Technology.  Questions or comments
-may be directed to the author, the Academic Development Services group of 
+Copyright 2011-26 California Institute of Technology.  Questions or comments
+may be directed to the author, the Academic Development Services group of
 Caltech's Information Management Systems and Services department, at
 imss-ads-staff@caltech.edu.
 

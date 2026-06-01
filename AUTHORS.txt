@@ -1,1 +1,3 @@
 Chris Malek <cmalek@caltech.edu>
+Glenn Bach <glenn@caltech.edu>
+Katarina Liu <kml@caltech.edu>
