@@ -66,7 +66,6 @@ test = [
   "pytest-timeout>=2.1.0",
   "pytest-xdist>=3.5.0",
   "pytest-randomly>=3.12.0",
-  "testfixtures>=12.0.0",
 ]
 dev = [
   "icecream>=2.1.5",
@@ -184,9 +183,13 @@ ignore = [
     "TRY003",   # external messages in exceptions are too verbose
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.ruff.lint.per-file-ignores]
 "test/**/*.py" = ["S101"]
 "test/*.py" = ["S101"]
+"tests/**/*.py" = ["S101"]
 
 [tool.vulture]
 # Configuration for vulture: https://github.com/jendrikseipp/vulture

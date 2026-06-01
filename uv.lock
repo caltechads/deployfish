@@ -403,7 +403,6 @@ test = [
     { name = "pytest-randomly" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
-    { name = "testfixtures" },
 ]
 
 [package.metadata]
@@ -452,7 +451,6 @@ test = [
     { name = "pytest-randomly", specifier = ">=3.12.0" },
     { name = "pytest-timeout", specifier = ">=2.1.0" },
     { name = "pytest-xdist", specifier = ">=3.5.0" },
-    { name = "testfixtures", specifier = ">=12.0.0" },
 ]
 
 [[package]]
@@ -1445,15 +1443,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/46/58/8c37dea7bbf769b20d58e7ace7e5edfe65b849442b00ffcdd56be88697c6/tabulate-0.10.0.tar.gz", hash = "sha256:e2cfde8f79420f6deeffdeda9aaec3b6bc5abce947655d17ac662b126e48a60d", size = 91754, upload-time = "2026-03-04T18:55:34.402Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/55/db07de81b5c630da5cbf5c7df646580ca26dfaefa593667fc6f2fe016d2e/tabulate-0.10.0-py3-none-any.whl", hash = "sha256:f0b0622e567335c8fabaaa659f1b33bcb6ddfe2e496071b743aa113f8774f2d3", size = 39814, upload-time = "2026-03-04T18:55:31.284Z" },
-]
-
-[[package]]
-name = "testfixtures"
-version = "12.0.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6a/7e/d2be2e9c9367bcf13b2aab7defd6c075e4f87c3741d18abadf413efbb5c5/testfixtures-12.0.0.tar.gz", hash = "sha256:95f3a7824e104be2f6673fea59f9260ed6972b28064240e317c771fc13ab4268", size = 177327, upload-time = "2026-05-23T08:32:48.816Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/cd/cbee7ae737c5f3cce2eb762b152d1e2053c2c2d4f0ebb8dc663a71168110/testfixtures-12.0.0-py3-none-any.whl", hash = "sha256:db6ae636369cd31f40899344a2dfa9e50da0e0e80b63128f82fbf60e9a118f2b", size = 61390, upload-time = "2026-05-23T08:32:46.875Z" },
 ]
 
 [[package]]
