@@ -299,8 +299,8 @@ class Secret(Model):
         return self.secret_name
 
     @property
-    def arn(self) -> str:
-        return self.data.get("ARN", None)
+    def arn(self) -> str | None:
+        return self.data.get("ARN")
 
     def render_for_create(self) -> dict[str, Any]:
         data = self.render()
@@ -312,7 +312,7 @@ class Secret(Model):
         data["Overwrite"] = True
         return data
 
-    def render_for_diff(self):
+    def render_for_diff(self) -> dict[str, Any]:
         data = self.render()
         data["EnvVar"] = self.secret_name
         if "ARN" in data:
@@ -347,8 +347,8 @@ class Secret(Model):
         return None
 
     @property
-    def kms_key_id(self) -> str:
-        return self.data.get("KeyId", None)
+    def kms_key_id(self) -> str | None:
+        return self.data.get("KeyId")
 
     @kms_key_id.setter
     def kms_key_id(self, value: str) -> None:

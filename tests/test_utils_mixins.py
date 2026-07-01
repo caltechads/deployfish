@@ -48,9 +48,8 @@ class TestCodeNameVersionMixin:
         stub_result = MagicMock(stdout="0.0.0\n")
         with patch(
             "deployfish.core.utils.mixins.subprocess.run", return_value=stub_result
-        ):
-            with pytest.raises(ValueError, match="stub"):
-                mixin.setup_py(path)
+        ), pytest.raises(ValueError, match="stub"):
+            mixin.setup_py(path)
 
     def test_makefile_reads_targets(self, tmp_path: pathlib.Path) -> None:
         path = tmp_path / "Makefile"
@@ -61,12 +60,11 @@ class TestCodeNameVersionMixin:
         list_result = MagicMock(stdout="image_name:\nversion:\n", stderr="")
         with patch(
             "deployfish.core.utils.mixins.subprocess.run", return_value=list_result
+        ), patch(
+            "deployfish.core.utils.mixins.subprocess.check_output",
+            side_effect=[b"app\n", b"3.0.0\n"],
         ):
-            with patch(
-                "deployfish.core.utils.mixins.subprocess.check_output",
-                side_effect=[b"app\n", b"3.0.0\n"],
-            ):
-                context = mixin.makefile(path)
+            context = mixin.makefile(path)
         assert context == {"name": "app", "version": "3.0.0"}
 
     def test_annotate_uses_pyproject_toml(
@@ -95,13 +93,13 @@ class TestGitMixin:
     def test_format_url_slack_style(self) -> None:
         mixin = GitMixin(url_type="slack")
         assert (
-            mixin._GitMixin__format_url("https://example.com", "link")
+            mixin._GitMixin__format_url("https://example.com", "link")  # type: ignore[attr-defined]
             == "<https://example.com|link>"
         )
 
     def test_format_url_markdown_style(self) -> None:
         mixin = GitMixin(url_type="markdown")
         assert (
-            mixin._GitMixin__format_url("https://example.com", "link")
+            mixin._GitMixin__format_url("https://example.com", "link")  # type: ignore[attr-defined]
             == "[link](https://example.com)"
         )

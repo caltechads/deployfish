@@ -3,6 +3,7 @@ import os
 import pathlib
 import subprocess
 import time
+from typing import Any, cast
 
 import docker
 import toml
@@ -243,7 +244,7 @@ class GitMixin(AnnotationMixin):
             )
             values["previous_version"] = "initial"
 
-    def git_changelog(self, values: dict[str, str]):
+    def git_changelog(self, values: dict[str, Any]) -> None:
         """
         Look through the commits between the current version and the last version
         Update `values` with two new keys:
@@ -306,7 +307,7 @@ class GitChangelogMixin:
     This needs to be used after GitMixin in the inheritance chain.
     """
 
-    def annotate(self, values: dict[str, str]):
+    def annotate(self, values: dict[str, Any]) -> None:
         """
         Look through the commits between the current version and the last version
         Update `values` with two new keys:
@@ -314,10 +315,11 @@ class GitChangelogMixin:
         * `authors`: a list of all authors in those commits
         * `changelog`: a list of strings representing the commits
         """
-        super().annotate(values)
+        super().annotate(values)  # type: ignore[misc]
+        git_mixin = cast("GitMixin", self)
         # get the changes between here and the previous tag
         changelog_commits = []
-        current = self.repo.head.commit
+        current = git_mixin.repo.head.commit
         # Gather all commits from HEAD to `last_version_sha`
         while True:
             changelog_commits.append(current)
@@ -331,7 +333,9 @@ class GitChangelogMixin:
             d = datetime.datetime.fromtimestamp(commit.committed_date).strftime(
                 "%Y/%m/%d"
             )
-            commit_link = self.url_patterns["commit"].format(sha=commit.hexsha[0:7])
+            commit_link = git_mixin.url_patterns["commit"].format(
+                sha=commit.hexsha[0:7]
+            )
             changelog.append(
                 f"{commit_link} [{d}] {commit.summary} - {commit.author!s}"
             )
@@ -345,13 +349,13 @@ class CodebuildMixin(AnnotationMixin):
             self.log_group = kwargs["log_group"]
         super().__init__(*args, **kwargs)
 
-    def annotate(self, values: dict[str, str]):
+    def annotate(self, values: dict[str, Any]) -> None:
         super().annotate(values)
         values["status"] = (
             "Success" if "CODEBUILD_BUILD_SUCCEEDING" in os.environ else "Failed"
         )
         values["region"] = os.environ["AWS_DEFAULT_REGION"]
-        values["build_id"] = os.environ.get("CODEBUILD_BUILD_ID", None)
+        values["build_id"] = os.environ.get("CODEBUILD_BUILD_ID", "")
         build_seconds = time.time() - float(os.environ["CODEBUILD_START_TIME"])
         build_minutes = int(build_seconds // 60)
         build_seconds = int(build_seconds - build_minutes * 60)

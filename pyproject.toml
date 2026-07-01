@@ -233,8 +233,12 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = [
+    "docker",
+    "docker.*",
+    "giturlparse",
     "pytz",
     "shellescape",
+    "toml",
 ]
 ignore_missing_imports = true
 

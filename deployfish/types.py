@@ -56,7 +56,7 @@ class SupportsTunnel(Protocol):
         self,
         tunnel: "SSHTunnel",
         verbose: bool = False,  # noqa: FBT001, FBT002
-        tunnel_target: Any = None,
+        tunnel_target: "Instance | None" = None,
     ) -> None:
         """
         Open one configured tunnel.
