@@ -52,7 +52,7 @@ requests==2.34.2
     #   docker
 s3transfer==0.18.0
     # via boto3
-setuptools==79.0.1
+setuptools==83.0.0
     # via deployfish (pyproject.toml)
 shellescape==3.8.1
     # via deployfish (pyproject.toml)
