@@ -7,5 +7,6 @@ def load(app):
 
     Args:
         app: app.
+
     """
     app.hook.register("post_object_update", process_service_update)

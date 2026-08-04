@@ -17,6 +17,7 @@ class ScalingPolicyManager(Manager):
     """
     Model scaling policy manager behavior.
     """
+
     #: Service.
     service = "application-autoscaling"
 
@@ -32,6 +33,7 @@ class ScalingPolicyManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_scaling_policies(
             PolicyNames=[pk], ServiceNamespace="ecs"
@@ -57,6 +59,7 @@ class ScalingPolicyManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_scaling_policies(
             ServiceNamespace="ecs", ResourceId=f"service/{cluster}/{service}"
@@ -83,6 +86,7 @@ class ScalingPolicyManager(Manager):
 
         Returns:
             Operation result.
+
         """
         obj = cast("ScalingPolicy", obj)
         response = self.client.put_scaling_policy(**obj.render_for_create())
@@ -101,6 +105,7 @@ class ScalingPolicyManager(Manager):
 
         Keyword Args:
             _: .
+
         """
         obj = cast("ScalingPolicy", obj)
         if obj.alarm:
@@ -118,6 +123,7 @@ class ScalableTargetManager(Manager):
     """
     Model scalable target manager behavior.
     """
+
     #: Service.
     service = "application-autoscaling"
 
@@ -133,6 +139,7 @@ class ScalableTargetManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_scalable_targets(
             ResourceIds=[pk], ServiceNamespace="ecs"
@@ -152,6 +159,7 @@ class ScalableTargetManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_scalable_targets(
             ServiceNamespace="ecs", ScalableDimension="ecs:service:DesiredCount"
@@ -173,6 +181,7 @@ class ScalableTargetManager(Manager):
 
         Keyword Args:
             _: .
+
         """
         obj = cast("ScalableTarget", obj)
         self.client.register_scalable_target(**obj.render_for_create())
@@ -188,6 +197,7 @@ class ScalableTargetManager(Manager):
 
         Keyword Args:
             _: .
+
         """
         obj = cast("ScalableTarget", obj)
         for policy in obj.policies:
@@ -212,7 +222,9 @@ class ScalingPolicy(Model):
     Args:
         data: data.
         alarm: alarm.
+
     """
+
     #: Manager for Application Auto Scaling policy records.
     objects = ScalingPolicyManager()
 
@@ -225,6 +237,7 @@ class ScalingPolicy(Model):
         Args:
             data: data.
             alarm: alarm.
+
         """
         super().__init__(data)
         #: Alarm attached to this scaling policy, if AWS configured one.
@@ -237,6 +250,7 @@ class ScalingPolicy(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["PolicyName"]
 
@@ -247,6 +261,7 @@ class ScalingPolicy(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["PolicyName"]
 
@@ -257,6 +272,7 @@ class ScalingPolicy(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data.get("PolicyARN", None)
 
@@ -266,6 +282,7 @@ class ScalingPolicy(Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         if "PolicyARN" in data:
@@ -284,7 +301,9 @@ class ScalableTarget(Model):
     Args:
         data: data.
         policies: policies.
+
     """
+
     #: Manager for scalable target records.
     objects = ScalableTargetManager()
 
@@ -297,6 +316,7 @@ class ScalableTarget(Model):
         Args:
             data: data.
             policies: policies.
+
         """
         super().__init__(data)
         if not policies:
@@ -311,6 +331,7 @@ class ScalableTarget(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["ResourceId"]
 
@@ -321,6 +342,7 @@ class ScalableTarget(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["ResourceId"]
 
@@ -330,6 +352,7 @@ class ScalableTarget(Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         # AWS rewrites RoleARN, so ignore it during comparisons.
@@ -355,6 +378,7 @@ class ScalableTarget(Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         if "CreationTime" in data:

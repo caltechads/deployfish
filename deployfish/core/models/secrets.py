@@ -22,6 +22,7 @@ class SupportsSecrets(SupportsCache, Protocol):
     """
     Model supports secrets behavior.
     """
+
     @property
     def secrets_prefix(self) -> str:
         """
@@ -46,6 +47,7 @@ class SecretsMixin:
     """
     Model secrets mixin behavior.
     """
+
     @property
     def secrets_prefix(self) -> str:
         """
@@ -60,6 +62,7 @@ class SecretsMixin:
 
         Returns:
             Operation result.
+
         """
         return self.cache["secrets"]
 
@@ -70,6 +73,7 @@ class SecretsMixin:
 
         Args:
             value: value.
+
         """
         self.cache["secrets"] = value
 
@@ -116,6 +120,7 @@ class SecretsMixin:
 
         Returns:
             Operation result.
+
         """
         us = {}
         them = {}
@@ -147,6 +152,7 @@ class SecretManager(Manager):
 
     Args:
         model: model.
+
     """
 
     #: Service.
@@ -167,6 +173,7 @@ class SecretManager(Manager):
 
         Keyword Args:
             readonly: readonly.
+
         """
         #: Model.
         self.model = model
@@ -186,6 +193,7 @@ class SecretManager(Manager):
 
         Returns:
             Operation result.
+
         """
         option = "BeginsWith" if option == "prefix" else "Equals"
         paginator = self.client.get_paginator("describe_parameters")
@@ -212,6 +220,7 @@ class SecretManager(Manager):
 
         Returns:
             Operation result.
+
         """
         names_chunks = [
             names[
@@ -245,6 +254,7 @@ class SecretManager(Manager):
 
         Returns:
             Operation result.
+
         """
         name = parameter_data["Name"].split(".")[-1]
         return self.model(parameter_data, name=name)
@@ -261,6 +271,7 @@ class SecretManager(Manager):
 
         Returns:
             Operation result.
+
         """
         values, non_existant_parameters = self._get_parameter_values([pk])
         params = self._describe_parameters(pk, option="equals")
@@ -288,6 +299,7 @@ class SecretManager(Manager):
 
         Returns:
             Operation result.
+
         """
         # Use get_parameter to get the parameter values
         values, non_existant_parameters = self._get_parameter_values(pks)
@@ -322,6 +334,7 @@ class SecretManager(Manager):
 
         Returns:
             Operation result.
+
         """
         if prefix.endswith("*"):
             prefix = prefix[:-1]
@@ -342,6 +355,7 @@ class SecretManager(Manager):
 
         Returns:
             Operation result.
+
         """
         if prefix.endswith("*"):
             prefix = prefix[:-1]
@@ -372,6 +386,7 @@ class SecretManager(Manager):
 
         Returns:
             Operation result.
+
         """
         if not self.readonly:
             response = self.client.put_parameter(**obj.render_for_create())
@@ -385,6 +400,7 @@ class SecretManager(Manager):
 
         Args:
             pks: pks.
+
         """
         if len(pks) <= MAX_SSM_PARAMETERS_PER_CALL:
             self.client.delete_parameters(Names=pks)
@@ -393,8 +409,7 @@ class SecretManager(Manager):
             # to split it up if we have more than 10
             chunks = [
                 pks[
-                    i
-                    * MAX_SSM_PARAMETERS_PER_CALL : (i + 1)
+                    i * MAX_SSM_PARAMETERS_PER_CALL : (i + 1)
                     * MAX_SSM_PARAMETERS_PER_CALL
                 ]
                 for i in range(
@@ -414,6 +429,7 @@ class SecretManager(Manager):
 
         Keyword Args:
             _: .
+
         """
         if self.readonly:
             msg = "This Secret is read only."
@@ -436,6 +452,7 @@ class Secret(Model):
     Args:
         data: data.
         name: name.
+
     """
 
     #: Objects.
@@ -451,6 +468,7 @@ class Secret(Model):
         Args:
             data: data.
             name: name.
+
         """
         super().__init__(data)
         #: Secret name.
@@ -467,6 +485,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Name"]
 
@@ -477,6 +496,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         return self.secret_name
 
@@ -487,6 +507,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data.get("ARN")
 
@@ -496,6 +517,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         if "ARN" in data:
@@ -512,6 +534,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         data["EnvVar"] = self.secret_name
@@ -534,6 +557,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Name"].rsplit(".", 1)[0]
 
@@ -544,6 +568,7 @@ class Secret(Model):
 
         Args:
             value: value.
+
         """
         self.data["Name"] = f"{value}.{self.secret_name}"
 
@@ -554,6 +579,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         return self.kms_key_id is not None
 
@@ -564,6 +590,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         user = self.data.get("LastModifiedUser", None)
         if user:
@@ -577,6 +604,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data.get("KeyId")
 
@@ -587,6 +615,7 @@ class Secret(Model):
 
         Args:
             value: value.
+
         """
         self.data["Type"] = "SecureString"
         self.data["KeyId"] = value
@@ -598,6 +627,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Value"]
 
@@ -608,6 +638,7 @@ class Secret(Model):
 
         Args:
             value: value.
+
         """
         self.data["Value"] = value
 
@@ -621,6 +652,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         if "ARN" in data:
@@ -636,6 +668,7 @@ class Secret(Model):
 
         Returns:
             Operation result.
+
         """
         line = f"{self.secret_name}={self.value}"
         if self.data["Type"] == "SecureString":
@@ -647,6 +680,7 @@ class ExternalSecret(Secret):
     """
     Model external secret behavior.
     """
+
     #: Objects.
     objects: SecretManager
 

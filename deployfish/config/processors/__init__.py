@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type
+from typing import TYPE_CHECKING, Any
 
 from deployfish.exceptions import ConfigProcessingFailed, SkipConfigProcessing
 
@@ -17,7 +17,9 @@ class ConfigProcessor:
     Args:
         config: config.
         context: context.
+
     """
+
     class ProcessingFailed(ConfigProcessingFailed):
         pass
 
@@ -31,6 +33,7 @@ class ConfigProcessor:
 
         Args:
             processor_class: processor class.
+
         """
         cls.processor_classes.append(processor_class)
 
@@ -42,6 +45,7 @@ class ConfigProcessor:
         Args:
             config: config.
             context: context.
+
         """
         #: Config.
         self.config = config
@@ -60,7 +64,7 @@ class ConfigProcessor:
             try:
                 current_processor.process()
             except ConfigProcessingFailed as e:
-                raise self.ProcessingFailed(str(e))
+                raise self.ProcessingFailed(str(e)) from e
 
 
 ConfigProcessor.register(TerraformStateConfigProcessor)

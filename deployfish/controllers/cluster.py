@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, cast
 
 import click
@@ -27,18 +27,20 @@ def valid_date(s):
 
     Returns:
         Operation result.
+
     """
     try:
-        return datetime.strptime(s, "%Y-%m-%d")
+        return datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=UTC)
     except ValueError:
         msg = f"not a valid date: {s!r}"
-        raise argparse.ArgumentTypeError(msg)
+        raise argparse.ArgumentTypeError(msg) from None
 
 
 class ECSCluster(CrudBase):
     """
     Model ecscluster behavior.
     """
+
     class Meta:
         label = "cluster"
         description = "Work with ECS Cluster objects"
@@ -71,7 +73,7 @@ class ECSCluster(CrudBase):
         "Pending Tasks": "pendingTasksCount",
     }
 
-    def _scale_instances(self, obj: Cluster, count: int, force: bool) -> None:
+    def _scale_instances(self, obj: Cluster, count: int, force: bool) -> None:  # noqa: FBT001
         """
         Scale the number of instances in an ECS Cluster to match ``count``.
 
@@ -82,12 +84,14 @@ class ECSCluster(CrudBase):
         Args:
             obj: the cluster to work on
             count: set the number of instances in the cluster to this
-            force: If ``True`` and ``count`` is more then MaxSize or less than MinSize, force
+            force: If ``True`` and ``count`` is more then MaxSize or less than MinSize,
+            force
                    the autoscaling group to change its MinSize or MaxSize also
 
         Raises:
             ObjectDoesNotExist: if ``Cluster.autoscaling_group`` is ``None``
-            AutoscalingGroup.OperationFailed: if ``count`` is outside MinSize/MaxSize and ``force`` is ``False``
+            AutoscalingGroup.OperationFailed: if ``count`` is outside MinSize/MaxSize
+            and ``force`` is ``False``
 
         """
         if obj.autoscaling_group is None:
@@ -101,32 +105,32 @@ class ECSCluster(CrudBase):
             if "MinSize" in msg:
                 lines = []
                 lines.append(
-                    'Desired count {} is less than MinSize of {} on AutoscalingGroup "{}".'.format(
+                    'Desired count {} is less than MinSize of {} on AutoscalingGroup "{}".'.format(  # noqa: E501
                         count, asg.data["MinSize"], asg.name
                     )
                 )
                 lines.append("\nEither:")
                 lines.append(
-                    f"  (1) use --force to also reduce AutoscalingGroup MinSize to {count}"
+                    f"  (1) use --force to also reduce AutoscalingGroup MinSize to {count}"  # noqa: E501
                 )
                 lines.append("  (2) specify count >= {}".format(asg.data["MinSize"]))
             else:
                 lines = []
                 lines.append(
-                    'Desired count {} is greater than MaxSize of {} on AutoscalingGroup "{}".'.format(
+                    'Desired count {} is greater than MaxSize of {} on AutoscalingGroup "{}".'.format(  # noqa: E501
                         count, asg.data["MaxSize"], asg.name
                     )
                 )
                 lines.append("\nEither:")
                 lines.append(
-                    f"  (1) use --force to also increase AutoscalingGroup MaxSize to {count}"
+                    f"  (1) use --force to also increase AutoscalingGroup MaxSize to {count}"  # noqa: E501
                 )
                 lines.append(
                     "  (2) specify count <= {}".format(
                         obj.autoscaling_group.data["MaxSize"]
                     )
                 )
-            raise AutoscalingGroup.OperationFailed("\n".join(lines))
+            raise AutoscalingGroup.OperationFailed("\n".join(lines)) from e
         self.app.print(
             click.style(
                 f'Set count for Cluster("{obj.pk}") to {count} instances.', fg="green"
@@ -187,7 +191,6 @@ class ECSCluster(CrudBase):
         self._scale_instances(obj, self.app.pargs.count, self.app.pargs.force)
 
     # -------------------------
-    # running_tasks()
     # -------------------------
 
     #: Running tasks ordering.
@@ -227,6 +230,7 @@ class ECSClusterSSH(ObjectSSHController):
     """
     Model ecscluster ssh behavior.
     """
+
     class Meta:
         label = "cluster-ssh"
         description = "SSH to instances for an ECS Cluster"

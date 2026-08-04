@@ -15,7 +15,8 @@ from .events import (
     EventScheduleRuleAdapter,
     EventTargetAdapter,
 )
-from .secrets import SecretAdapter, parse_secret_string
+from .secrets import SecretAdapter
+from .secrets import parse_secret_string as parse_secret_string
 from .service_discovery import ServiceDiscoveryServiceAdapter
 from .ssh import SSHTunnelAdapter
 

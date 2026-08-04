@@ -20,7 +20,8 @@ from deployfish.exceptions import (
 
 def handle_model_exceptions(func: Callable) -> Callable:
     """
-    This decorator cathces all the kinds of execptions we expect to see in normal
+
+    Decorator cathces all the kinds of execptions we expect to see in normal
     operation while letting others display their stack traces normally.
 
     We use this decorator to wrap cement command methods on
@@ -31,6 +32,7 @@ def handle_model_exceptions(func: Callable) -> Callable:
 
     Returns:
         Operation result.
+
     """
 
     @wraps(func)
@@ -54,16 +56,16 @@ def handle_model_exceptions(func: Callable) -> Callable:
             lines.append(click.style(f"ERROR: {e!s}", fg="red"))
             lines.append(
                 click.style(
-                    f'Available {self.model.__name__}s in the "{e.section}:" section of deployfish.yml:',
+                    f'Available {self.model.__name__}s in the "{e.section}:" section of deployfish.yml:',  # noqa: E501
                     fg="cyan",
                 )
             )
             for item in self.app.deployfish_config.get_section(e.section):
-                lines.append("  {}".format(item["name"]))
+                lines.append("  {}".format(item["name"]))  # noqa: PERF401
             environments = []
             for item in self.app.deployfish_config.get_section(e.section):
                 if "environment" in item:
-                    environments.append("  {}".format(item["environment"]))
+                    environments.append("  {}".format(item["environment"]))  # noqa: PERF401
             if environments:
                 lines.append(click.style("\nAvailable environments:", fg="cyan"))
                 lines.extend(environments)

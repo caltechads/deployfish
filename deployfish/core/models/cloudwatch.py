@@ -13,10 +13,11 @@ class CloudwatchAlarmManager(Manager):
     """
     Model cloudwatch alarm manager behavior.
     """
+
     #: Service.
     service = "cloudwatch"
 
-    def get(self, pk: str, **kwargs) -> "CloudwatchAlarm":
+    def get(self, pk: str, **kwargs) -> "CloudwatchAlarm":  # noqa: ARG002
         """
         Get.
 
@@ -28,6 +29,7 @@ class CloudwatchAlarmManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_alarms(AlarmNames=[pk])
         if response.get("MetricAlarms"):
@@ -35,7 +37,7 @@ class CloudwatchAlarmManager(Manager):
         msg = f'No Cloudwatch Alarm with name "{pk}" exists in AWS'
         raise CloudwatchAlarm.DoesNotExist(msg)
 
-    def list(self, cluster: str, service: str, **kwargs) -> Sequence["CloudwatchAlarm"]:
+    def list(self, cluster: str, service: str, **kwargs) -> Sequence["CloudwatchAlarm"]:  # noqa: ARG002
         """
         List.
 
@@ -48,13 +50,14 @@ class CloudwatchAlarmManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_alarms(AlarmNamePrefix=[f"{cluster}-{service}"])
         if "MetricAlarms" in response:
             return [CloudwatchAlarm(d) for d in response["MetricAlarms"]]
         return []
 
-    def save(self, obj: Model, **kwargs) -> None:
+    def save(self, obj: Model, **kwargs) -> None:  # noqa: ARG002
         """
         Save.
 
@@ -63,11 +66,12 @@ class CloudwatchAlarmManager(Manager):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         self.delete(obj)
         self.client.put_metric_alarm(**obj.render_for_create())
 
-    def delete(self, obj: Model, **kwargs) -> None:
+    def delete(self, obj: Model, **kwargs) -> None:  # noqa: ARG002
         """
         Delete.
 
@@ -76,6 +80,7 @@ class CloudwatchAlarmManager(Manager):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         with contextlib.suppress(self.client.exceptions.ResourceNotFound):
             self.client.delete_alarms(AlarmNames=[obj.pk])
@@ -90,6 +95,7 @@ class CloudwatchAlarm(Model):
     """
     Model cloudwatch alarm behavior.
     """
+
     #: Objects.
     objects = CloudwatchAlarmManager()
 
@@ -100,6 +106,7 @@ class CloudwatchAlarm(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["AlarmName"]
 
@@ -110,6 +117,7 @@ class CloudwatchAlarm(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["AlarmName"]
 
@@ -120,6 +128,7 @@ class CloudwatchAlarm(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data.get("AlarmArn", None)
 
@@ -129,6 +138,7 @@ class CloudwatchAlarm(Model):
 
         Args:
             arn: arn.
+
         """
         self.data["AlarmActions"] = [arn]
 
@@ -138,6 +148,7 @@ class CloudwatchAlarm(Model):
 
         Returns:
             Operation result.
+
         """
         data = {}
         data["AlarmName"] = self.data["AlarmName"]

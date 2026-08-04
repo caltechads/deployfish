@@ -44,6 +44,7 @@ class AbstractConfigProcessor:
         Args:
             config: config.
             context: context.
+
         """
         #: Config.
         self.config = config
@@ -117,7 +118,8 @@ class AbstractConfigProcessor:
             item_name: the name of the item in ``section_name``
 
         Raises:
-            KeyError: we have no replacements for either ``section_name`` or ``item_name``
+            KeyError: we have no replacements for either ``section_name`` or
+            ``item_name``
 
         Returns:
             The replacements for ``section_name``, ``item_name``.
@@ -214,7 +216,8 @@ class AbstractConfigProcessor:
 
     def process(self):
         """
-        This is the method that :py:class:`ConfigProcessor` will execute as it
+
+        Is the method that :py:class:`ConfigProcessor` will execute as it
         loops through known processors.
 
         :py:attr:`deployfish.config.Config.processable_sections`` and run our

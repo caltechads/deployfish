@@ -64,6 +64,7 @@ class CloudWatchLogStreamIterator:
             stream: stream.
             sleep: sleep.
             start_time: start time.
+
         """
         #: Client.
         self.client = get_boto3_session().client("logs")
@@ -84,6 +85,7 @@ class CloudWatchLogStreamIterator:
 
         Returns:
             Operation result.
+
         """
         return self
 
@@ -93,6 +95,7 @@ class CloudWatchLogStreamIterator:
 
         Returns:
             Operation result.
+
         """
         if "nextToken" in self.kwargs:
             # Don't sleep on the first iteration
@@ -119,6 +122,7 @@ class CloudWatchLogGroupTailer:
         sleep: sleep.
         filter_pattern: filter pattern.
         start_time: start time.
+
     """
 
     def __init__(
@@ -139,6 +143,7 @@ class CloudWatchLogGroupTailer:
             sleep: sleep.
             filter_pattern: filter pattern.
             start_time: start time.
+
         """
         #: Client.
         self.client = get_boto3_session().client("logs")
@@ -166,6 +171,7 @@ class CloudWatchLogGroupTailer:
 
         Returns:
             Operation result.
+
         """
         return self
 
@@ -175,6 +181,7 @@ class CloudWatchLogGroupTailer:
 
         Returns:
             Operation result.
+
         """
         if not self.started:
             # Don't sleep on the first iteration
@@ -205,6 +212,7 @@ class CloudWatchLogStreamTailer:
     Args:
         stream: stream.
         sleep: sleep.
+
     """
 
     def __init__(self, stream: "CloudWatchLogStream", sleep: int = 5):
@@ -214,6 +222,7 @@ class CloudWatchLogStreamTailer:
         Args:
             stream: stream.
             sleep: sleep.
+
         """
         #: Client.
         self.client = get_boto3_session().client("logs")
@@ -240,6 +249,7 @@ class CloudWatchLogStreamTailer:
 
         Returns:
             Operation result.
+
         """
         return self
 
@@ -249,6 +259,7 @@ class CloudWatchLogStreamTailer:
 
         Returns:
             Operation result.
+
         """
         if self.last_event:
             # Don't sleep on the first iteration
@@ -277,6 +288,7 @@ class CloudWatchLogGroupManager(Manager):
     """
     Model cloud watch log group manager behavior.
     """
+
     #: Service.
     service = "logs"
 
@@ -292,6 +304,7 @@ class CloudWatchLogGroupManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_log_groups(logGroupNamePrefix=pk)
         for group in response["logGroups"]:
@@ -309,6 +322,7 @@ class CloudWatchLogGroupManager(Manager):
 
         Returns:
             Operation result.
+
         """
         paginator = self.client.get_paginator("describe_log_groups")
         kwargs = {}
@@ -325,6 +339,7 @@ class CloudWatchLogStreamManager(Manager):
     """
     Model cloud watch log stream manager behavior.
     """
+
     #: Service.
     service = "logs"
 
@@ -337,6 +352,7 @@ class CloudWatchLogStreamManager(Manager):
 
         Returns:
             Operation result.
+
         """
         return pk.split(":", 1)
 
@@ -352,6 +368,7 @@ class CloudWatchLogStreamManager(Manager):
 
         Returns:
             Operation result.
+
         """
         group_name, stream_name = self.__get_group_and_stream_from_pk(pk)
         response = self.client.describe_log_streams(
@@ -383,6 +400,7 @@ class CloudWatchLogStreamManager(Manager):
 
         Returns:
             Operation result.
+
         """
         paginator = self.client.get_paginator("describe_log_streams")
         kwargs: dict[str, Any] = {"logGroupName": log_group_name}
@@ -418,6 +436,7 @@ class CloudWatchLogGroup(Model):
     """
     Model cloud watch log group behavior.
     """
+
     #: Manager for CloudWatch log group records.
     objects = CloudWatchLogGroupManager()
 
@@ -428,6 +447,7 @@ class CloudWatchLogGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["logGroupName"]
 
@@ -438,6 +458,7 @@ class CloudWatchLogGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["logGroupName"]
 
@@ -448,12 +469,11 @@ class CloudWatchLogGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["arn"]
 
-    def newest_stream(
-        self, prefix: str | None = None
-    ) -> "CloudWatchLogStream | None":
+    def newest_stream(self, prefix: str | None = None) -> "CloudWatchLogStream | None":
         """
         Return most recent stream in this group.
 
@@ -523,6 +543,7 @@ class CloudWatchLogStream(Model):
     """
     Model cloud watch log stream behavior.
     """
+
     #: Manager for CloudWatch log stream records.
     objects = CloudWatchLogStreamManager()
 
@@ -533,6 +554,7 @@ class CloudWatchLogStream(Model):
 
         Returns:
             Operation result.
+
         """
         return f"{self.data['logGroupName']}:{self.data['logStreamName']}"
 
@@ -543,6 +565,7 @@ class CloudWatchLogStream(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["logStreamName"]
 
@@ -553,6 +576,7 @@ class CloudWatchLogStream(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["arn"]
 

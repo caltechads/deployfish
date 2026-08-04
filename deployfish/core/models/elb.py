@@ -17,6 +17,7 @@ class ClassicLoadBalancerManager(Manager):
     """
     Model classic load balancer manager behavior.
     """
+
     #: Service.
     service = "elb"
 
@@ -32,6 +33,7 @@ class ClassicLoadBalancerManager(Manager):
 
         Returns:
             Operation result.
+
         """
         instances = self.get_many([pk])
         if len(instances) > 1:
@@ -51,6 +53,7 @@ class ClassicLoadBalancerManager(Manager):
 
         Returns:
             Operation result.
+
         """
         kwargs = {"LoadBalancerNames": pks}
         paginator = self.client.get_paginator("describe_load_balancers")
@@ -66,7 +69,7 @@ class ClassicLoadBalancerManager(Manager):
             if m:
                 lbname = m.group("lbname")
             msg_0 = f'No Classic Load Balancer with name "{lbname}" exists in AWS'
-            raise ClassicLoadBalancer.DoesNotExist(msg_0)
+            raise ClassicLoadBalancer.DoesNotExist(msg_0) from e
         return [ClassicLoadBalancer(lb) for lb in lbs]
 
     def list(
@@ -82,6 +85,7 @@ class ClassicLoadBalancerManager(Manager):
 
         Returns:
             Operation result.
+
         """
         paginator = self.client.get_paginator("describe_load_balancers")
         response_iterator = paginator.paginate()
@@ -98,7 +102,7 @@ class ClassicLoadBalancerManager(Manager):
                 if m:
                     lbname = m.group("lbname")
                 msg_0 = f'No Classic Load Balancer with name "{lbname}" exists in AWS'
-                raise ClassicLoadBalancer.DoesNotExist(msg_0)
+                raise ClassicLoadBalancer.DoesNotExist(msg_0) from e
         lbs = []
         for lb in lb_data:
             if name and not fnmatch.fnmatch(lb["LoadBalancerName"], name):
@@ -119,6 +123,7 @@ class ClassicLoadBalancerManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_tags(LoadBalancerName=pk)
         return response["TagDescriptions"]["Tags"]
@@ -128,6 +133,7 @@ class ClassicLoadBalancerTargetManager(Manager):
     """
     Model classic load balancer target manager behavior.
     """
+
     #: Service.
     service = "elb"
 
@@ -140,6 +146,7 @@ class ClassicLoadBalancerTargetManager(Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.describe_instance_health(
@@ -147,7 +154,7 @@ class ClassicLoadBalancerTargetManager(Manager):
             )
         except self.client.exceptions.AccessPointNotFoundException:
             msg = f'No Classic Load Balancer named "{load_balancer_name}" exists in AWS'
-            raise ClassicLoadBalancer.DoesNotExist(msg)
+            raise ClassicLoadBalancer.DoesNotExist(msg) from None
         targets = []
         for data in response["InstanceStates"]:
             instance = Instance.objects.get(data["InstanceId"])
@@ -164,6 +171,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
     """
     Model classic load balancer behavior.
     """
+
     #: Objects.
     objects = ClassicLoadBalancerManager()
 
@@ -181,6 +189,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.name
 
@@ -191,6 +200,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["LoadBalancerName"]
 
@@ -212,6 +222,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Scheme"]
 
@@ -222,6 +233,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["DNSName"]
 
@@ -232,6 +244,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return [listener["Listener"] for listener in self.data["ListenerDescriptions"]]
 
@@ -242,6 +255,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         cert_id = None
         for listener in self.data["ListenerDescriptions"]:
@@ -259,6 +273,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         cert_id = None
         for listener in self.data["ListenerDescriptions"]:
@@ -273,6 +288,7 @@ class ClassicLoadBalancer(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return ClassicLoadBalancerTarget.objects.list(self.pk)
 
@@ -284,7 +300,9 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
     Args:
         data: data.
         instance: instance.
+
     """
+
     #: Objects.
     objects = ClassicLoadBalancerTargetManager()
 
@@ -295,6 +313,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
         Args:
             data: data.
             instance: instance.
+
         """
         super().__init__(data)
         #: Instance.
@@ -311,6 +330,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance.pk
 
@@ -321,6 +341,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance.name
 
@@ -342,6 +363,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance.hostname
 
@@ -352,6 +374,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance.private_hostname
 
@@ -362,6 +385,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance.ip_address
 
@@ -372,6 +396,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance.bastion
 
@@ -382,6 +407,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance.provisioner
 
@@ -392,6 +418,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance.autoscaling_group
 
@@ -402,6 +429,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.instance
 
@@ -411,6 +439,7 @@ class ClassicLoadBalancerTarget(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         data["Instance"] = self.instance.render_for_display()

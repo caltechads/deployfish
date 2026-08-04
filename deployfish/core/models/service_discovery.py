@@ -17,6 +17,7 @@ class ServiceDiscoveryNamespaceManager(Manager):
     """
     Model service discovery namespace manager behavior.
     """
+
     #: Service.
     service = "servicediscovery"
 
@@ -32,6 +33,7 @@ class ServiceDiscoveryNamespaceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         if pk.startswith("ns-"):
             # this is a namespace['Id']
@@ -60,6 +62,7 @@ class ServiceDiscoveryNamespaceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         kwargs = {}
         if private_only:
@@ -78,6 +81,7 @@ class ServiceDiscoveryServiceManager(Manager):
     """
     Model service discovery service manager behavior.
     """
+
     #: Service.
     service = "servicediscovery"
 
@@ -90,6 +94,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.get_service(Id=pk)
@@ -98,9 +103,7 @@ class ServiceDiscoveryServiceManager(Manager):
             raise ServiceDiscoveryService.DoesNotExist(msg) from e
         return ServiceDiscoveryService(response["Namespace"])
 
-    def _get_with_namespace_and_service_name(
-        self, pk: str
-    ) -> ServiceDiscoveryService:
+    def _get_with_namespace_and_service_name(self, pk: str) -> ServiceDiscoveryService:
         """
         Pk looks like '{namespace_pk}:{service_name}'
 
@@ -109,6 +112,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         # this is a namespace_pk:service_name
         namespace_pk, service_name = pk.split(":", 1)
@@ -132,6 +136,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         # this is just a bare service name
         services = self.list()
@@ -164,6 +169,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         if pk.startswith("srv-"):
             return self._get_with_id(pk)
@@ -182,6 +188,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         kwargs = {}
         if namespace:
@@ -214,6 +221,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         obj = cast("ServiceDiscoveryService", obj)
         if not self.exists(obj.pk):
@@ -229,6 +237,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.create_service(**obj.render_for_create())
@@ -249,6 +258,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.update_service(**obj.render_for_update())
@@ -266,6 +276,7 @@ class ServiceDiscoveryServiceManager(Manager):
 
         Keyword Args:
             _: .
+
         """
         try:
             self.client.delete_service(obj.pk)
@@ -289,6 +300,7 @@ class ServiceDiscoveryNamespace(Model):
     """
     Model service discovery namespace behavior.
     """
+
     #: Manager for Cloud Map namespace records.
     objects = ServiceDiscoveryNamespaceManager()
 
@@ -303,6 +315,7 @@ class ServiceDiscoveryNamespace(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Id"]
 
@@ -313,6 +326,7 @@ class ServiceDiscoveryNamespace(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Name"]
 
@@ -323,6 +337,7 @@ class ServiceDiscoveryNamespace(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Arn"]
 
@@ -332,6 +347,7 @@ class ServiceDiscoveryNamespace(Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         del data["CreateDate"]
@@ -345,6 +361,7 @@ class ServiceDiscoveryService(Model):
 
     Args:
         data: data.
+
     """
 
     #: Manager for Cloud Map service records.
@@ -365,6 +382,7 @@ class ServiceDiscoveryService(Model):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         #: Namespace name.
         self.namespace_name: str | None = kwargs.pop("namespace_name", None)
@@ -381,6 +399,7 @@ class ServiceDiscoveryService(Model):
 
         Returns:
             Operation result.
+
         """
         if self.data.get("Id", None):
             return self.data["Id"]
@@ -397,6 +416,7 @@ class ServiceDiscoveryService(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Name"]
 
@@ -407,6 +427,7 @@ class ServiceDiscoveryService(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Arn"]
 
@@ -416,6 +437,7 @@ class ServiceDiscoveryService(Model):
 
         Returns:
             Operation result.
+
         """
         data = self.render()
         del data["Id"]
@@ -430,6 +452,7 @@ class ServiceDiscoveryService(Model):
 
         Returns:
             Operation result.
+
         """
         return self.render_for_diff()
 
@@ -439,6 +462,7 @@ class ServiceDiscoveryService(Model):
 
         Returns:
             Operation result.
+
         """
         data = {}
         data["Id"] = self.data["Id"]
@@ -457,6 +481,7 @@ class ServiceDiscoveryService(Model):
 
         Returns:
             Operation result.
+
         """
         if not self.namespace:
             msg = f'Service Discovery service "{self.name}" has no namespace assigned'
@@ -476,6 +501,7 @@ class ServiceDiscoveryService(Model):
 
         Returns:
             Operation result.
+
         """
         if "NamespaceId" in self.data:
             pk = self.data["NamespaceId"]

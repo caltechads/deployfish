@@ -18,13 +18,15 @@ class MultipleObjectsReturned(Exception):
 
 class ObjectImproperlyConfigured(Exception):
     """
-    Deployfish, our model's manager Manager or the model itself is not properly configured.
+    Deployfish, our model's manager Manager or the model itself is not properly
+    configured.
     """
 
 
 class ObjectReadOnly(Exception):
     """
-    This is a read only model; no writes to AWS permitted.
+
+    is a read only model; no writes to AWS permitted.
     """
 
 
@@ -40,6 +42,7 @@ class NoSuchConfigSection(Exception):
 
     Args:
         section: section.
+
     """
 
     def __init__(self, section: str):
@@ -48,6 +51,7 @@ class NoSuchConfigSection(Exception):
 
         Args:
             section: section.
+
         """
         super().__init__()
         #: Section.
@@ -59,17 +63,20 @@ class NoSuchConfigSection(Exception):
 
         Returns:
             Operation result.
+
         """
         return f"No such deployfish.yml section: {self.section}"
 
 
 class NoSuchConfigSectionItem(Exception):
     """
-    We looked an existing deployfish.yml section for a named item, but it was not present.
+    We looked an existing deployfish.yml section for a named item, but it was not
+    present.
 
     Args:
         section: section.
         name: name.
+
     """
 
     def __init__(self, section: str, name: str):
@@ -79,6 +86,7 @@ class NoSuchConfigSectionItem(Exception):
         Args:
             section: section.
             name: name.
+
         """
         super().__init__()
         #: Section.
@@ -92,17 +100,21 @@ class NoSuchConfigSectionItem(Exception):
 
         Returns:
             Operation result.
+
         """
         return f'No item named "{self.name}" deployfish.yml section "{self.section}"'
 
 
 class RenderException(Exception):
     """
-    This is used for click commands, and gets re-raised when we get other exceptions so we can
+
+    is used for click commands, and gets re-raised when we get other exceptions so
+    we can
 
     Args:
         msg: msg.
         exit_code: exit code.
+
     """
 
     def __init__(self, msg: str, exit_code: int = 1):
@@ -113,6 +125,7 @@ class RenderException(Exception):
         Args:
             msg: msg.
             exit_code: exit code.
+
         """
         #: Msg.
         self.msg = msg
@@ -140,6 +153,8 @@ class ConfigProcessingFailed(Exception):
 
 class SkipConfigProcessing(Exception):
     """
-    This is used to skip processing steps when looping through the variable substitution classes
+
+    is used to skip processing steps when looping through the variable substitution
+    classes
     while processing variable substitutions in deployfish.yml.
     """

@@ -25,6 +25,7 @@ class ServiceDiscoveryServiceAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         data = {}
         data["Name"] = self.data["name"]

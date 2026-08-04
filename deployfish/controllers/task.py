@@ -22,6 +22,7 @@ class ECSStandaloneTask(CrudBase):
     """
     Model ecsstandalone task behavior.
     """
+
     class Meta:
         label = "task"
         description = "Work with ECS Standalone Task objects"
@@ -104,7 +105,6 @@ class ECSStandaloneTask(CrudBase):
         context = {
             "obj": obj,
             "includes": self.app.pargs.includes or [],
-            #'excludes': self.app.pargs.excludes if self.app.pargs.excludes else [],
         }
         self.app.render(context, template=self.info_template)
 
@@ -156,7 +156,7 @@ class ECSStandaloneTask(CrudBase):
             (
                 ["--all-revisions"],
                 {
-                    "help": "List all revisions instead of only the most recent one per family.",
+                    "help": "List all revisions instead of only the most recent one per family.",  # noqa: E501
                     "action": "store_true",
                     "default": False,
                     "dest": "all_revisions",
@@ -214,7 +214,8 @@ class ECSStandaloneTask(CrudBase):
             (["pk"], {"help": "The primary key for the StandaloneTask in AWS"}),
         ],
         description="""
-If a StandaloneTask has a schedule rule and that rule is currently disabled in AWS, enable it.
+If a StandaloneTask has a schedule rule and that rule is currently disabled in AWS,
+enable it.
 """,
     )
     @handle_model_exceptions
@@ -257,13 +258,15 @@ If a StandaloneTask has a schedule rule and that rule is currently disabled in A
             (["pk"], {"help": "The primary key for the ECS StandaloneTask in AWS"}),
         ],
         description="""
-If a StandaloneTask has a schedule rule and that rule is currently enabled in AWS, disable it.
+If a StandaloneTask has a schedule rule and that rule is currently enabled in AWS,
+disable it.
 """,
     )
     @handle_model_exceptions
     def disable(self) -> None:
         """
-        If a StandaloneTask has a schedule rule and that rule is currently enabled in AWS, disable it.
+        If a StandaloneTask has a schedule rule and that rule is currently enabled in
+        AWS, disable it.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
@@ -302,6 +305,7 @@ If a StandaloneTask has a schedule rule and that rule is currently enabled in AW
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         kwargs["WaiterHooks"] = [ECSTaskStatusHook(tasks)]
         kwargs["tasks"] = [t.arn for t in tasks]
@@ -337,7 +341,7 @@ Run a StandaloneTask that exists in AWS.
         tasks = standalone_task.run()
         lines = []
         for task in tasks:
-            lines.append(
+            lines.append(  # noqa: PERF401
                 click.style(
                     "\nStarted task: {}:{}\n".format(
                         standalone_task.data["cluster"], task.arn
@@ -350,7 +354,7 @@ Run a StandaloneTask that exists in AWS.
             self.run_task_waiter(tasks)
 
     @ex(
-        help="Show what we would do if we were to update an ECS StandaloneTask in AWS. (Experimental)",
+        help="Show what we would do if we were to update an ECS StandaloneTask in AWS. (Experimental)",  # noqa: E501
         arguments=[
             (["pk"], {"help": "The primary key for the ECS StandaloneTask"}),
         ],
@@ -365,18 +369,18 @@ Run a StandaloneTask that exists in AWS.
         self.app.log.debug("Deployfish Service loaded!")
         aws_obj = loader.get_object_from_aws(self.app.pargs.pk)
         self.app.log.debug("AWS Service loaded!")
-        # Instead of using AbstractModel.diff() method, we'll collect the json data to pass to our template.
+        # Instead of using AbstractModel.diff() method, we'll collect the json data to pass to our template.  # noqa: E501
         df_json = df_obj.render_for_diff()
         aws_json = aws_obj.render_for_diff()
         changes = json.loads(diff(aws_json, df_json, syntax="explicit", dump=True))
-        self.app.log.debug(f"Changes: {changes}")
+        self.app.log.debug(f"Changes: {changes}")  # noqa: G004
         self.app.render(
             {
                 "obj": df_obj,
                 "aws_json": aws_json,
                 "changes": changes,
-                # If debug is True, it will print out the print line marker, and how nested the data is in the changes.
-                # See render_diff macro in plan--service.jinja2 to see how the line markers are located.
+                # If debug is True, it will print out the print line marker, and how nested the data is in the changes.  # noqa: E501
+                # See render_diff macro in plan--service.jinja2 to see how the line markers are located.  # noqa: E501
                 "debug": self.app.debug,
             },
             template=self.plan_template,
@@ -387,6 +391,7 @@ class ECSStandaloneTaskSecrets(ObjectSecretsController):
     """
     Model ecsstandalone task secrets behavior.
     """
+
     class Meta:
         label = "task-secrets"
         aliases = ["config"]
@@ -403,6 +408,7 @@ class ECSStandaloneTaskLogs(Controller):
     """
     Model ecsstandalone task logs behavior.
     """
+
     class Meta:
         label = "task-logs"
         aliases = ["logs"]
@@ -434,7 +440,7 @@ class ECSStandaloneTaskLogs(Controller):
             (
                 ["--sleep"],
                 {
-                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",
+                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",  # noqa: E501
                     "type": int,
                     "default": 10,
                     "dest": "sleep",
@@ -460,7 +466,8 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
     @handle_model_exceptions
     def tail(self) -> None:
         """
-        If a StandaloneTask uses "awslogs" as its logDriver, tail the logs for that ServiceHelperTask.
+        If a StandaloneTask uses "awslogs" as its logDriver, tail the logs for that
+        ServiceHelperTask.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)

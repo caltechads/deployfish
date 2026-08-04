@@ -7,12 +7,14 @@ class MySQLDatabaseAdapter(Adapter):
     """
     Model my sqldatabase adapter behavior.
     """
+
     def convert(self):
         """
         Convert.
 
         Returns:
             Operation result.
+
         """
         data = deepcopy(self.data)
         kwargs = {}

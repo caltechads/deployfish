@@ -31,12 +31,13 @@ class SMSecretManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.describe_secret(SecretId=pk)
         except self.client.exceptions.ResourceNotFoundException:
             msg = f'No SMSecret with id "{pk}" exists in AWS'
-            raise SMSecret.DoesNotExist(msg)
+            raise SMSecret.DoesNotExist(msg) from None
         return SMSecret(response)
 
     def get_value(self, pk: str) -> str:
@@ -48,13 +49,14 @@ class SMSecretManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.get_secret_value(SecretId=pk)
         except self.client.exceptions.ResourceNotFoundException:
             msg = f'No SMSecret with id "{pk}" exists in AWS'
-            raise SMSecret.DoesNotExist(msg)
-        except self.client.exceptions.ResourceNotFoundException as e:
+            raise SMSecret.DoesNotExist(msg) from None
+        except self.client.exceptions.ResourceNotFoundException as e:  # noqa: B025
             msg = f'Could not decrypt SMSecret("{pk}")'
             raise SMSecret.OperationFailed(msg) from e
 
@@ -70,6 +72,7 @@ class SMSecretManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         secrets: list[SMSecret] = []
         paginator = self.client.get_paginator("list_secrets")
@@ -87,6 +90,7 @@ class SMSecret(TagsMixin, Model):
     """
     Model smsecret behavior.
     """
+
     #: Objects.
     objects = SMSecretManager()
 
@@ -97,6 +101,7 @@ class SMSecret(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["ANR"]
 
@@ -107,6 +112,7 @@ class SMSecret(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Name"]
 
@@ -117,6 +123,7 @@ class SMSecret(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["ARN"]
 
@@ -127,6 +134,7 @@ class SMSecret(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["KmsKeyId"]
 
@@ -137,6 +145,7 @@ class SMSecret(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data.get("Description", None)
 
@@ -147,6 +156,7 @@ class SMSecret(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["RotationEnabled"]
 
@@ -157,6 +167,7 @@ class SMSecret(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["LastRotationDate"]
 
@@ -167,6 +178,7 @@ class SMSecret(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "value" not in self.cache:
             self.cache["value"] = self.objects.get_value(self.arn)

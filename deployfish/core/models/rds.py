@@ -16,6 +16,7 @@ class RDSManager(TagsManagerMixin, Manager):
     """
     Model rdsmanager behavior.
     """
+
     #: Service.
     service: str = "rds"
 
@@ -31,12 +32,13 @@ class RDSManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.describe_db_instances(DBInstanceIdentifier=pk)
         except self.client.exceptions.DBInstanceNotFoundFault:
             msg = f'No RDSInstance with id "{pk}" exists in AWS'
-            raise RDSInstance.DoesNotExist(msg)
+            raise RDSInstance.DoesNotExist(msg) from None
         return RDSInstance(response["DBInstances"][0])
 
     def list(self) -> Sequence["RDSInstance"]:
@@ -45,6 +47,7 @@ class RDSManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_db_instances()
         return [RDSInstance(group) for group in response["DBInstances"]]
@@ -59,6 +62,7 @@ class RDSInstance(TagsMixin, Model):
     """
     Model rdsinstance behavior.
     """
+
     #: Objects.
     objects = RDSManager()
 
@@ -69,6 +73,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["DBInstanceIdentifier"]
 
@@ -79,6 +84,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["DBInstanceIdentifier"]
 
@@ -89,6 +95,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["DBInstanceArn"]
 
@@ -99,6 +106,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["DBInstanceStatus"]
 
@@ -154,6 +162,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.secret_arn is not None
 
@@ -178,6 +187,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if self.secret_enabled:
             if "root_password" not in self.cache:
@@ -225,6 +235,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "subnets" not in self.cache:
             self.cache["subnets"] = []
@@ -241,6 +252,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "security_groups" not in self.cache:
             self.cache["security_groups"] = []
@@ -262,6 +274,7 @@ class RDSInstance(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "vpc" not in self.cache:
             self.cache["vpc"] = VPC.objects.get(self.data["DBSubnetGroup"]["VpcId"])

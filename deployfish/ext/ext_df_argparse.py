@@ -7,7 +7,8 @@ LOG = minimal_logger(__name__)
 
 class DeployfishArgparseController(ArgparseController):
     """
-    We use this subclass of ArgparseController instead of cement's version so that we can
+    We use this subclass of ArgparseController instead of cement's version so that we
+    can
     redefine help strings in subclassess of a base class.
     """
 
@@ -60,6 +61,7 @@ class DeployfishArgparseController(ArgparseController):
 
         Returns:
             Operation result.
+
         """
         kwargs = super()._get_command_parser_options(command)
         if "help" in kwargs:

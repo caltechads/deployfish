@@ -28,19 +28,22 @@ def get_deployfish_plugins() -> Generator[pkg_resources.EntryPoint, None, None]:
             name="myproject",
             packages=["myproject"],
             # the following makes a plugin available to pytest
-            entry_points={"deployfish.plugins": ["name_of_plugin = myproject.pluginmodule"]},
+            entry_points={"deployfish.plugins": ["name_of_plugin =
+            myproject.pluginmodule"]},
             classifiers=["Framework :: Deployfish"],
         )
 
     Returns:
         Operation result.
+
     """
     return pkg_resources.iter_entry_points(group="deployfish.plugins")
 
 
 class DeployfishCementPluginHandler(plugin.PluginHandler):
     """
-    This class is an internal implementation of the
+
+    class is an internal implementation of the
     :ref:`IPlugin <cement.core.plugin>` interface. It does not take any
     parameters on initialization.
 
@@ -70,12 +73,13 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
 
         Args:
             app: app.
+
         """
         super()._setup(app)
         self._enabled_plugins = []
         self._disabled_plugins = []
         self.entrypoints = {p.name: p for p in get_deployfish_plugins()}
-        LOG.debug("known plugins: {}".format(", ".join(self.entrypoints.keys())))
+        LOG.debug("known plugins: {}".format(", ".join(self.entrypoints.keys())))  # noqa: G001
 
         # parse all app configs for plugins. Note: these are already loaded from
         # files when app.config was setup.  The application configuration
@@ -89,13 +93,13 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
             if "enabled" not in self.app.config.keys(plugin_section):
                 continue
             if is_true(self.app.config.get(plugin_section, "enabled")):
-                LOG.debug(f"enabling plugin '{_plugin}' per application config")
+                LOG.debug(f"enabling plugin '{_plugin}' per application config")  # noqa: G004
                 if _plugin not in self._enabled_plugins:
                     self._enabled_plugins.append(_plugin)
                 if _plugin in self._disabled_plugins:
                     self._disabled_plugins.remove(_plugin)
             else:
-                LOG.debug(f"disabling plugin '{_plugin}' per application config")
+                LOG.debug(f"disabling plugin '{_plugin}' per application config")  # noqa: G004
                 if _plugin not in self._disabled_plugins:
                     self._disabled_plugins.append(_plugin)
                 if _plugin in self._enabled_plugins:
@@ -107,8 +111,9 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
 
         Args:
             plugin_name: plugin name.
+
         """
-        LOG.debug(f"loading application plugin '{plugin_name}'")
+        LOG.debug(f"loading application plugin '{plugin_name}'")  # noqa: G004
         if (
             plugin_name in self.entrypoints
             and plugin_name not in self.get_loaded_plugins()
@@ -121,7 +126,7 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
             self._loaded_plugins.append(plugin_name)
         else:
             LOG.debug(
-                f"no plugin named '{plugin_name}' exists among the known 'deployfish.plugins' entrypoints"
+                f"no plugin named '{plugin_name}' exists among the known 'deployfish.plugins' entrypoints"  # noqa: E501, G004
             )
 
     def load_plugins(self, _: list[str]) -> None:
@@ -140,7 +145,7 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
                     raise exc.FrameworkError(msg)
             else:
                 LOG.debug(
-                    f"found entrypoint for plugin {{{plugin_name}}} but it is disabled in the config"
+                    f"found entrypoint for plugin {{{plugin_name}}} but it is disabled in the config"  # noqa: E501, G004
                 )
 
     def get_loaded_plugins(self) -> list[str]:
@@ -149,6 +154,7 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
 
         Returns:
             Operation result.
+
         """
         return self._loaded_plugins
 
@@ -158,6 +164,7 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
 
         Returns:
             Operation result.
+
         """
         return self._enabled_plugins
 
@@ -167,6 +174,7 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
 
         Returns:
             Operation result.
+
         """
         return self._disabled_plugins
 
@@ -177,5 +185,6 @@ def load(app):
 
     Args:
         app: app.
+
     """
     app.handler.register(DeployfishCementPluginHandler)

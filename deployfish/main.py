@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import click
-import debugpy
+import debugpy  # noqa: T100
 from botocore.exceptions import UnauthorizedSSOTokenError
 from cement import App, init_defaults
 from cement.core.exc import CaughtSignal
@@ -83,6 +83,7 @@ class DeployfishApp(App):
 
     Args:
         *args: args.
+
     """
 
     class Meta:
@@ -160,11 +161,11 @@ class DeployfishApp(App):
         define_hooks = [
             "pre_config_interpolate",  # hook(app: App, obj: Type[Config])
             "pre_object_create",  # hook(app: App, obj: Model)
-            "post_object_create",  # hook(app: App, obj: Model, success: bool = True, reason: str = None)
+            "post_object_create",  # hook(app: App, obj: Model, success: bool = True, reason: str = None)  # noqa: E501
             "pre_object_update",  # hook(app: App, obj: Model)
-            "post_object_update",  # hook(app: App, obj: Model, success: bool = True, reason: str = None)
+            "post_object_update",  # hook(app: App, obj: Model, success: bool = True, reason: str = None)  # noqa: E501
             "pre_object_delete",  # hook(app: App, obj: Model)
-            "post_object_delete",  # hook(app: App, obj: Model, success: bool =  True, reason: str = None)
+            "post_object_delete",  # hook(app: App, obj: Model, success: bool =  True, reason: str = None)  # noqa: E501
             "pre_service_scale",  # hook(app: App, obj: Service, count: int)
             "post_service_scale",  # hook(app: App, obj: Service, count: int)
             "pre_service_restart",  # hook(app: App, obj: Service)
@@ -185,6 +186,7 @@ class DeployfishApp(App):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         super().__init__(*args, **kwargs)
         #: Deployfish config.
@@ -296,7 +298,8 @@ def maybe_do_cli_debugging(argv: list[str]) -> None:
     passed --debugpy on the command line (can't use --debug because Cement uses it).
 
     See here for how to set up VSCode to act as a remote debug server:
-    https://access.caltech.edu/caltech_docs/docs/project/ads-handbook/latest/local_development/debugging_python_with_vscode/
+    https://access.caltech.edu/caltech_docs/docs/project/ads-handbook/latest/local_devel
+    opment/debugging_python_with_vscode/
 
     This function will use the REMOTE_DEBUG_HOST and REMOTE_DEBUG_PORT env vars to
     to connect to a remote debug server. They default to "localhost" and 5678,
@@ -311,8 +314,9 @@ def maybe_do_cli_debugging(argv: list[str]) -> None:
         try:
             # Redirect stderr to /dev/null to avoid printing debugpy's error message.
             # We have our own.
-            with Path(os.devnull).open("w") as devnull, contextlib.redirect_stderr(
-                devnull
+            with (
+                Path(os.devnull).open("w") as devnull,
+                contextlib.redirect_stderr(devnull),
             ):
                 debugpy.connect(("localhost", 5678))
         except ConnectionRefusedError:

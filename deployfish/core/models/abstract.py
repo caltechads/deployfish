@@ -27,6 +27,7 @@ class LazyAttributeMixin(SupportsCache):
     """
     Model lazy attribute mixin behavior.
     """
+
     def __init__(self) -> None:
         #: Cache.
         """
@@ -54,6 +55,7 @@ class LazyAttributeMixin(SupportsCache):
 
         Returns:
             Operation result.
+
         """
         kwargs = kwargs or {}
         if key not in self.cache:
@@ -71,6 +73,7 @@ class Manager:
     """
     Model manager behavior.
     """
+
     #: Service.
     service: str
 
@@ -89,6 +92,7 @@ class Manager:
 
         Returns:
             Operation result.
+
         """
         if self.service:
             self._client = get_boto3_session().client(self.service)
@@ -105,6 +109,7 @@ class Manager:
 
         Keyword Args:
             _: .
+
         """
         raise NotImplementedError
 
@@ -117,6 +122,7 @@ class Manager:
 
         Keyword Args:
             _: .
+
         """
         raise NotImplementedError
 
@@ -129,6 +135,7 @@ class Manager:
 
         Keyword Args:
             _: .
+
         """
         msg = f"Cannot modify {obj.__class__.__name__} objects with deployfish."
         raise obj.ReadOnly(msg)
@@ -142,6 +149,7 @@ class Manager:
 
         Returns:
             Operation result.
+
         """
         try:
             self.get(pk)
@@ -161,6 +169,7 @@ class Manager:
 
         Keyword Args:
             _: .
+
         """
         msg = f"Cannot modify {obj.__class__.__name__} objects with deployfish."
         raise obj.ReadOnly(msg)
@@ -174,6 +183,7 @@ class Manager:
 
         Returns:
             Operation result.
+
         """
         aws_obj = self.get(obj.pk)
         return obj.diff(aws_obj)
@@ -187,6 +197,7 @@ class Manager:
 
         Returns:
             Operation result.
+
         """
         aws_obj = self.get(obj.pk)
         return obj == aws_obj
@@ -200,6 +211,7 @@ class Manager:
 
         Returns:
             Operation result.
+
         """
         config = self.client._get_waiter_config()  # pylint:disable=protected-access
         if not config:
@@ -217,13 +229,15 @@ class Manager:
         )
 
 
-class Model(LazyAttributeMixin, SupportsModel):
+class Model(LazyAttributeMixin, SupportsModel):  # noqa: PLW1641
     """
     Model model behavior.
 
     Args:
         data: data.
+
     """
+
     #: Objects.
     objects: Manager
     #: Adapters.
@@ -248,7 +262,8 @@ class Model(LazyAttributeMixin, SupportsModel):
 
     class ReadOnly(ObjectReadOnly):
         """
-        This is a read only model; no writes to AWS permitted.
+
+        is a read only model; no writes to AWS permitted.
         """
 
     class OperationFailed(BaseOperationFailed):
@@ -259,14 +274,18 @@ class Model(LazyAttributeMixin, SupportsModel):
     @classmethod
     def adapt(cls, obj: dict[str, Any], source: str, **kwargs):
         """
-        Given an appropriate bit of data `obj` from a data source `source`, return the appropriate args and kwargs to to
-        the Model.new factory method so it can use them to construct the model instance.  This means:  take the
-        data in `obj` and convert it to look like the dict returned by AWS when we use boto3 to retrieve a single object
+        Given an appropriate bit of data `obj` from a data source `source`, return the
+        appropriate args and kwargs to to
+        the Model.new factory method so it can use them to construct the model instance.
+        This means:  take the
+        data in `obj` and convert it to look like the dict returned by AWS when we use
+        boto3 to retrieve a single object
         of this type.
 
         .. note::
 
-            At this time, the only valid `source` is `deployfish`, and so all `obj` will be bits of parsed
+            At this time, the only valid `source` is `deployfish`, and so all `obj` will
+            be bits of parsed
             deployfish.yml data.  CPM 2021-09
 
         Args:
@@ -278,6 +297,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         adapter = cls.adapters.get(cls.__name__, source)(obj, **kwargs)
         data, data_kwargs = adapter.convert()
@@ -286,11 +306,13 @@ class Model(LazyAttributeMixin, SupportsModel):
     @classmethod
     def new(cls, obj: dict[str, Any], source: str, **kwargs) -> "Model":
         """
-        This is a factory method.
+
+        Is a factory method.
 
         .. note::
 
-            The ``**kwargs`` here is for the Adapter to use, not for the Model constructor.  So don't be confused if
+            The ``**kwargs`` here is for the Adapter to use, not for the Model
+            constructor.  So don't be confused if
             kwargs are passed in here which do not get used on the model.
 
         Args:
@@ -302,6 +324,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         data, model_kwargs = cls.adapt(obj, source, **kwargs)
         return cls(data, **model_kwargs)
@@ -312,6 +335,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Args:
             data: data.
+
         """
         super().__init__()
         #: Data.
@@ -345,6 +369,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.objects.exists(self.pk)
 
@@ -354,6 +379,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.render()
 
@@ -363,6 +389,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.render()
 
@@ -372,6 +399,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.render()
 
@@ -381,6 +409,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.render()
 
@@ -390,6 +419,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return deepcopy(self.data)
 
@@ -399,6 +429,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.objects.save(self)
 
@@ -414,6 +445,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.__class__(self.render_for_create())
 
@@ -426,6 +458,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         if self.__class__ != other.__class__:
             return False
@@ -440,6 +473,7 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         if not other:
             other = self.objects.get(self.pk)
@@ -469,5 +503,6 @@ class Model(LazyAttributeMixin, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return f'{self.__class__.__name__}(pk="{self.pk}")'

@@ -1,7 +1,7 @@
 import argparse
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import cast
 
 import botocore
@@ -35,18 +35,20 @@ def valid_date(s):
 
     Returns:
         Operation result.
+
     """
     try:
-        return datetime.strptime(s, "%Y-%m-%d")
+        return datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=UTC)
     except ValueError:
         msg = f"not a valid date: {s!r}"
-        raise argparse.ArgumentTypeError(msg)
+        raise argparse.ArgumentTypeError(msg) from None
 
 
 class ECSService(CrudBase):
     """
     Model ecsservice behavior.
     """
+
     class Meta:
         label = "service"
         description = "Work with ECS Service objects"
@@ -91,7 +93,6 @@ class ECSService(CrudBase):
     update_template = delete_template = create_template
 
     # -------------------------
-    # running_tasks()
     # -------------------------
 
     #: Running tasks ordering.
@@ -115,9 +116,10 @@ class ECSService(CrudBase):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         kwargs["WaiterHooks"] = [ECSDeploymentStatusWaiterHook(obj)]
-        timeout_minutes = os.environ.get("DEPLOYFISH_SERVICE_UPDATE_TIMEOUT", 15)
+        timeout_minutes = os.environ.get("DEPLOYFISH_SERVICE_UPDATE_TIMEOUT", 15)  # noqa: PLW1508
         kwargs["WaiterConfig"] = {"Delay": 10, "MaxAttempts": timeout_minutes * 6}
         kwargs["services"] = [obj.name]
         kwargs["cluster"] = obj.data["cluster"]
@@ -246,6 +248,7 @@ class ECSService(CrudBase):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         kwargs["WaiterHooks"] = [ECSDeploymentStatusWaiterHook(obj)]
         kwargs["services"] = [obj.name]
@@ -254,8 +257,8 @@ class ECSService(CrudBase):
             self.wait("services_inactive", **kwargs)
         except botocore.exceptions.WaiterError as e:
             if "DRAINING" not in str(e):
-                # If we have tasks in "DRAINING" state, We have unstable containers -- perhaps the service is in
-                # trouble.   In this case, we ignore the error because the containers will die soon
+                # If we have tasks in "DRAINING" state, We have unstable containers -- perhaps the service is in  # noqa: E501
+                # trouble.   In this case, we ignore the error because the containers will die soon  # noqa: E501
                 raise
 
     def scale_services_waiter(self, obj: Service, **kwargs) -> None:
@@ -267,6 +270,7 @@ class ECSService(CrudBase):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         kwargs["WaiterHooks"] = [ECSDeploymentStatusWaiterHook(obj)]
         kwargs["services"] = [obj.name]
@@ -299,7 +303,7 @@ class ECSService(CrudBase):
         for _ in self.app.hook.run("pre_service_scale", self.app, obj, count):
             pass
         obj.scale(count)
-        self.scale_services_waiter(obj)  # type: ignore
+        self.scale_services_waiter(obj)  # type: ignore[misc]
         self.app.print(
             click.style(
                 f'\n\nScaled {self.model.__name__}("{obj.pk}") to {count} tasks.',
@@ -316,7 +320,7 @@ class ECSService(CrudBase):
             (
                 ["--hard"],
                 {
-                    "help": "Kill off all the tasks at once instead of iterating through them",
+                    "help": "Kill off all the tasks at once instead of iterating through them",  # noqa: E501
                     "default": False,
                     "action": "store_true",
                     "dest": "hard",
@@ -331,6 +335,7 @@ class ECSService(CrudBase):
 
         Returns:
             Operation result.
+
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
@@ -370,7 +375,7 @@ class ECSService(CrudBase):
         self.app.print(renderer.render(results))
 
     @ex(
-        help="Show what we would do if we were to update an ECS Service in AWS. (Experimental)",
+        help="Show what we would do if we were to update an ECS Service in AWS. (Experimental)",  # noqa: E501
         arguments=[
             (["pk"], {"help": "The primary key for the ECS Service"}),
         ],
@@ -385,18 +390,18 @@ class ECSService(CrudBase):
         self.app.log.debug("Deployfish Service loaded!")
         aws_obj = loader.get_object_from_aws(self.app.pargs.pk)
         self.app.log.debug("AWS Service loaded!")
-        # Instead of using AbstractModel.diff() method, we'll collect the json data to pass to our template.
+        # Instead of using AbstractModel.diff() method, we'll collect the json data to pass to our template.  # noqa: E501
         df_json = df_obj.render_for_diff()
         aws_json = aws_obj.render_for_diff()
         changes = json.loads(diff(aws_json, df_json, syntax="explicit", dump=True))
-        self.app.log.debug(f"Changes: {changes}")
+        self.app.log.debug(f"Changes: {changes}")  # noqa: G004
         self.app.render(
             {
                 "obj": df_obj,
                 "aws_json": aws_json,
                 "changes": changes,
-                # If debug is True, it will print out the print line marker, and how nested the data is in the changes.
-                # See render_diff macro in plan--service.jinja2 to see how the line markers are located.
+                # If debug is True, it will print out the print line marker, and how nested the data is in the changes.  # noqa: E501
+                # See render_diff macro in plan--service.jinja2 to see how the line markers are located.  # noqa: E501
                 "debug": self.app.debug,
             },
             template=self.plan_template,
@@ -407,6 +412,7 @@ class ECSServiceStandaloneTasks(Controller):
     """
     Model ecsservice standalone tasks behavior.
     """
+
     class Meta:
         label = "service-standalonetasks"
         stacked_on = "service"
@@ -420,7 +426,7 @@ class ECSServiceStandaloneTasks(Controller):
     loader: type[ObjectLoader] = ServiceLoader
 
     @ex(
-        help="List StandaloneTasks related to a Service from configuration in deployfish.yml",
+        help="List StandaloneTasks related to a Service from configuration in deployfish.yml",  # noqa: E501
         arguments=[
             (["pk"], {"help": "The primary key for the ECS Service"}),
         ],
@@ -428,7 +434,8 @@ class ECSServiceStandaloneTasks(Controller):
     @handle_model_exceptions
     def list_related_tasks(self):
         """
-        List StandaloneTasks related to a Service from what we have in our deployfish.yml file.
+        List StandaloneTasks related to a Service from what we have in our
+        deployfish.yml file.
 
         NOTE: This lists tasks defined under the top level 'tasks:' section in
         deployfish.yml.  ServiceHelperTasks -- those defined by a 'tasks:'
@@ -462,7 +469,7 @@ class ECSServiceStandaloneTasks(Controller):
             self.app.print("No related tasks.")
 
     @ex(
-        help="Update a StandaloneTasks related to a Service from configuration in deployfish.yml",
+        help="Update a StandaloneTasks related to a Service from configuration in deployfish.yml",  # noqa: E501
         arguments=[
             (["pk"], {"help": "The primary key for the ECS Service"}),
         ],
@@ -508,7 +515,7 @@ class ECSServiceStandaloneTasks(Controller):
                 )
             )
             for task in tasks:
-                task = loader.get_object_from_deployfish(task, model=StandaloneTask)
+                task = loader.get_object_from_deployfish(task, model=StandaloneTask)  # noqa: PLW2901
                 arn = task.save()
                 family_revision = arn.rsplit("/")[1]
                 click.secho(f"  UPDATED: {task.name} -> {family_revision}")
@@ -521,6 +528,7 @@ class ECSServiceSecrets(ObjectSecretsController):
     """
     Model ecsservice secrets behavior.
     """
+
     class Meta:
         label = "config"
         description = "Manage AWS Parameter Store secrets for an ECS Service"
@@ -535,10 +543,10 @@ class ECSServiceSecrets(ObjectSecretsController):
 
     #: Help overrides.
     help_overrides = {
-        "diff": "Diff AWS SSM Parameter Store secrets vs those in deployfish.yml for an ECS Service",
-        "show": "Show all AWS SSM Parameter Store secrets for an ECS Service as they exist in AWS",
+        "diff": "Diff AWS SSM Parameter Store secrets vs those in deployfish.yml for an ECS Service",  # noqa: E501
+        "show": "Show all AWS SSM Parameter Store secrets for an ECS Service as they exist in AWS",  # noqa: E501
         "write": "Write AWS SSM Parameter Store secrets for an ECS Service to AWS",
-        "export": "Extract env.VAR variables from AWS SSM Parameter Store secrets for an ECS Service to AWS",
+        "export": "Extract env.VAR variables from AWS SSM Parameter Store secrets for an ECS Service to AWS",  # noqa: E501
     }
 
 
@@ -546,6 +554,7 @@ class ECSServiceSSH(ObjectSSHController):
     """
     Model ecsservice ssh behavior.
     """
+
     class Meta:
         label = "service-ssh"
         description = "SSH to instances for an ECS Service"
@@ -569,6 +578,7 @@ class ECSServiceDockerExec(ObjectDockerExecController):
     """
     Model ecsservice docker exec behavior.
     """
+
     class Meta:
         label = "service-exec"
         description = "Exec into containers for an ECS Service"
@@ -591,6 +601,7 @@ class ECSServiceTunnel(ObjectTunnelController):
     """
     Model ecsservice tunnel behavior.
     """
+
     class Meta:
         label = "service-tunnel"
         description = "Establish an ssh tunnel"

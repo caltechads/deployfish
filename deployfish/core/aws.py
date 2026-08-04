@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Any, cast
 
 import boto3
@@ -14,6 +15,7 @@ class AWSSessionBuilder:
     """
     Model awssession builder behavior.
     """
+
     class NoSuchAWSProfile(Exception):
         """
         We raise this if the AWS profile defined in the deployfish.yml file
@@ -35,15 +37,15 @@ class AWSSessionBuilder:
             interpolations done.
 
         """
-        if not os.path.exists(filename):
+        if not Path(filename).exists():
             return {}
         if not os.access(filename, os.R_OK):
             msg = f"Deployfish config file '{filename}' exists but is not readable"
             raise ConfigProcessingFailed(msg)
-        with open(filename, encoding="utf-8") as f:
-            return yaml.load(f, Loader=yaml.FullLoader)
+        with open(filename, encoding="utf-8") as f:  # noqa: PTH123
+            return yaml.load(f, Loader=yaml.FullLoader)  # noqa: S506
 
-    def new(self, filename: str, use_aws_section: bool = True) -> boto3.session.Session:
+    def new(self, filename: str, use_aws_section: bool = True) -> boto3.session.Session:  # noqa: FBT001, FBT002
         """
         Build and return a properly configured boto3 ``Session`` object.
 
@@ -72,11 +74,11 @@ class AWSSessionBuilder:
             account_id = sess.client("sts").get_caller_identity().get("Account")
             if "allowed_account_ids" in aws_config:
                 if account_id not in aws_config["allowed_account_ids"]:
-                    msg = f"Account ID {account_id} is not in the list of allowed_account_ids"
+                    msg = f"Account ID {account_id} is not in the list of allowed_account_ids"  # noqa: E501
                     raise self.ForbiddenAWSAccountId(msg)
             if "forbidden_account_ids" in aws_config:
                 if account_id in aws_config["forbidden_account_ids"]:
-                    msg = f"Account ID {account_id} is in the list of forbidden_account_ids"
+                    msg = f"Account ID {account_id} is in the list of forbidden_account_ids"  # noqa: E501
                     raise self.ForbiddenAWSAccountId(msg)
         return sess
 
@@ -91,6 +93,7 @@ class AWSSessionBuilder:
 
         Returns:
             Operation result.
+
         """
         if config:
             # If an API access key pair is provided in the 'aws' section, that
@@ -126,7 +129,7 @@ class AWSSessionBuilder:
 def build_boto3_session(
     filename: str,
     boto3_session_override: boto3.session.Session = None,
-    use_aws_section: bool = True,
+    use_aws_section: bool = True,  # noqa: FBT001, FBT002
 ) -> None:
     """
     Build a boto3 session object from the deployfish.yml file, commandline flags and
@@ -140,7 +143,7 @@ def build_boto3_session(
         use_aws_section: if ``False``, ignore any ``aws:`` section in deployfish.yml
 
     """
-    global boto3_session  # pylint: disable=global-statement
+    global boto3_session  # pylint: disable=global-statement  # noqa: PLW0603
     if boto3_session_override:
         boto3_session = boto3_session_override
     else:

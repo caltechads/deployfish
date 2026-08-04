@@ -14,6 +14,7 @@ class ECSServiceCPUAlarmAdapter(Adapter):
 
     Args:
         data: data.
+
     """
 
     def __init__(self, data: dict[str, Any], **kwargs) -> None:
@@ -26,6 +27,7 @@ class ECSServiceCPUAlarmAdapter(Adapter):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         #: Cluster.
         self.cluster = kwargs.pop("cluster", None)
@@ -33,25 +35,27 @@ class ECSServiceCPUAlarmAdapter(Adapter):
         self.service = kwargs.pop("service", None)
         super().__init__(data, **kwargs)
 
-    def get_AlarmName(self) -> str:
+    def get_AlarmName(self) -> str:  # noqa: N802
         """
         Get alarm name.
 
         Returns:
             Operation result.
+
         """
         direction = "low" if "<" in self.data["cpu"] else "high"
         return f"{self.cluster}-{self.service}-{direction}"
 
-    def get_AlarmDescription(self) -> str:
+    def get_AlarmDescription(self) -> str:  # noqa: N802
         """
         Get alarm description.
 
         Returns:
             Operation result.
+
         """
         direction = "up" if ">" in self.data["cpu"] else "down"
-        return "Scale {} ECS service {} in cluster {} if service Average CPU is {} for {} seconds".format(
+        return "Scale {} ECS service {} in cluster {} if service Average CPU is {} for {} seconds".format(  # noqa: E501
             direction,
             self.service,
             self.cluster,
@@ -59,12 +63,13 @@ class ECSServiceCPUAlarmAdapter(Adapter):
             (int(self.data["periods"]) * int(self.data["check_every_seconds"])),
         )
 
-    def get_ComparisonOperator(self) -> str:
+    def get_ComparisonOperator(self) -> str:  # noqa: N802
         """
         Get comparison operator.
 
         Returns:
             Operation result.
+
         """
         operator = "=="
         if "<=" in self.data["cpu"]:
@@ -77,12 +82,13 @@ class ECSServiceCPUAlarmAdapter(Adapter):
             operator = "GreaterThanThreshold"
         return operator
 
-    def get_Threshold(self) -> float:
+    def get_Threshold(self) -> float:  # noqa: N802
         """
         Get threshold.
 
         Returns:
             Operation result.
+
         """
         return float(re.sub("[<>=]*", "", self.data["cpu"]))
 
@@ -92,6 +98,7 @@ class ECSServiceCPUAlarmAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         data: dict[str, Any] = {}
         data["AlarmName"] = self.get_AlarmName()

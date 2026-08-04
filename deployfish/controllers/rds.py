@@ -14,6 +14,7 @@ class RDSRDSInstance(ReadOnlyCrudBase):
     """
     Model rdsrdsinstance behavior.
     """
+
     class Meta:
         label = "rds"
         description = "Work with RDS Instances"

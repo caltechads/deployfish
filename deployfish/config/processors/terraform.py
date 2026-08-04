@@ -25,6 +25,7 @@ class TerraformStateFactory:
     """
     Model terraform state factory behavior.
     """
+
     @staticmethod
     def new(
         terraform_config: dict[str, Any], context: dict[str, Any]
@@ -38,14 +39,15 @@ class TerraformStateFactory:
 
         Returns:
             Operation result.
+
         """
         if "organization" in terraform_config:
             return TerraformEnterpriseState(terraform_config, context)
         if "statefile" in terraform_config:
             return TerraformS3State(terraform_config, context)
         msg = (
-            "Could not determine location of the Terraform statefile. Ensure that you define either "
-            '"organization" and "workspace" (for Terraform Enterprise) or "statefile" (for S3 hosted '
+            "Could not determine location of the Terraform statefile. Ensure that you define either "  # noqa: E501
+            '"organization" and "workspace" (for Terraform Enterprise) or "statefile" (for S3 hosted '  # noqa: E501
             'Terraform state) in your "terraform:" section of deployfish.yml'
         )
         raise SchemaException(msg)
@@ -58,7 +60,9 @@ class AbstractTerraformState:
     Args:
         terraform_config: terraform config.
         context: context.
+
     """
+
     def __init__(
         self, terraform_config: dict[str, Any], context: dict[str, Any]
     ) -> None:
@@ -69,6 +73,7 @@ class AbstractTerraformState:
         Args:
             terraform_config: terraform config.
             context: context.
+
         """
         #: Context.
         self.context: dict[str, Any] = context
@@ -85,6 +90,7 @@ class AbstractTerraformState:
 
         Args:
             replacements: replacements.
+
         """
         raise NotImplementedError
 
@@ -98,6 +104,7 @@ class AbstractTerraformState:
 
         Returns:
             Operation result.
+
         """
         lookup_key = self.terraform_config["lookups"][attr]
         for key, value in list(replacements.items()):
@@ -112,7 +119,9 @@ class TerraformS3State(AbstractTerraformState):
     Args:
         terraform_config: terraform config.
         context: context.
+
     """
+
     def __init__(
         self, terraform_config: dict[str, Any], context: dict[str, Any]
     ) -> None:
@@ -122,6 +131,7 @@ class TerraformS3State(AbstractTerraformState):
         Args:
             terraform_config: terraform config.
             context: context.
+
         """
         super().__init__(terraform_config, context)
         #: Replacements.
@@ -140,6 +150,7 @@ class TerraformS3State(AbstractTerraformState):
 
         Returns:
             Operation result.
+
         """
         if profile:
             session = boto3.session.Session(profile_name=profile, region_name=region)
@@ -155,7 +166,7 @@ class TerraformS3State(AbstractTerraformState):
         except botocore.exceptions.ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":
                 msg = f"Could not find Terraform state file {state_file_url}"
-                raise NoSuchTerraformStateFile(msg)
+                raise NoSuchTerraformStateFile(msg) from ex
             raise
         return json.loads(state_file)
 
@@ -165,6 +176,7 @@ class TerraformS3State(AbstractTerraformState):
 
         Args:
             tfstate: tfstate.
+
         """
         for i in tfstate["modules"]:
             if i["path"] == ["root"]:
@@ -177,6 +189,7 @@ class TerraformS3State(AbstractTerraformState):
 
         Args:
             tfstate: tfstate.
+
         """
         for key, value in list(tfstate["outputs"].items()):
             self.terraform_lookups[key] = value
@@ -187,6 +200,7 @@ class TerraformS3State(AbstractTerraformState):
 
         Args:
             replacements: replacements.
+
         """
         if replacements == self.replacements:
             return
@@ -201,11 +215,11 @@ class TerraformS3State(AbstractTerraformState):
                 region=self.terraform_config.get("region", None),
             )
             major, minor, _ = tfstate["terraform_version"].split(".")
-            if int(major) >= 1 or (int(major) == 0 and int(minor) >= 12):
+            if int(major) >= 1 or (int(major) == 0 and int(minor) >= 12):  # noqa: PLR2004
                 self._load_post_version_12(tfstate)
             else:
                 self._load_pre_version_12(tfstate)
-            # If our statefile URL has no replacments in it, we don't need to load this again
+            # If our statefile URL has no replacments in it, we don't need to load this again  # noqa: E501
             self.loaded = not any(
                 r in self.terraform_config["statefile"]
                 for r in AbstractConfigProcessor.REPLACEMENTS
@@ -220,7 +234,9 @@ class TerraformEnterpriseState(AbstractTerraformState):
     Args:
         terraform_config: terraform config.
         context: context.
+
     """
+
     #: Terraform api endpoint.
     TERRAFORM_API_ENDPOINT: str = "https://app.terraform.io/api/v2"
 
@@ -233,10 +249,11 @@ class TerraformEnterpriseState(AbstractTerraformState):
         Args:
             terraform_config: terraform config.
             context: context.
+
         """
         super().__init__(terraform_config, context)
         if "workspace" not in self.terraform_config:
-            msg = 'In the "terraform:" section, if you define "organization", you must also define "workspace"'
+            msg = 'In the "terraform:" section, if you define "organization", you must also define "workspace"'  # noqa: E501
             raise SchemaException(msg)
         if "tfe_token" in self.context:
             #: Api token.
@@ -245,7 +262,7 @@ class TerraformEnterpriseState(AbstractTerraformState):
             #: Api token.
             self.api_token = cast("str", os.getenv("ATLAS_TOKEN"))
         if not hasattr(self, "tfe_token"):
-            msg = "Terraform Enterprise State: No Terraform Enterprise API token provided!"
+            msg = "Terraform Enterprise State: No Terraform Enterprise API token provided!"  # noqa: E501
             raise ConfigProcessingFailed(msg)
 
     def get_terraform_state_download_url(self) -> str:
@@ -254,6 +271,7 @@ class TerraformEnterpriseState(AbstractTerraformState):
 
         Returns:
             Operation result.
+
         """
         endpoint = self.TERRAFORM_API_ENDPOINT + "/state-versions?"
         org_filter = (
@@ -267,7 +285,7 @@ class TerraformEnterpriseState(AbstractTerraformState):
             "Authorization": "Bearer " + self.api_token,
             "Content-Type": "application/vnd.api+json",
         }
-        response = requests.get(web_request, headers=headers)
+        response = requests.get(web_request, headers=headers)  # noqa: S113
         data = json.loads(response.text)
         return data["data"][0]["attributes"]["hosted-state-download-url"]
 
@@ -277,10 +295,11 @@ class TerraformEnterpriseState(AbstractTerraformState):
 
         Args:
             _: .
+
         """
         if not self.loaded:
             state_download_url = self.get_terraform_state_download_url()
-            response = requests.get(state_download_url)
+            response = requests.get(state_download_url)  # noqa: S113
             tfstate = json.loads(response.text)
             for i in tfstate["modules"]:
                 if i["path"] == ["root"]:
@@ -326,6 +345,7 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
         Args:
             config: config.
             context: context.
+
         """
         super().__init__(config, context)
         try:
@@ -333,7 +353,7 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
             self.terraform = TerraformStateFactory.new(config.raw["terraform"], context)
         except KeyError:
             msg = 'Skipping terraform state processing: no "terraform" section'
-            raise self.SkipConfigProcessing(msg)
+            raise self.SkipConfigProcessing(msg) from None
 
     def replace(
         self, obj: list | dict, key: Any, value: str, section_name: str, item_name: str
@@ -378,14 +398,14 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
             try:
                 self.terraform.load(replacers)
             except NoSuchTerraformStateFile as e:
-                raise self.ProcessingFailed(str(e))
+                raise self.ProcessingFailed(str(e)) from e
             try:
                 tfvalue = self.terraform.lookup(m.group("key"), replacers)
             except KeyError:
-                msg = 'Config["{}"]["{}"]: There is no terraform output named "{}" in the statefile'.format(
+                msg = 'Config["{}"]["{}"]: There is no terraform output named "{}" in the statefile'.format(  # noqa: E501
                     section_name, item_name, m.group("key")
                 )
-                raise self.ProcessingFailed(msg)
+                raise self.ProcessingFailed(msg) from None
             if isinstance(tfvalue, (list, tuple, dict)):
                 obj[key] = tfvalue
             elif isinstance(tfvalue, int):

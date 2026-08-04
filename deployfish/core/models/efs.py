@@ -14,6 +14,7 @@ class EFSFileSystemManager(TagsManagerMixin, Manager):
     """
     Model efsfile system manager behavior.
     """
+
     #: Service.
     service: str = "efs"
 
@@ -29,14 +30,15 @@ class EFSFileSystemManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.describe_file_systems(FileSystemId=pk)
         except botocore.exceptions.ClientError:
-            # FIXME: can we get ClientError for reasons other than the filesystem does
+            # TODO: can we get ClientError for reasons other than the filesystem does
             # not exist?
             msg = f'No EFS file system with id "{pk}" exists in AWS'
-            raise EFSFileSystem.DoesNotExist(msg)
+            raise EFSFileSystem.DoesNotExist(msg) from None
         return EFSFileSystem(response["FileSystems"][0])
 
     def list(self) -> Sequence["EFSFileSystem"]:
@@ -45,6 +47,7 @@ class EFSFileSystemManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_file_systems()
         return [EFSFileSystem(group) for group in response["FileSystems"]]
@@ -59,6 +62,7 @@ class EFSFileSystem(TagsMixin, Model):
     """
     Model efsfile system behavior.
     """
+
     #: Objects.
     objects = EFSFileSystemManager()
 
@@ -69,6 +73,7 @@ class EFSFileSystem(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["FileSystemId"]
 
@@ -79,6 +84,7 @@ class EFSFileSystem(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Name"]
 
@@ -89,6 +95,7 @@ class EFSFileSystem(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["FileSystemArn"]
 
@@ -99,6 +106,7 @@ class EFSFileSystem(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["SizeInBytes"]["Value"]
 
@@ -109,5 +117,6 @@ class EFSFileSystem(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["LifeCycleState"]

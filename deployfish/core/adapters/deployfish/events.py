@@ -9,27 +9,30 @@ class EventTargetAdapter(Adapter):
     """
     Model event target adapter behavior.
     """
+
     def get_cluster_arn(self) -> str:
         """
         Get cluster arn.
 
         Returns:
             Operation result.
+
         """
         try:
             cluster = Cluster.objects.get(self.data["cluster"])
         except Cluster.DoesNotExist as e:
             msg = f"EventTarget: {e!s}"
-            raise self.SchemaException(msg)
+            raise self.SchemaException(msg) from e
         return cluster.arn
 
     def get_vpc_configuration(self) -> dict[str, Any]:
-        # FIXME: use VpcConfigurationMixin for this
+        # TODO: use VpcConfigurationMixin for this
         """
         Get vpc configuration.
 
         Returns:
             Operation result.
+
         """
         data: dict[str, Any] = {}
         source = self.data.get("vpc_configuration", None)
@@ -49,6 +52,7 @@ class EventTargetAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         data = {}
         data["Id"] = "deployfish-" + self.data["name"]
@@ -65,7 +69,7 @@ class EventTargetAdapter(Adapter):
             ecs["PlatformVersion"] = self.data.get("platform_version", "LATEST")
         if "grouo" in self.data:
             ecs["Group"] = self.data["group"]
-        # FIXME: Deal with placementConstraints, placementStrategy and capacityProviderStrategy
+        # TODO: Deal with placementConstraints, placementStrategy and capacityProviderStrategy  # noqa: E501
         data["EcsParameters"] = ecs
         return data, {}
 
@@ -74,12 +78,14 @@ class EventScheduleRuleAdapter(Adapter):
     """
     Model event schedule rule adapter behavior.
     """
+
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Convert.
 
         Returns:
             Operation result.
+
         """
         data = {}
         data["Name"] = "deployfish-" + self.data["name"]

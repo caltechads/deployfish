@@ -8,17 +8,20 @@ from ..abstract import Adapter
 
 def parse_secret_string(secret_string: str) -> tuple[str, dict[str, Any]]:
     """
-    Parse an identifier from a deployfish.yml parameter definition that looks like one of the following:
+    Parse an identifier from a deployfish.yml parameter definition that looks like one
+    of the following:
 
         KEY=VALUE
         KEY:secure=VALUE
-        KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
+        KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-123456
+        7890ab=VALUE
 
     Args:
         secret_string: secret string.
 
     Returns:
         Operation result.
+
     """
     i = 0
     key = ""
@@ -58,11 +61,12 @@ class SecretsMixin:
     """
     Model secrets mixin behavior.
     """
+
     #: Data.
     data: dict[str, Any]
 
     def get_secrets(
-        self, cluster: str, name: str, decrypt: bool = True
+        self, cluster: str, name: str, decrypt: bool = True  # noqa: FBT001, FBT002
     ) -> list[Secret]:
         """
         Get secrets.
@@ -74,6 +78,7 @@ class SecretsMixin:
 
         Returns:
             Operation result.
+
         """
         secrets = None
         if "config" in self.data:
@@ -102,7 +107,9 @@ class SecretAdapter(Adapter):
 
     Args:
         data: data.
+
     """
+
     class ExternalParameterException(Exception):
         pass
 
@@ -115,6 +122,7 @@ class SecretAdapter(Adapter):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         super().__init__(data, **kwargs)
         #: Cluster.
@@ -133,6 +141,7 @@ class SecretAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         return bool("=" not in self.data["value"] or ":external" in self.data["value"])
 
@@ -142,6 +151,7 @@ class SecretAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         definition: str = deepcopy(self.data["value"])
         key = definition
@@ -155,14 +165,17 @@ class SecretAdapter(Adapter):
 
     def parse(self) -> tuple[str, dict[str, Any]]:
         """
-        Parse an identifier from a deployfish.yml parameter definition that looks like one of the following:
+        Parse an identifier from a deployfish.yml parameter definition that looks like
+        one of the following:
 
             KEY=VALUE
             KEY:secure=VALUE
-            KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
+            KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-12
+            34567890ab=VALUE
 
         Returns:
             Operation result.
+
         """
         return parse_secret_string(self.data["value"])
 
@@ -172,6 +185,7 @@ class SecretAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         if self.is_external():
             msg = "This is an external parameter; use ExternalParametersAdapter instead"

@@ -13,5 +13,6 @@ def get_version(version=VERSION):
 
     Returns:
         Operation result.
+
     """
     return cement_get_version(version)

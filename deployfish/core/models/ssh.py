@@ -16,6 +16,7 @@ class SSHTunnelManager(Manager):
     """
     Model sshtunnel manager behavior.
     """
+
     def get(self, pk: str, **_) -> "SSHTunnel":
         """
         Get.
@@ -28,6 +29,7 @@ class SSHTunnelManager(Manager):
 
         Returns:
             Operation result.
+
         """
         config = get_config()
         section = config.get_section("tunnels")
@@ -53,6 +55,7 @@ class SSHTunnelManager(Manager):
 
         Returns:
             Operation result.
+
         """
         config = get_config()
         section = config.get_section("tunnels")
@@ -104,6 +107,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["name"]
 
@@ -114,6 +118,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["name"]
 
@@ -135,6 +140,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["local_port"]
 
@@ -147,6 +153,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         if "secrets" not in self.cache:
             self.cache["secrets"] = {}
@@ -160,15 +167,18 @@ class SSHTunnel(Model):
 
     def parse(self, key: str) -> Any:
         """
-        Deployfish supports putting 'config.KEY' as the value for the host and port keys in self.data
+        Deployfish supports putting 'config.KEY' as the value for the host and port keys
+        in self.data
 
-        Parse the value and dereference it from the live secrets for the service if necessary.
+        Parse the value and dereference it from the live secrets for the service if
+        necessary.
 
         Args:
             key: key.
 
         Returns:
             Operation result.
+
         """
         if isinstance(self.data[key], str):
             if self.data[key].startswith("config."):
@@ -176,8 +186,8 @@ class SSHTunnel(Model):
                 try:
                     value = self.secret(key).value
                 except Secret.DoesNotExist:
-                    msg = f'SSHTunnel(pk="{self.name}"): Service(pk="{self.service.pk}") has no secret named "{key}"'
-                    raise self.OperationFailed(msg)
+                    msg = f'SSHTunnel(pk="{self.name}"): Service(pk="{self.service.pk}") has no secret named "{key}"'  # noqa: E501
+                    raise self.OperationFailed(msg) from None
                 return value
         return self.data[key]
 
@@ -188,6 +198,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         if "host" not in self.cache:
             self.cache["host"] = self.parse("host")
@@ -200,6 +211,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         if "host_port" not in self.cache:
             self.cache["host_port"] = self.parse("port")
@@ -216,17 +228,18 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         if "service" not in self.cache:
-            # Doing this import here to hopefully avoid circular dependencies between this file and ./ecs.py
-            try:
+            # Doing this import here to hopefully avoid circular dependencies between this file and ./ecs.py  # noqa: E501
+            try:  # noqa: SIM105
                 from .ecs import Service
             except ImportError:
                 # We already imported this somewhere
                 pass
             config = get_config()
             data = config.get_section_item("services", self.data["service"])
-            # We actually want the live service here -- no point in tunneling to a service that doesn't
+            # We actually want the live service here -- no point in tunneling to a service that doesn't  # noqa: E501
             # exist or is out of date with deployfish.yml
             self.cache["service"] = Service.objects.get(
                 f"{data['cluster']}:{data['name']}"
@@ -240,6 +253,7 @@ class SSHTunnel(Model):
 
         Args:
             value: value.
+
         """
         self.cache["service"] = value
 
@@ -250,6 +264,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         return self.service.cluster
 
@@ -264,6 +279,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         return self.service.ssh_target
 
@@ -274,6 +290,7 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         return self.service.ssh_targets
 
@@ -284,5 +301,6 @@ class SSHTunnel(Model):
 
         Returns:
             Operation result.
+
         """
         return self.service.tunnel_target

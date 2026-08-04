@@ -65,6 +65,7 @@ class ECSServiceCommands(Controller):
     """
     Model ecsservice commands behavior.
     """
+
     class Meta:
         label = "commands"
         description = "Work with Helper Tasks for an ECS Service"
@@ -90,7 +91,7 @@ class ECSServiceCommands(Controller):
     # The name of the column HEADER by which to order the output table
     #: List ordering.
     list_ordering: str = "Command Name"
-    # Configuration for TableRenderer.  See the help for deployfish.renderers.table.TableRenderer
+    # Configuration for TableRenderer.  See the help for deployfish.renderers.table.TableRenderer  # noqa: E501
     # for instructions.
     #: List result columns.
     list_result_columns: dict[str, Any] = {
@@ -107,13 +108,15 @@ class ECSServiceCommands(Controller):
         Build a ``deployfish.core.waiters.HookedWaiter`` for the operation named
         ``operation`` and with configuration ``kwargs``, and then run it.
 
-        ``operation`` can be any waiter operation that boto3 supports for ``self.model`` type objects.
+        ``operation`` can be any waiter operation that boto3 supports for ``self.model``
+        type objects.
 
         Args:
             operation: operation.
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         waiter = self.model.objects.get_waiter(operation)
         waiter.wait(**kwargs)
@@ -144,7 +147,8 @@ Show info about a command associated with a Service that exists in AWS.
     @handle_model_exceptions
     def info(self) -> None:
         """
-        Show info about a ServiceHelperTask object associated with a Service that exists in AWS.
+        Show info about a ServiceHelperTask object associated with a Service that exists
+        in AWS.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
@@ -181,7 +185,7 @@ Show info about a command associated with a Service that exists in AWS.
     # Update
 
     @ex(
-        help="Update command definitions in AWS independently of their Service - see description for caveats!",
+        help="Update command definitions in AWS independently of their Service - see description for caveats!",  # noqa: E501
         arguments=[(["pk"], {"help": "The primary key for the ECS Service in AWS"})],
         description="""
 Update all the Service's ServiceHelperTasks in AWS independently of the Service,
@@ -210,7 +214,7 @@ this command with "deploy task run" instead of running them with
         obj = cast("Service", obj)
         self.app.print(
             click.style(
-                f'\n\nUpdating ServiceHelperTasks associated with Service("{obj.pk}"):\n',
+                f'\n\nUpdating ServiceHelperTasks associated with Service("{obj.pk}"):\n',  # noqa: E501
                 fg="yellow",
             )
         )
@@ -246,7 +250,7 @@ disabled in AWS, enable it.
         command = get_task(obj, self.app.pargs.command)
         if command.schedule is None:
             msg = (
-                f'ABORT: Command "{command.name}" on Service("{obj.pk}") has no schedule; '
+                f'ABORT: Command "{command.name}" on Service("{obj.pk}") has no schedule; '  # noqa: E501
                 "enabling only affects schedules."
             )
             raise ServiceHelperTask.OperationFailed(msg)
@@ -254,7 +258,7 @@ disabled in AWS, enable it.
         if command.schedule.enabled:
             self.app.print(
                 click.style(
-                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now ENABLED.',
+                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now ENABLED.',  # noqa: E501
                     fg="green",
                 )
             )
@@ -262,7 +266,7 @@ disabled in AWS, enable it.
         else:
             self.app.print(
                 click.style(
-                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now DISABLED.',
+                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now DISABLED.',  # noqa: E501
                     fg="red",
                 )
             )
@@ -292,7 +296,7 @@ enabled in AWS, disable it.
         command = get_task(obj, self.app.pargs.command)
         if command.schedule is None:
             msg = (
-                f'ABORT: Command "{command.name}" on Service("{obj.pk}") has no schedule; '
+                f'ABORT: Command "{command.name}" on Service("{obj.pk}") has no schedule; '  # noqa: E501
                 "disabling only affects schedules."
             )
             raise ServiceHelperTask.OperationFailed(msg)
@@ -300,7 +304,7 @@ enabled in AWS, disable it.
         if command.schedule.enabled:
             self.app.print(
                 click.style(
-                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now ENABLED.',
+                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now ENABLED.',  # noqa: E501
                     fg="green",
                 )
             )
@@ -308,7 +312,7 @@ enabled in AWS, disable it.
         else:
             self.app.print(
                 click.style(
-                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now DISABLED.',
+                    f'Schedule for command "{command.name}" on Service("{obj.pk}") is now DISABLED.',  # noqa: E501
                     fg="red",
                 )
             )
@@ -324,6 +328,7 @@ enabled in AWS, disable it.
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         kwargs["WaiterHooks"] = [ECSTaskStatusHook(tasks)]
         kwargs["tasks"] = [t.arn for t in tasks]
@@ -352,7 +357,8 @@ Run a command associated with a Service that exists in AWS.
     @handle_model_exceptions
     def run(self) -> None:
         """
-        Show info about a ServiceHelperTask object associated with a Service that exists in AWS.
+        Show info about a ServiceHelperTask object associated with a Service that exists
+        in AWS.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
@@ -361,7 +367,7 @@ Run a command associated with a Service that exists in AWS.
         tasks = command.run()
         lines = []
         for task in tasks:
-            lines.append(
+            lines.append(  # noqa: PERF401
                 click.style(
                     "\nStarted task: {}:{}\n".format(command.data["cluster"], task.arn),
                     fg="green",
@@ -369,13 +375,14 @@ Run a command associated with a Service that exists in AWS.
             )
         self.app.print("\n".join(lines))
         if self.app.pargs.wait:
-            self.run_task_waiter(tasks)  # type: ignore
+            self.run_task_waiter(tasks)  # type: ignore[misc]
 
 
 class ECSServiceCommandLogs(Controller):
     """
     Model ecsservice command logs behavior.
     """
+
     class Meta:
         label = "command-logs"
         aliases = ["logs"]
@@ -408,7 +415,7 @@ class ECSServiceCommandLogs(Controller):
             (
                 ["--sleep"],
                 {
-                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",
+                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",  # noqa: E501
                     "type": int,
                     "default": 10,
                     "dest": "sleep",
@@ -424,7 +431,8 @@ class ECSServiceCommandLogs(Controller):
             ),
         ],
         description="""
-If a command for a Service uses "awslogs" as its logDriver, tail the logs for that command.
+If a command for a Service uses "awslogs" as its logDriver, tail the logs for that
+command.
 
 For --filter-pattern syntax , see
 https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html
@@ -434,7 +442,8 @@ https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.
     @handle_model_exceptions
     def tail(self) -> None:
         """
-        If a ServiceHelperTask uses "awslogs" as its logDriver, tail the logs for that ServiceHelperTask.
+        If a ServiceHelperTask uses "awslogs" as its logDriver, tail the logs for that
+        ServiceHelperTask.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)

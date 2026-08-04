@@ -2,6 +2,7 @@ import getpass
 import logging
 import os
 import pwd
+from pathlib import Path
 
 from deployfish.core.models.ecs import Service
 
@@ -26,7 +27,7 @@ from slackfin import (
 logging.basicConfig(level=logging.WARNING)
 
 
-def process_service_update(app, obj, success=True, reason=None):
+def process_service_update(app, obj, success=True, reason=None):  # noqa: ARG001, FBT002
     """
     Process service update.
 
@@ -35,13 +36,14 @@ def process_service_update(app, obj, success=True, reason=None):
         obj: obj.
         success: success.
         reason: reason.
+
     """
     if not success:
         return
     if not isinstance(obj, Service):
         return
     config_file = app.pargs.deployfish_filename
-    repo_folder = os.path.dirname(config_file)
+    repo_folder = str(Path(config_file).parent)
     channel = app.config.get("plugin.slack", "channel")
     if not channel or channel == "<user>":
         channel = f"@{getpass.getuser()}"
@@ -55,6 +57,7 @@ class DeployfishMessage(SlackMessage):
     Args:
         app: app.
         *args: args.
+
     """
 
     def __init__(self, app, *args, **kwargs):
@@ -67,6 +70,7 @@ class DeployfishMessage(SlackMessage):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         token = app.config.get("plugin.slack", "token")
         super().__init__(
@@ -98,6 +102,7 @@ class ServiceUpdateMessage(
         app: app.
         obj: obj.
         repo_folder: repo folder.
+
     """
 
     def __init__(self, app, obj, repo_folder):
@@ -108,9 +113,10 @@ class ServiceUpdateMessage(
             app: app.
             obj: obj.
             repo_folder: repo folder.
+
         """
         if repo_folder:
-            cwd = os.getcwd()
+            cwd = str(Path.cwd())
             os.chdir(repo_folder)
         super().__init__(
             app,
@@ -133,6 +139,7 @@ class ServiceUpdateMessage(
 
         Args:
             obj: obj.
+
         """
         environment = obj.tags["Environment"]
         username = getpass.getuser()
@@ -153,10 +160,6 @@ class ServiceUpdateMessage(
         )
         # block.add_entry(
         #     SlackLabelValuePair(
-        #         label="Cluster",
-        #         value=obj.cluster.pk,
-        #     )
-        # )
         block.add_entry(
             SlackLabelValuePair(
                 label="Committer",

@@ -6,7 +6,8 @@ if TYPE_CHECKING:
 
 class AdapterRegistry:
     """
-    A registry of adapters which consume specific data sources to configure deployfish models.
+    A registry of adapters which consume specific data sources to configure deployfish
+    models.
     """
 
     def __init__(self) -> None:
@@ -31,6 +32,7 @@ class AdapterRegistry:
             model_name: the name of a deployfish model
             source: the identifier for the config source
             adapter_class: the class of the source -> model adapter to use
+
         """
         if model_name not in self.adapters:
             self.adapters[model_name] = {}
@@ -47,6 +49,7 @@ class AdapterRegistry:
 
         Returns:
             Operation result.
+
         """
         return self.adapters[model_name][source]
 

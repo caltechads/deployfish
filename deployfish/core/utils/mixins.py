@@ -3,6 +3,7 @@ import os
 import pathlib
 import subprocess
 import time
+from pathlib import Path
 from typing import Any, cast
 
 import docker
@@ -21,20 +22,22 @@ class AnnotationMixin:
     """
     Model annotation mixin behavior.
     """
+
     def annotate(self, context: dict[str, str]):
         """
         Annotate.
 
         Args:
             context: context.
+
         """
-        pass
 
 
 class CodeNameVersionMixin(AnnotationMixin):
     """
     Model code name version mixin behavior.
     """
+
     def setup_py(self, path: pathlib.Path) -> dict[str, str]:
         """
         Process a setup.py file and return the name and version.
@@ -94,7 +97,7 @@ class CodeNameVersionMixin(AnnotationMixin):
                 text=True,
                 check=False,
             )
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError:  # noqa: TRY203
             raise
         if "image_name:" not in result.stdout:
             msg = "Makefile does not contain an image_name target"
@@ -145,6 +148,7 @@ class CodeNameVersionMixin(AnnotationMixin):
 
         Args:
             context: context.
+
         """
         super().annotate(context)
         setup_py = pathlib.Path.cwd() / "setup.py"
@@ -181,7 +185,9 @@ class GitMixin(AnnotationMixin):
 
     Args:
         *args: args.
+
     """
+
     def __init__(self, *args, url_type="slack", **kwargs):
         #: Repo.
         """
@@ -193,6 +199,7 @@ class GitMixin(AnnotationMixin):
         Keyword Args:
             url_type: url type.
             kwargs: kwargs.
+
         """
         #: Repo.
         self.repo = None
@@ -221,6 +228,7 @@ class GitMixin(AnnotationMixin):
 
         Returns:
             Operation result.
+
         """
         if self.url_type == "markdown":
             return f"[{label}]({url})"
@@ -273,11 +281,12 @@ class GitMixin(AnnotationMixin):
 
         Args:
             values: values.
+
         """
-        # Get all tags, sorted by the authored_date on their associated commit.  We should have at least one tag -- the
+        # Get all tags, sorted by the authored_date on their associated commit.  We should have at least one tag -- the  # noqa: E501
         # one for this commit.
         ordered_tags = sorted(self.repo.tags, key=lambda x: x.commit.authored_date)
-        if len(ordered_tags) >= 2:
+        if len(ordered_tags) >= 2:  # noqa: PLR2004
             # If there are 2 or more tags, there was a previous version.
             # Extract info from the tag preceeding this one.
             values["last_version_sha"] = ordered_tags[-2].commit.hexsha
@@ -287,7 +296,7 @@ class GitMixin(AnnotationMixin):
             )
             values["previous_version"] = ordered_tags[-2].name
         else:
-            # There was just our current version tag, and no previous tag.  Go back to the initial commit.
+            # There was just our current version tag, and no previous tag.  Go back to the initial commit.  # noqa: E501
             commits = list(self.repo.iter_commits())
             commits.reverse()
             values["last_version_sha"] = commits[0].hexsha
@@ -307,6 +316,7 @@ class GitMixin(AnnotationMixin):
 
         Args:
             values: values.
+
         """
         # get the changes between here and the previous tag
         changelog_commits = []
@@ -321,7 +331,9 @@ class GitMixin(AnnotationMixin):
         authors = set()
         for commit in changelog_commits:
             authors.add(commit.author.name)
-            d = datetime.datetime.fromtimestamp(commit.committed_date).strftime(
+            d = datetime.datetime.fromtimestamp(
+                commit.committed_date, tz=datetime.UTC
+            ).strftime(
                 "%Y/%m/%d"
             )
             commit_link = self.url_patterns["commit"].format(sha=commit.hexsha[0:7])
@@ -337,6 +349,7 @@ class GitMixin(AnnotationMixin):
 
         Returns:
             Operation result.
+
         """
         branch = self.repo.head.reference.name
         current = self.repo.head.commit
@@ -351,6 +364,7 @@ class GitMixin(AnnotationMixin):
 
         Args:
             values: values.
+
         """
         super().annotate(values)
         headcommit = self.repo.head.commit
@@ -369,7 +383,8 @@ class GitMixin(AnnotationMixin):
 
 class GitChangelogMixin:
     """
-    This needs to be used after GitMixin in the inheritance chain.
+
+    needs to be used after GitMixin in the inheritance chain.
     """
 
     def annotate(self, values: dict[str, Any]) -> None:
@@ -382,6 +397,7 @@ class GitChangelogMixin:
 
         Args:
             values: values.
+
         """
         super().annotate(values)  # type: ignore[misc]
         git_mixin = cast("GitMixin", self)
@@ -398,7 +414,9 @@ class GitChangelogMixin:
         authors = set()
         for commit in changelog_commits:
             authors.add(commit.author.name)
-            d = datetime.datetime.fromtimestamp(commit.committed_date).strftime(
+            d = datetime.datetime.fromtimestamp(
+                commit.committed_date, tz=datetime.UTC
+            ).strftime(
                 "%Y/%m/%d"
             )
             commit_link = git_mixin.url_patterns["commit"].format(
@@ -417,7 +435,9 @@ class CodebuildMixin(AnnotationMixin):
 
     Args:
         *args: args.
+
     """
+
     def __init__(self, *args, **kwargs):
         """
         Initialize CodebuildMixin.
@@ -427,6 +447,7 @@ class CodebuildMixin(AnnotationMixin):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         if "log_group" in kwargs:
             #: Log group.
@@ -439,6 +460,7 @@ class CodebuildMixin(AnnotationMixin):
 
         Args:
             values: values.
+
         """
         super().annotate(values)
         values["status"] = (
@@ -461,7 +483,9 @@ class DockerImageNameMixin(AnnotationMixin):
 
     Args:
         *args: args.
+
     """
+
     def __init__(self, *args, **kwargs):
         """
         Initialize DockerImageNameMixin.
@@ -471,6 +495,7 @@ class DockerImageNameMixin(AnnotationMixin):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         if "image" in kwargs:
             #: Image.
@@ -484,9 +509,10 @@ class DockerImageNameMixin(AnnotationMixin):
 
         Args:
             values: values.
+
         """
         super().annotate(values)
-        values["short_image"] = os.path.basename(self.image)
+        values["short_image"] = Path(self.image).name
 
 
 class DockerMixin(AnnotationMixin):
@@ -495,7 +521,9 @@ class DockerMixin(AnnotationMixin):
 
     Args:
         *args: args.
+
     """
+
     def __init__(self, *args, **kwargs):
         """
         Initialize DockerMixin.
@@ -505,6 +533,7 @@ class DockerMixin(AnnotationMixin):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         if "image" in kwargs:
             #: Image.
@@ -518,6 +547,7 @@ class DockerMixin(AnnotationMixin):
 
         Args:
             values: values.
+
         """
         super().annotate(values)
         client = docker.from_env()
@@ -532,7 +562,9 @@ class DeployfishDeployMixin(AnnotationMixin):
 
     Args:
         *args: args.
+
     """
+
     def __init__(self, *args, **kwargs):
         """
         Initialize DeployfishDeployMixin.
@@ -542,6 +574,7 @@ class DeployfishDeployMixin(AnnotationMixin):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         if "service" in kwargs:
             #: Service.
@@ -555,6 +588,7 @@ class DeployfishDeployMixin(AnnotationMixin):
 
         Args:
             values: values.
+
         """
         super().annotate(values)
         values["service"] = self.service

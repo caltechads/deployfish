@@ -17,7 +17,9 @@ class MysqlController(ReadOnlyCrudBase):
 
     Args:
         *args: args.
+
     """
+
     class Meta:
         label = "mysql"
         description = "Work with MySQL Databases"
@@ -56,6 +58,7 @@ class MysqlController(ReadOnlyCrudBase):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         super().__init__(*args, **kwargs)
         # Set up Jinja2 environment with a ChoiceLoader to load templates from

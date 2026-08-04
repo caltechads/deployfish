@@ -29,6 +29,7 @@ class VpcConfigurationMixin:
     """
     Model vpc configuration mixin behavior.
     """
+
     #: Data.
     data: dict[str, Any]
 
@@ -43,6 +44,7 @@ class VpcConfigurationMixin:
 
         Returns:
             Operation result.
+
         """
         data: dict[str, Any] = {}
         if not source:
@@ -67,6 +69,7 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
     """
     Model abstract task adapter behavior.
     """
+
     def is_fargate(self, _: dict[str, Any]) -> bool:
         """
         Return ``True ``if this task definition is for FARGATE, ``False``
@@ -77,6 +80,7 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
 
         Returns:
             Operation result.
+
         """
         return bool(
             "requiresCompatibilities" in self.data
@@ -97,7 +101,8 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
             {
                 'name': the name for the schedule
                 'schedule': the schedule expression
-                'schedule_role': the ARN of the role EventBridge will use to execute our task definition
+                'schedule_role': the ARN of the role EventBridge will use to execute our
+                task definition
                 'cluster': the name of the cluster in which to run our tasks
                 'count': (optional) the number of tasks to run
                 'launch_type': (optional): "FARGATE" or "EC2"
@@ -118,7 +123,7 @@ class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
             Data appropriate for configuring an ``EventScheduleRule`` and
             ``EventTarget``
 
-        """  # noqa: E501
+        """
         schedule_data: dict[str, Any] = {}
         schedule_data["name"] = task_definition.data["family"]
         schedule_data["schedule"] = data["schedule"]
@@ -246,7 +251,7 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
         data: dict[str, Any],
         secrets: list[Secret] | None = None,
         extra_environment: dict[str, Any] | None = None,
-        partial: bool = False,
+        partial: bool = False,  # noqa: FBT001, FBT002
     ) -> None:
         """
         Initialize TaskDefinitionAdapter.
@@ -256,6 +261,7 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
             secrets: secrets.
             extra_environment: extra environment.
             partial: partial.
+
         """
         super().__init__(data)
         #: Secrets.
@@ -367,6 +373,7 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
 
         Returns:
             Operation result.
+
         """
         data: dict[str, Any] = {}
         self.set(data, "family")
@@ -468,6 +475,7 @@ class ContainerDefinitionAdapter(Adapter):
             extra_environment: extra environment.
             partial: partial.
             readonly_root_filesystem: readonly root filesystem.
+
         """
         super().__init__(data)
         #: Task definition data.
@@ -488,6 +496,7 @@ class ContainerDefinitionAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         return "FARGATE" in self.task_definition_data.get("requiresCompatibilities", [])
 
@@ -499,6 +508,7 @@ class ContainerDefinitionAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         return [{"name": s.name, "valueFrom": s.pk} for s in self.secrets]
 
@@ -543,11 +553,11 @@ class ContainerDefinitionAdapter(Adapter):
             fields = v.split(":")
             host_path = fields[0]
             container_path = fields[1]
-            readOnly = False
-            if len(fields) == 3:
-                readOnly = fields[2] == "ro"
+            readOnly = False  # noqa: N806
+            if len(fields) == 3:  # noqa: PLR2004
+                readOnly = fields[2] == "ro"  # noqa: N806
             name = self.MOUNT_RE.sub("_", host_path)
-            name = name[:254] if len(name) > 254 else name
+            name = name[:254] if len(name) > 254 else name  # noqa: PLR2004
             if name not in volume_names:
                 # TODO: if the host_path doesn't start with a /, ensure that
                 # the volume already exists in the task definition, otherwise
@@ -588,13 +598,13 @@ class ContainerDefinitionAdapter(Adapter):
             container.
 
         """
-        portMappings = []
+        portMappings = []  # noqa: N806
         for mapping in self.data.get("ports", []):
             if isinstance(mapping, int):
-                mapping = str(mapping)
+                mapping = str(mapping)  # noqa: PLW2901
             m = self.PORTS_RE.search(mapping)
             if m:
-                mapping = {}
+                mapping = {}  # noqa: PLW2901
                 if not m.group("containerPort"):
                     mapping["containerPort"] = int(m.group("hostPort"))
                 else:
@@ -654,7 +664,7 @@ class ContainerDefinitionAdapter(Adapter):
             ]
         return environment
 
-    def get_dockerLabels(self) -> dict[str, str]:
+    def get_dockerLabels(self) -> dict[str, str]:  # noqa: N802
         """
         ``deployfish.yml`` docker labels are defined in one of the two following
         ways::
@@ -681,10 +691,10 @@ class ContainerDefinitionAdapter(Adapter):
             A dict of docker labels
 
         """
-        dockerLabels: dict[str, str] = {}
+        dockerLabels: dict[str, str] = {}  # noqa: N806
         if "labels" in self.data:
             if isinstance(self.data["labels"], dict):
-                dockerLabels = self.data["labels"]
+                dockerLabels = self.data["labels"]  # noqa: N806
             else:
                 for label in self.data["labels"]:
                     key, value = label.split("=")
@@ -697,6 +707,7 @@ class ContainerDefinitionAdapter(Adapter):
 
         Returns:
             Operation result.
+
         """
         ulimits = []
         for key, value in list(self.data["ulimits"].items()):
@@ -711,14 +722,15 @@ class ContainerDefinitionAdapter(Adapter):
             )
         return ulimits
 
-    def get_logConfiguration(self) -> dict[str, Any]:
+    def get_logConfiguration(self) -> dict[str, Any]:  # noqa: N802
         """
         Get log configuration.
 
         Returns:
             Operation result.
+
         """
-        logConfiguration: dict[str, Any] = {}
+        logConfiguration: dict[str, Any] = {}  # noqa: N806
         if "logging" in self.data:
             if "driver" not in self.data["logging"]:
                 msg = 'logging: block must contain "driver"'
@@ -728,12 +740,13 @@ class ContainerDefinitionAdapter(Adapter):
                 logConfiguration["options"] = self.data["logging"]["options"]
         return logConfiguration
 
-    def get_linuxParameters(self) -> dict[str, Any]:
+    def get_linuxParameters(self) -> dict[str, Any]:  # noqa: N802
         """
         Get linux parameters.
 
         Returns:
             Operation result.
+
         """
         linux_parameters: dict[str, Any] = {}
 
@@ -758,14 +771,15 @@ class ContainerDefinitionAdapter(Adapter):
 
         return linux_parameters
 
-    def get_extraHosts(self) -> list[dict[str, str]]:
+    def get_extraHosts(self) -> list[dict[str, str]]:  # noqa: N802
         """
         Get extra hosts.
 
         Returns:
             Operation result.
+
         """
-        extraHosts: list[dict[str, str]] = []
+        extraHosts: list[dict[str, str]] = []  # noqa: N806
         for host in self.data.get("extra_hosts", []):
             hostname, ip_address = host.split(":")
             extraHosts.append({"hostname": hostname, "ipAddress": ip_address})
@@ -839,7 +853,7 @@ class ContainerDefinitionAdapter(Adapter):
             if "memory" in self.task_definition_data:
                 return None
             if not self.partial:
-                msg = 'container "{}": memory is required for containers if not specified at the task level'.format(
+                msg = 'container "{}": memory is required for containers if not specified at the task level'.format(  # noqa: E501
                     self.data["name"]
                 )
                 raise self.SchemaException(msg)
@@ -858,12 +872,13 @@ class ContainerDefinitionAdapter(Adapter):
                 raise self.SchemaException(msg)
         return memory
 
-    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:  # noqa: PLR0912
         """
         Convert.
 
         Returns:
             Operation result.
+
         """
         data: dict[str, Any] = {}
         self.set(data, "name")
@@ -876,7 +891,7 @@ class ContainerDefinitionAdapter(Adapter):
             msg = 'container "{}": "memoryReservation" must be an integer'.format(
                 self.data["name"]
             )
-            raise self.SchemaException(msg)
+            raise self.SchemaException(msg) from None
         if cpu is not None:
             data["cpu"] = cpu
         memory = self.get_memory()
@@ -886,14 +901,14 @@ class ContainerDefinitionAdapter(Adapter):
         # a partial update of a container definition (i.e. we are overriding our
         # parent task definition in a ServiceHelperTask) AND this is not a
         # FARGATE task, then set memory to 512
-        memoryReservation = data.get("memoryReservation")
+        memoryReservation = data.get("memoryReservation")  # noqa: N806
         if memoryReservation is None and memory is None:
             if not self.partial:
                 if not self.is_fargate:
                     data["memory"] = 512
         if memoryReservation is not None and memory is not None:
             if memoryReservation >= memory:
-                msg = 'container "{}": "memoryReservation" must be less than "memory"'.format(
+                msg = 'container "{}": "memoryReservation" must be less than "memory"'.format(  # noqa: E501
                     self.data["name"]
                 )
                 raise self.SchemaException(msg)
@@ -934,6 +949,7 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
     """
     Model standalone task adapter behavior.
     """
+
     def get_task_definition(
         self, secrets: list[Secret] | None = None
     ) -> TaskDefinition:
@@ -945,6 +961,7 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
 
         Returns:
             Operation result.
+
         """
         deployfish_environment = {
             "DEPLOYFISH_TASK_NAME": self.data["name"],
@@ -958,12 +975,13 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
             extra_environment=deployfish_environment,
         )
 
-    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:  # noqa: PLR0912, PLR0915
         """
         Convert.
 
         Returns:
             Operation result.
+
         """
         data: dict[str, Any] = {}
         data["name"] = self.data["name"]
@@ -1048,6 +1066,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
     Args:
         data: data.
         service: service.
+
     """
 
     def __init__(self, data: dict[str, Any], service: Service):
@@ -1093,6 +1112,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
             yml_key: yml key.
             data_key: data key.
             source: source.
+
         """
         if not source:
             source = self.service.data
@@ -1176,6 +1196,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         Args:
             task_definition: task definition.
             extra_environment: extra environment.
+
         """
         for container in task_definition.containers:
             environment = []
@@ -1282,6 +1303,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
 
         Args:
             task_data: task data.
+
         """
         if "containers" in task_data:
             for container_data in task_data["containers"]:
@@ -1301,7 +1323,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
                         )
                     del container_data["commands"]
 
-    def _get_command_specific_data(
+    def _get_command_specific_data(  # noqa: D417
         self,
         command_data: dict[str, Any],
         data_base: dict[str, Any],
@@ -1383,6 +1405,7 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
 
         Returns:
             Operation result.
+
         """
         data_list = []
         kwargs_list = []
@@ -1412,6 +1435,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
     Args:
         data: data.
+
     """
 
     def __init__(self, data: dict[str, Any], **kwargs):
@@ -1424,6 +1448,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         #: Load secrets.
         self.load_secrets: bool = kwargs.pop("load_secrets", True)
@@ -1435,6 +1460,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Returns:
             Operation result.
+
         """
         return f"token-{self.data['name']}-{self.data['cluster']}"[:35]
 
@@ -1444,6 +1470,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Returns:
             Operation result.
+
         """
         secrets = self.__build_Secrets()
         deployfish_environment = {
@@ -1464,6 +1491,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Returns:
             Operation result.
+
         """
         loadBalancers = []  # noqa: N806
         if "target_groups" in self.data["load_balancer"]:
@@ -1511,6 +1539,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Args:
             data: data.
+
         """
         data["cluster"] = self.data["cluster"]
         data["serviceName"] = self.data["name"]
@@ -1573,6 +1602,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Returns:
             Operation result.
+
         """
         if self.load_secrets:
             # We only need secret values if we're explicitly showing them
@@ -1589,6 +1619,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Args:
             kwargs: kwargs.
+
         """
         kwargs["task_definition"] = self.get_task_definition()
 
@@ -1598,6 +1629,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Args:
             kwargs: kwargs.
+
         """
         if "application_scaling" in self.data:
             kwargs["appscaling"] = ScalableTarget.new(
@@ -1613,6 +1645,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Args:
             kwargs: kwargs.
+
         """
         if "service_discovery" in self.data:
             if self.data.get("network_mode", "bridge") == "awsvpc":
@@ -1632,6 +1665,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Args:
             kwargs: kwargs.
+
         """
         tags = {}
         tags["Environment"] = self.data.get("environment", "test")
@@ -1645,6 +1679,7 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
 
         Returns:
             Operation result.
+
         """
         data, kwargs = super().convert()
         self.__build_Service__data(data)

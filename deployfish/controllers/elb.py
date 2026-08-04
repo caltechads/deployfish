@@ -10,6 +10,7 @@ class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
     """
     Model ec2 classic load balancer behavior.
     """
+
     class Meta:
         label = "elbs"
         description = "Work with Classic Load Balancer objects"
@@ -52,7 +53,7 @@ class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
             (
                 ["--name"],
                 {
-                    "help": 'Filter by load balancer name, with globs. Ex: "foo*", "*foo"',
+                    "help": 'Filter by load balancer name, with globs. Ex: "foo*", "*foo"',  # noqa: E501
                     "action": "store",
                     "default": None,
                     "dest": "name",

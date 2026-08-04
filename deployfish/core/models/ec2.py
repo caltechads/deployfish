@@ -19,6 +19,7 @@ class VPCManager(Manager):
     """
     Model vpcmanager behavior.
     """
+
     #: Service.
     service = "ec2"
 
@@ -34,6 +35,7 @@ class VPCManager(Manager):
 
         Returns:
             Operation result.
+
         """
         instances = self.get_many([pk])
         if len(instances) > 1:
@@ -53,6 +55,7 @@ class VPCManager(Manager):
 
         Returns:
             Operation result.
+
         """
         ids = []
         names = []
@@ -74,7 +77,7 @@ class VPCManager(Manager):
                 vpcs.extend(response["Vpcs"])
         except botocore.exceptions.ClientError as e:
             if "InvalidVpcId.NotFound" in str(e):
-                raise VPC.DoesNotExist(str(e))
+                raise VPC.DoesNotExist(str(e)) from e
             raise
         return [VPC(data) for data in vpcs]
 
@@ -87,6 +90,7 @@ class VPCManager(Manager):
 
         Returns:
             Operation result.
+
         """
         paginator = self.client.get_paginator("describe_vpcs")
         response_iterator = paginator.paginate()
@@ -112,6 +116,7 @@ class SubnetManager(Manager):
     """
     Model subnet manager behavior.
     """
+
     #: Service.
     service = "ec2"
 
@@ -127,12 +132,13 @@ class SubnetManager(Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.describe_subnets(SubnetIds=[pk])
         except botocore.exceptions.ClientError as e:
             if "InvalidSubnetID.NotFound" in str(e):
-                raise Subnet.DoesNotExist(str(e))
+                raise Subnet.DoesNotExist(str(e)) from e
             raise
         return Subnet(response["Subnets"][0])
 
@@ -145,6 +151,7 @@ class SubnetManager(Manager):
 
         Returns:
             Operation result.
+
         """
         paginator = self.client.get_paginator("describe_subnets")
         kwargs = {}
@@ -165,6 +172,7 @@ class SubnetManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_tags(
             Filters=[{"Name": "resource-id", "Values": [pk]}]
@@ -176,6 +184,7 @@ class SecurityGroupManager(Manager):
     """
     Model security group manager behavior.
     """
+
     #: Service.
     service: str = "ec2"
 
@@ -191,13 +200,14 @@ class SecurityGroupManager(Manager):
 
         Returns:
             Operation result.
+
         """
         kwargs = {"GroupIds": [pk]} if pk.startswith("sg-") else {"GroupNames": [pk]}
         try:
             response = self.client.describe_security_groups(**kwargs)
         except botocore.exceptions.ClientError as e:
             if "InvalidGroup.NotFound" in str(e):
-                raise SecurityGroup.DoesNotExist(str(e))
+                raise SecurityGroup.DoesNotExist(str(e)) from e
             raise
         return SecurityGroup(response["SecurityGroups"][0])
 
@@ -210,6 +220,7 @@ class SecurityGroupManager(Manager):
 
         Returns:
             Operation result.
+
         """
         paginator = self.client.get_paginator("describe_security_groups")
         kwargs = {}
@@ -226,6 +237,7 @@ class AutoscalingGroupManager(Manager):
     """
     Model autoscaling group manager behavior.
     """
+
     #: Service.
     service = "autoscaling"
 
@@ -241,21 +253,22 @@ class AutoscalingGroupManager(Manager):
 
         Returns:
             Operation result.
+
         """
         try:
             response = self.client.describe_auto_scaling_groups(
                 AutoScalingGroupNames=[pk]
             )
         except botocore.exceptions.ClientError:
-            # FIXME: there are other ClientErrors.  This may say we have other
+            # TODO: there are other ClientErrors.  This may say we have other
             # issues than the group doesn't exist
             msg = f'No Autoscaling Group named "{pk}" exists in AWS'
-            raise AutoscalingGroup.DoesNotExist(msg)
+            raise AutoscalingGroup.DoesNotExist(msg) from None
         try:
             return AutoscalingGroup(response["AutoScalingGroups"][0])
         except IndexError:
             msg = f'No Autoscaling Group named "{pk}" exists in AWS'
-            raise AutoscalingGroup.DoesNotExist(msg)
+            raise AutoscalingGroup.DoesNotExist(msg) from None
 
     def list(self) -> list["AutoscalingGroup"]:
         """
@@ -263,11 +276,12 @@ class AutoscalingGroupManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.describe_auto_scaling_groups()
         return [AutoscalingGroup(group) for group in response["AutoScalingGroups"]]
 
-    def save(self, obj: Model, **kwargs) -> None:
+    def save(self, obj: Model, **kwargs) -> None:  # noqa: ARG002
         """
         Save.
 
@@ -276,6 +290,7 @@ class AutoscalingGroupManager(Manager):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         self.client.update_auto_scaling_group(**obj.render_for_update())
 
@@ -284,6 +299,7 @@ class InstanceManager(TagsManagerMixin, Manager):
     """
     Model instance manager behavior.
     """
+
     #: Service.
     service = "ec2"
 
@@ -300,10 +316,11 @@ class InstanceManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         instances = self.get_many([pk], vpc_id=vpc_id)
         if len(instances) > 1:
-            msg = "Got more than one instance when searching for pk={}, vpc_id={}: {}".format(
+            msg = "Got more than one instance when searching for pk={}, vpc_id={}: {}".format(  # noqa: E501
                 pk, vpc_id, ", ".join([instance.pk for instance in instances])
             )
             raise Instance.MultipleObjectsReturned(msg)
@@ -324,6 +341,7 @@ class InstanceManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         ec2_kwargs: dict[str, Any] = {}
         names = []
@@ -347,9 +365,9 @@ class InstanceManager(TagsManagerMixin, Manager):
                 for reservation in response["Reservations"]:
                     instances.extend(reservation["Instances"])
         except botocore.exceptions.ClientError as e:
-            # FIXME: we may get ClientError for other reasons than the instance
+            # TODO: we may get ClientError for other reasons than the instance
             # doesn't exist
-            raise Instance.DoesNotExist(str(e))
+            raise Instance.DoesNotExist(str(e)) from e
         return [Instance(instance) for instance in instances]
 
     def list(
@@ -372,6 +390,7 @@ class InstanceManager(TagsManagerMixin, Manager):
 
         Returns:
             Operation result.
+
         """
         ec2_kwargs: dict[str, Any] = {}
         if any([vpc_ids, image_ids, instance_types, subnet_ids, tags]):
@@ -414,7 +433,8 @@ class AutoscalingGroup(Model):
     """
     Model autoscaling group behavior.
     """
-    # FIXME: add SSHMixin, and enable sshing to this autoscaling group
+
+    # TODO: add SSHMixin, and enable sshing to this autoscaling group
 
     #: Objects.
     objects = AutoscalingGroupManager()
@@ -426,6 +446,7 @@ class AutoscalingGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["AutoScalingGroupName"]
 
@@ -436,6 +457,7 @@ class AutoscalingGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["AutoScalingGroupName"]
 
@@ -446,6 +468,7 @@ class AutoscalingGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data.get("AutoScalingGroupARN", None)
 
@@ -456,6 +479,7 @@ class AutoscalingGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self
 
@@ -466,6 +490,7 @@ class AutoscalingGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self.get_cached(
             "instances",
@@ -473,13 +498,14 @@ class AutoscalingGroup(Model):
             [instance["InstanceId"] for instance in self.data["Instances"]],
         )
 
-    def scale(self, count: int, force: bool = True) -> None:
+    def scale(self, count: int, force: bool = True) -> None:  # noqa: FBT001, FBT002
         """
         Scale.
 
         Args:
             count: count.
             force: force.
+
         """
         if self.objects.exists(self.pk):
             min_size = self.data["MinSize"]
@@ -495,7 +521,7 @@ class AutoscalingGroup(Model):
                     msg = 'AutoscalingGroup.scale(): count "{}" is less than MinSize.'
                     raise self.OperationFailed(msg)
                 if count > max_size:
-                    msg = 'AutoscalingGroup.scale(): count "{}" is greater than than MaxSize.'
+                    msg = 'AutoscalingGroup.scale(): count "{}" is greater than than MaxSize.'  # noqa: E501
                     raise self.OperationFailed(msg)
             self.data["MinSize"] = min_size
             self.data["MaxSize"] = max_size
@@ -511,6 +537,7 @@ class AutoscalingGroup(Model):
 
         Returns:
             Operation result.
+
         """
         data = {}
         data["AutoScalingGroupName"] = self.data["AutoScalingGroupName"]
@@ -525,6 +552,7 @@ class AutoscalingGroup(Model):
 
         Returns:
             Operation result.
+
         """
         return self.render_for_update()
 
@@ -535,7 +563,9 @@ class Instance(TagsMixin, SSHMixin, Model):
 
     Args:
         data: data.
+
     """
+
     #: Objects.
     objects = InstanceManager()
 
@@ -545,6 +575,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Args:
             data: data.
+
         """
         super().__init__(data)
         self.import_tags(data["Tags"])
@@ -560,6 +591,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["InstanceId"]
 
@@ -570,6 +602,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.tags.get("Name", "")
 
@@ -591,6 +624,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if self.data["PublicDnsName"] != "":
             return self.data["PublicDnsName"]
@@ -603,6 +637,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["PrivateDnsName"]
 
@@ -613,6 +648,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["PrivateIpAddress"]
 
@@ -627,6 +663,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "autoscaling_group" not in self.cache:
             try:
@@ -646,6 +683,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "subnet" not in self.cache:
             subnet_id = self.data["SubnetId"]
@@ -659,6 +697,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.subnet.vpc
 
@@ -673,6 +712,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self
 
@@ -683,6 +723,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return [self]
 
@@ -693,6 +734,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.vpc.bastion
 
@@ -703,6 +745,7 @@ class Instance(TagsMixin, SSHMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.vpc.provisioner
 
@@ -711,6 +754,7 @@ class VPC(TagsMixin, Model):
     """
     Model vpc behavior.
     """
+
     #: Objects.
     objects = VPCManager()
 
@@ -721,6 +765,7 @@ class VPC(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["VpcId"]
 
@@ -731,6 +776,7 @@ class VPC(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.tags["Name"]
 
@@ -748,6 +794,7 @@ class VPC(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["CidrBlock"]
 
@@ -758,6 +805,7 @@ class VPC(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         try:
             return self.get_cached(
@@ -774,6 +822,7 @@ class VPC(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         try:
             return self.get_cached(
@@ -791,6 +840,7 @@ class Subnet(TagsMixin, Model):
     """
     Model subnet behavior.
     """
+
     #: Objects.
     objects = SubnetManager()
 
@@ -805,6 +855,7 @@ class Subnet(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["SubnetId"]
 
@@ -815,6 +866,7 @@ class Subnet(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.tags["Name"]
 
@@ -836,6 +888,7 @@ class Subnet(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["CidrBlock"]
 
@@ -846,6 +899,7 @@ class Subnet(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["AvailableIpAddressCount"]
 
@@ -856,6 +910,7 @@ class Subnet(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "tags" not in self.cache:
             self.cache["tags"] = {}
@@ -874,6 +929,7 @@ class Subnet(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "vpc" not in self.cache:
             self.cache["vpc"] = VPC.objects.get(self.data["VpcId"])
@@ -884,6 +940,7 @@ class SecurityGroup(TagsMixin, Model):
     """
     Model security group behavior.
     """
+
     #: Objects.
     objects = SecurityGroupManager()
 
@@ -894,6 +951,7 @@ class SecurityGroup(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["GroupId"]
 
@@ -904,6 +962,7 @@ class SecurityGroup(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["GroupName"]
 
@@ -914,6 +973,7 @@ class SecurityGroup(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Description"]
 
@@ -931,6 +991,7 @@ class SecurityGroup(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "vpc" not in self.cache:
             self.cache["vpc"] = VPC.objects.get(self.data["VpcId"])
@@ -943,6 +1004,7 @@ class SecurityGroup(TagsMixin, Model):
 
         Returns:
             Operation result.
+
         """
         if "tags" not in self.cache:
             self.cache["tags"] = {}

@@ -20,6 +20,7 @@ class SupportsTags(SupportsModel, Protocol):
     """
     Model supports tags behavior.
     """
+
     #: Tags.
     _tags: dict[str, str]
 
@@ -36,6 +37,7 @@ class SupportsTags(SupportsModel, Protocol):
 
         Args:
             aws_tags: aws tags.
+
         """
         ...
 
@@ -49,12 +51,14 @@ class TagsManagerMixin:
     """
     Model tags manager mixin behavior.
     """
+
     def get_tags(self, obj: "Model") -> list[dict[str, str]]:
         """
         Get tags.
 
         Args:
             obj: obj.
+
         """
         raise NotImplementedError
 
@@ -64,6 +68,7 @@ class TagsManagerMixin:
 
         Args:
             obj: obj.
+
         """
         raise NotImplementedError
 
@@ -74,7 +79,9 @@ class TagsMixin:
 
     Args:
         *args: args.
+
     """
+
     #: Objects.
     objects: "Manager"
 
@@ -90,6 +97,7 @@ class TagsMixin:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         super().__init__(*args, **kwargs)
         #: Tags.
@@ -109,6 +117,7 @@ class TagsMixin:
 
         Returns:
             Operation result.
+
         """
         return self._tags
 
@@ -127,6 +136,7 @@ class TagsMixin:
 
         Args:
             aws_tags: aws tags.
+
         """
         for tag in aws_tags:
             if "Key" in tag:
@@ -149,11 +159,12 @@ class TagsMixin:
 
         Returns:
             Operation result.
+
         """
         data: list[dict[str, str]] = []
         # Loop through the tags in sorted order
         for key in sorted(self.tags):
-            data.append({"key": key, "value": self.tags[key]})
+            data.append({"key": key, "value": self.tags[key]})  # noqa: PERF401
         return data
 
 
@@ -161,6 +172,7 @@ class TaskDefinitionFARGATEMixin:
     """
     Model task definition fargatemixin behavior.
     """
+
     #: Data.
     data: dict[str, Any]
     #: Containers.
@@ -222,6 +234,7 @@ class TaskDefinitionFARGATEMixin:
 
         Returns:
             Operation result.
+
         """
         return "requiresCompatibilities" in self.data and self.data[
             "requiresCompatibilities"
@@ -283,7 +296,7 @@ class TaskDefinitionFARGATEMixin:
                 msg = "Task cpu must be an integer"
                 raise SchemaException(msg) from e
             if cpu not in self.VALID_FARGATE_CPU:
-                msg = "Task cpu of {}MB is not valid for FARGATE tasks.  Choose one of {}".format(
+                msg = "Task cpu of {}MB is not valid for FARGATE tasks.  Choose one of {}".format(  # noqa: E501
                     cpu, ", ".join([str(c) for c in self.VALID_FARGATE_CPU])
                 )
                 raise SchemaException(msg)
@@ -302,8 +315,10 @@ class TaskDefinitionFARGATEMixin:
         container 'cpu' settings, raise self.SchemaException.
 
         :param data dict(str, *): the TaskDefinition.data dict to modify
-        :param cpu_required int: the minimum amount of cpu required to run all containers, in MB
-        :param source dict(str, *): (optional) the data source for computing task memory.  If None, use self.data
+        :param cpu_required int: the minimum amount of cpu required to run all
+        containers, in MB
+        :param source dict(str, *): (optional) the data source for computing task
+        memory.  If None, use self.data
 
         :rtype: Union[int, None]
 
@@ -312,6 +327,7 @@ class TaskDefinitionFARGATEMixin:
 
         Returns:
             Operation result.
+
         """
         if not source:
             source = self.data
@@ -356,7 +372,7 @@ class TaskDefinitionFARGATEMixin:
         if cpu is not None:
             if cpu_required > cpu:
                 msg = (
-                    f"You set task cpu to {cpu} but your container cpu sums to {cpu_required}."
+                    f"You set task cpu to {cpu} but your container cpu sums to {cpu_required}."  # noqa: E501
                     "Task cpu must be greater than the sum of container cpu."
                 )
                 raise SchemaException(msg)
@@ -441,7 +457,7 @@ class TaskDefinitionFARGATEMixin:
                         break
             if memory is None:
                 cpu_index = self.VALID_FARGATE_CPU.index(cpu) + 1
-                # FIXME: find the lowest valid fargate CPU level that supports
+                # TODO: find the lowest valid fargate CPU level that supports
                 # the amount of memory we need
                 msg = "When using the FARGATE launch_type with task cpu={}, the maximum memory available is {}MB, but your containers need a minimum of {}MB. Set your task cpu to one of {}.".format(  # noqa:E501  # pylint:disable=line-too-long
                     cpu,
@@ -474,6 +490,7 @@ class TaskDefinitionFARGATEMixin:
 
         Returns:
             Operation result.
+
         """
         if not source:
             source = self.data
@@ -486,7 +503,7 @@ class TaskDefinitionFARGATEMixin:
                 raise SchemaException(msg) from e
         return memory
 
-    def set_task_memory(
+    def set_task_memory(  # noqa: D417
         self,
         data: dict[str, Any],
         container_data: list[dict[str, Any]],
@@ -521,8 +538,10 @@ class TaskDefinitionFARGATEMixin:
             memory = self._set_ec2_task_memory(source=source)
         if memory is not None:
             if memory_required > 0 and memory < memory_required:
-                msg = "Task memory is {}MB but your container memory sums to {}MB. Task memory must be greater than the sum of container memory.".format(  # noqa:E501  # pylint:disable=line-too-long
-                    memory, memory_required
+                msg = (
+                    f"Task memory is {memory}MB but your container memory sums to "
+                    f"{memory_required}MB. Task memory must be greater than the sum "
+                    f"of container memory."
                 )
                 raise SchemaException(msg)
             # We calculate memory as an int, but register_task_definition() wants a str
@@ -537,6 +556,7 @@ class TaskDefinitionFARGATEMixin:
         Args:
             data: data.
             source: source.
+
         """
         container_data = [c.data for c in self.containers]
         self.set_task_cpu(data, container_data, source=source)

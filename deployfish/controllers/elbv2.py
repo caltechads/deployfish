@@ -13,6 +13,7 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
     """
     Model ec2 load balancer behavior.
     """
+
     class Meta:
         label = "lbs"
         description = "Work with Load Balancer objects"
@@ -56,7 +57,7 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
             (
                 ["--name"],
                 {
-                    "help": 'Filter by load balancer name, with globs. Ex: "foo*", "*foo"',
+                    "help": 'Filter by load balancer name, with globs. Ex: "foo*", "*foo"',  # noqa: E501
                     "action": "store",
                     "default": None,
                     "dest": "name",
@@ -102,6 +103,7 @@ class EC2LoadBalancerListener(ReadOnlyCrudBase):
     """
     Model ec2 load balancer listener behavior.
     """
+
     class Meta:
         label = "listeners"
         description = "Work with Load Balancer Listener objects"
@@ -148,6 +150,7 @@ class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
     """
     Model ec2 load balancer target group behavior.
     """
+
     class Meta:
         label = "target-groups"
         description = "Work with Load Balancer Target Group objects"

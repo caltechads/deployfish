@@ -133,6 +133,7 @@ class AbstractSSHProvider:
 
         Keyword Args:
             verbose: verbose.
+
         """
         if instance is None:
             msg = f"{self.__class__.__name__}.instance must not be None"
@@ -224,6 +225,7 @@ class AbstractSSHProvider:
 
         Keyword Args:
             run: run.
+
         """
         raise NotImplementedError
 
@@ -314,6 +316,7 @@ class SSMSSHProvider(AbstractSSHProvider):
 
         Keyword Args:
             run: run.
+
         """
         if run:
             return f"cat > {filename};bash {filename};rm {filename}"
@@ -326,6 +329,7 @@ class BastionSSHProvider(AbstractSSHProvider):
 
     Args:
         instance: instance.
+
     """
 
     def __init__(self, instance: "Instance", *, verbose: bool = False) -> None:
@@ -337,6 +341,7 @@ class BastionSSHProvider(AbstractSSHProvider):
 
         Keyword Args:
             verbose: verbose.
+
         """
         super().__init__(instance, verbose=verbose)
         if self.instance.bastion is None:
@@ -353,6 +358,7 @@ class BastionSSHProvider(AbstractSSHProvider):
 
         Returns:
             Operation result.
+
         """
         flags = self.ssh_verbose_flag or "-q"
         if not command:
@@ -381,6 +387,7 @@ class BastionSSHProvider(AbstractSSHProvider):
 
         Returns:
             Operation result.
+
         """
         if not self.instance.bastion:
             msg = "No bastion host found"
@@ -401,6 +408,7 @@ class BastionSSHProvider(AbstractSSHProvider):
 
         Returns:
             Operation result.
+
         """
         return (
             "/usr/bin/docker exec -it "
@@ -420,6 +428,7 @@ class BastionSSHProvider(AbstractSSHProvider):
 
         Returns:
             Operation result.
+
         """
         if run:
             return f"cat > {filename};bash {filename};rm {filename}"
@@ -430,6 +439,7 @@ class SSHMixin(SupportsCache, SupportsModel):
     """
     Model sshmixin behavior.
     """
+
     #: SSH provider implementations keyed by configured proxy type.
     providers: dict[str, type[AbstractSSHProvider]] = {
         "ssm": SSMSSHProvider,
@@ -471,6 +481,7 @@ class SSHMixin(SupportsCache, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         if self.ssh_target:
             return [self.ssh_target]
@@ -486,6 +497,7 @@ class SSHMixin(SupportsCache, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.ssh_target
 
@@ -499,6 +511,7 @@ class SSHMixin(SupportsCache, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         return self.ssh_targets
 
@@ -511,6 +524,7 @@ class SSHMixin(SupportsCache, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         if hasattr(data, "file"):
             data = data.file
@@ -666,6 +680,7 @@ class SSHMixin(SupportsCache, SupportsModel):
 
         Returns:
             Operation result.
+
         """
         if ssh_target is None:
             ssh_target = self.ssh_target
@@ -690,7 +705,9 @@ class DockerMixin(SSHMixin, SupportsService):
 
     Args:
         *args: args.
+
     """
+
     class NoRunningTasks(Exception):
         pass
 
@@ -710,6 +727,7 @@ class DockerMixin(SSHMixin, SupportsService):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         super().__init__(*args, **kwargs)
 
@@ -768,7 +786,8 @@ class DockerMixin(SSHMixin, SupportsService):
             In order for ECS Exec to work, you'll need to configure your
             cluster, task role and the system on which you run deployfish as
             described here:
-            `<https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html>`_.
+            `<https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html>
+            `_.
 
         If ``task_arn`` is not provided, use the first task listed in the
         running tasks for the object.

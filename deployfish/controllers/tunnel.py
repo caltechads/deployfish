@@ -14,7 +14,7 @@ from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Contr
 from deployfish.types import SupportsTunnelModel
 
 
-def get_tunnel_target(obj: SupportsTunnelModel, choose: bool = False) -> Instance:
+def get_tunnel_target(obj: SupportsTunnelModel, choose: bool = False) -> Instance:  # noqa: FBT001, FBT002
     """
     Return an ``Instance`` object through which the user can make an ssh tunnel.
 
@@ -68,11 +68,13 @@ def get_tunnel_target(obj: SupportsTunnelModel, choose: bool = False) -> Instanc
 
 def get_tunnel() -> SSHTunnel | None:
     """
-    If we didn't get a specific tunnel to use, present the user with a list of all available tunnels,
+    If we didn't get a specific tunnel to use, present the user with a list of all
+    available tunnels,
     possibly limited by what ``obj`` has access to.
 
     Args:
-        obj: an object that has a .ssh_tunnels attribute which returns a dict of tunnels where
+        obj: an object that has a .ssh_tunnels attribute which returns a dict of tunnels
+        where
                 the key is tunnel name and the value is an SSHTunnel object
 
     Returns:
@@ -109,8 +111,8 @@ def get_tunnel() -> SSHTunnel | None:
 def establish_tunnel(
     tunnel: SSHTunnel,
     obj: SupportsTunnelModel,
-    choose: bool = False,
-    verbose: bool = False,
+    choose: bool = False,  # noqa: FBT001, FBT002
+    verbose: bool = False,  # noqa: FBT001, FBT002
 ) -> None:
     """
     Actually establish an SSH Tunnel.  This does not return until the user
@@ -137,7 +139,7 @@ def establish_tunnel(
         msg = "Couldn't find an instance to tunnel through."
         raise Instance.DoesNotExist(msg)
     click.secho(
-        f"\nEstablishing tunnel: {tunnel.host}:{tunnel.host_port} -> localhost:{tunnel.local_port}",
+        f"\nEstablishing tunnel: {tunnel.host}:{tunnel.host_port} -> localhost:{tunnel.local_port}",  # noqa: E501
         fg="yellow",
     )
     if obj.ssh_proxy_type == "bastion":
@@ -151,7 +153,7 @@ def establish_tunnel(
                 fg="cyan",
             )
         else:
-            msg = "Current SSH settings require a bastion host, but no bastion host exists in the VPC."
+            msg = "Current SSH settings require a bastion host, but no bastion host exists in the VPC."  # noqa: E501
             raise Instance.DoesNotExist(msg)
     click.secho(
         "{}: {} ({})\n".format(
@@ -168,6 +170,7 @@ class BaseTunnel(Controller):
     """
     Model base tunnel behavior.
     """
+
     class Meta:
         label = "base-tunnel"
         description = "Establish an ssh tunnel"
@@ -203,7 +206,7 @@ class BaseTunnel(Controller):
             (
                 ["--choose"],
                 {
-                    "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",
+                    "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",  # noqa: E501
                     "default": False,
                     "action": "store_true",
                     "dest": "choose",
@@ -213,7 +216,8 @@ class BaseTunnel(Controller):
     )
     def tunnel(self):
         """
-        Establish an SSH tunnel from our machine through an instance to a host:port in AWS.
+        Establish an SSH tunnel from our machine through an instance to a host:port in
+        AWS.
         """
         # We have to do this bit here to load the deployfish.config.Config
         # object so that SSHTunnelManager can get to it later.
@@ -238,6 +242,7 @@ class ObjectTunnelController(Controller):
     """
     Model object tunnel controller behavior.
     """
+
     class Meta:
         label = "tunnel-base"
 
@@ -263,7 +268,7 @@ class ObjectTunnelController(Controller):
             (
                 ["--choose"],
                 {
-                    "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",
+                    "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",  # noqa: E501
                     "default": False,
                     "action": "store_true",
                     "dest": "choose",
@@ -274,15 +279,16 @@ class ObjectTunnelController(Controller):
     @handle_model_exceptions
     def tunnel(self):
         """
-        Establish an SSH tunnel from our machine through an instance to a host:port in AWS.
+        Establish an SSH tunnel from our machine through an instance to a host:port in
+        AWS.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         try:
             tunnel = obj.ssh_tunnels[self.app.pargs.tunnel_name]
         except KeyError:
-            msg = f'{self.model.__name__}(pk="{obj.pk}") has no associated tunnel named "{self.app.pargs.tunnel_name}"'
-            raise SSHTunnel.DoesNotExist(msg)
+            msg = f'{self.model.__name__}(pk="{obj.pk}") has no associated tunnel named "{self.app.pargs.tunnel_name}"'  # noqa: E501
+            raise SSHTunnel.DoesNotExist(msg) from None
         establish_tunnel(
             tunnel, obj, choose=self.app.pargs.choose, verbose=self.app.pargs.verbose
         )
@@ -292,6 +298,7 @@ class Tunnels(ReadOnlyCrudBase):
     """
     Model tunnels behavior.
     """
+
     class Meta:
         label = "tunnels"
         description = "Work with SSH Tunnel objects"

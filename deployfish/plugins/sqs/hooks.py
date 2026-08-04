@@ -4,6 +4,7 @@ import getpass
 import logging
 import os
 import pwd
+from pathlib import Path
 
 import click
 from deployfish.core.models.ecs import Service
@@ -28,6 +29,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
         app: app.
         obj: obj.
         repo_folder: repo folder.
+
     """
 
     def __init__(self, app, obj, repo_folder):
@@ -39,6 +41,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
             app: app.
             obj: obj.
             repo_folder: repo folder.
+
         """
         #: App.
         self.app = app
@@ -47,7 +50,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
         #: Repo folder.
         self.repo_folder = repo_folder
         if repo_folder:
-            cwd = os.getcwd()
+            cwd = str(Path.cwd())
             os.chdir(repo_folder)
         super().__init__(url_type="markdown")
         #: Values.
@@ -65,6 +68,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return self.url_patterns["repo"]
 
@@ -74,6 +78,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return self.values.get("changelog", [])
 
@@ -83,6 +88,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return self.obj.tags["Environment"]
 
@@ -92,6 +98,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return self.values.get("authors", [])
 
@@ -101,6 +108,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         authors = self.get_authors()
         return ", ".join(authors)
@@ -111,6 +119,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return self.values.get("committer", "")
 
@@ -120,6 +129,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return self.values.get("deployer", "")
 
@@ -129,6 +139,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return self.values.get("version", "initial")
 
@@ -138,6 +149,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return self.values.get("name", "")
 
@@ -147,6 +159,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         name_env = self.obj.data["serviceName"]
         dash = name_env.rfind("-")
@@ -158,6 +171,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         return f"{self.get_service_name()} {self.get_version()}"
 
@@ -167,6 +181,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         local_tz = get_localzone()
         current_time = datetime.datetime.now(local_tz)
@@ -179,10 +194,9 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
         Returns:
             Operation result.
+
         """
         description = ""
-        # description += f"**Committer**: {self.get_committer()}\n"
-        # description += f"**Authors**: {self.get_author_string()}\n"
         description += f"**Deployer**: {self.get_deployer()}\n"
         description += "\n"
         description += "**Changelog**\n\n"
@@ -192,7 +206,7 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
         return description
 
 
-def process_service_update(app, obj, success=True, reason=None):
+def process_service_update(app, obj, success=True, reason=None):  # noqa: ARG001, FBT002
     """
     Process service update.
 
@@ -201,6 +215,7 @@ def process_service_update(app, obj, success=True, reason=None):
         obj: obj.
         success: success.
         reason: reason.
+
     """
     if not success:
         return
@@ -212,7 +227,7 @@ def process_service_update(app, obj, success=True, reason=None):
         app.print(click.style("No SQS queues defined in `/.deployfish.yml", fg="red"))
         return
     config_file = app.pargs.deployfish_filename
-    repo_folder = os.path.dirname(config_file)
+    repo_folder = str(Path(config_file).parent)
     annotator = Annotator(app, obj, repo_folder)
     message = {
         "service": annotator.get_repo_name(),

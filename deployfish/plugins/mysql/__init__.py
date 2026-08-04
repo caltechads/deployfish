@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from cement import App
 
@@ -15,8 +16,9 @@ def add_template_dir(app: App):
 
     Args:
         app: app.
+
     """
-    path = os.path.join(os.path.dirname(__file__), "templates")
+    path = os.path.join(str(Path(__file__), "templates").parent)  # noqa: PTH118
     app.add_template_dir(path)
 
 
@@ -26,6 +28,7 @@ def load(app: App) -> None:
 
     Args:
         app: app.
+
     """
     app.handler.register(MysqlController)
     app.hook.register("post_setup", add_template_dir)

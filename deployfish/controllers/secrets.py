@@ -16,6 +16,7 @@ class ObjectSecretsController(Controller):
     """
     Model object secrets controller behavior.
     """
+
     class Meta:
         label = "secrets-base"
 
@@ -40,7 +41,8 @@ class ObjectSecretsController(Controller):
             obj: an instance of ``self.model``
 
         Returns:
-            The contents of an ``.env`` file that reflects what is in AWS SSM Parameter Store.
+            The contents of an ``.env`` file that reflects what is in AWS SSM Parameter
+            Store.
 
         """
         # get the configuration for our object from deployfish.yml
@@ -63,12 +65,12 @@ class ObjectSecretsController(Controller):
         lines = []
         for secret in secrets:
             if secret.secret_name in env_vars:
-                lines.append(f"{env_vars[secret.secret_name]}={secret.value}")
+                lines.append(f"{env_vars[secret.secret_name]}={secret.value}")  # noqa: PERF401
         lines = sorted(lines)
         return "\n".join(lines)
 
     @ex(
-        help="Show all AWS SSM Parameter Store secrets for an object as they exist in AWS",
+        help="Show all AWS SSM Parameter Store secrets for an object as they exist in AWS",  # noqa: E501
         arguments=[(["pk"], {"help": "The primary key for the object in AWS"})],
     )
     @handle_model_exceptions
@@ -78,7 +80,7 @@ class ObjectSecretsController(Controller):
         """
         loader = self.loader(self)
         raw = loader.get_object_from_aws(self.app.pargs.pk)
-        assert hasattr(raw, "secrets_prefix"), (
+        assert hasattr(raw, "secrets_prefix"), (  # noqa: S101
             f'Models of type "{raw.__class__.__name__} do not have secrets.'
         )
         obj = cast("SupportsModelWithSecrets", raw)
@@ -86,7 +88,7 @@ class ObjectSecretsController(Controller):
         self.app.render({"obj": obj.secrets}, template=self.show_template)
 
     @ex(
-        help="Diff AWS SSM Parameter Store secrets vs those in deployfish.yml for an object.",
+        help="Diff AWS SSM Parameter Store secrets vs those in deployfish.yml for an object.",  # noqa: E501
         arguments=[(["pk"], {"help": "The primary key for the object in AWS"})],
     )
     @handle_model_exceptions
@@ -98,7 +100,7 @@ class ObjectSecretsController(Controller):
         """
         loader = self.loader(self)
         raw = loader.get_object_from_deployfish(self.app.pargs.pk)
-        assert hasattr(raw, "secrets_prefix"), (
+        assert hasattr(raw, "secrets_prefix"), (  # noqa: S101
             f'Models of type "{raw.__class__.__name__} do not have secrets.'
         )
         obj = cast("SupportsModelWithSecrets", raw)
@@ -110,7 +112,7 @@ class ObjectSecretsController(Controller):
         if not changes:
             self.app.print(
                 click.style(
-                    f'The AWS secrets for {self.model.__name__}("{obj.pk}") are up to date.\n',
+                    f'The AWS secrets for {self.model.__name__}("{obj.pk}") are up to date.\n',  # noqa: E501
                     fg="green",
                 )
             )
@@ -123,7 +125,7 @@ class ObjectSecretsController(Controller):
             (
                 ["--force"],
                 {
-                    "help": "Don't do a diff before writing the secrets, just write them.",
+                    "help": "Don't do a diff before writing the secrets, just write them.",  # noqa: E501
                     "action": "store_true",
                     "default": False,
                     "dest": "force",
@@ -138,7 +140,7 @@ class ObjectSecretsController(Controller):
         """
         loader = self.loader(self)
         raw = loader.get_object_from_deployfish(self.app.pargs.pk)
-        assert hasattr(raw, "secrets_prefix"), (
+        assert hasattr(raw, "secrets_prefix"), (  # noqa: S101
             f'Models of type "{raw.__class__.__name__} do not have secrets.'
         )
         obj = cast("SupportsModelWithSecrets", raw)
@@ -148,20 +150,20 @@ class ObjectSecretsController(Controller):
             if not changes:
                 self.app.print(
                     click.style(
-                        f'\nABORTED: The AWS secrets for {self.model.__name__}("{obj.pk}") are up to date.\n',
+                        f'\nABORTED: The AWS secrets for {self.model.__name__}("{obj.pk}") are up to date.\n',  # noqa: E501
                         fg="green",
                     )
                 )
                 return
             self.app.print(
                 click.style(
-                    f'\nChanges to be applied to secrets for {self.model.__name__}("{obj.pk}"):\n'
+                    f'\nChanges to be applied to secrets for {self.model.__name__}("{obj.pk}"):\n'  # noqa: E501
                 )
             )
             self.app.render({"obj": changes}, template=self.diff_template)
             self.app.print(
                 click.style(
-                    '\nIf you really want to do this, answer "yes" to the question below.\n'
+                    '\nIf you really want to do this, answer "yes" to the question below.\n'  # noqa: E501
                 )
             )
             p = shell.Prompt("Apply the above changes to AWS?")
@@ -169,7 +171,7 @@ class ObjectSecretsController(Controller):
             if value != "yes":
                 self.app.print(
                     click.style(
-                        f"\nABORTED: not updating secrets for {self.model.__name__}({obj.pk}).",
+                        f"\nABORTED: not updating secrets for {self.model.__name__}({obj.pk}).",  # noqa: E501
                         fg="green",
                     )
                 )
@@ -190,10 +192,11 @@ class ObjectSecretsController(Controller):
         Extract AWS SSM Parameter Store secrets for a object in AWS and print
         them to stdout in the proper format for use in a deployfish.yml "``env_file:``".
         We will specifically only export the secrets that in deployfish.yml have their
-        values defined as ``${env.VAR}`` interpolations, as these are what should go in your
+        values defined as ``${env.VAR}`` interpolations, as these are what should go in
+        your
         "``env_file``:".
         """
-        assert hasattr(self.model, "secrets_prefix"), (
+        assert hasattr(self.model, "secrets_prefix"), (  # noqa: S101
             f'Models of type "{self.model.__name__} do not have secrets.'
         )
         loader = self.loader(self)

@@ -13,6 +13,7 @@ class EventTargetManager(Manager):
     """
     Model event target manager behavior.
     """
+
     #: Service.
     service = "events"
 
@@ -28,6 +29,7 @@ class EventTargetManager(Manager):
 
         Returns:
             Operation result.
+
         """
         rule: EventScheduleRule | None = kwargs.get("rule")
         if not rule:
@@ -58,6 +60,7 @@ class EventTargetManager(Manager):
 
         Returns:
             Operation result.
+
         """
         response = self.client.list_targets_by_rule(Rule=rule.pk)
         return [EventTarget(target, rule=rule) for target in response["Targets"]]
@@ -71,6 +74,7 @@ class EventTargetManager(Manager):
 
         Keyword Args:
             _: .
+
         """
         obj = cast("EventTarget", obj)
         if obj.rule:
@@ -85,6 +89,7 @@ class EventTargetManager(Manager):
 
         Keyword Args:
             _: .
+
         """
         obj = cast("EventTarget", obj)
         if obj.rule:
@@ -95,6 +100,7 @@ class EventScheduleRuleManager(Manager):
     """
     Model event schedule rule manager behavior.
     """
+
     #: Service.
     service = "events"
 
@@ -110,6 +116,7 @@ class EventScheduleRuleManager(Manager):
 
         Returns:
             Operation result.
+
         """
         if not pk.startswith("deployfish-"):
             pk = "deployfish-" + pk
@@ -128,6 +135,7 @@ class EventScheduleRuleManager(Manager):
 
         Returns:
             Operation result.
+
         """
         paginator = self.client.get_paginator("list_rules")
         response_iterator = paginator.paginate(NamePrefix="deployfish-")
@@ -151,6 +159,7 @@ class EventScheduleRuleManager(Manager):
 
         Returns:
             Operation result.
+
         """
         obj = cast("EventScheduleRule", obj)
         if self.exists(obj.pk):
@@ -170,6 +179,7 @@ class EventScheduleRuleManager(Manager):
 
         Keyword Args:
             _: .
+
         """
         obj = cast("EventScheduleRule", obj)
         if self.exists(obj.pk):
@@ -217,6 +227,7 @@ class EventTarget(Model):
     Args:
         data: data.
         rule: rule.
+
     """
 
     #: Manager for EventBridge rule targets.
@@ -236,6 +247,7 @@ class EventTarget(Model):
 
         Returns:
             Operation result.
+
         """
         rule: EventScheduleRule | None = kwargs.get("rule")
         data, kwargs = cls.adapt(obj, source)
@@ -250,6 +262,7 @@ class EventTarget(Model):
         Args:
             data: data.
             rule: rule.
+
         """
         super().__init__(data)
         #: Schedule rule that owns this target, if assigned.
@@ -266,6 +279,7 @@ class EventTarget(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Id"]
 
@@ -276,6 +290,7 @@ class EventTarget(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Id"]
 
@@ -286,6 +301,7 @@ class EventTarget(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Arn"]
 
@@ -325,6 +341,7 @@ class EventTarget(Model):
 
         Args:
             arn: arn.
+
         """
         self.data["EcsParameters"]["TaskDefinitionArn"] = arn
 
@@ -335,6 +352,7 @@ class EventScheduleRule(Model):
 
     Args:
         data: data.
+
     """
 
     #: Manager for EventBridge schedule rules.
@@ -354,6 +372,7 @@ class EventScheduleRule(Model):
 
         Returns:
             Operation result.
+
         """
         rule = super().new(obj, source)
         rule = cast("EventScheduleRule", rule)
@@ -366,6 +385,7 @@ class EventScheduleRule(Model):
 
         Args:
             data: data.
+
         """
         super().__init__(data)
         #: Target ECS task configuration associated with this rule, if any.
@@ -382,6 +402,7 @@ class EventScheduleRule(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Name"]
 
@@ -392,6 +413,7 @@ class EventScheduleRule(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Name"]
 
@@ -402,6 +424,7 @@ class EventScheduleRule(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["Arn"]
 
@@ -415,6 +438,7 @@ class EventScheduleRule(Model):
 
         Returns:
             Operation result.
+
         """
         data = copy(self.data)
         data["Target"] = {}
@@ -435,6 +459,7 @@ class EventScheduleRule(Model):
 
         Returns:
             Operation result.
+
         """
         return self.data["State"] == "ENABLED"
 
@@ -448,6 +473,7 @@ class EventScheduleRule(Model):
 
         Args:
             arn: arn.
+
         """
         if self.target is None:
             msg = f'EventScheduleRule("{self.pk}") has no target configured'

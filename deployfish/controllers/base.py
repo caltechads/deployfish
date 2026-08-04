@@ -1,6 +1,7 @@
 import os
 import time
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import cast
 
 import click
@@ -36,6 +37,7 @@ def filename_envvar(s):
 
     Returns:
         Operation result.
+
     """
     if "DEPLOYFISH_CONFIG_FILE" in os.environ:
         return os.environ["DEPLOYFISH_CONFIG_FILE"]
@@ -52,18 +54,18 @@ def maybe_rename_existing_file(env_file: str, obj: SupportsModelWithSecrets) -> 
         obj: the object from deployfish.yml that uses ``env_file``
 
     """
-    if os.path.exists(env_file):
+    if Path(env_file).exists():
         new_filename = "{}.{}".format(
-            env_file, datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            env_file, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
         )
-        while os.path.exists(new_filename):
+        while Path(new_filename).exists():
             time.sleep(1)
             new_filename = "{}.{}".format(
-                env_file, datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+                env_file, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
             )
-        os.rename(env_file, new_filename)
+        Path(env_file).rename(new_filename)
         click.secho(
-            f'{obj.__class__.__name__}("{obj.name}"): renamed existing env_file to {new_filename}',
+            f'{obj.__class__.__name__}("{obj.name}"): renamed existing env_file to {new_filename}',  # noqa: E501
             fg="yellow",
         )
 
@@ -72,6 +74,7 @@ class Base(Controller):
     """
     Model base behavior.
     """
+
     class Meta:
         label = "base"
 
@@ -107,7 +110,7 @@ class Base(Controller):
                     "dest": "env_file",
                     "action": "store",
                     "default": None,
-                    "help": "Path to an environment file to use for ${env.VAR} replacements",
+                    "help": "Path to an environment file to use for ${env.VAR} replacements",  # noqa: E501
                 },
             ),
             (
@@ -125,7 +128,7 @@ class Base(Controller):
                     "dest": "ignore_missing_environment",
                     "action": "store_true",
                     "default": False,
-                    "help": "Don't stop processing deployfish.yml if we can't dereference an ${env.VAR}",
+                    "help": "Don't stop processing deployfish.yml if we can't dereference an ${env.VAR}",  # noqa: E501
                 },
             ),
         ]
@@ -139,6 +142,7 @@ class BaseService(ECSService):
     """
     Model base service behavior.
     """
+
     class Meta:
         label = "base-service"
         stacked_on = "base"
@@ -149,6 +153,7 @@ class BaseServiceSecrets(ECSServiceSecrets):
     """
     Model base service secrets behavior.
     """
+
     class Meta:
         label = "base-config"
         aliases = ["config"]
@@ -158,7 +163,8 @@ class BaseServiceSecrets(ECSServiceSecrets):
 
     def _write_env_file(self, env_file: str, name: str, model: type[Model]) -> None:
         """
-        Write the environment file to its appropriate place in the file system.  If that file already
+        Write the environment file to its appropriate place in the file system.  If that
+        file already
         exists, move it out of the way before writing a new one.
 
         Args:
@@ -171,16 +177,16 @@ class BaseServiceSecrets(ECSServiceSecrets):
         raw = loader.get_object_from_deployfish(
             name, model=model, factory_kwargs={"load_secrets": False}
         )
-        assert hasattr(raw, "secrets_prefix"), (
+        assert hasattr(raw, "secrets_prefix"), (  # noqa: S101
             f'Models of type "{raw.__class__.__name__} do not have secrets.'
         )
         obj = cast("SupportsModelWithSecrets", raw)
         maybe_rename_existing_file(env_file, obj)
         contents = self.export_environment_secrets(obj)
-        with open(env_file, "w", encoding="utf-8") as fd:
+        with open(env_file, "w", encoding="utf-8") as fd:  # noqa: PTH123
             fd.write(contents)
             click.secho(
-                f'{obj.__class__.__name__}("{obj.name}"): exported live secrets to env_file {env_file}',
+                f'{obj.__class__.__name__}("{obj.name}"): exported live secrets to env_file {env_file}',  # noqa: E501
                 fg="green",
             )
 
@@ -188,11 +194,13 @@ class BaseServiceSecrets(ECSServiceSecrets):
     @handle_model_exceptions
     def sync(self):
         """
-        For each standalone task and service, if the task/service has an "env_file:" defined,
-        export the ${{env.VAR}} related secrets to that "env_file:".  Save a backup copy of the
+        For each standalone task and service, if the task/service has an "env_file:"
+        defined,
+        export the ${{env.VAR}} related secrets to that "env_file:".  Save a backup copy
+        of the
         existing "env_file:".
         """
-        # Always ignore missing environment here -- the whole purpose of the command is to
+        # Always ignore missing environment here -- the whole purpose of the command is to  # noqa: E501
         # fix missing environment variables
         self.app.pargs.ignore_missing_environment = True
         config = self.app.raw_deployfish_config
@@ -216,6 +224,7 @@ class BaseServiceSSH(ECSServiceSSH):
     """
     Model base service ssh behavior.
     """
+
     class Meta:
         label = "base-ssh"
         stacked_on = "base"
@@ -225,6 +234,7 @@ class BaseServiceDockerExec(ECSServiceDockerExec):
     """
     Model base service docker exec behavior.
     """
+
     class Meta:
         label = "base-exec"
         stacked_on = "base"

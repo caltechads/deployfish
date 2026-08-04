@@ -11,6 +11,7 @@ class Adapter:
     Args:
         data: data.
         partial: partial.
+
     """
 
     #: None.
@@ -36,6 +37,7 @@ class Adapter:
 
         Keyword Args:
             _kwargs: kwargs.
+
         """
         #: Data.
         self.data: dict[str, Any] = data

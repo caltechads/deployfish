@@ -7,7 +7,9 @@ class AbstractWaiterHook:
 
     Args:
         obj: obj.
+
     """
+
     def __init__(self, obj):
         #: Obj.
         """
@@ -15,11 +17,12 @@ class AbstractWaiterHook:
 
         Args:
             obj: obj.
+
         """
         #: Obj.
         self.obj = obj
 
-    def mark(self, status, response, num_attempts, **kwargs):
+    def mark(self, status, response, num_attempts, **kwargs):  # noqa: ARG002
         """
         Mark.
 
@@ -30,12 +33,14 @@ class AbstractWaiterHook:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         click.secho("=" * 72, fg="yellow", bold=True)
 
     def setup(self, status, response, num_attempts, **kwargs):
         """
-        Do any necessary setup on the waiter iteration before we've done our per-state processing.   This will get
+        Do any necessary setup on the waiter iteration before we've done our per-state
+        processing.   This will get
         called once per iteration.
 
         Args:
@@ -45,6 +50,7 @@ class AbstractWaiterHook:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
 
     def waiting(self, status, response, num_attempts, **kwargs):
@@ -58,6 +64,7 @@ class AbstractWaiterHook:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
 
     def success(self, status, response, num_attempts, **kwargs):
@@ -71,6 +78,7 @@ class AbstractWaiterHook:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
 
     def failure(self, status, response, num_attempts, **kwargs):
@@ -84,6 +92,7 @@ class AbstractWaiterHook:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
 
     def error(self, status, response, num_attempts, **kwargs):
@@ -97,6 +106,7 @@ class AbstractWaiterHook:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
 
     def timeout(self, status, response, num_attempts, **kwargs):
@@ -110,11 +120,13 @@ class AbstractWaiterHook:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
 
     def cleanup(self, status, response, num_attempts, **kwargs):
         """
-        Do any necessary cleanup after the waiter iteration has completed and we've done our per-state processing.
+        Do any necessary cleanup after the waiter iteration has completed and we've done
+        our per-state processing.
         This will get called once per iteration.
 
         Args:
@@ -124,13 +136,16 @@ class AbstractWaiterHook:
 
         Keyword Args:
             kwargs: kwargs.
+
         """
 
-    def __call__(self, status, response, num_attempts, **kwargs):
+    def __call__(self, status, response, num_attempts, **kwargs):  # noqa: D417
         """
         Args:
-            * 'state': the current state of the waiter. One of 'waiting', 'success', 'failure', 'error' or 'timeout'.
-            * 'response': the boto3 response from the last invocation of our waiter's operation
+            * 'state': the current state of the waiter. One of 'waiting', 'success',
+            'failure', 'error' or 'timeout'.
+            * 'response': the boto3 response from the last invocation of our waiter's
+            operation
             * 'num_attempts': the current iteration number
 
         kwargs:
@@ -139,12 +154,15 @@ class AbstractWaiterHook:
             * 'config': the SingleWaiterConfig object passed to the constructor
             * 'WaiterConfig': (optional) not sure
             * 'Delay': (optional) the sleep amount in seconds
-            * 'MaxAttempts': (optional) how many iterations we'll perform before timing out
+            * 'MaxAttempts': (optional) how many iterations we'll perform before timing
+            out
 
-        Plus other waiter specific kwargs.  e.g. Bucket when doing a 'bucket_exists' waiter.
+        Plus other waiter specific kwargs.  e.g. Bucket when doing a 'bucket_exists'
+        waiter.
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         self.setup(status, response, num_attempts, **kwargs)
         if status == "waiting":

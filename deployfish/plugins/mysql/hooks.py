@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from deployfish.config import Config
 
 
-def pre_config_interpolate_add_mysql_section(app: App, obj: "type[Config]") -> None:
+def pre_config_interpolate_add_mysql_section(app: App, obj: "type[Config]") -> None:  # noqa: ARG001
     """
     Add our "mysql" section to the list of sections on which keyword interpolation
     will be run

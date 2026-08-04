@@ -5,6 +5,7 @@ class SSHConfigMixin:
     """
     Model sshconfig mixin behavior.
     """
+
     #: Data.
     data: dict[str, Any]
 
@@ -14,6 +15,7 @@ class SSHConfigMixin:
 
         Returns:
             Operation result.
+
         """
         data: dict[str, Any] = {}
         kwargs: dict[str, Any] = {}

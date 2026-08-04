@@ -22,7 +22,7 @@ def tail_task_logs(
     app: App,
     obj: Task,
     sleep: int = 10,
-    mark: bool = False,
+    mark: bool = False,  # noqa: FBT001, FBT002
     filter_pattern: str | None = None,
 ) -> None:
     """
@@ -42,7 +42,9 @@ def tail_task_logs(
         filter_pattern:  filter the log lines according to this pattern.
 
     Note:
-        See (CloudWatch Log Filter Patterns|https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html)_ for info on how to format the ``filter_pattern``.
+        See (CloudWatch Log Filter Patterns|https://docs.aws.amazon.com/AmazonCloudWatch
+        /latest/logs/FilterAndPatternSyntax.html)_ for info on how to format the
+        ``filter_pattern``.
 
     """
     lc = cast("TaskDefinition", obj.task_definition).logging
@@ -69,7 +71,7 @@ def tail_task_logs(
         if mark:
             app.print(
                 click.style(
-                    "==============================  mark  ===================================",
+                    "==============================  mark  ===================================",  # noqa: E501
                     fg="yellow",
                 )
             )
@@ -112,6 +114,7 @@ class Logs(Controller):
     """
     Model logs behavior.
     """
+
     class Meta:
         label = "logs"
         description = "Work with CloudWatch Logs"
@@ -123,6 +126,7 @@ class LogsCloudWatchLogGroup(ReadOnlyCrudBase):
     """
     Model logs cloud watch log group behavior.
     """
+
     class Meta:
         label = "awslog-groups"
         description = "Work with CloudWatch Log Group objects"
@@ -191,7 +195,7 @@ class LogsCloudWatchLogGroup(ReadOnlyCrudBase):
             (
                 ["--sleep"],
                 {
-                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",
+                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",  # noqa: E501
                     "type": int,
                     "default": 10,
                     "dest": "sleep",
@@ -248,7 +252,7 @@ Tail the logs for a CloudWatch Logs Log Group.
             if self.app.pargs.mark:
                 self.app.print(
                     click.style(
-                        "==============================  mark  ===================================",
+                        "==============================  mark  ===================================",  # noqa: E501
                         fg="yellow",
                     )
                 )
@@ -258,6 +262,7 @@ class LogsCloudWatchLogStream(ReadOnlyCrudBase):
     """
     Model logs cloud watch log stream behavior.
     """
+
     class Meta:
         label = "awslog-streams"
         description = "Work with CloudWatch Log Stream objects"
@@ -349,7 +354,7 @@ class LogsCloudWatchLogStream(ReadOnlyCrudBase):
             (
                 ["--sleep"],
                 {
-                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",
+                    "help": "Sleep for this many seconds between polling Cloudwatch Logs for new messages.",  # noqa: E501
                     "type": int,
                     "default": 10,
                     "dest": "sleep",
@@ -388,7 +393,7 @@ The pk for a log stream is "{log_group_name}:{log_stream_id}"
             if self.app.pargs.mark:
                 self.app.print(
                     click.style(
-                        "==============================  mark  ===================================",
+                        "==============================  mark  ===================================",  # noqa: E501
                         fg="yellow",
                     )
                 )

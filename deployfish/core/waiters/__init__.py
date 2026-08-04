@@ -35,6 +35,7 @@ def create_hooked_waiter_with_client(waiter_name, waiter_model, client):
 
     Returns:
         Operation result.
+
     """
     single_waiter_config = waiter_model.get_waiter(waiter_name)
     operation_name = xform_name(single_waiter_config.operation)
@@ -83,8 +84,10 @@ class HookedWaiter:
     Where:
 
     Args:
-        * 'state': the current state of the waiter. One of 'waiting', 'success', 'failure', 'error' or 'timeout'.
-        * 'response': the boto3 response from the last invocation of our waiter's operation
+        * 'state': the current state of the waiter. One of 'waiting', 'success',
+        'failure', 'error' or 'timeout'.
+        * 'response': the boto3 response from the last invocation of our waiter's
+        operation
         * 'num_attempts': the current iteration number
 
     kwargs:
@@ -116,6 +119,7 @@ class HookedWaiter:
             name: The name of the waiter
             config: The configuration for the waiter.
             operation_method: A callable that accepts **kwargs
+
         """
         #: Operation method.
         self._operation_method = operation_method
@@ -126,12 +130,13 @@ class HookedWaiter:
         #: Config.
         self.config = config
 
-    def wait(self, **kwargs):
+    def wait(self, **kwargs):  # noqa: PLR0912
         """
         Wait.
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         hook_kwargs = copy(kwargs)
         acceptors = list(self.config.acceptors)
@@ -196,7 +201,7 @@ class HookedWaiter:
                 logger.debug("Waiting complete, waiter matched the success state.")
                 return
             if current_state == "failure":
-                reason = f"Waiter encountered a terminal failure state: {acceptor.explanation}"
+                reason = f"Waiter encountered a terminal failure state: {acceptor.explanation}"  # noqa: E501
                 raise WaiterError(
                     name=self.name,
                     reason=reason,
@@ -212,7 +217,7 @@ class HookedWaiter:
                 if last_matched_acceptor is None:
                     reason = "Max attempts exceeded"
                 else:
-                    reason = f"Max attempts exceeded. Previously accepted state: {acceptor.explanation}"
+                    reason = f"Max attempts exceeded. Previously accepted state: {acceptor.explanation}"  # noqa: E501
                 raise WaiterError(
                     name=self.name,
                     reason=reason,

@@ -12,12 +12,13 @@ class ECSInvokedTask(ReadOnlyCrudBase):
     """
     Model ecsinvoked task behavior.
     """
+
     class Meta:
         label = "invoked-tasks"
         description = "Work with Load Balancer objects"
         help = "Work with Load Balancer objects"
         stacked_type = "nested"
-        usage = "Invoked tasks are tasks that either are currently running in ECS, or have run and are now stopped."
+        usage = "Invoked tasks are tasks that either are currently running in ECS, or have run and are now stopped."  # noqa: E501
 
     #: Model.
     model: type[Model] = InvokedTask

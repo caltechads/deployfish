@@ -21,6 +21,7 @@ class ReadOnlyCrudBase(Controller):
     """
     Model read only crud base behavior.
     """
+
     class Meta:
         label = "ro-crud-base"
 
@@ -70,7 +71,7 @@ class ReadOnlyCrudBase(Controller):
             obj = loader.get_object_from_aws(self.app.pargs.pk)
         except self.model.DoesNotExist:
             click.secho(
-                f'{self.model.__name__}(pk="{self.app.pargs.pk}") does not exist in AWS.',
+                f'{self.model.__name__}(pk="{self.app.pargs.pk}") does not exist in AWS.',  # noqa: E501
                 fg="red",
             )
         else:
@@ -97,11 +98,13 @@ class ReadOnlyCrudBase(Controller):
 
     def render_list(self, results: Sequence[Model]) -> None:
         """
-        Helper method that renders output from self.list() so that we can override .list() without
+        Helper method that renders output from self.list() so that we can override
+        .list() without
         having to re-implement this.
 
         Args:
             results: results.
+
         """
         renderer = TableRenderer(
             columns=self.list_result_columns, ordering=self.list_ordering
@@ -122,6 +125,7 @@ class CrudBase(ReadOnlyCrudBase):
     """
     Model crud base behavior.
     """
+
     class Meta:
         label = "crud-base"
 
@@ -178,6 +182,7 @@ class CrudBase(ReadOnlyCrudBase):
 
         Keyword Args:
             kwargs: kwargs.
+
         """
         waiter = self.model.objects.get_waiter(operation)
         waiter.wait(**kwargs)
@@ -193,8 +198,8 @@ class CrudBase(ReadOnlyCrudBase):
 
         Keyword Args:
             _: .
+
         """
-        pass
 
     @ex(
         help="Create an object in AWS",
@@ -252,8 +257,8 @@ class CrudBase(ReadOnlyCrudBase):
 
         Keyword Args:
             _: .
+
         """
-        pass
 
     @ex(
         help="Update an object in AWS",
@@ -306,8 +311,8 @@ class CrudBase(ReadOnlyCrudBase):
 
         Keyword Args:
             _: .
+
         """
-        pass
 
     @ex(
         help="Delete an object from AWS",
@@ -328,7 +333,7 @@ class CrudBase(ReadOnlyCrudBase):
         )
         self.app.render({"obj": obj}, template=self.delete_template)
         self.app.print(
-            f'\nIf you really want to do this, answer "{obj.name}" to the question below.\n'
+            f'\nIf you really want to do this, answer "{obj.name}" to the question below.\n'  # noqa: E501
         )
         p = shell.Prompt(f"What {self.model.__name__} do you want to delete? ")
         value = p.prompt()
@@ -339,7 +344,7 @@ class CrudBase(ReadOnlyCrudBase):
                 click.style(f"ABORTED: not deleting {self.model.__name__}({obj.pk}).")
             )
         try:
-            self.delete_waiter(obj)  # type: ignore
+            self.delete_waiter(obj)  # type: ignore[misc]
         except botocore.exceptions.WaiterError as e:
             for _ in self.app.hook.run(
                 "post_object_delete",

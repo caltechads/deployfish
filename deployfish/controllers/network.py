@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
-def get_ssh_target(app: App, obj: SupportsSSHModel, choose: bool = False) -> Instance:
+def get_ssh_target(app: App, obj: SupportsSSHModel, choose: bool = False) -> Instance:  # noqa: D417, FBT001, FBT002
     """
     Return an ``Instance`` object to which the user can ssh.
 
@@ -40,7 +40,7 @@ def get_ssh_target(app: App, obj: SupportsSSHModel, choose: bool = False) -> Ins
         An Instance object.
 
     """
-    assert hasattr(obj, "ssh_targets"), (
+    assert hasattr(obj, "ssh_targets"), (  # noqa: S101
         f"{obj.__class__.__name__} objects do not have the .ssh_targets attribute"
     )
     target = None
@@ -74,6 +74,7 @@ class ObjectSSHController(Controller):
     """
     Model object sshcontroller behavior.
     """
+
     class Meta:
         label = "ssh-base"
 
@@ -112,7 +113,7 @@ class ObjectSSHController(Controller):
             (
                 ["--choose"],
                 {
-                    "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",
+                    "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",  # noqa: E501
                     "default": False,
                     "action": "store_true",
                     "dest": "choose",
@@ -123,14 +124,16 @@ class ObjectSSHController(Controller):
     @handle_model_exceptions
     def ssh(self):
         """
-        SSH to a container machine running one of the tasks for an existing Service or Task in AWS.
+        SSH to a container machine running one of the tasks for an existing Service or
+        Task in AWS.
 
-        NOTE: this is only available if your Service or Task is of launch type EC2.  You cannot ssh
+        NOTE: this is only available if your Service or Task is of launch type EC2.  You
+        cannot ssh
         to the container machine of a FARGATE Service or task.
         """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        assert hasattr(obj, "ssh_target"), (
+        assert hasattr(obj, "ssh_target"), (  # noqa: S101
             f"Objects of type {obj.__class__.__name__} do not support SSH actions"
         )
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
@@ -156,7 +159,7 @@ class ObjectSSHController(Controller):
             (
                 ["--choose"],
                 {
-                    "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",
+                    "help": "Choose from all available targets for ssh, instead of having one chosen automatically.",  # noqa: E501
                     "default": False,
                     "action": "store_true",
                     "dest": "choose",
@@ -165,7 +168,7 @@ class ObjectSSHController(Controller):
             (
                 ["--all"],
                 {
-                    "help": "Run the shell command on all instances related to our object.",
+                    "help": "Run the shell command on all instances related to our object.",  # noqa: E501
                     "default": False,
                     "action": "store_true",
                     "dest": "all",
@@ -176,15 +179,17 @@ class ObjectSSHController(Controller):
     @handle_model_exceptions
     def run(self):
         """
-        SSH to a container machine running one of the tasks for an existing Service or Task in AWS.
+        SSH to a container machine running one of the tasks for an existing Service or
+        Task in AWS.
 
-        NOTE: this is only available if your Service or Task is of launch type EC2.  You cannot ssh
+        NOTE: this is only available if your Service or Task is of launch type EC2.  You
+        cannot ssh
         to the container machine of a FARGATE Service or task.
         """
         colors_cycle = cycle(self.COLORS)
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
-        assert hasattr(obj, "ssh_target"), (
+        assert hasattr(obj, "ssh_target"), (  # noqa: S101
             f"Objects of type {obj.__class__.__name__} do not support SSH actions"
         )
         command = " ".join(self.app.pargs.command)
@@ -204,7 +209,7 @@ class ObjectSSHController(Controller):
                     self.app.print(f"{click.style(target.name, fg=color)}: {line}")
             else:
                 for line in output.split("\n"):
-                    line = click.style(f"ERROR: {line}", fg="red")
+                    line = click.style(f"ERROR: {line}", fg="red")  # noqa: PLW2901
                     self.app.print(f"{click.style(target.name, fg=color)}: {line}")
 
 
@@ -212,6 +217,7 @@ class ObjectDockerExecController(Controller):
     """
     Model object docker exec controller behavior.
     """
+
     class Meta:
         label = "exec-base"
 
@@ -221,7 +227,7 @@ class ObjectDockerExecController(Controller):
     loader: type[ObjectLoader] = ObjectLoader
 
     def get_ssh_exec_target(
-        self, obj: SupportsService, choose: bool = False
+        self, obj: SupportsService, choose: bool = False  # noqa: FBT001, FBT002
     ) -> tuple[Instance | None, str | None]:
         """
         Return an (instance, container_name) tuple suitable for using to exec
@@ -240,7 +246,8 @@ class ObjectDockerExecController(Controller):
             obj: an instance of ``self.model``
 
         Keyword Arguments:
-            choose: if ``True``, prompt the user to choose one of the available instances
+            choose: if ``True``, prompt the user to choose one of the available
+            instances
 
         Returns:
             A 2-Tuple of an ``Instance`` object and container name.  This will
@@ -248,16 +255,16 @@ class ObjectDockerExecController(Controller):
             the object choose its instance and container later.
 
         """
-        assert hasattr(obj, "ssh_targets"), (
+        assert hasattr(obj, "ssh_targets"), (  # noqa: S101
             f"{obj.__class__.__name__} objects do not have the .ssh_targets attribute"
         )
-        assert hasattr(obj, "running_tasks"), (
+        assert hasattr(obj, "running_tasks"), (  # noqa: S101
             f"{obj.__class__.__name__} objects do not have the .running_tasks attribute"
         )
         target = None
         container_name = None
         if choose:
-            # Since we're calling get_ssh_exec_target, we can assume that every task has an underlying
+            # Since we're calling get_ssh_exec_target, we can assume that every task has an underlying  # noqa: E501
             # EC2 instance, even though Task.ssh_target can return None
             running_tasks = sorted(
                 obj.running_tasks,
@@ -304,14 +311,15 @@ class ObjectDockerExecController(Controller):
         return target, container_name
 
     def get_ecs_exec_target(
-        self, obj: SupportsService, choose: bool = False
+        self, obj: SupportsService, choose: bool = False  # noqa: FBT001, FBT002
     ) -> tuple[str | None, str | None]:
         """
         Return an (task_arn, container_name) tuple suitable for using to exec
         into a particular container on a particular instance.
 
         .. note::
-            This is for FARGATE tasks only.  For EC2 backed tasks, use ``self.get_ssh_exec_target()``.
+            This is for FARGATE tasks only.  For EC2 backed tasks, use
+            ``self.get_ssh_exec_target()``.
 
         If ``choose`` is ``False``, return (None, None).
 
@@ -323,7 +331,8 @@ class ObjectDockerExecController(Controller):
             obj: an instance of ``self.model``
 
         Keyword Arguments:
-            choose: if ``True``, prompt the user to choose one of the available instances
+            choose: if ``True``, prompt the user to choose one of the available
+            instances
 
         Returns:
             A 2-Tuple of an Task ARN and container name.  This will
@@ -331,7 +340,7 @@ class ObjectDockerExecController(Controller):
             the object choose its instance and container later.
 
         """
-        assert hasattr(obj, "running_tasks"), (
+        assert hasattr(obj, "running_tasks"), (  # noqa: S101
             f"{obj.__class__.__name__} objects do not have the .running_tasks attribute"
         )
         task_arn = None
@@ -382,7 +391,7 @@ class ObjectDockerExecController(Controller):
             (
                 ["--choose"],
                 {
-                    "help": 'Choose from all available targets for "docker exec", instead of having one '
+                    "help": 'Choose from all available targets for "docker exec", instead of having one '  # noqa: E501
                     "chosen automatically.",
                     "default": False,
                     "action": "store_true",

@@ -48,6 +48,7 @@ class ObjectLoader:
 
     Args:
         controller: controller.
+
     """
 
     class DeployfishSectionDoesNotExist(NoSuchConfigSection):
@@ -81,6 +82,7 @@ class ObjectLoader:
 
         Args:
             controller: controller.
+
         """
         #: Controller.
         self.controller = controller
@@ -94,6 +96,7 @@ class ObjectLoader:
 
         Returns:
             Operation result.
+
         """
         return identifier
 

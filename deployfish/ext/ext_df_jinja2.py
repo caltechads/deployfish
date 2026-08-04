@@ -81,9 +81,7 @@ def fromtimestamp(data: float, **_: Any) -> str:
         return datetime.fromtimestamp(data, UTC).strftime("%Y-%m-%d %H:%M:%S")
     except ValueError:
         # This is an AWS timestamp with microseconds
-        return datetime.fromtimestamp(data / 1000.0, UTC).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        return datetime.fromtimestamp(data / 1000.0, UTC).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def tabular(data: Sequence[Any], **kwargs: Any) -> str:
@@ -179,6 +177,7 @@ def lb_listener_table(data: Sequence[Any]) -> str:
     }
     renderer = LBListenerTableRenderer(columns)
     return renderer.render(data)
+
 
 class DeployfishJinja2OutputHandler(Jinja2OutputHandler):
     """
