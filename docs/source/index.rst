@@ -32,6 +32,22 @@ Deployfish
 
 .. toctree::
    :hidden:
+   :caption: Rebuild Architecture Specs
+
+   architecture/context
+   architecture/00-overview
+   architecture/01-configuration-model
+   architecture/02-ecs-cluster
+   architecture/03-ecs-service-lifecycle
+   architecture/04-standalone-tasks
+   architecture/05-secrets-management
+   architecture/06-remote-access
+   architecture/07-observability
+   architecture/08-supporting-infra
+   architecture/09-extensibility
+
+.. toctree::
+   :hidden:
    :caption: Reference
 
    api/main
