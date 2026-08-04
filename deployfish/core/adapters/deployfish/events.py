@@ -6,7 +6,16 @@ from ..abstract import Adapter
 
 
 class EventTargetAdapter(Adapter):
+    """
+    Model event target adapter behavior.
+    """
     def get_cluster_arn(self) -> str:
+        """
+        Get cluster arn.
+
+        Returns:
+            Operation result.
+        """
         try:
             cluster = Cluster.objects.get(self.data["cluster"])
         except Cluster.DoesNotExist as e:
@@ -16,6 +25,12 @@ class EventTargetAdapter(Adapter):
 
     def get_vpc_configuration(self) -> dict[str, Any]:
         # FIXME: use VpcConfigurationMixin for this
+        """
+        Get vpc configuration.
+
+        Returns:
+            Operation result.
+        """
         data: dict[str, Any] = {}
         source = self.data.get("vpc_configuration", None)
         if source:
@@ -29,6 +44,12 @@ class EventTargetAdapter(Adapter):
         return data
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data = {}
         data["Id"] = "deployfish-" + self.data["name"]
         data["Arn"] = self.get_cluster_arn()
@@ -50,7 +71,16 @@ class EventTargetAdapter(Adapter):
 
 
 class EventScheduleRuleAdapter(Adapter):
+    """
+    Model event schedule rule adapter behavior.
+    """
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data = {}
         data["Name"] = "deployfish-" + self.data["name"]
         data["ScheduleExpression"] = self.data["schedule"]

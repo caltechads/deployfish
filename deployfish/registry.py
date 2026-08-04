@@ -10,6 +10,11 @@ class AdapterRegistry:
     """
 
     def __init__(self) -> None:
+        #: Adapters.
+        """
+        Initialize AdapterRegistry.
+        """
+        #: Adapters.
         self.adapters: dict[str, dict[str, type[Adapter]]] = {}
 
     def register(
@@ -21,6 +26,11 @@ class AdapterRegistry:
         :param model_name: the name of a deployfish model
         :param source: the identifier for the config source
         :param adapter_class: the class of the source -> model adapter to use
+
+        Args:
+            model_name: the name of a deployfish model
+            source: the identifier for the config source
+            adapter_class: the class of the source -> model adapter to use
         """
         if model_name not in self.adapters:
             self.adapters[model_name] = {}
@@ -30,9 +40,18 @@ class AdapterRegistry:
         """
         Return the source -> model Adapter class to use for the source ``source`` and
         model ``model_name``.
+
+        Args:
+            model_name: model name.
+            source: source.
+
+        Returns:
+            Operation result.
         """
         return self.adapters[model_name][source]
 
 
+#: Importer registry.
 importer_registry: AdapterRegistry = AdapterRegistry()
+#: Click registry.
 click_registry: AdapterRegistry = AdapterRegistry()

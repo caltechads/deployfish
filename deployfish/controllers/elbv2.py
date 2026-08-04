@@ -10,21 +10,29 @@ from .utils import handle_model_exceptions
 
 
 class EC2LoadBalancer(ReadOnlyCrudBase):
+    """
+    Model ec2 load balancer behavior.
+    """
     class Meta:
         label = "lbs"
         description = "Work with Load Balancer objects"
         help = "Work with Load Balancer objects"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = LoadBalancer
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about an ALB or NLB from AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--loadbalancer.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Name": "name",
         "Type": "lb_type",
@@ -78,6 +86,9 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(
             vpc_id=self.app.pargs.vpc_id,
             lb_type=self.app.pargs.lb_type,
@@ -88,6 +99,9 @@ class EC2LoadBalancer(ReadOnlyCrudBase):
 
 
 class EC2LoadBalancerListener(ReadOnlyCrudBase):
+    """
+    Model ec2 load balancer listener behavior.
+    """
     class Meta:
         label = "listeners"
         description = "Work with Load Balancer Listener objects"
@@ -95,15 +109,20 @@ class EC2LoadBalancerListener(ReadOnlyCrudBase):
         stacked_on = "lbs"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = LoadBalancerListener
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about an Load Balancer Listener in AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--loadbalancerlistener.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Load Balancer"
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Load Balancer": "load_balancer__name",
         "Port": "Port",
@@ -118,11 +137,17 @@ class EC2LoadBalancerListener(ReadOnlyCrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(self.app.pargs.load_balancer)
         self.render_list(results)
 
 
 class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
+    """
+    Model ec2 load balancer target group behavior.
+    """
     class Meta:
         label = "target-groups"
         description = "Work with Load Balancer Target Group objects"
@@ -130,15 +155,20 @@ class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
         stacked_on = "lbs"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = TargetGroup
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about an Load Balancer Target Group in AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--targetgroup.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Name": "name",
         "Load Balancers": "load_balancers",
@@ -164,5 +194,8 @@ class EC2LoadBalancerTargetGroup(ReadOnlyCrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(load_balancer=self.app.pargs.load_balancer)
         self.render_list(results)

@@ -8,12 +8,12 @@ from botocore.exceptions import WaiterError
 from botocore.utils import get_service_module_name
 from botocore.waiter import NormalizedOperationMethod
 
+#: Logger.
 logger = logging.getLogger(__name__)
 
 
 def create_hooked_waiter_with_client(waiter_name, waiter_model, client):
     """
-
     :type waiter_name: str
     :param waiter_name: The name of the waiter.  The name should match
         the name (including the casing) of the key name in the waiter
@@ -28,6 +28,13 @@ def create_hooked_waiter_with_client(waiter_name, waiter_model, client):
     :rtype: botocore.waiter.Waiter
     :return: The waiter object.
 
+    Args:
+        waiter_name: The name of the waiter.  The name should match
+        waiter_model: The model for the waiter configuration.
+        client: The botocore client associated with the service.
+
+    Returns:
+        Operation result.
     """
     single_waiter_config = waiter_model.get_waiter(waiter_name)
     operation_name = xform_name(single_waiter_config.operation)
@@ -94,7 +101,6 @@ class HookedWaiter:
 
     def __init__(self, name, config, operation_method):
         """
-
         :type name: string
         :param name: The name of the waiter
 
@@ -106,14 +112,27 @@ class HookedWaiter:
             and returns a response.  For example, this can be
             a method from a botocore client.
 
+        Args:
+            name: The name of the waiter
+            config: The configuration for the waiter.
+            operation_method: A callable that accepts **kwargs
         """
+        #: Operation method.
         self._operation_method = operation_method
         # The two attributes are exposed to allow for introspection
         # and documentation.
+        #: Name.
         self.name = name
+        #: Config.
         self.config = config
 
     def wait(self, **kwargs):
+        """
+        Wait.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         hook_kwargs = copy(kwargs)
         acceptors = list(self.config.acceptors)
         current_state = "waiting"

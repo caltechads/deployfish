@@ -11,11 +11,29 @@ if TYPE_CHECKING:
 
 
 class EnvironmentConfigProcessor(AbstractConfigProcessor):
+    #: Environment re.
+    """
+    Model environment config processor behavior.
+
+    Args:
+        config: config.
+        context: context.
+    """
+    #: Environment re.
     ENVIRONMENT_RE = re.compile(r"\$\{env.(?P<key>[A-Za-z0-9-_]+)\}")
 
     def __init__(self, config: "Config", context: dict[str, Any]):
+        """
+        Initialize EnvironmentConfigProcessor.
+
+        Args:
+            config: config.
+            context: context.
+        """
         super().__init__(config, context)
+        #: Environ.
         self.environ: dict[str, str] = {}
+        #: Per item environ.
         self.per_item_environ: dict[str, Any] = {}
         if "env_file" in self.context:
             self.environ.update(self._load_env_file(self.context["env_file"]))
@@ -23,6 +41,15 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
             self.environ.update(os.environ)
 
     def _load_env_file(self, filename: str) -> dict[str, str]:
+        """
+        Handle load env file.
+
+        Args:
+            filename: filename.
+
+        Returns:
+            Operation result.
+        """
         if not filename:
             return {}
         if not os.path.exists(filename):
@@ -59,6 +86,13 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
         return environment
 
     def load_per_item_environment(self, section_name: str, item_name: str) -> None:
+        """
+        Load per item environment.
+
+        Args:
+            section_name: section name.
+            item_name: item name.
+        """
         if (
             section_name not in self.per_item_environ
             or item_name not in self.per_item_environ[section_name]
@@ -77,6 +111,16 @@ class EnvironmentConfigProcessor(AbstractConfigProcessor):
     def replace(
         self, obj: Any, key: str | int, value: Any, section_name: str, item_name: str
     ) -> None:
+        """
+        Replace.
+
+        Args:
+            obj: obj.
+            key: key.
+            value: value.
+            section_name: section name.
+            item_name: item name.
+        """
         self.load_per_item_environment(section_name, item_name)
         replacers = self.get_deployfish_replacements(section_name, item_name)
         # FIXME: need to deal with multiple matches in the same line

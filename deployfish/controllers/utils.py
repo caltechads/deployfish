@@ -25,6 +25,12 @@ def handle_model_exceptions(func: Callable) -> Callable:
 
     We use this decorator to wrap cement command methods on
     :py:class:`cement.ext.ext_argparse.ArgparseController` subclasses.
+
+    Args:
+        func: func.
+
+    Returns:
+        Operation result.
     """
 
     @wraps(func)

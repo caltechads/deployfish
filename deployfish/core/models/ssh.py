@@ -13,7 +13,22 @@ from .secrets import Secret
 
 
 class SSHTunnelManager(Manager):
+    """
+    Model sshtunnel manager behavior.
+    """
     def get(self, pk: str, **_) -> "SSHTunnel":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         config = get_config()
         section = config.get_section("tunnels")
         tunnels = {}
@@ -29,6 +44,16 @@ class SSHTunnelManager(Manager):
     def list(
         self, service_name: str | None = None, port: int | None = None
     ) -> Sequence["SSHTunnel"]:
+        """
+        List.
+
+        Args:
+            service_name: service name.
+            port: port.
+
+        Returns:
+            Operation result.
+        """
         config = get_config()
         section = config.get_section("tunnels")
         tunnels = [
@@ -63,7 +88,9 @@ class SSHTunnel(Model):
         }
     """
 
+    #: Objects.
     objects = SSHTunnelManager()
+    #: Config section.
     config_section = "tunnels"
 
     # ---------------------
@@ -72,14 +99,29 @@ class SSHTunnel(Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["name"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["name"]
 
     @property
     def arn(self) -> None:
+        """
+        Arn.
+        """
         return None
 
     # -----------------------------
@@ -88,9 +130,24 @@ class SSHTunnel(Model):
 
     @property
     def local_port(self) -> int:
+        """
+        Local port.
+
+        Returns:
+            Operation result.
+        """
         return self.data["local_port"]
 
     def secret(self, name: str) -> Secret:
+        """
+        Secret.
+
+        Args:
+            name: name.
+
+        Returns:
+            Operation result.
+        """
         if "secrets" not in self.cache:
             self.cache["secrets"] = {}
         if name not in self.cache["secrets"]:
@@ -106,6 +163,12 @@ class SSHTunnel(Model):
         Deployfish supports putting 'config.KEY' as the value for the host and port keys in self.data
 
         Parse the value and dereference it from the live secrets for the service if necessary.
+
+        Args:
+            key: key.
+
+        Returns:
+            Operation result.
         """
         if isinstance(self.data[key], str):
             if self.data[key].startswith("config."):
@@ -120,12 +183,24 @@ class SSHTunnel(Model):
 
     @property
     def host(self) -> str:
+        """
+        Host.
+
+        Returns:
+            Operation result.
+        """
         if "host" not in self.cache:
             self.cache["host"] = self.parse("host")
         return self.cache["host"]
 
     @property
     def host_port(self) -> int:
+        """
+        Host port.
+
+        Returns:
+            Operation result.
+        """
         if "host_port" not in self.cache:
             self.cache["host_port"] = self.parse("port")
         return self.cache["host_port"]
@@ -136,6 +211,12 @@ class SSHTunnel(Model):
 
     @property
     def service(self):
+        """
+        Service.
+
+        Returns:
+            Operation result.
+        """
         if "service" not in self.cache:
             # Doing this import here to hopefully avoid circular dependencies between this file and ./ecs.py
             try:
@@ -154,10 +235,22 @@ class SSHTunnel(Model):
 
     @service.setter
     def service(self, value):
+        """
+        Service.
+
+        Args:
+            value: value.
+        """
         self.cache["service"] = value
 
     @property
     def cluster(self):
+        """
+        Cluster.
+
+        Returns:
+            Operation result.
+        """
         return self.service.cluster
 
     # ---------------------
@@ -166,12 +259,30 @@ class SSHTunnel(Model):
 
     @property
     def ssh_target(self) -> Instance:
+        """
+        Ssh target.
+
+        Returns:
+            Operation result.
+        """
         return self.service.ssh_target
 
     @property
     def ssh_targets(self) -> Sequence[Instance]:
+        """
+        Ssh targets.
+
+        Returns:
+            Operation result.
+        """
         return self.service.ssh_targets
 
     @property
     def tunnel_target(self) -> Instance:
+        """
+        Tunnel target.
+
+        Returns:
+            Operation result.
+        """
         return self.service.tunnel_target

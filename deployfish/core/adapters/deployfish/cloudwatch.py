@@ -12,25 +12,44 @@ class ECSServiceCPUAlarmAdapter(Adapter):
     """
     .. code-block:: python
 
-        {
-            'cpu': '>=60',
-            'check_every_seconds': 60,
-            'periods': 5,
-            'cooldown': 60,
-            'scale_by': 1
-        }
+    Args:
+        data: data.
     """
 
     def __init__(self, data: dict[str, Any], **kwargs) -> None:
+        #: Cluster.
+        """
+        Initialize ECSServiceCPUAlarmAdapter.
+
+        Args:
+            data: data.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
+        #: Cluster.
         self.cluster = kwargs.pop("cluster", None)
+        #: Service.
         self.service = kwargs.pop("service", None)
         super().__init__(data, **kwargs)
 
     def get_AlarmName(self) -> str:
+        """
+        Get alarm name.
+
+        Returns:
+            Operation result.
+        """
         direction = "low" if "<" in self.data["cpu"] else "high"
         return f"{self.cluster}-{self.service}-{direction}"
 
     def get_AlarmDescription(self) -> str:
+        """
+        Get alarm description.
+
+        Returns:
+            Operation result.
+        """
         direction = "up" if ">" in self.data["cpu"] else "down"
         return "Scale {} ECS service {} in cluster {} if service Average CPU is {} for {} seconds".format(
             direction,
@@ -41,6 +60,12 @@ class ECSServiceCPUAlarmAdapter(Adapter):
         )
 
     def get_ComparisonOperator(self) -> str:
+        """
+        Get comparison operator.
+
+        Returns:
+            Operation result.
+        """
         operator = "=="
         if "<=" in self.data["cpu"]:
             operator = "LessThanOrEqualToThreshold"
@@ -53,9 +78,21 @@ class ECSServiceCPUAlarmAdapter(Adapter):
         return operator
 
     def get_Threshold(self) -> float:
+        """
+        Get threshold.
+
+        Returns:
+            Operation result.
+        """
         return float(re.sub("[<>=]*", "", self.data["cpu"]))
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data: dict[str, Any] = {}
         data["AlarmName"] = self.get_AlarmName()
         data["AlarmDescription"] = self.get_AlarmDescription()

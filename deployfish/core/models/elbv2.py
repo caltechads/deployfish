@@ -13,9 +13,25 @@ from .mixins import TagsMixin
 
 
 class LoadBalancerManager(Manager):
+    """
+    Model load balancer manager behavior.
+    """
+    #: Service.
     service = "elbv2"
 
     def get(self, pk: str, **_) -> "LoadBalancer":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         instances = self.get_many([pk])
         if len(instances) > 1:
             msg = f"Got more than one load balancer when searching for pk={pk}"
@@ -23,6 +39,18 @@ class LoadBalancerManager(Manager):
         return instances[0]
 
     def get_many(self, pks: list[str], **kwargs) -> Sequence["LoadBalancer"]:
+        """
+        Get many.
+
+        Args:
+            pks: pks.
+
+        Keyword Args:
+            kwargs: kwargs.
+
+        Returns:
+            Operation result.
+        """
         arns = []
         names = []
         kwargs = {}
@@ -52,6 +80,18 @@ class LoadBalancerManager(Manager):
         scheme: str = "any",
         name: str | None = None,
     ) -> Sequence["LoadBalancer"]:
+        """
+        List.
+
+        Args:
+            vpc_id: vpc id.
+            lb_type: lb type.
+            scheme: scheme.
+            name: name.
+
+        Returns:
+            Operation result.
+        """
         paginator = self.client.get_paginator("describe_load_balancers")
         response_iterator = paginator.paginate()
         lb_data = []
@@ -71,6 +111,15 @@ class LoadBalancerManager(Manager):
         return lbs
 
     def get_tags(self, arn: str) -> builtins.list[dict[str, str]]:
+        """
+        Get tags.
+
+        Args:
+            arn: arn.
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
@@ -79,9 +128,25 @@ class LoadBalancerManager(Manager):
 
 
 class LoadBalancerListenerManager(Manager):
+    """
+    Model load balancer listener manager behavior.
+    """
+    #: Service.
     service = "elbv2"
 
     def get(self, pk: str, **_) -> "LoadBalancerListener":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_listeners(ListenerArns=[pk])
         except self.client.exceptions.ListenerNotFoundException as e:
@@ -89,6 +154,15 @@ class LoadBalancerListenerManager(Manager):
         return LoadBalancerListener(response["Listeners"][0])
 
     def list(self, load_balancer: str) -> Sequence["LoadBalancerListener"]:
+        """
+        List.
+
+        Args:
+            load_balancer: load balancer.
+
+        Returns:
+            Operation result.
+        """
         paginator = self.client.get_paginator("describe_listeners")
         kwargs = {}
         if load_balancer:
@@ -107,6 +181,15 @@ class LoadBalancerListenerManager(Manager):
         return [LoadBalancerListener(listener) for listener in listeners]
 
     def get_tags(self, arn: str) -> builtins.list[dict[str, str]]:
+        """
+        Get tags.
+
+        Args:
+            arn: arn.
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
@@ -115,16 +198,48 @@ class LoadBalancerListenerManager(Manager):
 
 
 class LoadBalancerListenerRuleManager(Manager):
+    """
+    Model load balancer listener rule manager behavior.
+    """
+    #: Service.
     service = "elbv2"
 
     def __init__(self):
+        """
+        Initialize LoadBalancerListenerRuleManager.
+        """
         super().__init__()
+        #: Cache.
         self.cache: dict[str, dict[str, Any]] = {"load_balancers": {}}
 
     def get(self, pk: str, **_) -> "LoadBalancerListenerRule":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         return self.get_many([pk])[0]
 
     def get_many(self, pks: list[str], **_) -> Sequence["LoadBalancerListenerRule"]:
+        """
+        Get many.
+
+        Args:
+            pks: pks.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         paginator = self.client.get_paginator("describe_rules")
         response_iterator = paginator.paginate(RuleArns=pks)
         rules = []
@@ -135,6 +250,15 @@ class LoadBalancerListenerRuleManager(Manager):
     def __get_rules_for_load_balancer(
         self, load_balancer_pk: str
     ) -> Sequence["LoadBalancerListenerRule"]:
+        """
+        Handle get rules for load balancer.
+
+        Args:
+            load_balancer_pk: load balancer pk.
+
+        Returns:
+            Operation result.
+        """
         if load_balancer_pk not in self.cache["load_balancers"]:
             lb = LoadBalancer.objects.get(load_balancer_pk)
             listener_arns = [listener.arn for listener in lb.listeners]
@@ -147,6 +271,15 @@ class LoadBalancerListenerRuleManager(Manager):
     def __get_rules_for_target_group(
         self, target_group_arn: str
     ) -> Sequence["LoadBalancerListenerRule"]:
+        """
+        Handle get rules for target group.
+
+        Args:
+            target_group_arn: target group arn.
+
+        Returns:
+            Operation result.
+        """
         tg = TargetGroup.objects.get(target_group_arn)
         load_balancer_pk = tg.data["LoadBalancerArns"][0]
         rule_objects = self.__get_rules_for_load_balancer(load_balancer_pk)
@@ -166,6 +299,17 @@ class LoadBalancerListenerRuleManager(Manager):
         load_balancer_pk: str | None = None,
         target_group_arn: str | None = None,
     ) -> Sequence["LoadBalancerListenerRule"]:
+        """
+        List.
+
+        Args:
+            listener_arn: listener arn.
+            load_balancer_pk: load balancer pk.
+            target_group_arn: target group arn.
+
+        Returns:
+            Operation result.
+        """
         options = [listener_arn, load_balancer_pk, target_group_arn]
         if sum(x is not None for x in options) > 1:
             msg = (
@@ -193,6 +337,15 @@ class LoadBalancerListenerRuleManager(Manager):
         return rules
 
     def get_tags(self, arn: str) -> builtins.list[dict[str, str]]:
+        """
+        Get tags.
+
+        Args:
+            arn: arn.
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
@@ -201,12 +354,40 @@ class LoadBalancerListenerRuleManager(Manager):
 
 
 class TargetGroupManager(Manager):
+    """
+    Model target group manager behavior.
+    """
+    #: Service.
     service = "elbv2"
 
     def get(self, pk: str, **_) -> "TargetGroup":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         return self.get_many([pk])[0]
 
     def get_many(self, pks: list[str], **kwargs) -> Sequence["TargetGroup"]:
+        """
+        Get many.
+
+        Args:
+            pks: pks.
+
+        Keyword Args:
+            kwargs: kwargs.
+
+        Returns:
+            Operation result.
+        """
         kwargs = {}
         for pk in pks:
             if pk.startswith("arn:"):
@@ -230,6 +411,15 @@ class TargetGroupManager(Manager):
         return [TargetGroup(tg) for tg in tgs]
 
     def list(self, load_balancer: str | None = None) -> Sequence["TargetGroup"]:
+        """
+        List.
+
+        Args:
+            load_balancer: load balancer.
+
+        Returns:
+            Operation result.
+        """
         kwargs = {}
         if load_balancer:
             if not load_balancer.startswith("arn:"):
@@ -248,6 +438,15 @@ class TargetGroupManager(Manager):
         return [TargetGroup(tg) for tg in tgs]
 
     def get_tags(self, arn: str) -> builtins.list[dict[str, str]]:
+        """
+        Get tags.
+
+        Args:
+            arn: arn.
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_tags(ResourceArns=[arn])
         except self.client.exceptions.LoadBalancerNotFoundException as e:
@@ -256,9 +455,22 @@ class TargetGroupManager(Manager):
 
 
 class TargetGroupTargetManager(Manager):
+    """
+    Model target group target manager behavior.
+    """
+    #: Service.
     service = "elbv2"
 
     def list(self, target_group_arn: str) -> Sequence["TargetGroupTarget"]:
+        """
+        List.
+
+        Args:
+            target_group_arn: target group arn.
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_target_health(
                 TargetGroupArn=target_group_arn
@@ -281,6 +493,9 @@ class TargetGroupTargetManager(Manager):
 
 
 class LoadBalancer(TagsMixin, Model):
+    """
+    Model load balancer behavior.
+    """
     #: Manager for ELBv2 load balancer records.
     objects = LoadBalancerManager()
 
@@ -290,14 +505,32 @@ class LoadBalancer(TagsMixin, Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.arn
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["LoadBalancerName"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["LoadBalancerArn"]
 
     # ---------------------------------
@@ -306,6 +539,12 @@ class LoadBalancer(TagsMixin, Model):
 
     @property
     def lb_type(self) -> str:
+        """
+        Lb type.
+
+        Returns:
+            Operation result.
+        """
         alb_type = "Unknown"
         if self.data["Type"] == "application":
             alb_type = "ALB"
@@ -315,10 +554,22 @@ class LoadBalancer(TagsMixin, Model):
 
     @property
     def scheme(self) -> str:
+        """
+        Scheme.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Scheme"]
 
     @property
     def hostname(self) -> str:
+        """
+        Hostname.
+
+        Returns:
+            Operation result.
+        """
         return self.data["DNSName"]
 
     # ------------------------------
@@ -327,6 +578,12 @@ class LoadBalancer(TagsMixin, Model):
 
     @property
     def listeners(self) -> Sequence["LoadBalancerListener"]:
+        """
+        Listeners.
+
+        Returns:
+            Operation result.
+        """
         if "listeners" not in self.cache:
             self.cache["listeners"] = LoadBalancerListener.objects.list(
                 load_balancer=self.arn
@@ -335,6 +592,12 @@ class LoadBalancer(TagsMixin, Model):
 
     @property
     def target_groups(self) -> Sequence["TargetGroup"]:
+        """
+        Target groups.
+
+        Returns:
+            Operation result.
+        """
         if "target_groups" not in self.cache:
             self.cache["target_groups"] = TargetGroup.objects.list(
                 load_balancer=self.data["LoadBalancerArn"]
@@ -343,6 +606,9 @@ class LoadBalancer(TagsMixin, Model):
 
 
 class LoadBalancerListener(Model):
+    """
+    Model load balancer listener behavior.
+    """
     #: Manager for ELBv2 listener records.
     objects = LoadBalancerListenerManager()
 
@@ -352,14 +618,32 @@ class LoadBalancerListener(Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.arn
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return f"{self.port} ({self.protocol})"
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["ListenerArn"]
 
     # ----------------------------------------
@@ -368,18 +652,42 @@ class LoadBalancerListener(Model):
 
     @property
     def port(self) -> int:
+        """
+        Port.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Port"]
 
     @property
     def protocol(self) -> str:
+        """
+        Protocol.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Protocol"]
 
     @property
     def ssl_certificates(self) -> list[str]:
+        """
+        Ssl certificates.
+
+        Returns:
+            Operation result.
+        """
         return [c["CertificateArn"] for c in self.data.get("Certificates")]
 
     @property
     def ssl_policy(self) -> str:
+        """
+        Ssl policy.
+
+        Returns:
+            Operation result.
+        """
         return self.data["SslPolicy"]
 
     # ------------------------------
@@ -388,6 +696,12 @@ class LoadBalancerListener(Model):
 
     @property
     def load_balancer(self) -> LoadBalancer:
+        """
+        Load balancer.
+
+        Returns:
+            Operation result.
+        """
         if "load_balancer" not in self.cache:
             self.cache["load_balancer"] = LoadBalancer.objects.get(
                 self.data["LoadBalancerArn"]
@@ -396,6 +710,12 @@ class LoadBalancerListener(Model):
 
     @property
     def rules(self) -> Sequence["LoadBalancerListenerRule"]:
+        """
+        Rules.
+
+        Returns:
+            Operation result.
+        """
         if "rules" not in self.cache:
             self.cache["rules"] = LoadBalancerListenerRule.objects.list(
                 listener_arn=self.arn
@@ -404,10 +724,24 @@ class LoadBalancerListener(Model):
 
 
 class LoadBalancerListenerRule(Model):
+    """
+    Model load balancer listener rule behavior.
+
+    Args:
+        data: data.
+        listener_arn: listener arn.
+    """
     #: Manager for ELBv2 listener rule records.
     objects = LoadBalancerListenerRuleManager()
 
     def __init__(self, data: dict[str, Any], listener_arn: str | None = None) -> None:
+        """
+        Initialize LoadBalancerListenerRule.
+
+        Args:
+            data: data.
+            listener_arn: listener arn.
+        """
         super().__init__(data)
         #: Listener ARN used to recover parent listener when payload omits it.
         self.listener_arn: str | None = listener_arn
@@ -418,14 +752,32 @@ class LoadBalancerListenerRule(Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.arn
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.arn
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["RuleArn"]
 
     # ------------------------------
@@ -434,6 +786,12 @@ class LoadBalancerListenerRule(Model):
 
     @property
     def load_balancer(self) -> LoadBalancer:
+        """
+        Load balancer.
+
+        Returns:
+            Operation result.
+        """
         if "load_balancer" not in self.cache:
             self.cache["load_balancer"] = LoadBalancer.objects.get(
                 self.data["LoadBalancerArn"]
@@ -442,6 +800,12 @@ class LoadBalancerListenerRule(Model):
 
     @property
     def listener(self) -> LoadBalancerListener | None:
+        """
+        Listener.
+
+        Returns:
+            Operation result.
+        """
         if "listener" not in self.cache and self.listener_arn:
             self.cache["listener"] = LoadBalancerListener.objects.get(self.listener_arn)
         else:
@@ -459,6 +823,9 @@ class LoadBalancerListenerRule(Model):
 
             If one rule forwards to multiple services later, this lookup must
             become more precise.
+
+        Returns:
+            Operation result.
         """
         if "target_group" not in self.cache:
             target_group = None
@@ -470,6 +837,9 @@ class LoadBalancerListenerRule(Model):
 
 
 class TargetGroup(Model):
+    """
+    Model target group behavior.
+    """
     #: Manager for ELBv2 target group records.
     objects = TargetGroupManager()
 
@@ -479,14 +849,32 @@ class TargetGroup(Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.arn
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["TargetGroupName"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["TargetGroupArn"]
 
     # ----------------------------------------
@@ -495,10 +883,22 @@ class TargetGroup(Model):
 
     @property
     def port(self) -> int:
+        """
+        Port.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Port"]
 
     @property
     def protocol(self) -> str:
+        """
+        Protocol.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Protocol"]
 
     # ------------------------------
@@ -507,6 +907,12 @@ class TargetGroup(Model):
 
     @property
     def load_balancers(self) -> Sequence[LoadBalancer]:
+        """
+        Load balancers.
+
+        Returns:
+            Operation result.
+        """
         if "load_balancers" not in self.cache:
             self.cache["load_balancers"] = LoadBalancer.objects.get_many(
                 self.data["LoadBalancerArns"]
@@ -521,6 +927,9 @@ class TargetGroup(Model):
             The dumb thing here is that you can't ask the target group itself
             what listener rules it is attached to -- you have to start at the
             load balancer, list all the listener rules that
+
+        Returns:
+            Operation result.
         """
         if "listener_rules" not in self.cache:
             self.cache["listener_rules"] = LoadBalancerListenerRule.objects.list(
@@ -530,6 +939,12 @@ class TargetGroup(Model):
 
     @property
     def listeners(self) -> Sequence[LoadBalancerListener]:
+        """
+        Listeners.
+
+        Returns:
+            Operation result.
+        """
         if "listeners" not in self.cache:
             listeners = {}
             # First extract the listeners from any rules we have
@@ -551,10 +966,20 @@ class TargetGroup(Model):
 
     @property
     def targets(self) -> Sequence["TargetGroupTarget"]:
+        """
+        Targets.
+
+        Returns:
+            Operation result.
+        """
         return TargetGroupTarget.objects.list(self.arn)
 
 
 class TargetGroupTarget(Model):
+    """
+    Model target group target behavior.
+    """
+    #: Objects.
     objects = TargetGroupTargetManager()
 
     # ---------------------
@@ -563,14 +988,29 @@ class TargetGroupTarget(Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Id"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.pk
 
     @property
     def arn(self) -> None:
+        """
+        Arn.
+        """
         return None
 
     # ----------------------------------------
@@ -579,10 +1019,22 @@ class TargetGroupTarget(Model):
 
     @property
     def port(self) -> int:
+        """
+        Port.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Port"]
 
     @property
     def health(self) -> str:
+        """
+        Health.
+
+        Returns:
+            Operation result.
+        """
         return self.data["TargetHealth"]
 
     # ------------------------------
@@ -591,6 +1043,12 @@ class TargetGroupTarget(Model):
 
     @property
     def target(self) -> Instance:
+        """
+        Target.
+
+        Returns:
+            Operation result.
+        """
         if "target" not in self.cache:
             if self.data["Id"].startswith("i-"):
                 # this is an instance
@@ -605,6 +1063,12 @@ class TargetGroupTarget(Model):
 
     @property
     def target_group(self) -> TargetGroup:
+        """
+        Target group.
+
+        Returns:
+            Operation result.
+        """
         if "target_group" not in self.cache:
             self.cache["target_group"] = TargetGroup.objects.get(
                 self.data["TargetGroupArn"]

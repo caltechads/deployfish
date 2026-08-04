@@ -26,11 +26,24 @@ from .secrets import SecretsMixin
 
 
 class VpcConfigurationMixin:
+    """
+    Model vpc configuration mixin behavior.
+    """
+    #: Data.
     data: dict[str, Any]
 
     def get_vpc_configuration(
         self, source: dict[str, Any] | None = None
     ) -> dict[str, Any]:
+        """
+        Get vpc configuration.
+
+        Args:
+            source: source.
+
+        Returns:
+            Operation result.
+        """
         data: dict[str, Any] = {}
         if not source:
             source = self.data.get("vpc_configuration", None)
@@ -51,10 +64,19 @@ class VpcConfigurationMixin:
 
 
 class AbstractTaskAdapter(VpcConfigurationMixin, Adapter):
+    """
+    Model abstract task adapter behavior.
+    """
     def is_fargate(self, _: dict[str, Any]) -> bool:
         """
         Return ``True ``if this task definition is for FARGATE, ``False``
         otherwise.
+
+        Args:
+            _: .
+
+        Returns:
+            Operation result.
         """
         return bool(
             "requiresCompatibilities" in self.data
@@ -226,9 +248,21 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
         extra_environment: dict[str, Any] | None = None,
         partial: bool = False,
     ) -> None:
+        """
+        Initialize TaskDefinitionAdapter.
+
+        Args:
+            data: data.
+            secrets: secrets.
+            extra_environment: extra environment.
+            partial: partial.
+        """
         super().__init__(data)
+        #: Secrets.
         self.secrets = secrets or []
+        #: Extra environment.
         self.extra_environment = extra_environment or {}
+        #: Partial.
         self.partial = partial
 
     def get_volumes(self) -> list[dict[str, Any]]:
@@ -330,6 +364,9 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         :rtype: dict(str, Any), dict(str, Any)
+
+        Returns:
+            Operation result.
         """
         data: dict[str, Any] = {}
         self.set(data, "family")
@@ -405,9 +442,11 @@ class ContainerDefinitionAdapter(Adapter):
 
     """
 
+    #: Ports re.
     PORTS_RE = re.compile(
         r"(?P<hostPort>\d+)(:(?P<containerPort>\d+)(/(?P<protocol>udp|tcp))?)?"
     )
+    #: Mount re.
     MOUNT_RE = re.compile("[^A-Za-z0-9_-]")
 
     def __init__(  # noqa: PLR0913
@@ -419,17 +458,36 @@ class ContainerDefinitionAdapter(Adapter):
         partial: bool = False,  # noqa: FBT001, FBT002
         readonly_root_filesystem: bool | None = None,  # noqa: FBT001
     ) -> None:
+        """
+        Initialize ContainerDefinitionAdapter.
+
+        Args:
+            data: data.
+            task_definition_data: task definition data.
+            secrets: secrets.
+            extra_environment: extra environment.
+            partial: partial.
+            readonly_root_filesystem: readonly root filesystem.
+        """
         super().__init__(data)
+        #: Task definition data.
         self.task_definition_data = task_definition_data or {}
+        #: Secrets.
         self.secrets = secrets or []
+        #: Extra environment.
         self.extra_environment = extra_environment or {}
+        #: Partial.
         self.partial = partial
+        #: Readonly root filesystem.
         self.readonly_root_filesystem = readonly_root_filesystem
 
     @property
     def is_fargate(self) -> bool:
         """
         Return ``True`` if this container is part of a FARGATE task
+
+        Returns:
+            Operation result.
         """
         return "FARGATE" in self.task_definition_data.get("requiresCompatibilities", [])
 
@@ -438,6 +496,9 @@ class ContainerDefinitionAdapter(Adapter):
         Add parameter store values to the container's 'secrets' list. The task
         will fail if we try to do this and we don't have an execution role, so
         we don't pass the secrets if it doesn't have an execution role.
+
+        Returns:
+            Operation result.
         """
         return [{"name": s.name, "valueFrom": s.pk} for s in self.secrets]
 
@@ -631,6 +692,12 @@ class ContainerDefinitionAdapter(Adapter):
         return dockerLabels
 
     def get_ulimits(self) -> list[dict[str, Any]]:
+        """
+        Get ulimits.
+
+        Returns:
+            Operation result.
+        """
         ulimits = []
         for key, value in list(self.data["ulimits"].items()):
             if not isinstance(value, dict):
@@ -645,6 +712,12 @@ class ContainerDefinitionAdapter(Adapter):
         return ulimits
 
     def get_logConfiguration(self) -> dict[str, Any]:
+        """
+        Get log configuration.
+
+        Returns:
+            Operation result.
+        """
         logConfiguration: dict[str, Any] = {}
         if "logging" in self.data:
             if "driver" not in self.data["logging"]:
@@ -656,6 +729,12 @@ class ContainerDefinitionAdapter(Adapter):
         return logConfiguration
 
     def get_linuxParameters(self) -> dict[str, Any]:
+        """
+        Get linux parameters.
+
+        Returns:
+            Operation result.
+        """
         linux_parameters: dict[str, Any] = {}
 
         cap_add = self.data.get("cap_add")
@@ -680,6 +759,12 @@ class ContainerDefinitionAdapter(Adapter):
         return linux_parameters
 
     def get_extraHosts(self) -> list[dict[str, str]]:
+        """
+        Get extra hosts.
+
+        Returns:
+            Operation result.
+        """
         extraHosts: list[dict[str, str]] = []
         for host in self.data.get("extra_hosts", []):
             hostname, ip_address = host.split(":")
@@ -774,6 +859,12 @@ class ContainerDefinitionAdapter(Adapter):
         return memory
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data: dict[str, Any] = {}
         self.set(data, "name")
         self.set(data, "image")
@@ -840,9 +931,21 @@ class ContainerDefinitionAdapter(Adapter):
 
 
 class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
+    """
+    Model standalone task adapter behavior.
+    """
     def get_task_definition(
         self, secrets: list[Secret] | None = None
     ) -> TaskDefinition:
+        """
+        Get task definition.
+
+        Args:
+            secrets: secrets.
+
+        Returns:
+            Operation result.
+        """
         deployfish_environment = {
             "DEPLOYFISH_TASK_NAME": self.data["name"],
             "DEPLOYFISH_ENVIRONMENT": self.data.get("environment", "undefined"),
@@ -856,6 +959,12 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
         )
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data: dict[str, Any] = {}
         data["name"] = self.data["name"]
         if "family" not in self.data:
@@ -935,74 +1044,10 @@ class StandaloneTaskAdapter(SecretsMixin, AbstractTaskAdapter):
 class ServiceHelperTaskAdapter(AbstractTaskAdapter):
     """
     The problem here is that, unlike all our other adapters, we need to create
-    many objects out of this.
 
-    Helper tasks are defined in the `tasks` sub-section of the service.
-
-    * `tasks` is a list
-    * Each item in that list is comprised of
-      * A set of "command" overrides
-      * General settings that apply to each of those command overrides
-
-    .. note::
-
-        There's no way to remove a setting from the parent task definition:  you
-        can add or change existing settings.  If people need to do that, they
-        can use a standalone task.
-
-    deployfish.yml structure::
-
-            services:
-              - name: foobar
-                family: foobar
-                network_mode: host
-                task_role_arn: arn:aws:iam:23140983205498:role/task-role
-                containers:
-                  - name: foo
-                    image: foo:1.2.3
-                    cpu: 128
-                    memory: 256
-                    environment:
-                        - ENVVAR1=bar
-                        - ENVVAR2=baz
-                [...]
-
-                tasks:
-                    # General overrides/settings that apply to all sub-tasks of
-                    # this entry. There can be multiple entries if you need
-                    # separate sets of global settings
-                    - family: foobar-helper1
-                      network_mode: bridge
-                      task_role_arn: arn:aws:iam:23140983205498:role/task-role2
-                      launch_type: FARGATE
-                      schedule_role: arn:aws:...
-                      vpc_configuration:
-                        subnets:
-                          - subnet-1
-                          - subnet-2
-                        security_groups:
-                          - sg-1
-                          - sg-2
-                        public_ip: true
-                      containers:
-                        - name: foo
-                          cpu: 256
-                          memory: 512
-                          logging:
-                              driver: awslogs
-                      commands:
-                        - name: migrate
-                          containers:
-                            - name: foo
-                              command: manage.py migrate
-                        - name: update_index
-                          schedule: cron(5 * * * ? *)
-                          containers:
-                            - name: foo
-                              command: manage.py update_index
-                          command: manage.py update_index
-
-
+    Args:
+        data: data.
+        service: service.
     """
 
     def __init__(self, data: dict[str, Any], service: Service):
@@ -1013,7 +1058,9 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
                 which we are building helper tasks
 
         """
+        #: Data.
         self.data = data
+        #: Service.
         self.service = service
 
     def _set(
@@ -1039,6 +1086,13 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
             different args.
 
         If ``source`` is ``None``, we set ``source`` to `self.service.data`.
+
+        Args:
+            data: data.
+            task: task.
+            yml_key: yml key.
+            data_key: data key.
+            source: source.
         """
         if not source:
             source = self.service.data
@@ -1118,6 +1172,10 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         * Remove DEPLOYFISH_SERVICE_NAME
         * Add DEPLOYFISH_TASK_NAME
         * Update DEPLOYFISH_ENVIRONMENT and DEPLOYFISH_CLUSTER_NAME as necessary
+
+        Args:
+            task_definition: task definition.
+            extra_environment: extra environment.
         """
         for container in task_definition.containers:
             environment = []
@@ -1222,6 +1280,8 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
                       - name: foobar
                         command: ./manage.py update_index
 
+        Args:
+            task_data: task data.
         """
         if "containers" in task_data:
             for container_data in task_data["containers"]:
@@ -1318,6 +1378,12 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
         return data, kwargs
 
     def convert(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data_list = []
         kwargs_list = []
         service_td = self.service.task_definition.copy()
@@ -1343,44 +1409,42 @@ class ServiceHelperTaskAdapter(AbstractTaskAdapter):
 class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapter):
     """
     * Service itself             [x]
-    * Task definition            [x]
-    * Autoscaling Group          [x]
-    * Application Autoscaling    [x]
-    * Service Discovery          [x]
-    * ECS Exec                   [x]
 
-    Helper Tasks
-    ------------
-
-    Helper tasks are overlays for the service's task definition.  Each task
-    listed under the `tasks` section of the service consists of general
-    overrides, and then a set of specific command overrides, possibly with
-    schedules.
-
-    .. code-block:: yaml
-
-        services:
-            - name: foobar-prod
-              ...
-
-              tasks:
-                  # general overrides
-                - network_mode: bridge
-                  task_role_arn: new task role
-                  containers:
-
-
-
+    Args:
+        data: data.
     """
 
     def __init__(self, data: dict[str, Any], **kwargs):
+        #: Load secrets.
+        """
+        Initialize ServiceAdapter.
+
+        Args:
+            data: data.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
+        #: Load secrets.
         self.load_secrets: bool = kwargs.pop("load_secrets", True)
         super().__init__(data, **kwargs)
 
     def get_clientToken(self) -> str:  # noqa: N802
+        """
+        Get client token.
+
+        Returns:
+            Operation result.
+        """
         return f"token-{self.data['name']}-{self.data['cluster']}"[:35]
 
     def get_task_definition(self) -> TaskDefinition:
+        """
+        Get task definition.
+
+        Returns:
+            Operation result.
+        """
         secrets = self.__build_Secrets()
         deployfish_environment = {
             "DEPLOYFISH_SERVICE_NAME": self.data["name"],
@@ -1395,6 +1459,12 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         )
 
     def get_loadBalancers(self) -> list[dict[str, Any]]:  # noqa: N802
+        """
+        Get load balancers.
+
+        Returns:
+            Operation result.
+        """
         loadBalancers = []  # noqa: N806
         if "target_groups" in self.data["load_balancer"]:
             # If we want the service to register itself with multiple target
@@ -1438,6 +1508,9 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         needs.
 
         :rtype: dict(str, *)
+
+        Args:
+            data: data.
         """
         data["cluster"] = self.data["cluster"]
         data["serviceName"] = self.data["name"]
@@ -1497,6 +1570,9 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         config: section.
 
         :rtype: list(Union[Secret, ExternalSecret])
+
+        Returns:
+            Operation result.
         """
         if self.load_secrets:
             # We only need secret values if we're explicitly showing them
@@ -1508,9 +1584,21 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         return secrets
 
     def __build_TaskDefinition(self, kwargs: dict[str, Any]) -> None:  # noqa: N802
+        """
+        Handle build task definition.
+
+        Args:
+            kwargs: kwargs.
+        """
         kwargs["task_definition"] = self.get_task_definition()
 
     def __build_application_scaling_objects(self, kwargs: dict[str, Any]) -> None:
+        """
+        Handle build application scaling objects.
+
+        Args:
+            kwargs: kwargs.
+        """
         if "application_scaling" in self.data:
             kwargs["appscaling"] = ScalableTarget.new(
                 self.data["application_scaling"],
@@ -1520,6 +1608,12 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
             )
 
     def __build_ServiceDiscoveryService(self, kwargs: dict[str, Any]) -> None:  # noqa: N802
+        """
+        Handle build service discovery service.
+
+        Args:
+            kwargs: kwargs.
+        """
         if "service_discovery" in self.data:
             if self.data.get("network_mode", "bridge") == "awsvpc":
                 kwargs["service_discovery"] = ServiceDiscoveryService.new(
@@ -1533,6 +1627,12 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
                 raise self.SchemaException(msg)
 
     def __build_tags(self, kwargs: dict[str, Any]) -> None:
+        """
+        Handle build tags.
+
+        Args:
+            kwargs: kwargs.
+        """
         tags = {}
         tags["Environment"] = self.data.get("environment", "test")
         kwargs["tags"] = tags
@@ -1542,6 +1642,9 @@ class ServiceAdapter(SSHConfigMixin, SecretsMixin, VpcConfigurationMixin, Adapte
         .. note::
 
             ServiceHelperTasks are constructed in Service.new(), because
+
+        Returns:
+            Operation result.
         """
         data, kwargs = super().convert()
         self.__build_Service__data(data)

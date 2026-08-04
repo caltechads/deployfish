@@ -11,9 +11,25 @@ from .mixins import TagsManagerMixin, TagsMixin
 
 
 class EFSFileSystemManager(TagsManagerMixin, Manager):
+    """
+    Model efsfile system manager behavior.
+    """
+    #: Service.
     service: str = "efs"
 
     def get(self, pk: str, **_) -> "EFSFileSystem":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_file_systems(FileSystemId=pk)
         except botocore.exceptions.ClientError:
@@ -24,6 +40,12 @@ class EFSFileSystemManager(TagsManagerMixin, Manager):
         return EFSFileSystem(response["FileSystems"][0])
 
     def list(self) -> Sequence["EFSFileSystem"]:
+        """
+        List.
+
+        Returns:
+            Operation result.
+        """
         response = self.client.describe_file_systems()
         return [EFSFileSystem(group) for group in response["FileSystems"]]
 
@@ -34,24 +56,58 @@ class EFSFileSystemManager(TagsManagerMixin, Manager):
 
 
 class EFSFileSystem(TagsMixin, Model):
+    """
+    Model efsfile system behavior.
+    """
+    #: Objects.
     objects = EFSFileSystemManager()
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["FileSystemId"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Name"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["FileSystemArn"]
 
     @property
     def size(self) -> int:
+        """
+        Size.
+
+        Returns:
+            Operation result.
+        """
         return self.data["SizeInBytes"]["Value"]
 
     @property
     def state(self) -> str:
+        """
+        State.
+
+        Returns:
+            Operation result.
+        """
         return self.data["LifeCycleState"]

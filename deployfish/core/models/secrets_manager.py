@@ -16,9 +16,22 @@ class SMSecretManager(TagsManagerMixin, Manager):
     manages SSM Parameter Store secrets, not Secrets Manager secrets.
     """
 
+    #: Service.
     service: str = "secretsmanager"
 
     def get(self, pk: str, **_) -> "SMSecret":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_secret(SecretId=pk)
         except self.client.exceptions.ResourceNotFoundException:
@@ -27,6 +40,15 @@ class SMSecretManager(TagsManagerMixin, Manager):
         return SMSecret(response)
 
     def get_value(self, pk: str) -> str:
+        """
+        Get value.
+
+        Args:
+            pk: pk.
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.get_secret_value(SecretId=pk)
         except self.client.exceptions.ResourceNotFoundException:
@@ -43,6 +65,12 @@ class SMSecretManager(TagsManagerMixin, Manager):
         return response["SecretString"]
 
     def list(self) -> Sequence["SMSecret"]:
+        """
+        List.
+
+        Returns:
+            Operation result.
+        """
         secrets: list[SMSecret] = []
         paginator = self.client.get_paginator("list_secrets")
         for page in paginator.paginate():
@@ -56,38 +84,90 @@ class SMSecretManager(TagsManagerMixin, Manager):
 
 
 class SMSecret(TagsMixin, Model):
+    """
+    Model smsecret behavior.
+    """
+    #: Objects.
     objects = SMSecretManager()
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["ANR"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Name"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["ARN"]
 
     @property
     def kms_key_id(self) -> str:
+        """
+        Kms key id.
+
+        Returns:
+            Operation result.
+        """
         return self.data["KmsKeyId"]
 
     @property
     def description(self) -> str | None:
+        """
+        Description.
+
+        Returns:
+            Operation result.
+        """
         return self.data.get("Description", None)
 
     @property
     def rotation_enabled(self) -> bool:
+        """
+        Rotation enabled.
+
+        Returns:
+            Operation result.
+        """
         return self.data["RotationEnabled"]
 
     @property
     def last_rotated(self) -> bool:
+        """
+        Last rotated.
+
+        Returns:
+            Operation result.
+        """
         return self.data["LastRotationDate"]
 
     @property
     def value(self) -> str:
+        """
+        Value.
+
+        Returns:
+            Operation result.
+        """
         if "value" not in self.cache:
             self.cache["value"] = self.objects.get_value(self.arn)
         return self.cache["value"]

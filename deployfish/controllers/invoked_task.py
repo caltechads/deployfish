@@ -9,6 +9,9 @@ from .utils import handle_model_exceptions
 
 
 class ECSInvokedTask(ReadOnlyCrudBase):
+    """
+    Model ecsinvoked task behavior.
+    """
     class Meta:
         label = "invoked-tasks"
         description = "Work with Load Balancer objects"
@@ -16,15 +19,20 @@ class ECSInvokedTask(ReadOnlyCrudBase):
         stacked_type = "nested"
         usage = "Invoked tasks are tasks that either are currently running in ECS, or have run and are now stopped."
 
+    #: Model.
     model: type[Model] = InvokedTask
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about an InvokedTask in AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--invokedtask.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Family"
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Family": "taskDefinition__family_revision",
         "Status": "lastStatus",
@@ -77,6 +85,9 @@ class ECSInvokedTask(ReadOnlyCrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(
             self.app.pargs.cluster,
             service=self.app.pargs.service,

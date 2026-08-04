@@ -1,6 +1,7 @@
 from cement.ext.ext_argparse import ArgparseController
 from cement.utils.misc import minimal_logger
 
+#: Log.
 LOG = minimal_logger(__name__)
 
 
@@ -53,6 +54,12 @@ class DeployfishArgparseController(ArgparseController):
             sub-commands:
             {info}
                 info      My subclass info help
+
+        Args:
+            command: command.
+
+        Returns:
+            Operation result.
         """
         kwargs = super()._get_command_parser_options(command)
         if "help" in kwargs:

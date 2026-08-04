@@ -37,44 +37,93 @@ class OperationFailed(Exception):
 class NoSuchConfigSection(Exception):
     """
     We looked in our deployfish.yml for a section, but it was not present.
+
+    Args:
+        section: section.
     """
 
     def __init__(self, section: str):
+        """
+        Initialize NoSuchConfigSection.
+
+        Args:
+            section: section.
+        """
         super().__init__()
+        #: Section.
         self.section = section
 
     def __str__(self) -> str:
+        """
+        Handle str.
+
+        Returns:
+            Operation result.
+        """
         return f"No such deployfish.yml section: {self.section}"
 
 
 class NoSuchConfigSectionItem(Exception):
     """
     We looked an existing deployfish.yml section for a named item, but it was not present.
+
+    Args:
+        section: section.
+        name: name.
     """
 
     def __init__(self, section: str, name: str):
+        """
+        Initialize NoSuchConfigSectionItem.
+
+        Args:
+            section: section.
+            name: name.
+        """
         super().__init__()
+        #: Section.
         self.section = section
+        #: Name.
         self.name = name
 
     def __str__(self) -> str:
+        """
+        Handle str.
+
+        Returns:
+            Operation result.
+        """
         return f'No item named "{self.name}" deployfish.yml section "{self.section}"'
 
 
 class RenderException(Exception):
     """
     This is used for click commands, and gets re-raised when we get other exceptions so we can
-    have a consistent method for configuring command line error messages instead of needing
-    to catch every exception separately.
+
+    Args:
+        msg: msg.
+        exit_code: exit code.
     """
 
     def __init__(self, msg: str, exit_code: int = 1):
+        #: Msg.
+        """
+        Initialize RenderException.
+
+        Args:
+            msg: msg.
+            exit_code: exit code.
+        """
+        #: Msg.
         self.msg = msg
+        #: Exit code.
         self.exit_code = exit_code
 
 
 class DeployfishAppError(Exception):
-    """Generic errors."""
+    """
+    Model deployfish app error behavior.
+    """
 
 
 class NoSuchTerraformStateFile(Exception):

@@ -165,6 +165,9 @@ def establish_tunnel(
 
 
 class BaseTunnel(Controller):
+    """
+    Model base tunnel behavior.
+    """
     class Meta:
         label = "base-tunnel"
         description = "Establish an ssh tunnel"
@@ -172,7 +175,9 @@ class BaseTunnel(Controller):
         stacked_on = "base"
         stacked_type = "embedded"
 
+    #: Model.
     model: type[Model] = SSHTunnel
+    #: Loader.
     loader: type[ObjectLoader] = ObjectLoader
 
     @ex(
@@ -230,10 +235,15 @@ class BaseTunnel(Controller):
 
 
 class ObjectTunnelController(Controller):
+    """
+    Model object tunnel controller behavior.
+    """
     class Meta:
         label = "tunnel-base"
 
+    #: Model.
     model: type[Model] = Model
+    #: Loader.
     loader: type[ObjectLoader] = ObjectLoader
 
     @ex(
@@ -279,17 +289,24 @@ class ObjectTunnelController(Controller):
 
 
 class Tunnels(ReadOnlyCrudBase):
+    """
+    Model tunnels behavior.
+    """
     class Meta:
         label = "tunnels"
         description = "Work with SSH Tunnel objects"
         help = "Work with SSH Tunnel objects"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = SSHTunnel
 
+    #: Info template.
     info_template: str = "detail--sshtunnel.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Name": "name",
         "Service": "service__name",
@@ -324,6 +341,9 @@ class Tunnels(ReadOnlyCrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(
             service_name=self.app.pargs.service_name,
             port=self.app.pargs.port,

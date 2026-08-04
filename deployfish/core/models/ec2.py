@@ -16,9 +16,25 @@ from .mixins import TagsManagerMixin, TagsMixin
 
 
 class VPCManager(Manager):
+    """
+    Model vpcmanager behavior.
+    """
+    #: Service.
     service = "ec2"
 
     def get(self, pk: str, **_) -> "VPC":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         instances = self.get_many([pk])
         if len(instances) > 1:
             msg = f"Got more than one VPC when searching for pk={pk}"
@@ -26,6 +42,18 @@ class VPCManager(Manager):
         return instances[0]
 
     def get_many(self, pks: list[str], **kwargs) -> Sequence["VPC"]:
+        """
+        Get many.
+
+        Args:
+            pks: pks.
+
+        Keyword Args:
+            kwargs: kwargs.
+
+        Returns:
+            Operation result.
+        """
         ids = []
         names = []
         kwargs = {}
@@ -51,6 +79,15 @@ class VPCManager(Manager):
         return [VPC(data) for data in vpcs]
 
     def list(self, name: str | None = None) -> Sequence["VPC"]:
+        """
+        List.
+
+        Args:
+            name: name.
+
+        Returns:
+            Operation result.
+        """
         paginator = self.client.get_paginator("describe_vpcs")
         response_iterator = paginator.paginate()
         vpc_data = []
@@ -72,9 +109,25 @@ class VPCManager(Manager):
 
 
 class SubnetManager(Manager):
+    """
+    Model subnet manager behavior.
+    """
+    #: Service.
     service = "ec2"
 
     def get(self, pk: str, **_) -> "Subnet":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_subnets(SubnetIds=[pk])
         except botocore.exceptions.ClientError as e:
@@ -84,6 +137,15 @@ class SubnetManager(Manager):
         return Subnet(response["Subnets"][0])
 
     def list(self, vpc_id: str | None = None) -> "builtins.list[Subnet]":
+        """
+        List.
+
+        Args:
+            vpc_id: vpc id.
+
+        Returns:
+            Operation result.
+        """
         paginator = self.client.get_paginator("describe_subnets")
         kwargs = {}
         if vpc_id:
@@ -95,6 +157,15 @@ class SubnetManager(Manager):
         return [Subnet(subnet) for subnet in subnets]
 
     def get_tags(self, pk: str) -> builtins.list[dict[str, str]]:
+        """
+        Get tags.
+
+        Args:
+            pk: pk.
+
+        Returns:
+            Operation result.
+        """
         response = self.client.describe_tags(
             Filters=[{"Name": "resource-id", "Values": [pk]}]
         )
@@ -102,9 +173,25 @@ class SubnetManager(Manager):
 
 
 class SecurityGroupManager(Manager):
+    """
+    Model security group manager behavior.
+    """
+    #: Service.
     service: str = "ec2"
 
     def get(self, pk: str, **_) -> "SecurityGroup":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         kwargs = {"GroupIds": [pk]} if pk.startswith("sg-") else {"GroupNames": [pk]}
         try:
             response = self.client.describe_security_groups(**kwargs)
@@ -115,6 +202,15 @@ class SecurityGroupManager(Manager):
         return SecurityGroup(response["SecurityGroups"][0])
 
     def list(self, vpc_id: str | None = None) -> list["SecurityGroup"]:
+        """
+        List.
+
+        Args:
+            vpc_id: vpc id.
+
+        Returns:
+            Operation result.
+        """
         paginator = self.client.get_paginator("describe_security_groups")
         kwargs = {}
         if vpc_id:
@@ -127,9 +223,25 @@ class SecurityGroupManager(Manager):
 
 
 class AutoscalingGroupManager(Manager):
+    """
+    Model autoscaling group manager behavior.
+    """
+    #: Service.
     service = "autoscaling"
 
     def get(self, pk: str, **_) -> "AutoscalingGroup":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_auto_scaling_groups(
                 AutoScalingGroupNames=[pk]
@@ -146,17 +258,49 @@ class AutoscalingGroupManager(Manager):
             raise AutoscalingGroup.DoesNotExist(msg)
 
     def list(self) -> list["AutoscalingGroup"]:
+        """
+        List.
+
+        Returns:
+            Operation result.
+        """
         response = self.client.describe_auto_scaling_groups()
         return [AutoscalingGroup(group) for group in response["AutoScalingGroups"]]
 
     def save(self, obj: Model, **kwargs) -> None:
+        """
+        Save.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         self.client.update_auto_scaling_group(**obj.render_for_update())
 
 
 class InstanceManager(TagsManagerMixin, Manager):
+    """
+    Model instance manager behavior.
+    """
+    #: Service.
     service = "ec2"
 
     def get(self, pk: str, vpc_id: str | None = None, **_) -> "Instance":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+            vpc_id: vpc id.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         instances = self.get_many([pk], vpc_id=vpc_id)
         if len(instances) > 1:
             msg = "Got more than one instance when searching for pk={}, vpc_id={}: {}".format(
@@ -168,6 +312,19 @@ class InstanceManager(TagsManagerMixin, Manager):
     def get_many(
         self, pks: list[str], vpc_id: str | None = None, **_
     ) -> Sequence["Instance"]:
+        """
+        Get many.
+
+        Args:
+            pks: pks.
+            vpc_id: vpc id.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         ec2_kwargs: dict[str, Any] = {}
         names = []
         for pk in pks:
@@ -203,6 +360,19 @@ class InstanceManager(TagsManagerMixin, Manager):
         subnet_ids: list[str] | None = None,
         tags: list[str] | None = None,
     ) -> Sequence["Instance"]:
+        """
+        List.
+
+        Args:
+            vpc_ids: vpc ids.
+            image_ids: image ids.
+            instance_types: instance types.
+            subnet_ids: subnet ids.
+            tags: tags.
+
+        Returns:
+            Operation result.
+        """
         ec2_kwargs: dict[str, Any] = {}
         if any([vpc_ids, image_ids, instance_types, subnet_ids, tags]):
             ec2_kwargs["Filters"] = []
@@ -241,28 +411,62 @@ class InstanceManager(TagsManagerMixin, Manager):
 
 
 class AutoscalingGroup(Model):
+    """
+    Model autoscaling group behavior.
+    """
     # FIXME: add SSHMixin, and enable sshing to this autoscaling group
 
+    #: Objects.
     objects = AutoscalingGroupManager()
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["AutoScalingGroupName"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["AutoScalingGroupName"]
 
     @property
     def arn(self) -> str | None:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data.get("AutoScalingGroupARN", None)
 
     @property
     def autoscaling_group(self) -> "AutoscalingGroup":
+        """
+        Autoscaling group.
+
+        Returns:
+            Operation result.
+        """
         return self
 
     @property
     def instances(self) -> "list[Instance]":
+        """
+        Instances.
+
+        Returns:
+            Operation result.
+        """
         return self.get_cached(
             "instances",
             Instance.objects.get_many,
@@ -270,6 +474,13 @@ class AutoscalingGroup(Model):
         )
 
     def scale(self, count: int, force: bool = True) -> None:
+        """
+        Scale.
+
+        Args:
+            count: count.
+            force: force.
+        """
         if self.objects.exists(self.pk):
             min_size = self.data["MinSize"]
             max_size = self.data["MaxSize"]
@@ -295,6 +506,12 @@ class AutoscalingGroup(Model):
             raise self.DoesNotExist(msg)
 
     def render_for_update(self) -> dict[str, Any]:
+        """
+        Render for update.
+
+        Returns:
+            Operation result.
+        """
         data = {}
         data["AutoScalingGroupName"] = self.data["AutoScalingGroupName"]
         data["MinSize"] = self.data["MinSize"]
@@ -303,13 +520,32 @@ class AutoscalingGroup(Model):
         return data
 
     def render_for_diff(self) -> dict[str, Any]:
+        """
+        Render for diff.
+
+        Returns:
+            Operation result.
+        """
         return self.render_for_update()
 
 
 class Instance(TagsMixin, SSHMixin, Model):
+    """
+    Model instance behavior.
+
+    Args:
+        data: data.
+    """
+    #: Objects.
     objects = InstanceManager()
 
     def __init__(self, data: dict[str, Any]) -> None:
+        """
+        Initialize Instance.
+
+        Args:
+            data: data.
+        """
         super().__init__(data)
         self.import_tags(data["Tags"])
 
@@ -319,14 +555,29 @@ class Instance(TagsMixin, SSHMixin, Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["InstanceId"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.tags.get("Name", "")
 
     @property
     def arn(self) -> None:
+        """
+        Arn.
+        """
         return None
 
     # ----------------------------
@@ -335,16 +586,34 @@ class Instance(TagsMixin, SSHMixin, Model):
 
     @property
     def hostname(self) -> str:
+        """
+        Hostname.
+
+        Returns:
+            Operation result.
+        """
         if self.data["PublicDnsName"] != "":
             return self.data["PublicDnsName"]
         return self.data["PrivateDnsName"]
 
     @property
     def private_hostname(self) -> str:
+        """
+        Private hostname.
+
+        Returns:
+            Operation result.
+        """
         return self.data["PrivateDnsName"]
 
     @property
     def ip_address(self) -> str:
+        """
+        Ip address.
+
+        Returns:
+            Operation result.
+        """
         return self.data["PrivateIpAddress"]
 
     # ------------------------------
@@ -353,6 +622,12 @@ class Instance(TagsMixin, SSHMixin, Model):
 
     @property
     def autoscaling_group(self) -> AutoscalingGroup | None:
+        """
+        Autoscaling group.
+
+        Returns:
+            Operation result.
+        """
         if "autoscaling_group" not in self.cache:
             try:
                 autoscalinggroup_name = self.tags["aws:autoscaling:groupName"]
@@ -366,6 +641,12 @@ class Instance(TagsMixin, SSHMixin, Model):
 
     @property
     def subnet(self) -> "Subnet":
+        """
+        Subnet.
+
+        Returns:
+            Operation result.
+        """
         if "subnet" not in self.cache:
             subnet_id = self.data["SubnetId"]
             self.cache["subnet"] = Subnet.objects.get(pk=subnet_id)
@@ -373,6 +654,12 @@ class Instance(TagsMixin, SSHMixin, Model):
 
     @property
     def vpc(self) -> "VPC":
+        """
+        Vpc.
+
+        Returns:
+            Operation result.
+        """
         return self.subnet.vpc
 
     # ----------------------------
@@ -381,42 +668,97 @@ class Instance(TagsMixin, SSHMixin, Model):
 
     @property
     def ssh_target(self) -> "Instance":
+        """
+        Ssh target.
+
+        Returns:
+            Operation result.
+        """
         return self
 
     @property
     def ssh_targets(self) -> Sequence["Instance"]:
+        """
+        Ssh targets.
+
+        Returns:
+            Operation result.
+        """
         return [self]
 
     @property
     def bastion(self) -> "Instance | None":
+        """
+        Bastion.
+
+        Returns:
+            Operation result.
+        """
         return self.vpc.bastion
 
     @property
     def provisioner(self) -> "Instance | None":
+        """
+        Provisioner.
+
+        Returns:
+            Operation result.
+        """
         return self.vpc.provisioner
 
 
 class VPC(TagsMixin, Model):
+    """
+    Model vpc behavior.
+    """
+    #: Objects.
     objects = VPCManager()
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["VpcId"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.tags["Name"]
 
     @property
     def arn(self) -> None:
+        """
+        Arn.
+        """
         return None
 
     @property
     def cidr_block(self) -> str:
+        """
+        Cidr block.
+
+        Returns:
+            Operation result.
+        """
         return self.data["CidrBlock"]
 
     @property
     def bastion(self) -> Instance | None:
+        """
+        Bastion.
+
+        Returns:
+            Operation result.
+        """
         try:
             return self.get_cached(
                 "bastion", Instance.objects.get, ["Name:bastion*"], {"vpc_id": self.pk}
@@ -427,6 +769,12 @@ class VPC(TagsMixin, Model):
 
     @property
     def provisioner(self) -> Instance | None:
+        """
+        Provisioner.
+
+        Returns:
+            Operation result.
+        """
         try:
             return self.get_cached(
                 "provisioner",
@@ -440,6 +788,10 @@ class VPC(TagsMixin, Model):
 
 
 class Subnet(TagsMixin, Model):
+    """
+    Model subnet behavior.
+    """
+    #: Objects.
     objects = SubnetManager()
 
     # ---------------------
@@ -448,14 +800,29 @@ class Subnet(TagsMixin, Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["SubnetId"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.tags["Name"]
 
     @property
     def arn(self) -> None:
+        """
+        Arn.
+        """
         return None
 
     # ----------------------------
@@ -464,14 +831,32 @@ class Subnet(TagsMixin, Model):
 
     @property
     def cidr_block(self) -> str:
+        """
+        Cidr block.
+
+        Returns:
+            Operation result.
+        """
         return self.data["CidrBlock"]
 
     @property
     def available_ips(self) -> int:
+        """
+        Available ips.
+
+        Returns:
+            Operation result.
+        """
         return self.data["AvailableIpAddressCount"]
 
     @property
     def tags(self) -> dict[str, str]:
+        """
+        Tags.
+
+        Returns:
+            Operation result.
+        """
         if "tags" not in self.cache:
             self.cache["tags"] = {}
             for tag in self.objects.get_tags(self.pk):
@@ -484,38 +869,81 @@ class Subnet(TagsMixin, Model):
 
     @property
     def vpc(self) -> VPC:
+        """
+        Vpc.
+
+        Returns:
+            Operation result.
+        """
         if "vpc" not in self.cache:
             self.cache["vpc"] = VPC.objects.get(self.data["VpcId"])
         return self.cache["vpc"]
 
 
 class SecurityGroup(TagsMixin, Model):
+    """
+    Model security group behavior.
+    """
+    #: Objects.
     objects = SecurityGroupManager()
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["GroupId"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["GroupName"]
 
     @property
     def description(self) -> str:
+        """
+        Description.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Description"]
 
     @property
     def arn(self) -> None:
+        """
+        Arn.
+        """
         return None
 
     @property
     def vpc(self) -> VPC:
+        """
+        Vpc.
+
+        Returns:
+            Operation result.
+        """
         if "vpc" not in self.cache:
             self.cache["vpc"] = VPC.objects.get(self.data["VpcId"])
         return self.cache["vpc"]
 
     @property
     def tags(self) -> dict[str, str]:
+        """
+        Tags.
+
+        Returns:
+            Operation result.
+        """
         if "tags" not in self.cache:
             self.cache["tags"] = {}
             for tag in self.data["Tags"]:

@@ -10,9 +10,25 @@ from .abstract import Manager, Model
 
 
 class EventTargetManager(Manager):
+    """
+    Model event target manager behavior.
+    """
+    #: Service.
     service = "events"
 
     def get(self, pk: str, **kwargs) -> "EventTarget":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            kwargs: kwargs.
+
+        Returns:
+            Operation result.
+        """
         rule: EventScheduleRule | None = kwargs.get("rule")
         if not rule:
             msg = '"rule" kwarg is required'
@@ -34,24 +50,67 @@ class EventTargetManager(Manager):
         return EventTarget(data, rule=rule.data)
 
     def list(self, rule: "EventScheduleRule") -> Sequence["EventTarget"]:
+        """
+        List.
+
+        Args:
+            rule: rule.
+
+        Returns:
+            Operation result.
+        """
         response = self.client.list_targets_by_rule(Rule=rule.pk)
         return [EventTarget(target, rule=rule) for target in response["Targets"]]
 
     def delete(self, obj: Model, **_) -> None:
+        """
+        Delete.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         obj = cast("EventTarget", obj)
         if obj.rule:
             self.client.remove_targets(Rule=obj.rule.pk, Ids=[obj.pk])
 
     def save(self, obj: Model, **_) -> None:
+        """
+        Save.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         obj = cast("EventTarget", obj)
         if obj.rule:
             self.client.put_targets(Rule=obj.rule.pk, Targets=[obj.render()])
 
 
 class EventScheduleRuleManager(Manager):
+    """
+    Model event schedule rule manager behavior.
+    """
+    #: Service.
     service = "events"
 
     def get(self, pk: str, **_) -> "EventScheduleRule":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         if not pk.startswith("deployfish-"):
             pk = "deployfish-" + pk
         response = self.client.list_rules(NamePrefix=pk, Limit=1)
@@ -64,6 +123,12 @@ class EventScheduleRuleManager(Manager):
         return rule
 
     def list(self) -> Sequence["EventScheduleRule"]:
+        """
+        List.
+
+        Returns:
+            Operation result.
+        """
         paginator = self.client.get_paginator("list_rules")
         response_iterator = paginator.paginate(NamePrefix="deployfish-")
         rules = []
@@ -75,6 +140,18 @@ class EventScheduleRuleManager(Manager):
         return rules
 
     def save(self, obj: Model, **_) -> str:
+        """
+        Save.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         obj = cast("EventScheduleRule", obj)
         if self.exists(obj.pk):
             for target in EventTarget.objects.list(obj):
@@ -85,6 +162,15 @@ class EventScheduleRuleManager(Manager):
         return response["RuleArn"]
 
     def delete(self, obj: Model, **_) -> None:
+        """
+        Delete.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         obj = cast("EventScheduleRule", obj)
         if self.exists(obj.pk):
             for target in EventTarget.objects.list(obj):
@@ -127,33 +213,10 @@ class EventScheduleRuleManager(Manager):
 class EventTarget(Model):
     """
     :py:attr:`data` here has the same structure as what is returned by
-    ``client('events').list_targets_for_rule()``::
 
-        {
-            'Id': 'string',
-            'Arn': 'string', # Note: this is the CLUSTER Arn, not the Target arn
-            'RoleArn': 'string',
-            'Input': 'string',
-            'InputPath': 'string',
-            'EcsParameters': {
-                'TaskDefinitionArn': 'string',
-                'TaskCount': 123,
-                'LaunchType': 'EC2'|'FARGATE',
-                'NetworkConfiguration': {
-                    'awsvpcConfiguration': {
-                        'Subnets': [
-                            'string',
-                        ],
-                        'SecurityGroups': [
-                            'string',
-                        ],
-                        'AssignPublicIp': 'ENABLED'|'DISABLED'
-                    }
-                },
-                'PlatformVersion': 'string',
-                'Group': 'string'
-            },
-        }
+    Args:
+        data: data.
+        rule: rule.
     """
 
     #: Manager for EventBridge rule targets.
@@ -161,6 +224,19 @@ class EventTarget(Model):
 
     @classmethod
     def new(cls, obj: dict[str, Any], source: str, **kwargs) -> "EventTarget":
+        """
+        New.
+
+        Args:
+            obj: obj.
+            source: source.
+
+        Keyword Args:
+            kwargs: kwargs.
+
+        Returns:
+            Operation result.
+        """
         rule: EventScheduleRule | None = kwargs.get("rule")
         data, kwargs = cls.adapt(obj, source)
         return cls(data, rule=rule)
@@ -168,6 +244,13 @@ class EventTarget(Model):
     def __init__(
         self, data: dict[str, Any], rule: "EventScheduleRule | None" = None
     ) -> None:
+        """
+        Initialize EventTarget.
+
+        Args:
+            data: data.
+            rule: rule.
+        """
         super().__init__(data)
         #: Schedule rule that owns this target, if assigned.
         self.rule: EventScheduleRule | None = rule
@@ -178,14 +261,32 @@ class EventTarget(Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Id"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Id"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Arn"]
 
     def save(self) -> None:
@@ -203,6 +304,9 @@ class EventTarget(Model):
         super().save()
 
     def delete(self) -> None:
+        """
+        Delete.
+        """
         if not self.rule:
             msg = (
                 "EventTarget({}) has no EventScheduleRule associated with it. "
@@ -216,6 +320,12 @@ class EventTarget(Model):
     # ----------------------------
 
     def set_task_definition_arn(self, arn: str) -> None:
+        """
+        Set task definition arn.
+
+        Args:
+            arn: arn.
+        """
         self.data["EcsParameters"]["TaskDefinitionArn"] = arn
 
 
@@ -223,8 +333,8 @@ class EventScheduleRule(Model):
     """
     AWS cron job that deployfish uses to run ECS tasks periodically.
 
-    If the task has a schedule defined, manage an ECS CloudWatch event with the
-    corresponding schedule, with the task as an event target.
+    Args:
+        data: data.
     """
 
     #: Manager for EventBridge schedule rules.
@@ -232,12 +342,31 @@ class EventScheduleRule(Model):
 
     @classmethod
     def new(cls, obj: dict[str, Any], source: str, **_) -> "EventScheduleRule":
+        """
+        New.
+
+        Args:
+            obj: obj.
+            source: source.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         rule = super().new(obj, source)
         rule = cast("EventScheduleRule", rule)
         rule.target = EventTarget.new(obj, source, rule=rule)
         return rule
 
     def __init__(self, data: dict[str, Any]) -> None:
+        """
+        Initialize EventScheduleRule.
+
+        Args:
+            data: data.
+        """
         super().__init__(data)
         #: Target ECS task configuration associated with this rule, if any.
         self.target: EventTarget | None = None
@@ -248,24 +377,44 @@ class EventScheduleRule(Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Name"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Name"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["Arn"]
 
     def render_for_diff(self) -> dict[str, Any]:
         """
-
         .. note::
 
             Ideally here we would compare the full task definition attached to
             the :py:class:`EventTarget` via its ``taskDefinitionArn`` to the
             task definition we have in deployfish.yml.
+
+        Returns:
+            Operation result.
         """
         data = copy(self.data)
         data["Target"] = {}
@@ -281,6 +430,12 @@ class EventScheduleRule(Model):
 
     @property
     def enabled(self) -> bool:
+        """
+        Enabled.
+
+        Returns:
+            Operation result.
+        """
         return self.data["State"] == "ENABLED"
 
     # ----------------------------------
@@ -288,15 +443,27 @@ class EventScheduleRule(Model):
     # ----------------------------------
 
     def set_task_definition_arn(self, arn: str) -> None:
+        """
+        Set task definition arn.
+
+        Args:
+            arn: arn.
+        """
         if self.target is None:
             msg = f'EventScheduleRule("{self.pk}") has no target configured'
             raise self.ImproperlyConfigured(msg)
         self.target.set_task_definition_arn(arn)
 
     def enable(self) -> None:
+        """
+        Enable.
+        """
         self.objects.enable(self)
         self.reload_from_db()
 
     def disable(self) -> None:
+        """
+        Disable.
+        """
         self.objects.disable(self)
         self.reload_from_db()

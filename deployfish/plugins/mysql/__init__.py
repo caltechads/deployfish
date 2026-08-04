@@ -10,11 +10,23 @@ __version__ = "1.2.16"
 
 
 def add_template_dir(app: App):
+    """
+    Add template dir.
+
+    Args:
+        app: app.
+    """
     path = os.path.join(os.path.dirname(__file__), "templates")
     app.add_template_dir(path)
 
 
 def load(app: App) -> None:
+    """
+    Load.
+
+    Args:
+        app: app.
+    """
     app.handler.register(MysqlController)
     app.hook.register("post_setup", add_template_dir)
     app.hook.register(

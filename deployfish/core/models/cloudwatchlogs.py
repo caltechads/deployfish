@@ -59,8 +59,15 @@ class CloudWatchLogStreamIterator:
     ) -> None:
         """
         :param start_time datetime: a timezone aware, UTC datetime
+
+        Args:
+            stream: stream.
+            sleep: sleep.
+            start_time: start time.
         """
+        #: Client.
         self.client = get_boto3_session().client("logs")
+        #: Kwargs.
         self.kwargs = {
             "logGroupName": stream.data["logGroupName"],
             "logStreamName": stream.name,
@@ -68,12 +75,25 @@ class CloudWatchLogStreamIterator:
         }
         if start_time is not None:
             self.kwargs["startTime"] = int(start_time.timestamp() * 1000)
+        #: Sleep.
         self.sleep = sleep
 
     def __iter__(self) -> "CloudWatchLogStreamIterator":
+        """
+        Handle iter.
+
+        Returns:
+            Operation result.
+        """
         return self
 
     def __next__(self) -> list[dict[str, Any]]:
+        """
+        Handle next.
+
+        Returns:
+            Operation result.
+        """
         if "nextToken" in self.kwargs:
             # Don't sleep on the first iteration
             time.sleep(self.sleep)
@@ -92,6 +112,13 @@ class CloudWatchLogStreamIterator:
 class CloudWatchLogGroupTailer:
     """
     An iterator class that allows you to tail live logs from a CloudWatchLogStream.
+
+    Args:
+        group: group.
+        stream_prefix: stream prefix.
+        sleep: sleep.
+        filter_pattern: filter pattern.
+        start_time: start time.
     """
 
     def __init__(
@@ -102,7 +129,20 @@ class CloudWatchLogGroupTailer:
         filter_pattern: str | None = None,
         start_time: int | None = None,
     ):
+        #: Client.
+        """
+        Initialize CloudWatchLogGroupTailer.
+
+        Args:
+            group: group.
+            stream_prefix: stream prefix.
+            sleep: sleep.
+            filter_pattern: filter pattern.
+            start_time: start time.
+        """
+        #: Client.
         self.client = get_boto3_session().client("logs")
+        #: Kwargs.
         self.kwargs: dict[str, Any] = {"logGroupName": group.name}
         if stream_prefix:
             self.kwargs["logStreamNamePrefix"] = stream_prefix
@@ -113,14 +153,29 @@ class CloudWatchLogGroupTailer:
             self.kwargs["startTime"] = start_time - (1000 * sleep)
         else:
             self.kwargs["startTime"] = _default_start_time_ms(sleep)
+        #: Sleep.
         self.sleep: int = sleep
+        #: Last event ids.
         self.last_event_ids: list[str] = []
+        #: Started.
         self.started: bool = False
 
     def __iter__(self) -> "CloudWatchLogGroupTailer":
+        """
+        Handle iter.
+
+        Returns:
+            Operation result.
+        """
         return self
 
     def __next__(self) -> list[dict[str, Any]]:
+        """
+        Handle next.
+
+        Returns:
+            Operation result.
+        """
         if not self.started:
             # Don't sleep on the first iteration
             self.started = True
@@ -146,13 +201,23 @@ class CloudWatchLogGroupTailer:
 class CloudWatchLogStreamTailer:
     """
     An iterator class that allows you to tail live logs from a CloudWatchLogStream.
+
+    Args:
+        stream: stream.
+        sleep: sleep.
     """
 
     def __init__(self, stream: "CloudWatchLogStream", sleep: int = 5):
         """
         :param start_time datetime: a timezone aware, UTC datetime
+
+        Args:
+            stream: stream.
+            sleep: sleep.
         """
+        #: Client.
         self.client = get_boto3_session().client("logs")
+        #: Kwargs.
         self.kwargs: dict[str, Any] = {
             "logGroupName": stream.data["logGroupName"],
             "logStreamName": stream.name,
@@ -164,13 +229,27 @@ class CloudWatchLogStreamTailer:
             )
         else:
             self.kwargs["startTime"] = _default_start_time_ms(sleep)
+        #: Sleep.
         self.sleep: int = sleep
+        #: Last event.
         self.last_event: dict[str, Any] | None = None
 
     def __iter__(self) -> "CloudWatchLogStreamTailer":
+        """
+        Handle iter.
+
+        Returns:
+            Operation result.
+        """
         return self
 
     def __next__(self) -> list[dict[str, Any]]:
+        """
+        Handle next.
+
+        Returns:
+            Operation result.
+        """
         if self.last_event:
             # Don't sleep on the first iteration
             time.sleep(self.sleep)
@@ -195,9 +274,25 @@ class CloudWatchLogStreamTailer:
 
 
 class CloudWatchLogGroupManager(Manager):
+    """
+    Model cloud watch log group manager behavior.
+    """
+    #: Service.
     service = "logs"
 
     def get(self, pk: str, **_) -> "CloudWatchLogGroup":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         response = self.client.describe_log_groups(logGroupNamePrefix=pk)
         for group in response["logGroups"]:
             if group["logGroupName"] == pk:
@@ -206,6 +301,15 @@ class CloudWatchLogGroupManager(Manager):
         raise CloudWatchLogGroup.DoesNotExist(msg)
 
     def list(self, prefix: str | None = None) -> Sequence["CloudWatchLogGroup"]:
+        """
+        List.
+
+        Args:
+            prefix: prefix.
+
+        Returns:
+            Operation result.
+        """
         paginator = self.client.get_paginator("describe_log_groups")
         kwargs = {}
         if prefix:
@@ -218,12 +322,37 @@ class CloudWatchLogGroupManager(Manager):
 
 
 class CloudWatchLogStreamManager(Manager):
+    """
+    Model cloud watch log stream manager behavior.
+    """
+    #: Service.
     service = "logs"
 
     def __get_group_and_stream_from_pk(self, pk: str) -> list[str]:
+        """
+        Handle get group and stream from pk.
+
+        Args:
+            pk: pk.
+
+        Returns:
+            Operation result.
+        """
         return pk.split(":", 1)
 
     def get(self, pk: str, **_) -> "CloudWatchLogStream":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         group_name, stream_name = self.__get_group_and_stream_from_pk(pk)
         response = self.client.describe_log_streams(
             logGroupName=group_name, logStreamNamePrefix=stream_name
@@ -246,6 +375,14 @@ class CloudWatchLogStreamManager(Manager):
 
             ``log_group_name`` stays required because listing every stream in
             every group would be too large for typical deployfish usage.
+
+        Args:
+            log_group_name: log group name.
+            prefix: prefix.
+            limit: limit.
+
+        Returns:
+            Operation result.
         """
         paginator = self.client.get_paginator("describe_log_streams")
         kwargs: dict[str, Any] = {"logGroupName": log_group_name}
@@ -278,19 +415,40 @@ class CloudWatchLogStreamManager(Manager):
 
 
 class CloudWatchLogGroup(Model):
+    """
+    Model cloud watch log group behavior.
+    """
     #: Manager for CloudWatch log group records.
     objects = CloudWatchLogGroupManager()
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["logGroupName"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["logGroupName"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["arn"]
 
     def newest_stream(
@@ -362,19 +520,40 @@ class CloudWatchLogGroup(Model):
 
 
 class CloudWatchLogStream(Model):
+    """
+    Model cloud watch log stream behavior.
+    """
     #: Manager for CloudWatch log stream records.
     objects = CloudWatchLogStreamManager()
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return f"{self.data['logGroupName']}:{self.data['logStreamName']}"
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["logStreamName"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["arn"]
 
     @property

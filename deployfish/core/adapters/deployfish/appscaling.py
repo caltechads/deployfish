@@ -13,38 +13,75 @@ class ECSServiceScalingPolicyAdapter(Adapter):
     """
     .. code-block:: python
 
-        {
-            'cpu': '>=60',
-            'check_every_seconds': 60,
-            'periods': 5,
-            'cooldown': 60,
-            'scale_by': 1
-        }
+    Args:
+        data: data.
     """
 
     def __init__(self, data: dict[str, Any], **kwargs) -> None:
+        #: Cluster.
+        """
+        Initialize ECSServiceScalingPolicyAdapter.
+
+        Args:
+            data: data.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
+        #: Cluster.
         self.cluster = kwargs.pop("cluster", None)
+        #: Service.
         self.service = kwargs.pop("service", None)
         super().__init__(data, **kwargs)
 
     def get_PolicyName(self) -> str:
+        """
+        Get policy name.
+
+        Returns:
+            Operation result.
+        """
         direction = "scale-down" if int(self.data["scale_by"]) < 0 else "scale-up"
         return f"{self.cluster}-{self.service}-{direction}"
 
     def get_ResourceId(self) -> str:
+        """
+        Get resource id.
+
+        Returns:
+            Operation result.
+        """
         return f"service/{self.cluster}/{self.service}"
 
     def get_MetricIntervalLowerBound(self) -> float | None:
+        """
+        Get metric interval lower bound.
+
+        Returns:
+            Operation result.
+        """
         if ">" in self.data["cpu"]:
             return 0.0
         return None
 
     def get_MetricIntervalUpperBound(self) -> float | None:
+        """
+        Get metric interval upper bound.
+
+        Returns:
+            Operation result.
+        """
         if "<" in self.data["cpu"]:
             return 0.0
         return None
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data: dict[str, Any] = {}
         data["PolicyName"] = self.get_PolicyName()
         data["ServiceNamespace"] = "ecs"
@@ -75,36 +112,43 @@ class ECSServiceScalableTargetAdapter(Adapter):
     """
     .. code-block:: python
 
-        {
-            'min_capacity': 2,
-            'max_capacity': 4,
-            'role_arn': 'arn:aws:iam::123445678901:role/ecsServiceRole',
-            'scale-up': {
-                'cpu': '>=60',
-                'check_every_seconds': 60,
-                'periods': 5,
-                'cooldown': 60,
-                'scale_by': 1
-            },
-            'scale-down': {
-                'cpu': '<=30',
-                'check_every_seconds': 60,
-                'periods': 30,
-                'cooldown': 60,
-                'scale_by': -1
-            }
-        }
+    Args:
+        data: data.
     """
 
     def __init__(self, data: dict[str, Any], **kwargs):
+        #: Cluster.
+        """
+        Initialize ECSServiceScalableTargetAdapter.
+
+        Args:
+            data: data.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
+        #: Cluster.
         self.cluster = kwargs.pop("cluster", None)
+        #: Service.
         self.service = kwargs.pop("service", None)
         super().__init__(data, **kwargs)
 
     def get_ResourceId(self) -> str:
+        """
+        Get resource id.
+
+        Returns:
+            Operation result.
+        """
         return f"service/{self.cluster}/{self.service}"
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data = {}
         data["ServiceNamespace"] = "ecs"
         data["ResourceId"] = self.get_ResourceId()

@@ -21,6 +21,12 @@ from .utils import handle_model_exceptions
 def valid_date(s):
     """
     Parse a date string in the form YYYY-MM-DD and return a datetime.
+
+    Args:
+        s: s.
+
+    Returns:
+        Operation result.
     """
     try:
         return datetime.strptime(s, "%Y-%m-%d")
@@ -30,24 +36,32 @@ def valid_date(s):
 
 
 class ECSCluster(CrudBase):
+    """
+    Model ecscluster behavior.
+    """
     class Meta:
         label = "cluster"
         description = "Work with ECS Cluster objects"
         help = "Work with ECS Cluster objects"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = Cluster
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about an ECS Cluster object from AWS",
     }
 
     # .info() related vars
 
+    #: Info template.
     info_template: str = "detail--cluster.jinja2"
 
     # .list() related vars
 
+    #: List ordering.
     list_ordering: str | None = "Name"
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Name": "clusterName",
         "Type": "cluster_type",
@@ -135,6 +149,9 @@ class ECSCluster(CrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(cluster_name=self.app.pargs.cluster_name)
         self.render_list(results)
 
@@ -173,7 +190,9 @@ class ECSCluster(CrudBase):
     # running_tasks()
     # -------------------------
 
+    #: Running tasks ordering.
     running_tasks_ordering: str = "Instance"
+    #: Running tasks result columns.
     running_tasks_result_columns: dict[str, str] = {
         "Instance": "instanceName",
         "Instance ID": "instanceId",
@@ -191,6 +210,9 @@ class ECSCluster(CrudBase):
     )
     @handle_model_exceptions
     def running_tasks(self):
+        """
+        Running tasks.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         results = obj.running_tasks
@@ -202,6 +224,9 @@ class ECSCluster(CrudBase):
 
 
 class ECSClusterSSH(ObjectSSHController):
+    """
+    Model ecscluster ssh behavior.
+    """
     class Meta:
         label = "cluster-ssh"
         description = "SSH to instances for an ECS Cluster"
@@ -209,8 +234,10 @@ class ECSClusterSSH(ObjectSSHController):
         stacked_on = "cluster"
         stacked_type = "embedded"
 
+    #: Model.
     model: type[Model] = Cluster
 
+    #: Help overrides.
     help_overrides = {
         "ssh": "SSH to a container instance for an ECS Cluster",
         "run": "Run shell commands on container instances for an ECS Cluster",

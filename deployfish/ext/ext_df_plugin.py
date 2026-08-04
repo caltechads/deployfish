@@ -11,6 +11,7 @@ from cement import App
 from cement.core import exc, plugin
 from cement.utils.misc import is_true, minimal_logger
 
+#: Log.
 LOG = minimal_logger(__name__)
 
 
@@ -30,6 +31,9 @@ def get_deployfish_plugins() -> Generator[pkg_resources.EntryPoint, None, None]:
             entry_points={"deployfish.plugins": ["name_of_plugin = myproject.pluginmodule"]},
             classifiers=["Framework :: Deployfish"],
         )
+
+    Returns:
+        Operation result.
     """
     return pkg_resources.iter_entry_points(group="deployfish.plugins")
 
@@ -49,12 +53,24 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
         """The string identifier for this class."""
 
     def __init__(self):
+        """
+        Initialize DeployfishCementPluginHandler.
+        """
         super().__init__()
+        #: Loaded plugins.
         self._loaded_plugins = []
+        #: Enabled plugins.
         self._enabled_plugins = []
+        #: Disabled plugins.
         self._disabled_plugins = []
 
     def _setup(self, app: App) -> None:
+        """
+        Handle setup.
+
+        Args:
+            app: app.
+        """
         super()._setup(app)
         self._enabled_plugins = []
         self._disabled_plugins = []
@@ -86,6 +102,12 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
                     self._enabled_plugins.remove(_plugin)
 
     def load_plugin(self, plugin_name: str) -> None:  # pylint: disable=arguments-differ
+        """
+        Load plugin.
+
+        Args:
+            plugin_name: plugin name.
+        """
         LOG.debug(f"loading application plugin '{plugin_name}'")
         if (
             plugin_name in self.entrypoints
@@ -122,17 +144,38 @@ class DeployfishCementPluginHandler(plugin.PluginHandler):
                 )
 
     def get_loaded_plugins(self) -> list[str]:
-        """List of plugins that have been loaded."""
+        """
+        List of plugins that have been loaded.
+
+        Returns:
+            Operation result.
+        """
         return self._loaded_plugins
 
     def get_enabled_plugins(self) -> list[str]:
-        """List of plugins that are enabled (not necessary loaded yet)."""
+        """
+        List of plugins that are enabled (not necessary loaded yet).
+
+        Returns:
+            Operation result.
+        """
         return self._enabled_plugins
 
     def get_disabled_plugins(self) -> list[str]:
-        """List of disabled plugins"""
+        """
+        List of disabled plugins
+
+        Returns:
+            Operation result.
+        """
         return self._disabled_plugins
 
 
 def load(app):
+    """
+    Load.
+
+    Args:
+        app: app.
+    """
     app.handler.register(DeployfishCementPluginHandler)

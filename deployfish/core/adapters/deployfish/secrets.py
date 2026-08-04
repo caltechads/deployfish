@@ -13,6 +13,12 @@ def parse_secret_string(secret_string: str) -> tuple[str, dict[str, Any]]:
         KEY=VALUE
         KEY:secure=VALUE
         KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
+
+    Args:
+        secret_string: secret string.
+
+    Returns:
+        Operation result.
     """
     i = 0
     key = ""
@@ -49,11 +55,26 @@ def parse_secret_string(secret_string: str) -> tuple[str, dict[str, Any]]:
 
 
 class SecretsMixin:
+    """
+    Model secrets mixin behavior.
+    """
+    #: Data.
     data: dict[str, Any]
 
     def get_secrets(
         self, cluster: str, name: str, decrypt: bool = True
     ) -> list[Secret]:
+        """
+        Get secrets.
+
+        Args:
+            cluster: cluster.
+            name: name.
+            decrypt: decrypt.
+
+        Returns:
+            Operation result.
+        """
         secrets = None
         if "config" in self.data:
             secrets = []
@@ -76,21 +97,52 @@ class SecretsMixin:
 
 
 class SecretAdapter(Adapter):
+    """
+    Model secret adapter behavior.
+
+    Args:
+        data: data.
+    """
     class ExternalParameterException(Exception):
         pass
 
     def __init__(self, data: dict[str, Any], **kwargs):
+        """
+        Initialize SecretAdapter.
+
+        Args:
+            data: data.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         super().__init__(data, **kwargs)
+        #: Cluster.
         self.cluster: str = kwargs.pop("cluster", None)
+        #: Name.
         self.name: str = kwargs.pop("name", None)
+        #: Prefix.
         self.prefix: str = ""
         if kwargs.get("prefix"):
+            #: Prefix.
             self.prefix = "{}-".format(kwargs["prefix"])
 
     def is_external(self) -> bool:
+        """
+        Is external.
+
+        Returns:
+            Operation result.
+        """
         return bool("=" not in self.data["value"] or ":external" in self.data["value"])
 
     def split(self) -> tuple[str, str]:
+        """
+        Split.
+
+        Returns:
+            Operation result.
+        """
         definition: str = deepcopy(self.data["value"])
         key = definition
         value = ""
@@ -108,10 +160,19 @@ class SecretAdapter(Adapter):
             KEY=VALUE
             KEY:secure=VALUE
             KEY:secure:arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab=VALUE
+
+        Returns:
+            Operation result.
         """
         return parse_secret_string(self.data["value"])
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         if self.is_external():
             msg = "This is an external parameter; use ExternalParametersAdapter instead"
             raise self.ExternalParameterException(msg)

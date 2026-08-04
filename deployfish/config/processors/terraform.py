@@ -22,10 +22,23 @@ if TYPE_CHECKING:
 
 
 class TerraformStateFactory:
+    """
+    Model terraform state factory behavior.
+    """
     @staticmethod
     def new(
         terraform_config: dict[str, Any], context: dict[str, Any]
     ) -> "AbstractTerraformState":
+        """
+        New.
+
+        Args:
+            terraform_config: terraform config.
+            context: context.
+
+        Returns:
+            Operation result.
+        """
         if "organization" in terraform_config:
             return TerraformEnterpriseState(terraform_config, context)
         if "statefile" in terraform_config:
@@ -39,18 +52,53 @@ class TerraformStateFactory:
 
 
 class AbstractTerraformState:
+    """
+    Model abstract terraform state behavior.
+
+    Args:
+        terraform_config: terraform config.
+        context: context.
+    """
     def __init__(
         self, terraform_config: dict[str, Any], context: dict[str, Any]
     ) -> None:
+        #: Context.
+        """
+        Initialize AbstractTerraformState.
+
+        Args:
+            terraform_config: terraform config.
+            context: context.
+        """
+        #: Context.
         self.context: dict[str, Any] = context
+        #: Terraform config.
         self.terraform_config: dict[str, Any] = terraform_config
+        #: Loaded.
         self.loaded: bool = False
+        #: Terraform lookups.
         self.terraform_lookups: dict[str, dict[str, str]] = {}
 
     def load(self, replacements: dict[str, str]) -> None:
+        """
+        Load.
+
+        Args:
+            replacements: replacements.
+        """
         raise NotImplementedError
 
     def lookup(self, attr: str, replacements: dict[str, str]) -> str:
+        """
+        Lookup.
+
+        Args:
+            attr: attr.
+            replacements: replacements.
+
+        Returns:
+            Operation result.
+        """
         lookup_key = self.terraform_config["lookups"][attr]
         for key, value in list(replacements.items()):
             lookup_key = lookup_key.replace(key, value)
@@ -58,10 +106,25 @@ class AbstractTerraformState:
 
 
 class TerraformS3State(AbstractTerraformState):
+    """
+    Model terraform s3 state behavior.
+
+    Args:
+        terraform_config: terraform config.
+        context: context.
+    """
     def __init__(
         self, terraform_config: dict[str, Any], context: dict[str, Any]
     ) -> None:
+        """
+        Initialize TerraformS3State.
+
+        Args:
+            terraform_config: terraform config.
+            context: context.
+        """
         super().__init__(terraform_config, context)
+        #: Replacements.
         self.replacements: dict[str, str] = {}
 
     def _get_state_file_from_s3(
@@ -69,6 +132,14 @@ class TerraformS3State(AbstractTerraformState):
     ) -> dict[str, Any]:
         """
         Retrive our statefile from S3
+
+        Args:
+            state_file_url: state file url.
+            profile: profile.
+            region: region.
+
+        Returns:
+            Operation result.
         """
         if profile:
             session = boto3.session.Session(profile_name=profile, region_name=region)
@@ -89,16 +160,34 @@ class TerraformS3State(AbstractTerraformState):
         return json.loads(state_file)
 
     def _load_pre_version_12(self, tfstate: dict[str, Any]) -> None:
+        """
+        Handle load pre version 12.
+
+        Args:
+            tfstate: tfstate.
+        """
         for i in tfstate["modules"]:
             if i["path"] == ["root"]:
                 for key, value in list(i["outputs"].items()):
                     self.terraform_lookups[key] = value
 
     def _load_post_version_12(self, tfstate: dict[str, Any]) -> None:
+        """
+        Handle load post version 12.
+
+        Args:
+            tfstate: tfstate.
+        """
         for key, value in list(tfstate["outputs"].items()):
             self.terraform_lookups[key] = value
 
     def load(self, replacements: dict[str, str]) -> None:
+        """
+        Load.
+
+        Args:
+            replacements: replacements.
+        """
         if replacements == self.replacements:
             return
         self.replacements = replacements
@@ -124,24 +213,48 @@ class TerraformS3State(AbstractTerraformState):
 
 
 class TerraformEnterpriseState(AbstractTerraformState):
+    #: Terraform api endpoint.
+    """
+    Model terraform enterprise state behavior.
+
+    Args:
+        terraform_config: terraform config.
+        context: context.
+    """
+    #: Terraform api endpoint.
     TERRAFORM_API_ENDPOINT: str = "https://app.terraform.io/api/v2"
 
     def __init__(
         self, terraform_config: dict[str, Any], context: dict[str, Any]
     ) -> None:
+        """
+        Initialize TerraformEnterpriseState.
+
+        Args:
+            terraform_config: terraform config.
+            context: context.
+        """
         super().__init__(terraform_config, context)
         if "workspace" not in self.terraform_config:
             msg = 'In the "terraform:" section, if you define "organization", you must also define "workspace"'
             raise SchemaException(msg)
         if "tfe_token" in self.context:
+            #: Api token.
             self.api_token: str = self.context["tfe_token"]
         if "ATLAS_TOKEN" in os.environ:
+            #: Api token.
             self.api_token = cast("str", os.getenv("ATLAS_TOKEN"))
         if not hasattr(self, "tfe_token"):
             msg = "Terraform Enterprise State: No Terraform Enterprise API token provided!"
             raise ConfigProcessingFailed(msg)
 
     def get_terraform_state_download_url(self) -> str:
+        """
+        Get terraform state download url.
+
+        Returns:
+            Operation result.
+        """
         endpoint = self.TERRAFORM_API_ENDPOINT + "/state-versions?"
         org_filter = (
             "filter[organization][name]=" + self.terraform_config["organization"]
@@ -159,6 +272,12 @@ class TerraformEnterpriseState(AbstractTerraformState):
         return data["data"][0]["attributes"]["hosted-state-download-url"]
 
     def load(self, _: dict[str, str]) -> None:
+        """
+        Load.
+
+        Args:
+            _: .
+        """
         if not self.loaded:
             state_download_url = self.get_terraform_state_download_url()
             response = requests.get(state_download_url)
@@ -201,8 +320,16 @@ class TerraformStateConfigProcessor(AbstractConfigProcessor):
     TERRAFORM_RE = re.compile(r"\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}")
 
     def __init__(self, config: "Config", context: dict[str, Any]) -> None:
+        """
+        Initialize TerraformStateConfigProcessor.
+
+        Args:
+            config: config.
+            context: context.
+        """
         super().__init__(config, context)
         try:
+            #: Terraform.
             self.terraform = TerraformStateFactory.new(config.raw["terraform"], context)
         except KeyError:
             msg = 'Skipping terraform state processing: no "terraform" section'

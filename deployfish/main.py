@@ -49,8 +49,10 @@ from .core.aws import build_boto3_session
 from .exceptions import DeployfishAppError
 
 # configuration defaults
+#: Config.
 CONFIG = init_defaults("deployfish")
 CONFIG["deployfish"]["ssh_provider"] = os.environ.get("DEPLOYFISH_SSH_PROVIDER", "ssm")
+#: Meta.
 META = init_defaults("log.logging")
 META["log.logging"]["log_level_argument"] = ["-l", "--level"]
 
@@ -76,7 +78,12 @@ def post_arg_parse_build_boto3_session(app: "DeployfishApp") -> None:
 
 
 class DeployfishApp(App):
-    """Deployfish primary application."""
+    """
+    Deployfish primary application.
+
+    Args:
+        *args: args.
+    """
 
     class Meta:
         label = "deployfish"
@@ -170,8 +177,19 @@ class DeployfishApp(App):
         hooks = [("post_argument_parsing", post_arg_parse_build_boto3_session)]
 
     def __init__(self, *args, **kwargs) -> None:
+        """
+        Initialize DeployfishApp.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         super().__init__(*args, **kwargs)
+        #: Deployfish config.
         self._deployfish_config: Config | None = None
+        #: Raw deployfish config.
         self._raw_deployfish_config: Config | None = None
 
     @property

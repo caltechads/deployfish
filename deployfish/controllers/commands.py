@@ -62,6 +62,9 @@ def get_task(obj: Service, name: str) -> ServiceHelperTask:
 
 
 class ECSServiceCommands(Controller):
+    """
+    Model ecsservice commands behavior.
+    """
     class Meta:
         label = "commands"
         description = "Work with Helper Tasks for an ECS Service"
@@ -69,22 +72,27 @@ class ECSServiceCommands(Controller):
         stacked_on = "service"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = Service
+    #: Loader.
     loader: type[ObjectLoader] = ServiceLoader
 
     # --------------------
     # .info() related vars
     # --------------------
     # Which template should we use when showing .info() output?
+    #: Info template.
     info_template: str = "detail--servicehelpertask.jinja2"
 
     # --------------------
     # .list() related vars
     # --------------------
     # The name of the column HEADER by which to order the output table
+    #: List ordering.
     list_ordering: str = "Command Name"
     # Configuration for TableRenderer.  See the help for deployfish.renderers.table.TableRenderer
     # for instructions.
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Command Name": "command",
         "Disabled?": "schedule_disabled",
@@ -100,6 +108,12 @@ class ECSServiceCommands(Controller):
         ``operation`` and with configuration ``kwargs``, and then run it.
 
         ``operation`` can be any waiter operation that boto3 supports for ``self.model`` type objects.
+
+        Args:
+            operation: operation.
+
+        Keyword Args:
+            kwargs: kwargs.
         """
         waiter = self.model.objects.get_waiter(operation)
         waiter.wait(**kwargs)
@@ -302,6 +316,15 @@ enabled in AWS, disable it.
     # Run
 
     def run_task_waiter(self, tasks: Sequence[InvokedTask], **kwargs) -> None:
+        """
+        Run task waiter.
+
+        Args:
+            tasks: tasks.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         kwargs["WaiterHooks"] = [ECSTaskStatusHook(tasks)]
         kwargs["tasks"] = [t.arn for t in tasks]
         kwargs["cluster"] = tasks[0].cluster_name
@@ -350,6 +373,9 @@ Run a command associated with a Service that exists in AWS.
 
 
 class ECSServiceCommandLogs(Controller):
+    """
+    Model ecsservice command logs behavior.
+    """
     class Meta:
         label = "command-logs"
         aliases = ["logs"]
@@ -358,7 +384,9 @@ class ECSServiceCommandLogs(Controller):
         stacked_on = "commands"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = Service
+    #: Loader.
     loader: type[ObjectLoader] = ServiceLoader
 
     # tail

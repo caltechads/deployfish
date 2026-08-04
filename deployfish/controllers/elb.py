@@ -7,21 +7,29 @@ from .utils import handle_model_exceptions
 
 
 class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
+    """
+    Model ec2 classic load balancer behavior.
+    """
     class Meta:
         label = "elbs"
         description = "Work with Classic Load Balancer objects"
         help = "Work with Classic Load Balancer objects"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = ClassicLoadBalancer
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about an ELB from AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--classicloadbalancer.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, str] = {
         "Name": "LoadBalancerName",
         "Scheme": "scheme",
@@ -64,6 +72,9 @@ class EC2ClassicLoadBalancer(ReadOnlyCrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(
             vpc_id=self.app.pargs.vpc_id,
             scheme=self.app.pargs.scheme,

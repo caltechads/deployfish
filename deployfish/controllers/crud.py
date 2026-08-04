@@ -18,10 +18,15 @@ from .utils import handle_model_exceptions
 
 
 class ReadOnlyCrudBase(Controller):
+    """
+    Model read only crud base behavior.
+    """
     class Meta:
         label = "ro-crud-base"
 
+    #: Model.
     model: type[Model] = Model
+    #: Loader.
     loader: type[ObjectLoader] = ObjectLoader
 
     #: The keys of this dict are method names, and the value is the string
@@ -95,7 +100,8 @@ class ReadOnlyCrudBase(Controller):
         Helper method that renders output from self.list() so that we can override .list() without
         having to re-implement this.
 
-
+        Args:
+            results: results.
         """
         renderer = TableRenderer(
             columns=self.list_result_columns, ordering=self.list_ordering
@@ -113,10 +119,15 @@ class ReadOnlyCrudBase(Controller):
 
 
 class CrudBase(ReadOnlyCrudBase):
+    """
+    Model crud base behavior.
+    """
     class Meta:
         label = "crud-base"
 
+    #: Model.
     model: type[Model] = Model
+    #: Loader.
     loader: type[ObjectLoader] = ObjectLoader
 
     #: The keys of this dict are method names, and the value is the string
@@ -128,6 +139,7 @@ class CrudBase(ReadOnlyCrudBase):
     # --------------------
     #: Which template should we use when showing :py:meth:`create` output?
     create_template: str = "detail.jinja2"
+    #: Create kwargs.
     create_kwargs: dict[str, Any] = {}
 
     # --------------------
@@ -135,6 +147,7 @@ class CrudBase(ReadOnlyCrudBase):
     # --------------------
     #: Which template should we use when showing :py:meth:`update` output?
     update_template: str = "detail.jinja2"
+    #: Update kwargs.
     update_kwargs: dict[str, Any] = {}
 
     # --------------------
@@ -142,6 +155,7 @@ class CrudBase(ReadOnlyCrudBase):
     # --------------------
     #: Which template should we use when showing :py:meth:`delete` output?
     delete_template: str = "detail.jinja2"
+    #: Delete kwargs.
     delete_kwargs: dict[str, Any] = {}
 
     def _default(self):
@@ -158,6 +172,12 @@ class CrudBase(ReadOnlyCrudBase):
 
         ``operation`` can be any waiter operation that boto3 supports for
         :py:attr:`model` type objects.
+
+        Args:
+            operation: operation.
+
+        Keyword Args:
+            kwargs: kwargs.
         """
         waiter = self.model.objects.get_waiter(operation)
         waiter.wait(**kwargs)
@@ -165,6 +185,15 @@ class CrudBase(ReadOnlyCrudBase):
     # Create
 
     def create_waiter(self, obj: Model, **_):
+        """
+        Create waiter.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         pass
 
     @ex(
@@ -215,6 +244,15 @@ class CrudBase(ReadOnlyCrudBase):
     # Update
 
     def update_waiter(self, obj: Model, **_):
+        """
+        Update waiter.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         pass
 
     @ex(
@@ -260,6 +298,15 @@ class CrudBase(ReadOnlyCrudBase):
     # Delete
 
     def delete_waiter(self, obj: Model, **_):
+        """
+        Delete waiter.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         pass
 
     @ex(

@@ -20,6 +20,12 @@ class ServiceDiscoveryServiceAdapter(Adapter):
     """
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data = {}
         data["Name"] = self.data["name"]
         data["DnsConfig"] = {}

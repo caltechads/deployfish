@@ -38,6 +38,14 @@ class AbstractConfigProcessor:
 
     def __init__(self, config: "Config", context: dict[str, Any]):
         #: The :py:class:`deployfish.config.Config` we are processing
+        """
+        Initialize AbstractConfigProcessor.
+
+        Args:
+            config: config.
+            context: context.
+        """
+        #: Config.
         self.config = config
         #: Any additional context our caller wished to give us for our processing
         self.context = context

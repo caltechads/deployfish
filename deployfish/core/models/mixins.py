@@ -17,12 +17,27 @@ if TYPE_CHECKING:
 
 
 class SupportsTags(SupportsModel, Protocol):
+    """
+    Model supports tags behavior.
+    """
+    #: Tags.
     _tags: dict[str, str]
 
     @property
-    def tags(self) -> dict[str, str]: ...
+    def tags(self) -> dict[str, str]:
+        """
+        Tags.
+        """
+        ...
 
-    def import_tags(self, aws_tags: list[dict[str, str]]) -> None: ...
+    def import_tags(self, aws_tags: list[dict[str, str]]) -> None:
+        """
+        Import tags.
+
+        Args:
+            aws_tags: aws tags.
+        """
+        ...
 
 
 # ----------------------
@@ -31,20 +46,53 @@ class SupportsTags(SupportsModel, Protocol):
 
 
 class TagsManagerMixin:
+    """
+    Model tags manager mixin behavior.
+    """
     def get_tags(self, obj: "Model") -> list[dict[str, str]]:
+        """
+        Get tags.
+
+        Args:
+            obj: obj.
+        """
         raise NotImplementedError
 
     def save_tags(self, obj: "Model") -> None:
+        """
+        Save tags.
+
+        Args:
+            obj: obj.
+        """
         raise NotImplementedError
 
 
 class TagsMixin:
+    """
+    Model tags mixin behavior.
+
+    Args:
+        *args: args.
+    """
+    #: Objects.
     objects: "Manager"
 
+    #: Data.
     data: dict[str, Any]
 
     def __init__(self, *args, **kwargs) -> None:
+        """
+        Initialize TagsMixin.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         super().__init__(*args, **kwargs)
+        #: Tags.
         self._tags: dict[str, str] = {}
         key = None
         if "tags" in self.data:
@@ -56,15 +104,30 @@ class TagsMixin:
 
     @property
     def tags(self) -> dict[str, str]:
+        """
+        Tags.
+
+        Returns:
+            Operation result.
+        """
         return self._tags
 
     def get_tags(self) -> None:
+        """
+        Get tags.
+        """
         if hasattr(self.objects, "get_tags"):
             self.import_tags(self.objects.get_tags(self))
         else:
             raise NotImplementedError
 
     def import_tags(self, aws_tags: list[dict[str, str]]) -> None:
+        """
+        Import tags.
+
+        Args:
+            aws_tags: aws tags.
+        """
         for tag in aws_tags:
             if "Key" in tag:
                 self._tags[tag["Key"]] = tag["Value"]
@@ -72,12 +135,21 @@ class TagsMixin:
                 self._tags[tag["key"]] = tag["value"]
 
     def save_tags(self: SupportsTags) -> None:
+        """
+        Save tags.
+        """
         if hasattr(self.objects, "save_tags"):
             self.objects.save_tags(self)
         else:
             raise NotImplementedError
 
     def render_tags(self: SupportsTags) -> list[dict[str, str]]:
+        """
+        Render tags.
+
+        Returns:
+            Operation result.
+        """
         data: list[dict[str, str]] = []
         # Loop through the tags in sorted order
         for key in sorted(self.tags):
@@ -86,10 +158,17 @@ class TagsMixin:
 
 
 class TaskDefinitionFARGATEMixin:
+    """
+    Model task definition fargatemixin behavior.
+    """
+    #: Data.
     data: dict[str, Any]
+    #: Containers.
     containers: list["ContainerDefinition"]
 
+    #: Valid fargate cpu.
     VALID_FARGATE_CPU: list[int] = [256, 512, 1024, 2048, 4096]
+    #: Valid fargate memory.
     VALID_FARGATE_MEMORY: dict[int, list[int]] = {
         256: [512, 1024, 2048],
         512: [1024, 2048, 3072, 4096],
@@ -140,6 +219,9 @@ class TaskDefinitionFARGATEMixin:
         """
         If this is a FARGATE task definition, return ``True``.  Otherwise return
         ``False``.
+
+        Returns:
+            Operation result.
         """
         return "requiresCompatibilities" in self.data and self.data[
             "requiresCompatibilities"
@@ -224,6 +306,12 @@ class TaskDefinitionFARGATEMixin:
         :param source dict(str, *): (optional) the data source for computing task memory.  If None, use self.data
 
         :rtype: Union[int, None]
+
+        Args:
+            source: source.
+
+        Returns:
+            Operation result.
         """
         if not source:
             source = self.data
@@ -380,6 +468,12 @@ class TaskDefinitionFARGATEMixin:
     def _set_ec2_task_memory(self, source: dict[str, Any] | None = None) -> int | None:
         """
         For EC2 tasks, set task memory if 'memory' is provided, don't set otherwise.
+
+        Args:
+            source: source.
+
+        Returns:
+            Operation result.
         """
         if not source:
             source = self.data
@@ -437,6 +531,13 @@ class TaskDefinitionFARGATEMixin:
     def autofill_fargate_parameters(
         self, data: dict[str, Any], source: dict[str, Any] | None = None
     ) -> None:
+        """
+        Autofill fargate parameters.
+
+        Args:
+            data: data.
+            source: source.
+        """
         container_data = [c.data for c in self.containers]
         self.set_task_cpu(data, container_data, source=source)
         self.set_task_memory(data, container_data, source=source)

@@ -12,22 +12,33 @@ from jinja2 import ChoiceLoader, Environment, PackageLoader
 
 
 class MysqlController(ReadOnlyCrudBase):
+    """
+    Model mysql controller behavior.
+
+    Args:
+        *args: args.
+    """
     class Meta:
         label = "mysql"
         description = "Work with MySQL Databases"
         help = "Work with MySQL Databases"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = MySQLDatabase
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "exists": "Show whether a MySQL database connection exists in deployfish.yml",
         "list": "List available MySQL database connections from deployfish.yml",
     }
 
+    #: Info template.
     info_template: str = "detail--mysqldatabase.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Name": "name",
         "Host": "host",
@@ -37,9 +48,19 @@ class MysqlController(ReadOnlyCrudBase):
     }
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize MysqlController.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         super().__init__(*args, **kwargs)
         # Set up Jinja2 environment with a ChoiceLoader to load templates from
         # the main application and the plugin
+        #: Jinja2 env.
         self.jinja2_env = Environment(  # noqa: S701
             loader=ChoiceLoader(
                 [
@@ -111,6 +132,9 @@ Create a database and user in a remote MySQL server.
     )
     @handle_model_exceptions
     def create(self):
+        """
+        Create.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         # The DbInstanceIdentifier should be the short hostname from the host key
@@ -187,6 +211,9 @@ and update the GRANTs for the user.
     )
     @handle_model_exceptions
     def update(self):
+        """
+        Update.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         db_instance_name = obj.host.split(".")[0]
@@ -254,6 +281,9 @@ MySQL server and has the password we expect.
     )
     @handle_model_exceptions
     def validate(self):
+        """
+        Validate.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
@@ -310,6 +340,9 @@ exists, then we will use "{service-name}-1.sql", and if that exists
     )
     @handle_model_exceptions
     def dump(self):
+        """
+        Dump.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
@@ -361,6 +394,9 @@ remote MySQL server.
     )
     @handle_model_exceptions
     def load(self):
+        """
+        Load.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
@@ -414,6 +450,9 @@ Show the GRANTs for our user in the remote MySQL server.
     )
     @handle_model_exceptions
     def show_grants(self):
+        """
+        Show grants.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
@@ -452,6 +491,9 @@ Print the MySQL version of the remote MySQL server.
     )
     @handle_model_exceptions
     def server_version(self):
+        """
+        Server version.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_deployfish(self.app.pargs.pk)
         target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)

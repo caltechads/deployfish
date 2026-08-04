@@ -125,6 +125,15 @@ class AbstractSSHProvider:
     """
 
     def __init__(self, instance: "Instance", *, verbose: bool = False) -> None:
+        """
+        Initialize AbstractSSHProvider.
+
+        Args:
+            instance: instance.
+
+        Keyword Args:
+            verbose: verbose.
+        """
         if instance is None:
             msg = f"{self.__class__.__name__}.instance must not be None"
             raise ValueError(msg)
@@ -213,6 +222,8 @@ class AbstractSSHProvider:
         Returns:
             The command to run to upload the file
 
+        Keyword Args:
+            run: run.
         """
         raise NotImplementedError
 
@@ -301,6 +312,8 @@ class SSMSSHProvider(AbstractSSHProvider):
         Returns:
             _type_: _description_
 
+        Keyword Args:
+            run: run.
         """
         if run:
             return f"cat > {filename};bash {filename};rm {filename}"
@@ -310,10 +323,21 @@ class SSMSSHProvider(AbstractSSHProvider):
 class BastionSSHProvider(AbstractSSHProvider):
     """
     Find the public-facing bastion host in the VPC in which :py:attr:`instance`
-    lives, and tunnel through that to get to our instance.
+
+    Args:
+        instance: instance.
     """
 
     def __init__(self, instance: "Instance", *, verbose: bool = False) -> None:
+        """
+        Initialize BastionSSHProvider.
+
+        Args:
+            instance: instance.
+
+        Keyword Args:
+            verbose: verbose.
+        """
         super().__init__(instance, verbose=verbose)
         if self.instance.bastion is None:
             msg = f"{self.__class__.__name__}.instance has no bastion host"
@@ -321,6 +345,15 @@ class BastionSSHProvider(AbstractSSHProvider):
 
     def ssh(self, command: str | None = None) -> str:
         # Verbose SSH prints debugging output; default stays quiet.
+        """
+        Ssh.
+
+        Args:
+            command: command.
+
+        Returns:
+            Operation result.
+        """
         flags = self.ssh_verbose_flag or "-q"
         if not command:
             command = ""
@@ -338,6 +371,17 @@ class BastionSSHProvider(AbstractSSHProvider):
         )
 
     def tunnel(self, local_port: int, target_host: str, host_port: int) -> str:
+        """
+        Tunnel.
+
+        Args:
+            local_port: local port.
+            target_host: target host.
+            host_port: host port.
+
+        Returns:
+            Operation result.
+        """
         if not self.instance.bastion:
             msg = "No bastion host found"
             raise ValueError(msg)
@@ -352,6 +396,12 @@ class BastionSSHProvider(AbstractSSHProvider):
 
     def docker_exec(self) -> str:
         # Use first matching container on host to preserve existing behavior.
+        """
+        Docker exec.
+
+        Returns:
+            Operation result.
+        """
         return (
             "/usr/bin/docker exec -it "
             "$(/usr/bin/docker ps --filter 'name=ecs-{}-[0-9]+-{}' -q | head -1) "
@@ -359,12 +409,27 @@ class BastionSSHProvider(AbstractSSHProvider):
         )
 
     def push(self, filename: str, *, run: bool = False) -> str:
+        """
+        Push.
+
+        Args:
+            filename: filename.
+
+        Keyword Args:
+            run: run.
+
+        Returns:
+            Operation result.
+        """
         if run:
             return f"cat > {filename};bash {filename};rm {filename}"
         return f"cat > {filename}"
 
 
 class SSHMixin(SupportsCache, SupportsModel):
+    """
+    Model sshmixin behavior.
+    """
     #: SSH provider implementations keyed by configured proxy type.
     providers: dict[str, type[AbstractSSHProvider]] = {
         "ssm": SSMSSHProvider,
@@ -403,6 +468,9 @@ class SSHMixin(SupportsCache, SupportsModel):
         Return all :py:class:`deployfish.core.models.ec2.Instance` objects
         associated with this class that can be targeted by
         :py:meth:`ssh_interactive` or :py:meth:`ssh_noninteractive`.
+
+        Returns:
+            Operation result.
         """
         if self.ssh_target:
             return [self.ssh_target]
@@ -415,6 +483,9 @@ class SSHMixin(SupportsCache, SupportsModel):
 
         For EC2 backed ECS Tasks, this will be the same as
         :py:meth:`ssh_target`.
+
+        Returns:
+            Operation result.
         """
         return self.ssh_target
 
@@ -425,6 +496,9 @@ class SSHMixin(SupportsCache, SupportsModel):
 
         For EC2 backed ECS Tasks, this will be the same as
         :py:meth`ssh_targets`.
+
+        Returns:
+            Operation result.
         """
         return self.ssh_targets
 
@@ -435,6 +509,8 @@ class SSHMixin(SupportsCache, SupportsModel):
         Args:
             data: the file-like object to check
 
+        Returns:
+            Operation result.
         """
         if hasattr(data, "file"):
             data = data.file
@@ -578,6 +654,18 @@ class SSHMixin(SupportsCache, SupportsModel):
         :param input_filename: the filename of the file on the local system
         :param verbose: if True, display verbose output from ssh
         :param ssh_target: If provided, the Instance object to which to ssh
+
+        Args:
+            input_filename: the filename of the file on the local system
+            verbose: if True, display verbose output from ssh
+            ssh_target: If provided, the Instance object to which to ssh
+
+        Keyword Args:
+            verbose: verbose.
+            ssh_target: ssh target.
+
+        Returns:
+            Operation result.
         """
         if ssh_target is None:
             ssh_target = self.ssh_target
@@ -597,6 +685,12 @@ class SSHMixin(SupportsCache, SupportsModel):
 
 
 class DockerMixin(SSHMixin, SupportsService):
+    """
+    Model docker mixin behavior.
+
+    Args:
+        *args: args.
+    """
     class NoRunningTasks(Exception):
         pass
 
@@ -608,6 +702,15 @@ class DockerMixin(SSHMixin, SupportsService):
         raise NotImplementedError
 
     def __init__(self, *args, **kwargs) -> None:
+        """
+        Initialize DockerMixin.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         super().__init__(*args, **kwargs)
 
     def docker_ssh_exec(

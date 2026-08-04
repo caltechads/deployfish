@@ -19,13 +19,18 @@ from .utils import handle_model_exceptions
 
 
 class ECSStandaloneTask(CrudBase):
+    """
+    Model ecsstandalone task behavior.
+    """
     class Meta:
         label = "task"
         description = "Work with ECS Standalone Task objects"
         help = "Work with ECS Standalone Task objects"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = StandaloneTask
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about an ECS Standalone Task object from AWS",
         "create": "Create an ECS StandaloneTask in AWS from what is in deployfish.yml",
@@ -33,13 +38,17 @@ class ECSStandaloneTask(CrudBase):
         "delete": "Delete an ECS StandaloneTask from AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--standalonetask.jinja2"
+    #: Plan template.
     plan_template: str = "plan--standalonetask.jinja2"
 
     # --------------------
     # .list() related vars
     # --------------------
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, Any] = {
         "Name": "name",
         "Disabled?": "schedule_disabled",
@@ -54,6 +63,7 @@ class ECSStandaloneTask(CrudBase):
     # --------------------
     # .update() related vars
     # --------------------
+    #: Update template.
     update_template: str = "detail--standalonetask--short.jinja2"
 
     @ex(
@@ -86,6 +96,9 @@ class ECSStandaloneTask(CrudBase):
     )
     @handle_model_exceptions
     def info(self):
+        """
+        Info.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         context = {
@@ -153,6 +166,9 @@ class ECSStandaloneTask(CrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(
             scheduled_only=self.app.pargs.scheduled_only,
             all_revisions=self.app.pargs.all_revisions,
@@ -171,6 +187,9 @@ class ECSStandaloneTask(CrudBase):
     )
     @handle_model_exceptions
     def create(self):
+        """
+        Create.
+        """
         self.update()
 
     # Delete
@@ -275,6 +294,15 @@ If a StandaloneTask has a schedule rule and that rule is currently enabled in AW
     # Run
 
     def run_task_waiter(self, tasks: Sequence[InvokedTask], **kwargs) -> None:
+        """
+        Run task waiter.
+
+        Args:
+            tasks: tasks.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         kwargs["WaiterHooks"] = [ECSTaskStatusHook(tasks)]
         kwargs["tasks"] = [t.arn for t in tasks]
         kwargs["cluster"] = tasks[0].cluster_name
@@ -356,6 +384,9 @@ Run a StandaloneTask that exists in AWS.
 
 
 class ECSStandaloneTaskSecrets(ObjectSecretsController):
+    """
+    Model ecsstandalone task secrets behavior.
+    """
     class Meta:
         label = "task-secrets"
         aliases = ["config"]
@@ -364,10 +395,14 @@ class ECSStandaloneTaskSecrets(ObjectSecretsController):
         help = "Work with ECS Standalone Task Secrets"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = StandaloneTask
 
 
 class ECSStandaloneTaskLogs(Controller):
+    """
+    Model ecsstandalone task logs behavior.
+    """
     class Meta:
         label = "task-logs"
         aliases = ["logs"]
@@ -376,7 +411,9 @@ class ECSStandaloneTaskLogs(Controller):
         stacked_on = "task"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = StandaloneTask
+    #: Loader.
     loader: type[ObjectLoader] = ObjectLoader
 
     # tail

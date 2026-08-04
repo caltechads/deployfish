@@ -7,13 +7,13 @@ from deployfish.exceptions import SchemaException as BaseSchemaException
 class Adapter:
     """
     Given a dict of data from a data source, convert it appropriate data
-    structures to be used to initialize a deployfish model.
 
-    Minimally this means translating the source data into the data structure
-    returned by an apporpriate ``describe_*`` AWS API call.  In more complicated
-    cases, there may be additional data returned also.
+    Args:
+        data: data.
+        partial: partial.
     """
 
+    #: None.
     NONE: str = "deployfish:required"
 
     class SchemaException(BaseSchemaException):
@@ -34,8 +34,12 @@ class Adapter:
             data: Raw source data to adapt.
             partial: Whether partial source payloads are allowed.
 
+        Keyword Args:
+            _kwargs: kwargs.
         """
+        #: Data.
         self.data: dict[str, Any] = data
+        #: Partial.
         self.partial: bool = partial
 
     def only_one_is_True(self, data: list[bool]) -> bool:  # noqa: N802

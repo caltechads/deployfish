@@ -5,7 +5,16 @@ from ..abstract import Adapter
 
 
 class SSHTunnelAdapter(Adapter):
+    """
+    Model sshtunnel adapter behavior.
+    """
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Convert.
+
+        Returns:
+            Operation result.
+        """
         data = deepcopy(self.data)
         kwargs: dict[str, Any] = {}
         return data, kwargs

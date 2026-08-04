@@ -11,22 +11,30 @@ from .utils import handle_model_exceptions
 
 
 class RDSRDSInstance(ReadOnlyCrudBase):
+    """
+    Model rdsrdsinstance behavior.
+    """
     class Meta:
         label = "rds"
         description = "Work with RDS Instances"
         help = "Work with RDS Instances"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = RDSInstance
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about an RDS Instance from AWS",
         "list": "List RDS Instances in AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--rdsinstance.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, str] = {
         "Name": "DBInstanceIdentifier",
         "VPC": "vpc__name",
@@ -51,6 +59,9 @@ The {pk} is the name of the RDS instance.
     )
     @handle_model_exceptions
     def credentials(self) -> None:
+        """
+        Credentials.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         obj = cast("RDSInstance", obj)

@@ -109,6 +109,9 @@ def list_log_streams(app: App, obj: Task, limit=None) -> None:
 
 
 class Logs(Controller):
+    """
+    Model logs behavior.
+    """
     class Meta:
         label = "logs"
         description = "Work with CloudWatch Logs"
@@ -117,6 +120,9 @@ class Logs(Controller):
 
 
 class LogsCloudWatchLogGroup(ReadOnlyCrudBase):
+    """
+    Model logs cloud watch log group behavior.
+    """
     class Meta:
         label = "awslog-groups"
         description = "Work with CloudWatch Log Group objects"
@@ -124,15 +130,20 @@ class LogsCloudWatchLogGroup(ReadOnlyCrudBase):
         stacked_on = "logs"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = CloudWatchLogGroup
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about a CloudWatch Log Group in AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--cloudwatchloggroup.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, str | dict[str, str]] = {
         "Name": "logGroupName",
         "Created": {"key": "creationTime", "datatype": "timestamp"},
@@ -156,6 +167,9 @@ class LogsCloudWatchLogGroup(ReadOnlyCrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(
             prefix=self.app.pargs.prefix,
         )
@@ -207,6 +221,9 @@ Tail the logs for a CloudWatch Logs Log Group.
     )
     @handle_model_exceptions
     def tail(self) -> None:
+        """
+        Tail.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.name)
         group = cast("CloudWatchLogGroup", obj)
@@ -238,6 +255,9 @@ Tail the logs for a CloudWatch Logs Log Group.
 
 
 class LogsCloudWatchLogStream(ReadOnlyCrudBase):
+    """
+    Model logs cloud watch log stream behavior.
+    """
     class Meta:
         label = "awslog-streams"
         description = "Work with CloudWatch Log Stream objects"
@@ -245,15 +265,20 @@ class LogsCloudWatchLogStream(ReadOnlyCrudBase):
         stacked_on = "logs"
         stacked_type = "nested"
 
+    #: Model.
     model: type[Model] = CloudWatchLogStream
 
+    #: Help overrides.
     help_overrides: dict[str, str] = {
         "info": "Show details about a CloudWatch Log Group in AWS",
     }
 
+    #: Info template.
     info_template: str = "detail--cloudwatchlogstream.jinja2"
 
+    #: List ordering.
     list_ordering: str = "Name"
+    #: List result columns.
     list_result_columns: dict[str, str | dict[str, str]] = {
         "Name": "logStreamName",
         "Group": "logGroupName",
@@ -295,6 +320,9 @@ class LogsCloudWatchLogStream(ReadOnlyCrudBase):
     )
     @handle_model_exceptions
     def list(self):
+        """
+        List.
+        """
         results = self.model.objects.list(
             self.app.pargs.log_group_name,
             prefix=self.app.pargs.prefix,
@@ -337,6 +365,9 @@ The pk for a log stream is "{log_group_name}:{log_stream_id}"
     )
     @handle_model_exceptions
     def tail(self) -> None:
+        """
+        Tail.
+        """
         loader = self.loader(self)
         obj = loader.get_object_from_aws(self.app.pargs.pk)
         stream = cast("CloudWatchLogStream", obj)

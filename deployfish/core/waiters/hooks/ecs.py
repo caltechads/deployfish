@@ -14,15 +14,33 @@ from .abstract import AbstractWaiterHook
 class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
     """
     This for both the 'services_stable' and 'services_inactive' waiters on ECS.
+
+    Args:
+        obj: obj.
     """
 
     def __init__(self, obj):
+        """
+        Initialize ECSDeploymentStatusWaiterHook.
+
+        Args:
+            obj: obj.
+        """
         super().__init__(obj)
+        #: Our timezone.
         self.our_timezone = get_localzone()
+        #: Start.
         self.start = datetime.now().replace(tzinfo=self.our_timezone)
+        #: Timestamp.
         self.timestamp = self.start
 
     def display_deployments(self, deployments: list[dict[str, Any]]) -> None:
+        """
+        Display deployments.
+
+        Args:
+            deployments: deployments.
+        """
         rows = []
         for d in deployments:
             if d["status"] == "PRIMARY":
@@ -47,6 +65,12 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
         )
 
     def display_events(self, events: list[dict[str, Any]]) -> None:
+        """
+        Display events.
+
+        Args:
+            events: events.
+        """
         rows = []
         events = sorted(events, key=lambda x: x["createdAt"])
         events.reverse()
@@ -64,6 +88,17 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
         click.secho(tabulate(rows, headers=["Timestamp", "Message"]))
 
     def waiting(self, status, response, num_attempts, **kwargs):
+        """
+        Waiting.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         cluster = kwargs["cluster"]
         service = kwargs["services"][0]
         service = Service.objects.get(f"{cluster}:{service}")
@@ -78,14 +113,48 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
         self.mark(status, response, num_attempts, **kwargs)
 
     def success(self, status, response, num_attempts, **kwargs):
+        """
+        Success.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         click.secho("\n\nService is stable!", fg="green")
 
     def failure(self, status, response, num_attempts, **kwargs):
+        """
+        Failure.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         click.secho("\n\nService failed to stabilize!", fg="red")
 
+    #: Error.
     error = failure
 
     def timeout(self, status, response, num_attempts, **kwargs):
+        """
+        Timeout.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         click.secho("\n\nTimed out waiting for the service to stablize!\n\n", fg="red")
         click.secho(
             "NOTE: this does not necessarily mean your deployment failed: check the AWS console to be sure."
@@ -95,15 +164,38 @@ class ECSDeploymentStatusWaiterHook(AbstractWaiterHook):
 class ECSTaskStatusHook(AbstractWaiterHook):
     """
     This for the 'tasks_stopped'' waiters on ECS, and prints the status of our tasks on each iteration.
+
+    Args:
+        obj: obj.
     """
 
     def __init__(self, obj):
+        """
+        Initialize ECSTaskStatusHook.
+
+        Args:
+            obj: obj.
+        """
         super().__init__(obj)
+        #: Our timezone.
         self.our_timezone = get_localzone()
+        #: Start.
         self.start = datetime.now().replace(tzinfo=self.our_timezone)
+        #: Timestamp.
         self.timestamp = self.start
 
     def waiting(self, status, response, num_attempts, **kwargs):
+        """
+        Waiting.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         cluster = kwargs["cluster"]
         tasks = [InvokedTask.objects.get(f"{cluster}:{arn}") for arn in kwargs["tasks"]]
         table = []
@@ -128,6 +220,17 @@ class ECSTaskStatusHook(AbstractWaiterHook):
         self.mark(status, response, num_attempts, **kwargs)
 
     def success(self, status, response, num_attempts, **kwargs):
+        """
+        Success.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         cluster = kwargs["cluster"]
         tasks = [InvokedTask.objects.get(f"{cluster}:{arn}") for arn in kwargs["tasks"]]
         click.secho("\n\nFinal Task status:", fg="cyan")
@@ -149,25 +252,61 @@ class ECSTaskStatusHook(AbstractWaiterHook):
             )
         )
 
+    #: Failure.
     failure = success
+    #: Error.
     error = success
 
     def timeout(self, status, response, num_attempts, **kwargs):
+        """
+        Timeout.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         click.secho("\n\nTimed out waiting for the tasks to finish!\n\n", fg="red")
 
 
 class ECSTaskLogsHook(AbstractWaiterHook):
     """
     This for the 'tasks_stopped'' waiters on ECS.
+
+    Args:
+        obj: obj.
     """
 
     def __init__(self, obj):
+        """
+        Initialize ECSTaskLogsHook.
+
+        Args:
+            obj: obj.
+        """
         super().__init__(obj)
+        #: Our timezone.
         self.our_timezone = get_localzone()
+        #: Start.
         self.start = datetime.now().replace(tzinfo=self.our_timezone)
+        #: Timestamp.
         self.timestamp = self.start
 
     def waiting(self, status, response, num_attempts, **kwargs):
+        """
+        Waiting.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         cluster = kwargs["cluster"]
         tasks = [InvokedTask.objects.get(f"{cluster}:{arn}") for arn in kwargs["tasks"]]
         click.secho("\n\nTask status:", fg="cyan")
@@ -195,6 +334,17 @@ class ECSTaskLogsHook(AbstractWaiterHook):
         self.mark(status, response, num_attempts, **kwargs)
 
     def success(self, status, response, num_attempts, **kwargs):
+        """
+        Success.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         cluster = kwargs["cluster"]
         tasks = [InvokedTask.objects.get(f"{cluster}:{arn}") for arn in kwargs["tasks"]]
         click.secho("\n\nTask status:", fg="cyan")
@@ -216,8 +366,21 @@ class ECSTaskLogsHook(AbstractWaiterHook):
             )
         )
 
+    #: Failure.
     failure = success
+    #: Error.
     error = success
 
     def timeout(self, status, response, num_attempts, **kwargs):
+        """
+        Timeout.
+
+        Args:
+            status: status.
+            response: response.
+            num_attempts: num attempts.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         click.secho("\n\nTimed out waiting for the tasks to finish!\n\n", fg="red")

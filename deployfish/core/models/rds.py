@@ -13,9 +13,25 @@ from .secrets_manager import SMSecret
 
 
 class RDSManager(TagsManagerMixin, Manager):
+    """
+    Model rdsmanager behavior.
+    """
+    #: Service.
     service: str = "rds"
 
     def get(self, pk: str, **_) -> "RDSInstance":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         try:
             response = self.client.describe_db_instances(DBInstanceIdentifier=pk)
         except self.client.exceptions.DBInstanceNotFoundFault:
@@ -24,6 +40,12 @@ class RDSManager(TagsManagerMixin, Manager):
         return RDSInstance(response["DBInstances"][0])
 
     def list(self) -> Sequence["RDSInstance"]:
+        """
+        List.
+
+        Returns:
+            Operation result.
+        """
         response = self.client.describe_db_instances()
         return [RDSInstance(group) for group in response["DBInstances"]]
 
@@ -34,22 +56,50 @@ class RDSManager(TagsManagerMixin, Manager):
 
 
 class RDSInstance(TagsMixin, Model):
+    """
+    Model rdsinstance behavior.
+    """
+    #: Objects.
     objects = RDSManager()
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["DBInstanceIdentifier"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["DBInstanceIdentifier"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data["DBInstanceArn"]
 
     @property
     def status(self) -> str:
+        """
+        Status.
+
+        Returns:
+            Operation result.
+        """
         return self.data["DBInstanceStatus"]
 
     @property
@@ -99,6 +149,12 @@ class RDSInstance(TagsMixin, Model):
 
     @property
     def secret_enabled(self) -> bool:
+        """
+        Secret enabled.
+
+        Returns:
+            Operation result.
+        """
         return self.secret_arn is not None
 
     @property
@@ -117,6 +173,12 @@ class RDSInstance(TagsMixin, Model):
 
     @property
     def root_password(self) -> str:
+        """
+        Root password.
+
+        Returns:
+            Operation result.
+        """
         if self.secret_enabled:
             if "root_password" not in self.cache:
                 secret = SMSecret.objects.get(cast("str", self.secret_arn))
@@ -158,6 +220,12 @@ class RDSInstance(TagsMixin, Model):
 
     @property
     def subnets(self) -> list[Subnet]:
+        """
+        Subnets.
+
+        Returns:
+            Operation result.
+        """
         if "subnets" not in self.cache:
             self.cache["subnets"] = []
             for subnet in self.data["DBSubnetGroup"]["Subnets"]:
@@ -168,6 +236,12 @@ class RDSInstance(TagsMixin, Model):
 
     @property
     def security_groups(self) -> list[SecurityGroup]:
+        """
+        Security groups.
+
+        Returns:
+            Operation result.
+        """
         if "security_groups" not in self.cache:
             self.cache["security_groups"] = []
             for group in self.data["VpcSecurityGroups"]:
@@ -183,6 +257,12 @@ class RDSInstance(TagsMixin, Model):
 
     @property
     def vpc(self) -> VPC:
+        """
+        Vpc.
+
+        Returns:
+            Operation result.
+        """
         if "vpc" not in self.cache:
             self.cache["vpc"] = VPC.objects.get(self.data["DBSubnetGroup"]["VpcId"])
         return self.cache["vpc"]

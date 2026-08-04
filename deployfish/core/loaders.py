@@ -16,6 +16,7 @@ class ServiceDereferenceMixin:
     "``{cluster_name}:{service_name}``".
     """
 
+    #: Controller.
     controller: DeployfishArgparseController
 
     def dereference_identifier(self, identifier: str) -> str:
@@ -44,6 +45,9 @@ class ServiceDereferenceMixin:
 class ObjectLoader:
     """
     A base class for loading objects from deployfish.yml or from AWS.
+
+    Args:
+        controller: controller.
     """
 
     class DeployfishSectionDoesNotExist(NoSuchConfigSection):
@@ -71,9 +75,26 @@ class ObjectLoader:
         """
 
     def __init__(self, controller):
+        #: Controller.
+        """
+        Initialize ObjectLoader.
+
+        Args:
+            controller: controller.
+        """
+        #: Controller.
         self.controller = controller
 
     def dereference_identifier(self, identifier: str) -> str:
+        """
+        Dereference identifier.
+
+        Args:
+            identifier: identifier.
+
+        Returns:
+            Operation result.
+        """
         return identifier
 
     def get_object_from_aws(

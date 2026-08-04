@@ -18,11 +18,23 @@ class ImproperlyConfiguredError(Exception):
 
 
 class AnnotationMixin:
+    """
+    Model annotation mixin behavior.
+    """
     def annotate(self, context: dict[str, str]):
+        """
+        Annotate.
+
+        Args:
+            context: context.
+        """
         pass
 
 
 class CodeNameVersionMixin(AnnotationMixin):
+    """
+    Model code name version mixin behavior.
+    """
     def setup_py(self, path: pathlib.Path) -> dict[str, str]:
         """
         Process a setup.py file and return the name and version.
@@ -131,6 +143,8 @@ class CodeNameVersionMixin(AnnotationMixin):
         * `name`: the output of `python setup.py name`
         * `version`: the output of `python setup.py version`
 
+        Args:
+            context: context.
         """
         super().annotate(context)
         setup_py = pathlib.Path.cwd() / "setup.py"
@@ -162,19 +176,52 @@ class CodeNameVersionMixin(AnnotationMixin):
 
 
 class GitMixin(AnnotationMixin):
+    """
+    Model git mixin behavior.
+
+    Args:
+        *args: args.
+    """
     def __init__(self, *args, url_type="slack", **kwargs):
+        #: Repo.
+        """
+        Initialize GitMixin.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            url_type: url type.
+            kwargs: kwargs.
+        """
+        #: Repo.
         self.repo = None
+        #: Url type.
         self.url_type = url_type
+        #: Url patterns.
         self.url_patterns = {}
         self.__get_repo()
         self.__build_url_patterns()
         super().__init__(*args, **kwargs)
 
     def __get_repo(self):
+        """
+        Handle get repo.
+        """
         if not self.repo:
             self.repo = Repo(".")
 
     def __format_url(self, url: str, label: str):
+        """
+        Handle format url.
+
+        Args:
+            url: url.
+            label: label.
+
+        Returns:
+            Operation result.
+        """
         if self.url_type == "markdown":
             return f"[{label}]({url})"
         return f"<{url}|{label}>"
@@ -182,6 +229,9 @@ class GitMixin(AnnotationMixin):
     def __build_url_patterns(self):
         # https://caltech-imss-ads@bitbucket.org/caltech-imss-ads/exeter_api/src/0.10.2/
         #
+        """
+        Handle build url patterns.
+        """
         if not self.url_patterns:
             p = parse(self.repo.remote().url)
             origin_url = f"https://{p.host}/{p.owner}/{p.repo}"
@@ -220,6 +270,9 @@ class GitMixin(AnnotationMixin):
 
         * `previous_version`: the version number for the tag immediately preceeding ours
         * `last_version_sha`: the sha that that tag points to
+
+        Args:
+            values: values.
         """
         # Get all tags, sorted by the authored_date on their associated commit.  We should have at least one tag -- the
         # one for this commit.
@@ -251,6 +304,9 @@ class GitMixin(AnnotationMixin):
 
         * `authors`: a list of all authors in those commits
         * `changelog`: a list of strings representing the commits
+
+        Args:
+            values: values.
         """
         # get the changes between here and the previous tag
         changelog_commits = []
@@ -276,6 +332,12 @@ class GitMixin(AnnotationMixin):
         values["changelog"] = changelog
 
     def __get_concise_info(self):
+        """
+        Handle get concise info.
+
+        Returns:
+            Operation result.
+        """
         branch = self.repo.head.reference.name
         current = self.repo.head.commit
         sha = current.hexsha[0:7]
@@ -286,6 +348,9 @@ class GitMixin(AnnotationMixin):
     def annotate(self, values: dict[str, str]):
         """
         Extract info about the git repo.  Assume we're in the checked out clone.
+
+        Args:
+            values: values.
         """
         super().annotate(values)
         headcommit = self.repo.head.commit
@@ -314,6 +379,9 @@ class GitChangelogMixin:
 
         * `authors`: a list of all authors in those commits
         * `changelog`: a list of strings representing the commits
+
+        Args:
+            values: values.
         """
         super().annotate(values)  # type: ignore[misc]
         git_mixin = cast("GitMixin", self)
@@ -344,12 +412,34 @@ class GitChangelogMixin:
 
 
 class CodebuildMixin(AnnotationMixin):
+    """
+    Model codebuild mixin behavior.
+
+    Args:
+        *args: args.
+    """
     def __init__(self, *args, **kwargs):
+        """
+        Initialize CodebuildMixin.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         if "log_group" in kwargs:
+            #: Log group.
             self.log_group = kwargs["log_group"]
         super().__init__(*args, **kwargs)
 
     def annotate(self, values: dict[str, Any]) -> None:
+        """
+        Annotate.
+
+        Args:
+            values: values.
+        """
         super().annotate(values)
         values["status"] = (
             "Success" if "CODEBUILD_BUILD_SUCCEEDING" in os.environ else "Failed"
@@ -366,25 +456,69 @@ class CodebuildMixin(AnnotationMixin):
 
 
 class DockerImageNameMixin(AnnotationMixin):
+    """
+    Model docker image name mixin behavior.
+
+    Args:
+        *args: args.
+    """
     def __init__(self, *args, **kwargs):
+        """
+        Initialize DockerImageNameMixin.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         if "image" in kwargs:
+            #: Image.
             self.image = kwargs["image"]
             del kwargs["image"]
         super().__init__(*args, **kwargs)
 
     def annotate(self, values):
+        """
+        Annotate.
+
+        Args:
+            values: values.
+        """
         super().annotate(values)
         values["short_image"] = os.path.basename(self.image)
 
 
 class DockerMixin(AnnotationMixin):
+    """
+    Model docker mixin behavior.
+
+    Args:
+        *args: args.
+    """
     def __init__(self, *args, **kwargs):
+        """
+        Initialize DockerMixin.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         if "image" in kwargs:
+            #: Image.
             self.image = kwargs["image"]
             del kwargs["image"]
         super().__init__(*args, **kwargs)
 
     def annotate(self, values: dict[str, str]):
+        """
+        Annotate.
+
+        Args:
+            values: values.
+        """
         super().annotate(values)
         client = docker.from_env()
         image = client.images.get(self.image)
@@ -393,12 +527,34 @@ class DockerMixin(AnnotationMixin):
 
 
 class DeployfishDeployMixin(AnnotationMixin):
+    """
+    Model deployfish deploy mixin behavior.
+
+    Args:
+        *args: args.
+    """
     def __init__(self, *args, **kwargs):
+        """
+        Initialize DeployfishDeployMixin.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+        """
         if "service" in kwargs:
+            #: Service.
             self.service = kwargs["service"]
             del kwargs["service"]
         super().__init__(*args, **kwargs)
 
     def annotate(self, values: dict[str, str]):
+        """
+        Annotate.
+
+        Args:
+            values: values.
+        """
         super().annotate(values)
         values["service"] = self.service

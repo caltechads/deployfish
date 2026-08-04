@@ -6,10 +6,14 @@ import yaml
 
 from deployfish.exceptions import ConfigProcessingFailed
 
+#: Boto3 session.
 boto3_session: boto3.session.Session | None = None
 
 
 class AWSSessionBuilder:
+    """
+    Model awssession builder behavior.
+    """
     class NoSuchAWSProfile(Exception):
         """
         We raise this if the AWS profile defined in the deployfish.yml file
@@ -79,6 +83,15 @@ class AWSSessionBuilder:
     def __get_boto3_session(
         self, config: dict[str, Any] | None = None
     ) -> boto3.session.Session:
+        """
+        Handle get boto3 session.
+
+        Args:
+            config: config.
+
+        Returns:
+            Operation result.
+        """
         if config:
             # If an API access key pair is provided in the 'aws' section, that
             # has priority

@@ -19,6 +19,7 @@ from deployfish.core.models import Model, Service, StandaloneTask
 from deployfish.ext.ext_df_argparse import DeployfishArgparseController as Controller
 from deployfish.types import SupportsModelWithSecrets
 
+#: Version banner.
 VERSION_BANNER = f"""
 deployfish-{get_version()}: Manage the lifecycle of AWS ECS services
 ---
@@ -27,6 +28,15 @@ deployfish-{get_version()}: Manage the lifecycle of AWS ECS services
 
 
 def filename_envvar(s):
+    """
+    Filename envvar.
+
+    Args:
+        s: s.
+
+    Returns:
+        Operation result.
+    """
     if "DEPLOYFISH_CONFIG_FILE" in os.environ:
         return os.environ["DEPLOYFISH_CONFIG_FILE"]
     return s
@@ -59,6 +69,9 @@ def maybe_rename_existing_file(env_file: str, obj: SupportsModelWithSecrets) -> 
 
 
 class Base(Controller):
+    """
+    Model base behavior.
+    """
     class Meta:
         label = "base"
 
@@ -123,6 +136,9 @@ class Base(Controller):
 
 
 class BaseService(ECSService):
+    """
+    Model base service behavior.
+    """
     class Meta:
         label = "base-service"
         stacked_on = "base"
@@ -130,6 +146,9 @@ class BaseService(ECSService):
 
 
 class BaseServiceSecrets(ECSServiceSecrets):
+    """
+    Model base service secrets behavior.
+    """
     class Meta:
         label = "base-config"
         aliases = ["config"]
@@ -194,12 +213,18 @@ class BaseServiceSecrets(ECSServiceSecrets):
 
 
 class BaseServiceSSH(ECSServiceSSH):
+    """
+    Model base service ssh behavior.
+    """
     class Meta:
         label = "base-ssh"
         stacked_on = "base"
 
 
 class BaseServiceDockerExec(ECSServiceDockerExec):
+    """
+    Model base service docker exec behavior.
+    """
     class Meta:
         label = "base-exec"
         stacked_on = "base"

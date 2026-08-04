@@ -24,7 +24,15 @@ from deployfish.types import SupportsCache, SupportsModel
 
 
 class LazyAttributeMixin(SupportsCache):
+    """
+    Model lazy attribute mixin behavior.
+    """
     def __init__(self) -> None:
+        #: Cache.
+        """
+        Initialize LazyAttributeMixin.
+        """
+        #: Cache.
         self.cache: dict[str, Any] = {}
         super().__init__()
 
@@ -35,23 +43,53 @@ class LazyAttributeMixin(SupportsCache):
         args: list[Any],
         kwargs: dict[str, Any] | None = None,
     ) -> Any:
+        """
+        Get cached.
+
+        Args:
+            key: key.
+            populator: populator.
+            args: args.
+            kwargs: kwargs.
+
+        Returns:
+            Operation result.
+        """
         kwargs = kwargs or {}
         if key not in self.cache:
             self.cache[key] = populator(*args, **kwargs)
         return self.cache[key]
 
     def purge_cache(self) -> None:
+        """
+        Purge cache.
+        """
         self.cache = {}
 
 
 class Manager:
+    """
+    Model manager behavior.
+    """
+    #: Service.
     service: str
 
     def __init__(self):
+        #: Client.
+        """
+        Initialize Manager.
+        """
+        #: Client.
         self._client = None
 
     @property
     def client(self):
+        """
+        Client.
+
+        Returns:
+            Operation result.
+        """
         if self.service:
             self._client = get_boto3_session().client(self.service)
         else:
@@ -59,37 +97,110 @@ class Manager:
         return self._client
 
     def get(self, pk: str, **_) -> "Model":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+        """
         raise NotImplementedError
 
     def get_many(self, pks: list[str], **_) -> Sequence["Model"]:
+        """
+        Get many.
+
+        Args:
+            pks: pks.
+
+        Keyword Args:
+            _: .
+        """
         raise NotImplementedError
 
     def save(self, obj: "Model", **_) -> Any:
+        """
+        Save.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         msg = f"Cannot modify {obj.__class__.__name__} objects with deployfish."
         raise obj.ReadOnly(msg)
 
     def exists(self, pk: str) -> bool:
+        """
+        Exists.
+
+        Args:
+            pk: pk.
+
+        Returns:
+            Operation result.
+        """
         try:
             self.get(pk)
         except ObjectDoesNotExist:
             return False
         return True
 
+    #: List.
     list: Callable[..., Sequence["Model"]]
 
     def delete(self, obj: "Model", **_) -> None:
+        """
+        Delete.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         msg = f"Cannot modify {obj.__class__.__name__} objects with deployfish."
         raise obj.ReadOnly(msg)
 
     def diff(self, obj: "Model") -> dict[str, Any]:
+        """
+        Diff.
+
+        Args:
+            obj: obj.
+
+        Returns:
+            Operation result.
+        """
         aws_obj = self.get(obj.pk)
         return obj.diff(aws_obj)
 
     def needs_update(self, obj: "Model") -> bool:
+        """
+        Needs update.
+
+        Args:
+            obj: obj.
+
+        Returns:
+            Operation result.
+        """
         aws_obj = self.get(obj.pk)
         return obj == aws_obj
 
     def get_waiter(self, waiter_name: str):
+        """
+        Get waiter.
+
+        Args:
+            waiter_name: waiter name.
+
+        Returns:
+            Operation result.
+        """
         config = self.client._get_waiter_config()  # pylint:disable=protected-access
         if not config:
             msg = f"Waiter does not exist: {waiter_name}"
@@ -107,8 +218,17 @@ class Manager:
 
 
 class Model(LazyAttributeMixin, SupportsModel):
+    """
+    Model model behavior.
+
+    Args:
+        data: data.
+    """
+    #: Objects.
     objects: Manager
+    #: Adapters.
     adapters = importer_registry
+    #: Config section.
     config_section: str = "NO_SECTION"
 
     class DoesNotExist(ObjectDoesNotExist):
@@ -148,6 +268,16 @@ class Model(LazyAttributeMixin, SupportsModel):
 
             At this time, the only valid `source` is `deployfish`, and so all `obj` will be bits of parsed
             deployfish.yml data.  CPM 2021-09
+
+        Args:
+            obj: obj.
+            source: source.
+
+        Keyword Args:
+            kwargs: kwargs.
+
+        Returns:
+            Operation result.
         """
         adapter = cls.adapters.get(cls.__name__, source)(obj, **kwargs)
         data, data_kwargs = adapter.convert()
@@ -162,60 +292,155 @@ class Model(LazyAttributeMixin, SupportsModel):
 
             The ``**kwargs`` here is for the Adapter to use, not for the Model constructor.  So don't be confused if
             kwargs are passed in here which do not get used on the model.
+
+        Args:
+            obj: obj.
+            source: source.
+
+        Keyword Args:
+            kwargs: kwargs.
+
+        Returns:
+            Operation result.
         """
         data, model_kwargs = cls.adapt(obj, source, **kwargs)
         return cls(data, **model_kwargs)
 
     def __init__(self, data):
+        """
+        Initialize Model.
+
+        Args:
+            data: data.
+        """
         super().__init__()
+        #: Data.
         self.data = data
 
     @property
     def pk(self):
+        """
+        Pk.
+        """
         raise NotImplementedError
 
     @property
     def name(self):
+        """
+        Name.
+        """
         raise NotImplementedError
 
     @property
     def arn(self):
+        """
+        Arn.
+        """
         raise NotImplementedError
 
     @property
     def exists(self) -> bool:
+        """
+        Exists.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.exists(self.pk)
 
     def render_for_display(self) -> dict[str, Any]:
+        """
+        Render for display.
+
+        Returns:
+            Operation result.
+        """
         return self.render()
 
     def render_for_diff(self) -> dict[str, Any]:
+        """
+        Render for diff.
+
+        Returns:
+            Operation result.
+        """
         return self.render()
 
     def render_for_create(self) -> dict[str, Any]:
+        """
+        Render for create.
+
+        Returns:
+            Operation result.
+        """
         return self.render()
 
     def render_for_update(self) -> dict[str, Any]:
+        """
+        Render for update.
+
+        Returns:
+            Operation result.
+        """
         return self.render()
 
     def render(self) -> dict[str, Any]:
+        """
+        Render.
+
+        Returns:
+            Operation result.
+        """
         return deepcopy(self.data)
 
     def save(self):
+        """
+        Save.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.save(self)
 
     def delete(self) -> None:
+        """
+        Delete.
+        """
         self.objects.delete(self)
 
     def copy(self) -> "Model":
+        """
+        Copy.
+
+        Returns:
+            Operation result.
+        """
         return self.__class__(self.render_for_create())
 
     def __eq__(self, other) -> bool:
+        """
+        Handle eq.
+
+        Args:
+            other: other.
+
+        Returns:
+            Operation result.
+        """
         if self.__class__ != other.__class__:
             return False
         return self.render_for_diff() == other.render_for_diff()
 
     def diff(self, other=None) -> dict[str, Any]:
+        """
+        Diff.
+
+        Args:
+            other: other.
+
+        Returns:
+            Operation result.
+        """
         if not other:
             other = self.objects.get(self.pk)
         if self.__class__ != other.__class__:
@@ -231,9 +456,18 @@ class Model(LazyAttributeMixin, SupportsModel):
         )
 
     def reload_from_db(self) -> None:
+        """
+        Reload from db.
+        """
         self.purge_cache()
         new = self.objects.get(self.pk)
         self.data = new.data
 
     def __str__(self) -> str:
+        """
+        Handle str.
+
+        Returns:
+            Operation result.
+        """
         return f'{self.__class__.__name__}(pk="{self.pk}")'

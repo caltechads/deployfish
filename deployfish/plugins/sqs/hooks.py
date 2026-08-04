@@ -21,16 +21,36 @@ logging.basicConfig(level=logging.WARNING)
 
 
 class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
-    """Annotate a service update with a git changelog."""
+    """
+    Annotate a service update with a git changelog.
+
+    Args:
+        app: app.
+        obj: obj.
+        repo_folder: repo folder.
+    """
 
     def __init__(self, app, obj, repo_folder):
+        #: App.
+        """
+        Initialize Annotator.
+
+        Args:
+            app: app.
+            obj: obj.
+            repo_folder: repo folder.
+        """
+        #: App.
         self.app = app
+        #: Obj.
         self.obj = obj
+        #: Repo folder.
         self.repo_folder = repo_folder
         if repo_folder:
             cwd = os.getcwd()
             os.chdir(repo_folder)
         super().__init__(url_type="markdown")
+        #: Values.
         self.values = {}
         self.annotate(self.values)
         if repo_folder:
@@ -40,61 +60,126 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
         self.values["deployer"] = full_name
 
     def get_repo_url(self):
-        """Get the repo for a service."""
+        """
+        Get the repo for a service.
+
+        Returns:
+            Operation result.
+        """
         return self.url_patterns["repo"]
 
     def get_changelog(self):
-        """Get the changelog for a repo."""
+        """
+        Get the changelog for a repo.
+
+        Returns:
+            Operation result.
+        """
         return self.values.get("changelog", [])
 
     def get_environment(self):
-        """Get the environment for a service."""
+        """
+        Get the environment for a service.
+
+        Returns:
+            Operation result.
+        """
         return self.obj.tags["Environment"]
 
     def get_authors(self):
-        """Get the authors for the most recent commits."""
+        """
+        Get the authors for the most recent commits.
+
+        Returns:
+            Operation result.
+        """
         return self.values.get("authors", [])
 
     def get_author_string(self):
-        """Get the authors for the most recent commits."""
+        """
+        Get the authors for the most recent commits.
+
+        Returns:
+            Operation result.
+        """
         authors = self.get_authors()
         return ", ".join(authors)
 
     def get_committer(self):
-        """Get the committer for the most recent commits."""
+        """
+        Get the committer for the most recent commits.
+
+        Returns:
+            Operation result.
+        """
         return self.values.get("committer", "")
 
     def get_deployer(self):
-        """Get the deployer for the most recent commits."""
+        """
+        Get the deployer for the most recent commits.
+
+        Returns:
+            Operation result.
+        """
         return self.values.get("deployer", "")
 
     def get_version(self):
-        """Get the version for the most recent commits."""
+        """
+        Get the version for the most recent commits.
+
+        Returns:
+            Operation result.
+        """
         return self.values.get("version", "initial")
 
     def get_repo_name(self):
-        """Get the name of the service."""
+        """
+        Get the name of the service.
+
+        Returns:
+            Operation result.
+        """
         return self.values.get("name", "")
 
     def get_service_name(self):
-        """Get the name of the service."""
+        """
+        Get the name of the service.
+
+        Returns:
+            Operation result.
+        """
         name_env = self.obj.data["serviceName"]
         dash = name_env.rfind("-")
         return name_env[:dash]
 
     def get_title(self):
-        """Get the title for the message."""
+        """
+        Get the title for the message.
+
+        Returns:
+            Operation result.
+        """
         return f"{self.get_service_name()} {self.get_version()}"
 
     def get_deploy_timestamp(self):
-        """Get the deploy datetime for the message."""
+        """
+        Get the deploy datetime for the message.
+
+        Returns:
+            Operation result.
+        """
         local_tz = get_localzone()
         current_time = datetime.datetime.now(local_tz)
         formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S.%f%z")
         return formatted_time[:-2] + ":" + formatted_time[-2:]
 
     def get_description(self):
-        """Get the description for the message."""
+        """
+        Get the description for the message.
+
+        Returns:
+            Operation result.
+        """
         description = ""
         # description += f"**Committer**: {self.get_committer()}\n"
         # description += f"**Authors**: {self.get_author_string()}\n"
@@ -108,6 +193,15 @@ class Annotator(GitChangelogMixin, GitMixin, CodeNameVersionMixin):
 
 
 def process_service_update(app, obj, success=True, reason=None):
+    """
+    Process service update.
+
+    Args:
+        app: app.
+        obj: obj.
+        success: success.
+        reason: reason.
+    """
     if not success:
         return
     if not isinstance(obj, Service):

@@ -13,13 +13,20 @@ from .utils import handle_model_exceptions
 
 
 class ObjectSecretsController(Controller):
+    """
+    Model object secrets controller behavior.
+    """
     class Meta:
         label = "secrets-base"
 
+    #: Model.
     model: type[Model] = Model
+    #: Loader.
     loader: type[ObjectLoader] = ObjectLoader
 
+    #: Show template.
     show_template: str = "detail--secrets.jinja2"
+    #: Diff template.
     diff_template: str = "detail--secrets--diff.jinja2"
 
     def export_environment_secrets(self, obj: SupportsModelWithSecrets) -> str:
@@ -66,6 +73,9 @@ class ObjectSecretsController(Controller):
     )
     @handle_model_exceptions
     def show(self):
+        """
+        Show.
+        """
         loader = self.loader(self)
         raw = loader.get_object_from_aws(self.app.pargs.pk)
         assert hasattr(raw, "secrets_prefix"), (

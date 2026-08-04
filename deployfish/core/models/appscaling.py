@@ -14,9 +14,25 @@ __all__ = ["ScalableTarget", "ScalingPolicy"]
 
 
 class ScalingPolicyManager(Manager):
+    """
+    Model scaling policy manager behavior.
+    """
+    #: Service.
     service = "application-autoscaling"
 
     def get(self, pk: str, **_) -> "ScalingPolicy":
+        """
+        Get.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         response = self.client.describe_scaling_policies(
             PolicyNames=[pk], ServiceNamespace="ecs"
         )
@@ -32,6 +48,16 @@ class ScalingPolicyManager(Manager):
         return ScalingPolicy(data, alarm=alarm)
 
     def list(self, cluster, service):
+        """
+        List.
+
+        Args:
+            cluster: cluster.
+            service: service.
+
+        Returns:
+            Operation result.
+        """
         response = self.client.describe_scaling_policies(
             ServiceNamespace="ecs", ResourceId=f"service/{cluster}/{service}"
         )
@@ -46,6 +72,18 @@ class ScalingPolicyManager(Manager):
 
     def save(self, obj: Model, **_) -> str:
         # put_scaling_policy handles both create and update for existing policy.
+        """
+        Save.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
+        """
         obj = cast("ScalingPolicy", obj)
         response = self.client.put_scaling_policy(**obj.render_for_create())
         arn = response["PolicyARN"]
@@ -55,6 +93,15 @@ class ScalingPolicyManager(Manager):
         return arn
 
     def delete(self, obj: Model, **_) -> None:
+        """
+        Delete.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         obj = cast("ScalingPolicy", obj)
         if obj.alarm:
             obj.alarm.delete()
@@ -68,11 +115,24 @@ class ScalingPolicyManager(Manager):
 
 
 class ScalableTargetManager(Manager):
+    """
+    Model scalable target manager behavior.
+    """
+    #: Service.
     service = "application-autoscaling"
 
     def get(self, pk: str, **_) -> "ScalableTarget":
         """
         Get a single ScalableTarget.
+
+        Args:
+            pk: pk.
+
+        Keyword Args:
+            _: .
+
+        Returns:
+            Operation result.
         """
         response = self.client.describe_scalable_targets(
             ResourceIds=[pk], ServiceNamespace="ecs"
@@ -87,6 +147,12 @@ class ScalableTargetManager(Manager):
         return ScalableTarget(data, policies=policies)
 
     def list(self) -> Sequence["ScalableTarget"]:
+        """
+        List.
+
+        Returns:
+            Operation result.
+        """
         response = self.client.describe_scalable_targets(
             ServiceNamespace="ecs", ScalableDimension="ecs:service:DesiredCount"
         )
@@ -99,12 +165,30 @@ class ScalableTargetManager(Manager):
 
     def save(self, obj: Model, **_) -> None:
         # register_scalable_target handles both create and update for target.
+        """
+        Save.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         obj = cast("ScalableTarget", obj)
         self.client.register_scalable_target(**obj.render_for_create())
         for policy in obj.policies:
             policy.save()
 
     def delete(self, obj: Model, **_) -> None:
+        """
+        Delete.
+
+        Args:
+            obj: obj.
+
+        Keyword Args:
+            _: .
+        """
         obj = cast("ScalableTarget", obj)
         for policy in obj.policies:
             policy.delete()
@@ -122,29 +206,67 @@ class ScalableTargetManager(Manager):
 
 
 class ScalingPolicy(Model):
+    """
+    Model scaling policy behavior.
+
+    Args:
+        data: data.
+        alarm: alarm.
+    """
     #: Manager for Application Auto Scaling policy records.
     objects = ScalingPolicyManager()
 
     def __init__(
         self, data: dict[str, Any], alarm: CloudwatchAlarm | None = None
     ) -> None:
+        """
+        Initialize ScalingPolicy.
+
+        Args:
+            data: data.
+            alarm: alarm.
+        """
         super().__init__(data)
         #: Alarm attached to this scaling policy, if AWS configured one.
         self.alarm: CloudwatchAlarm | None = alarm
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["PolicyName"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["PolicyName"]
 
     @property
     def arn(self) -> str:
+        """
+        Arn.
+
+        Returns:
+            Operation result.
+        """
         return self.data.get("PolicyARN", None)
 
     def render_for_diff(self) -> dict[str, Any]:
+        """
+        Render for diff.
+
+        Returns:
+            Operation result.
+        """
         data = self.render()
         if "PolicyARN" in data:
             del data["PolicyARN"]
@@ -156,12 +278,26 @@ class ScalingPolicy(Model):
 
 
 class ScalableTarget(Model):
+    """
+    Model scalable target behavior.
+
+    Args:
+        data: data.
+        policies: policies.
+    """
     #: Manager for scalable target records.
     objects = ScalableTargetManager()
 
     def __init__(
         self, data: dict[str, Any], policies: Sequence[ScalingPolicy] | None = None
     ) -> None:
+        """
+        Initialize ScalableTarget.
+
+        Args:
+            data: data.
+            policies: policies.
+        """
         super().__init__(data)
         if not policies:
             policies = []
@@ -170,13 +306,31 @@ class ScalableTarget(Model):
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["ResourceId"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["ResourceId"]
 
     def render_for_diff(self) -> dict[str, Any]:
+        """
+        Render for diff.
+
+        Returns:
+            Operation result.
+        """
         data = self.render()
         # AWS rewrites RoleARN, so ignore it during comparisons.
         del data["RoleARN"]
@@ -196,6 +350,12 @@ class ScalableTarget(Model):
         return data
 
     def render_for_create(self) -> dict[str, Any]:
+        """
+        Render for create.
+
+        Returns:
+            Operation result.
+        """
         data = self.render()
         if "CreationTime" in data:
             del data["CreationTime"]

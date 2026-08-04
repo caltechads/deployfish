@@ -71,12 +71,18 @@ def get_ssh_target(app: App, obj: SupportsSSHModel, choose: bool = False) -> Ins
 
 
 class ObjectSSHController(Controller):
+    """
+    Model object sshcontroller behavior.
+    """
     class Meta:
         label = "ssh-base"
 
+    #: Model.
     model: type[Model] = Model
+    #: Loader.
     loader: type[ObjectLoader] = ObjectLoader
 
+    #: Colors.
     COLORS: list[str] = [
         "green",
         "yellow",
@@ -203,10 +209,15 @@ class ObjectSSHController(Controller):
 
 
 class ObjectDockerExecController(Controller):
+    """
+    Model object docker exec controller behavior.
+    """
     class Meta:
         label = "exec-base"
 
+    #: Model.
     model: type[Model] = Model
+    #: Loader.
     loader: type[ObjectLoader] = ObjectLoader
 
     def get_ssh_exec_target(

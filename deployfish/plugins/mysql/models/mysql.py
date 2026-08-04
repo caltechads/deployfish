@@ -12,6 +12,9 @@ from deployfish.core.models import Cluster, Instance, Manager, Model, Secret, Se
 
 
 class MySQLDatabaseManager(Manager):
+    """
+    Model my sqldatabase manager behavior.
+    """
     def get(self, pk: str, **_) -> Model:
         """
         Get the MySQLDatabase object from the config file.
@@ -26,6 +29,8 @@ class MySQLDatabaseManager(Manager):
         Returns:
             The MySQLDatabase object.
 
+        Keyword Args:
+            _: .
         """
         # hint: (str["{name}"])
         config = get_config()
@@ -45,6 +50,11 @@ class MySQLDatabaseManager(Manager):
         Returns:
             A list of MySQLDatabase objects.
 
+        Args:
+            service_name: service name.
+
+        Keyword Args:
+            _: .
         """
         # hint: (str["{service_name}"], int)
         config = get_config()
@@ -452,18 +462,41 @@ class MySQLDatabase(Model):
         }
     """
 
+    #: Objects.
     objects = MySQLDatabaseManager()
+    #: Config section.
     config_section: str = "mysql"
 
     @property
     def pk(self) -> str:
+        """
+        Pk.
+
+        Returns:
+            Operation result.
+        """
         return self.data["name"]
 
     @property
     def name(self) -> str:
+        """
+        Name.
+
+        Returns:
+            Operation result.
+        """
         return self.data["name"]
 
     def secret(self, name: str) -> Secret:
+        """
+        Secret.
+
+        Args:
+            name: name.
+
+        Returns:
+            Operation result.
+        """
         if "secrets" not in self.cache:
             self.cache["secrets"] = {}
         if name not in self.cache["secrets"]:
@@ -479,6 +512,12 @@ class MySQLDatabase(Model):
         Deployfish supports putting 'config.KEY' as the value for the host and port keys in self.data
 
         Parse the value and dereference it from the live secrets for the service if necessary.
+
+        Args:
+            key: key.
+
+        Returns:
+            Operation result.
         """
         if isinstance(self.data[key], str):
             if self.data[key].startswith("config."):
@@ -493,30 +532,60 @@ class MySQLDatabase(Model):
 
     @property
     def host(self) -> str:
+        """
+        Host.
+
+        Returns:
+            Operation result.
+        """
         if "host" not in self.cache:
             self.cache["host"] = self.parse("host")
         return self.cache["host"]
 
     @property
     def user(self) -> str:
+        """
+        User.
+
+        Returns:
+            Operation result.
+        """
         if "user" not in self.cache:
             self.cache["user"] = self.parse("user")
         return self.cache["user"]
 
     @property
     def db(self) -> str:
+        """
+        Db.
+
+        Returns:
+            Operation result.
+        """
         if "db" not in self.cache:
             self.cache["db"] = self.parse("db")
         return self.cache["db"]
 
     @property
     def password(self) -> str:
+        """
+        Password.
+
+        Returns:
+            Operation result.
+        """
         if "password" not in self.cache:
             self.cache["password"] = self.parse("pass")
         return self.cache["password"]
 
     @property
     def character_set(self) -> str:
+        """
+        Character set.
+
+        Returns:
+            Operation result.
+        """
         if "character_set" not in self.cache:
             if "character_set" not in self.data:
                 self.cache["character_set"] = "utf8"
@@ -526,6 +595,12 @@ class MySQLDatabase(Model):
 
     @property
     def collation(self) -> str:
+        """
+        Collation.
+
+        Returns:
+            Operation result.
+        """
         if "collation" not in self.cache:
             if "collation" not in self.data:
                 self.cache["collation"] = "utf8_unicode_ci"
@@ -535,6 +610,12 @@ class MySQLDatabase(Model):
 
     @property
     def port(self) -> int:
+        """
+        Port.
+
+        Returns:
+            Operation result.
+        """
         if "port" not in self.cache:
             if "port" not in self.data:
                 self.cache["port"] = 3306
@@ -544,16 +625,34 @@ class MySQLDatabase(Model):
 
     @property
     def ssh_target(self) -> Instance | None:
+        """
+        Ssh target.
+
+        Returns:
+            Operation result.
+        """
         if self.service.task_definition.is_fargate():
             return self.service.ssh_target
         return self.cluster.ssh_target
 
     @property
     def ssh_targets(self) -> Sequence[Instance]:
+        """
+        Ssh targets.
+
+        Returns:
+            Operation result.
+        """
         return self.service.cluster.ssh_targets
 
     @property
     def service(self) -> Service:
+        """
+        Service.
+
+        Returns:
+            Operation result.
+        """
         if "service" not in self.cache:
             config = get_config()
             data = config.get_section_item("services", self.data["service"])
@@ -563,10 +662,22 @@ class MySQLDatabase(Model):
 
     @service.setter
     def service(self, value: str) -> None:
+        """
+        Service.
+
+        Args:
+            value: value.
+        """
         self.cache["service"] = value
 
     @property
     def cluster(self) -> Cluster:
+        """
+        Cluster.
+
+        Returns:
+            Operation result.
+        """
         return self.service.cluster
 
     def create(
@@ -576,6 +687,18 @@ class MySQLDatabase(Model):
         ssh_target: Instance = None,
         verbose: bool = False,
     ) -> str:
+        """
+        Create.
+
+        Args:
+            root_user: root user.
+            root_password: root password.
+            ssh_target: ssh target.
+            verbose: verbose.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.create(
             self, root_user, root_password, ssh_target=ssh_target, verbose=verbose
         )
@@ -587,11 +710,33 @@ class MySQLDatabase(Model):
         ssh_target: Instance = None,
         verbose: bool = False,
     ) -> str:
+        """
+        Update.
+
+        Args:
+            root_user: root user.
+            root_password: root password.
+            ssh_target: ssh target.
+            verbose: verbose.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.update(
             self, root_user, root_password, ssh_target=ssh_target, verbose=verbose
         )
 
     def validate(self, ssh_target: Instance = None, verbose: bool = False) -> str:
+        """
+        Validate.
+
+        Args:
+            ssh_target: ssh target.
+            verbose: verbose.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.validate(self, ssh_target=ssh_target, verbose=verbose)
 
     def dump(
@@ -600,6 +745,17 @@ class MySQLDatabase(Model):
         ssh_target: Instance = None,
         verbose: bool = False,
     ) -> tuple[str, str]:
+        """
+        Dump.
+
+        Args:
+            filename: filename.
+            ssh_target: ssh target.
+            verbose: verbose.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.dump(
             self, filename=filename, ssh_target=ssh_target, verbose=verbose
         )
@@ -607,6 +763,17 @@ class MySQLDatabase(Model):
     def load(
         self, filename: str, ssh_target: Instance = None, verbose: bool = False
     ) -> str:
+        """
+        Load.
+
+        Args:
+            filename: filename.
+            ssh_target: ssh target.
+            verbose: verbose.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.load(self, filename, ssh_target=ssh_target, verbose=verbose)
 
     def server_version(
@@ -616,6 +783,18 @@ class MySQLDatabase(Model):
         user: str | None = None,
         password: str | None = None,
     ) -> str:
+        """
+        Server version.
+
+        Args:
+            ssh_target: ssh target.
+            verbose: verbose.
+            user: user.
+            password: password.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.server_version(
             self, ssh_target=ssh_target, verbose=verbose, user=user, password=password
         )
@@ -625,11 +804,32 @@ class MySQLDatabase(Model):
         ssh_target: Instance = None,
         verbose: bool = False,
     ) -> str:
+        """
+        Show grants.
+
+        Args:
+            ssh_target: ssh target.
+            verbose: verbose.
+
+        Returns:
+            Operation result.
+        """
         return self.objects.show_grants(self, ssh_target=ssh_target, verbose=verbose)
 
     def render_mysql_command(
         self, sql: str, user: str | None = None, password: str | None = None
     ) -> str:
+        """
+        Render mysql command.
+
+        Args:
+            sql: sql.
+            user: user.
+            password: password.
+
+        Returns:
+            Operation result.
+        """
         return "/usr/bin/mysql --host={host} --user={user} --password='{password}' --port={port} --execute=\"{sql}\"".format(  # noqa:E501  # pylint:disable=line-too-long
             host=self.host,
             port=self.port,
@@ -641,6 +841,17 @@ class MySQLDatabase(Model):
     def render_for_create(  # type: ignore  # pylint:disable=arguments-differ
         self, root_user: str, root_password: str, version: str | None = None
     ) -> str:
+        """
+        Render for create.
+
+        Args:
+            root_user: root user.
+            root_password: root password.
+            version: version.
+
+        Returns:
+            Operation result.
+        """
         if not version:
             version = "8.0"
         sql = f"CREATE DATABASE {self.db} CHARACTER SET {self.character_set} COLLATE {self.collation};"
@@ -655,6 +866,17 @@ class MySQLDatabase(Model):
     def render_for_update(  # type: ignore  # pylint:disable=arguments-differ
         self, root_user: str, root_password: str, version: str | None = None
     ) -> str:
+        """
+        Render for update.
+
+        Args:
+            root_user: root user.
+            root_password: root password.
+            version: version.
+
+        Returns:
+            Operation result.
+        """
         if not version:
             version = "8.0"
         sql = f"ALTER DATABASE {self.db} CHARACTER SET = {self.character_set};"
@@ -668,6 +890,12 @@ class MySQLDatabase(Model):
         return self.render_mysql_command(sql, user=root_user, password=root_password)
 
     def render_for_dump(self) -> str:
+        """
+        Render for dump.
+
+        Returns:
+            Operation result.
+        """
         return "/usr/bin/mysqldump --no-tablespaces --host={host} --user={user} --password='{password}' --port={port} --opt {db}".format(  # noqa:E501  # pylint:disable=line-too-long
             host=self.host,
             user=self.user,
@@ -677,19 +905,47 @@ class MySQLDatabase(Model):
         )
 
     def render_for_load(self) -> str:
+        """
+        Render for load.
+
+        Returns:
+            Operation result.
+        """
         return "/usr/bin/mysql --host={} --user={} --password='{}' --port={} {} < {{filename}} && rm {{filename}}".format(  # noqa:E501  # pylint:disable=line-too-long
             self.host, self.user, self.password, self.port, self.db
         )
 
     def render_for_validate(self) -> str:
+        """
+        Render for validate.
+
+        Returns:
+            Operation result.
+        """
         return self.render_mysql_command("select version(), current_date;")
 
     def render_for_server_version(
         self, user: str | None = None, password: str | None = None
     ) -> str:
+        """
+        Render for server version.
+
+        Args:
+            user: user.
+            password: password.
+
+        Returns:
+            Operation result.
+        """
         return self.render_mysql_command(
             "select version();", user=user, password=password
         )
 
     def render_for_show_grants(self) -> str:
+        """
+        Render for show grants.
+
+        Returns:
+            Operation result.
+        """
         return self.render_mysql_command("show grants;")
