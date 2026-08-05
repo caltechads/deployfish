@@ -74,7 +74,7 @@ class TestAbstractTaskAdapterBranches:
         task_definition = adapter.get_task_definition()
         data = {"name": "foobar-test-mytask", "cluster": "foobar-cluster"}
         with patch(
-            "deployfish.core.adapters.deployfish.ecs.get_boto3_session",
+            "deployfish.core.adapters.deployfish.ecs.common.get_boto3_session",
             return_value=MagicMock(region_name="us-east-1"),
         ):
             adapter.update_container_logging(data, task_definition)
@@ -317,7 +317,7 @@ class TestStandaloneTaskAdapterComprehensive:
             "name": "foobar-test",
         }
         with patch(
-            "deployfish.core.adapters.deployfish.ecs.get_config",
+            "deployfish.core.adapters.deployfish.ecs.standalone_task.get_config",
             return_value=mock_config,
         ):
             data, _kwargs = StandaloneTaskAdapter(yml).convert()
