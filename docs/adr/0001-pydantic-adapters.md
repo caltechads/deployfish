@@ -115,16 +115,46 @@ sufficient on its own here — this rewrite changes the *mechanism* (validators 
 model replacing hand-written branching), and the one contract that must not drift is "identical `data`
 dict shape out," which a golden-master test defends directly rather than incidentally.
 
-One deliberate exception to "zero behavior change": today, `ContainerDefinitionAdapter.convert()`
-does `self.set(data, "dockerLabels", optional=True)` — a literal passthrough of a `dockerLabels` key,
-which `deployfish.yml` never actually sets (the real key is `labels:`). `get_dockerLabels()` (which
-correctly handles `labels:`'s list-or-dict duality) exists but is never called by `convert()` — it's
-reachable only via direct test calls. `deployfish.yml`'s `labels:` therefore produces no `dockerLabels`
-output today; this is a bug, verified empirically against the running code. The pilot fixes this: the
-rewritten `convert()` calls `get_dockerLabels()` when `labels` is present, so `labels:` in
-`deployfish.yml` starts actually working. This is the one intentional deviation from this ADR's
-"identical `data` dict shape out" contract, called out explicitly rather than silently preserved or
-silently fixed.
+**Correction (final review):** an earlier draft of this ADR claimed `dockerLabels:` was a dead key
+that `deployfish.yml` never actually set, and that `labels:` was "the real key." That claim was
+backwards, verified against `docs/source/yaml.rst` (~line 1665), which documents `dockerLabels:` --
+in both dict and list form -- as the actual, working container-labels key; `labels:` was never
+documented. The pilot's initial `ContainerDefinitionInput.labels` field had no alias and
+`extra="forbid"`, so it hard-rejected the documented `dockerLabels:` key with
+`SchemaException: dockerLabels: Extra inputs are not permitted` -- a real regression, not a
+"deliberate exception." It's fixed: `labels` now declares `Field(alias="dockerLabels")`, so the
+documented `dockerLabels:` spelling validates correctly (and, since `populate_by_name=True` is
+already set on the model, the never-documented `labels:` spelling validates too, as a no-cost side
+effect, not a design goal). Net effect versus the pre-pilot adapter: zero behavior change for the
+documented key.
+
+Separately, `_normalize_labels` used `str.split("=")` instead of `str.partition("=")` (the pattern
+`_normalize_environment` already uses), which raised `ValueError` on a bare key with no `=` (e.g.
+`edu.caltech.label-with-empty-value`, a real example from the docs) and mis-split any label value
+that itself contained `=`. Also fixed, to match `_normalize_environment`'s existing behavior exactly.
+
+In addition to the above, final review found further real, additional deviations from the pre-pilot
+adapter's observable output. All are considered acceptable/intentional as part of this pilot -- they
+are not being undone, only documented honestly here:
+
+- **Unknown/typo'd keys now raise at construction.** `extra="forbid"` means any unrecognized
+  container-stanza key (e.g. a typo like `imag:` instead of `image:`) now raises `SchemaException`
+  immediately, instead of being silently ignored as it was under the old hand-written `set()`-based
+  adapter. This is a stricter, arguably better failure mode, but it is an observable behavior change.
+- **`environment` output gating is unchanged, but worth stating precisely.** `convert()` emits an
+  `environment` key in its output only when the container's own yaml stanza has an `environment:`
+  block; `extra_environment` alone (e.g. `DEPLOYFISH_*` vars injected by `Service`/`StandaloneTask`)
+  does not trigger it. This matches old behavior exactly and was not changed, but is easy to get
+  wrong when re-deriving the adapter, so it's called out here explicitly.
+- **Empty collections are now omitted, not emitted empty.** Fields like `ports: []`, `links: []`,
+  etc. are now omitted from the output dict entirely when empty, rather than being emitted as
+  explicit empty lists/dicts as the old hand-written code sometimes did. This is benign for the ECS
+  API (absent and empty are equivalent to it) but is an observable dict-shape difference.
+- **Pydantic's type coercion is stricter/more correct than the old passthrough.** Loosely-typed yaml
+  values now coerce according to each field's declared type instead of passing through unchanged --
+  e.g. `essential: "false"` (a string) now correctly becomes the boolean `False`, whereas the old
+  code passed the truthy string `"false"` straight through to boto3. This is an improvement, not a
+  regression, but represents a real, observable output difference from before.
 
 ## Considered Options
 
