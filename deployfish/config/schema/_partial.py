@@ -10,7 +10,11 @@ from typing import Any
 from pydantic import BaseModel, create_model
 
 
-def partial_model(model: type[BaseModel], name: str | None = None) -> type[BaseModel]:
+def partial_model(
+    model: type[BaseModel],
+    name: str | None = None,
+    nested: dict[str, type[BaseModel]] | None = None,
+) -> type[BaseModel]:
     """
     Build a subclass of ``model`` where every field is optional and defaults to
     ``None``.
@@ -28,12 +32,26 @@ def partial_model(model: type[BaseModel], name: str | None = None) -> type[BaseM
     lose that alias on the partial variant, and ``extra="forbid"`` would
     then reject the aliased key as an unknown field.
 
+    ``nested`` opts specific fields into also swapping their nested model
+    type for a caller-supplied partial variant, instead of just unioning the
+    field's existing annotation with ``None``. Without this, a
+    ``list[SomeModel]`` field would become ``list[SomeModel] | None`` --
+    the list itself becomes optional, but entries inside it stay the
+    *strict* ``SomeModel``, rejecting partial entries. This is opt-in per
+    field (not automatic for every ``list[BaseModel]``/``BaseModel`` field)
+    so existing callers -- e.g. ``ContainerDefinitionOverlayInput`` --
+    keep their exact current behavior unless they explicitly ask for more.
+
     Args:
         model: the strict model to derive the partial variant from.
 
     Keyword Args:
         name: the name to give the new model class. Defaults to
             ``f"Partial{model.__name__}"``.
+        nested: a ``{field_name: partial_variant}`` map. For each named
+            field, use ``partial_variant`` as the field's (or its list
+            entries') type instead of the field's original nested model
+            type.
 
     Returns:
         A new model class, subclassing ``model``, with every field optional.
@@ -42,15 +60,25 @@ def partial_model(model: type[BaseModel], name: str | None = None) -> type[BaseM
     # Use get_type_hints (not __annotations__) so inherited/composed models
     # still resolve Annotated types with their metadata intact.
     type_hints = typing.get_type_hints(model, include_extras=True)
+    nested = nested or {}
 
     field_overrides: dict[str, Any] = {}
     for field_name, field_info in model.model_fields.items():
         original_annotation = type_hints.get(field_name, field_info.annotation)
 
+        if field_name in nested:
+            replacement = nested[field_name]
+            origin = typing.get_origin(original_annotation)
+            effective_annotation: Any = (
+                list[replacement] if origin is list else replacement  # type: ignore[valid-type]
+            )
+        else:
+            effective_annotation = original_annotation
+
         # Make it optional by unioning with None
         optional_annotation = (
-            original_annotation | None
-            if original_annotation is not None
+            effective_annotation | None
+            if effective_annotation is not None
             else None
         )
 
