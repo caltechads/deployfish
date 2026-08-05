@@ -2,6 +2,7 @@
 
 import pytest
 from deployfish.config.schema.container import (
+    ContainerDefinitionInput,
     ExtraHost,
     LoggingConfig,
     PortMapping,
@@ -73,3 +74,133 @@ class TestTmpfsMount:
     def test_mount_options_default_to_empty_list(self) -> None:
         tc = TmpfsMount.model_validate({"container_path": "/run", "size": 64})
         assert tc.mount_options == []
+
+
+class TestContainerDefinitionInput:
+    def test_minimal(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {"name": "web", "image": "nginx:1.25"}
+        )
+        assert model.name == "web"
+        assert model.essential is True
+        assert model.ports == []
+
+    def test_essential_false(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {"name": "web", "image": "nginx:1.25", "essential": False}
+        )
+        assert model.essential is False
+
+    def test_cpu_and_memory_coerce_strings(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {"name": "web", "image": "nginx:1.25", "cpu": "128", "memory": "256"}
+        )
+        assert model.cpu == 128
+        assert model.memory == 256
+
+    def test_memory_reservation_alias(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {"name": "web", "image": "nginx:1.25", "memoryReservation": 300}
+        )
+        assert model.memory_reservation == 300
+
+    def test_memory_reservation_must_be_integer(self) -> None:
+        with pytest.raises(ValidationError):
+            ContainerDefinitionInput.model_validate(
+                {"name": "web", "image": "nginx:1.25", "memoryReservation": "not-a-number"}
+            )
+
+    def test_command_and_entrypoint_shlex_split(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {
+                "name": "web",
+                "image": "nginx:1.25",
+                "command": "nginx -g daemon off;",
+                "entrypoint": "/bin/sh -c",
+            }
+        )
+        assert model.command == ["nginx", "-g", "daemon", "off;"]
+        assert model.entrypoint == ["/bin/sh", "-c"]
+
+    def test_ports_list_parsed(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {"name": "web", "image": "nginx:1.25", "ports": [9090, "8443:443"]}
+        )
+        assert model.ports[0].container_port == 9090
+        assert model.ports[0].host_port is None
+        assert model.ports[1].host_port == 8443
+
+    def test_invalid_port_raises(self) -> None:
+        with pytest.raises(ValidationError, match="not a valid port mapping"):
+            ContainerDefinitionInput.model_validate(
+                {"name": "web", "image": "nginx:1.25", "ports": ["not-a-port"]}
+            )
+
+    def test_environment_list_form(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {
+                "name": "web",
+                "image": "nginx:1.25",
+                "environment": ["FOO=bar", "BAZ=qux"],
+            }
+        )
+        assert model.environment == {"FOO": "bar", "BAZ": "qux"}
+
+    def test_environment_dict_form(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {"name": "web", "image": "nginx:1.25", "environment": {"FOO": "bar"}}
+        )
+        assert model.environment == {"FOO": "bar"}
+
+    def test_labels_list_form(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {
+                "name": "web",
+                "image": "nginx:1.25",
+                "labels": ["com.example.foo=bar"],
+            }
+        )
+        assert model.labels == {"com.example.foo": "bar"}
+
+    def test_ulimits_scalar_and_dict(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {
+                "name": "web",
+                "image": "nginx:1.25",
+                "ulimits": {"nofile": 1024, "nproc": {"soft": 10, "hard": 20}},
+            }
+        )
+        assert model.ulimits["nofile"].soft == 1024
+        assert model.ulimits["nofile"].hard == 1024
+        assert model.ulimits["nproc"].soft == 10
+        assert model.ulimits["nproc"].hard == 20
+
+    def test_extra_hosts_parsed(self) -> None:
+        model = ContainerDefinitionInput.model_validate(
+            {
+                "name": "web",
+                "image": "nginx:1.25",
+                "extra_hosts": ["somehost:10.0.0.1"],
+            }
+        )
+        assert model.extra_hosts[0].hostname == "somehost"
+
+    def test_logging_requires_driver(self) -> None:
+        with pytest.raises(ValidationError, match='logging: block must contain "driver"'):
+            ContainerDefinitionInput.model_validate(
+                {
+                    "name": "web",
+                    "image": "nginx:1.25",
+                    "logging": {"options": {"tag": "x"}},
+                }
+            )
+
+    def test_unknown_field_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ContainerDefinitionInput.model_validate(
+                {"name": "web", "image": "nginx:1.25", "bogus_field": "x"}
+            )
+
+    def test_name_and_image_required(self) -> None:
+        with pytest.raises(ValidationError):
+            ContainerDefinitionInput.model_validate({"image": "nginx:1.25"})

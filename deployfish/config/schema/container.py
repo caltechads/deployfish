@@ -6,9 +6,10 @@ output dict is still assembled by hand in
 """
 
 import re
-from typing import Any
+import shlex
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 #: Matches ``"hostPort[:containerPort[/protocol]]"`` port mapping strings.
 _PORTS_RE = re.compile(
@@ -203,3 +204,162 @@ class TmpfsMount(BaseModel):
     size: int
     #: Mount options.
     mount_options: list[str] = Field(default_factory=list)
+
+
+def _split_command(value: Any) -> Any:
+    """
+    Split a shell command string into argv, if given as a string.
+
+    Args:
+        value: the raw ``command``/``entrypoint`` field value.
+
+    Returns:
+        The split argv list if ``value`` is a string, otherwise ``value``
+        unchanged.
+
+    """
+    if isinstance(value, str):
+        return shlex.split(value)
+    return value
+
+
+def _parse_ports(value: Any) -> Any:
+    """
+    Parse each raw ports entry into a PortMapping-constructible dict.
+
+    Args:
+        value: the raw ``ports`` field value.
+
+    Returns:
+        A list with each entry converted to a ``PortMapping`` if ``value``
+        is a list, otherwise ``value`` unchanged.
+
+    """
+    if not isinstance(value, list):
+        return value
+    return [
+        PortMapping.parse(v) if not isinstance(v, PortMapping) else v for v in value
+    ]
+
+
+def _normalize_environment(value: Any) -> Any:
+    """
+    Normalize deployfish.yml's list-of-"K=V"-or-dict environment shape.
+
+    Args:
+        value: the raw ``environment`` field value.
+
+    Returns:
+        A ``{key: value}`` dict if ``value`` is a list, otherwise ``value``
+        unchanged.
+
+    """
+    if isinstance(value, list):
+        result: dict[str, str] = {}
+        for entry in value:
+            key, _, val = entry.partition("=")
+            result[key] = val
+        return result
+    return value
+
+
+def _normalize_labels(value: Any) -> Any:
+    """
+    Normalize deployfish.yml's list-of-"K=V"-or-dict labels shape.
+
+    Args:
+        value: the raw ``labels`` field value.
+
+    Returns:
+        A ``{key: value}`` dict if ``value`` is a list, otherwise ``value``
+        unchanged.
+
+    """
+    if isinstance(value, list):
+        result: dict[str, str] = {}
+        for entry in value:
+            key, val = entry.split("=")
+            result[key] = val
+        return result
+    return value
+
+
+def _parse_extra_hosts(value: Any) -> Any:
+    """
+    Parse each raw extra_hosts entry into an ExtraHost-constructible value.
+
+    Args:
+        value: the raw ``extra_hosts`` field value.
+
+    Returns:
+        A list with each string entry converted to an ``ExtraHost`` if
+        ``value`` is a list, otherwise ``value`` unchanged.
+
+    """
+    if not isinstance(value, list):
+        return value
+    return [ExtraHost.parse(v) if isinstance(v, str) else v for v in value]
+
+
+class ContainerDefinitionInput(BaseModel):
+    """
+    Validates and reshapes a single ``deployfish.yml`` container definition
+    stanza. Does not produce the boto3-shaped output dict -- see
+    :py:class:`deployfish.core.adapters.deployfish.ecs.container.ContainerDefinitionAdapter`
+    for that.
+
+    Args:
+        name: the container name.
+        image: the container image.
+
+    """
+
+    #: Pydantic model configuration.
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    #: The container name.
+    name: str
+    #: The container image.
+    image: str
+    #: Whether this container is essential to the task.
+    essential: bool = True
+    #: CPU units to reserve, if specified at the container level.
+    cpu: int | None = None
+    #: Memory (MiB) to allow, if specified at the container level.
+    memory: int | None = None
+    #: Soft memory reservation (MiB), if specified.
+    memory_reservation: int | None = Field(default=None, alias="memoryReservation")
+    #: The container's entrypoint command, if overridden.
+    command: Annotated[list[str] | None, BeforeValidator(_split_command)] = None
+    #: The container's entrypoint, if overridden.
+    entrypoint: Annotated[list[str] | None, BeforeValidator(_split_command)] = None
+    #: Legacy container links.
+    links: list[str] = Field(default_factory=list)
+    #: Port mappings for this container.
+    ports: Annotated[list[PortMapping], BeforeValidator(_parse_ports)] = Field(
+        default_factory=list
+    )
+    #: Environment variables for this container.
+    environment: Annotated[dict[str, str], BeforeValidator(_normalize_environment)] = (
+        Field(default_factory=dict)
+    )
+    #: Docker labels for this container.
+    labels: Annotated[dict[str, str], BeforeValidator(_normalize_labels)] = Field(
+        default_factory=dict
+    )
+    #: Ulimits for this container, keyed by ulimit name.
+    ulimits: dict[str, Ulimit] = Field(default_factory=dict)
+    #: Logging configuration for this container, if overridden.
+    logging: LoggingConfig | None = None
+    #: Extra /etc/hosts entries for this container.
+    extra_hosts: Annotated[
+        list[ExtraHost], BeforeValidator(_parse_extra_hosts)
+    ] = Field(default_factory=list)
+    #: Linux capabilities to add.
+    cap_add: list[str] = Field(default_factory=list)
+    #: Linux capabilities to drop.
+    cap_drop: list[str] = Field(default_factory=list)
+    #: tmpfs mounts for this container.
+    tmpfs: list[TmpfsMount] = Field(default_factory=list)
+    #: Volume mount specs, in "host:container[:ro]" or "volumeName:container" form.
+    volumes: list[str] = Field(default_factory=list)
