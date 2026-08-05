@@ -151,6 +151,18 @@ class TestContainerDefinitionAdapterComprehensive:
         task_data = task_data or {"volumes": [], "requiresCompatibilities": []}
         return ContainerDefinitionAdapter(container, task_data, **kwargs)
 
+    def test_invalid_data_raises_schema_exception_at_construction(self) -> None:
+        with pytest.raises(SchemaException, match="not a valid port mapping"):
+            self._adapter({"name": "foobar", "image": "img:1", "ports": ["nope"]})
+
+    def test_unknown_field_raises_schema_exception_at_construction(self) -> None:
+        with pytest.raises(SchemaException):
+            self._adapter({"name": "foobar", "image": "img:1", "bogus_field": "x"})
+
+    def test_partial_construction_allows_missing_name(self) -> None:
+        # Should not raise -- partial containers may omit "name".
+        self._adapter({"cpu": 64}, partial=True)
+
     def test_get_mount_points_adds_host_volume(self) -> None:
         container = {
             "name": "foobar",

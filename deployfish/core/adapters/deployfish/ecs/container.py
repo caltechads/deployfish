@@ -1,7 +1,13 @@
 import re
 import shlex
-from typing import Any
+from typing import Any, cast
 
+from pydantic import ValidationError
+
+from deployfish.config.schema.container import (
+    ContainerDefinitionInput,
+    ContainerDefinitionOverlayInput,
+)
 from deployfish.core.models.secrets import Secret
 
 from ...abstract import Adapter
@@ -56,6 +62,10 @@ class ContainerDefinitionAdapter(Adapter):
             partial: partial.
             readonly_root_filesystem: readonly root filesystem.
 
+        Raises:
+            SchemaException: if ``data`` does not validate against
+                :py:class:`deployfish.config.schema.container.ContainerDefinitionInput`.
+
         """
         super().__init__(data)
         #: Task definition data.
@@ -68,6 +78,38 @@ class ContainerDefinitionAdapter(Adapter):
         self.partial = partial
         #: Readonly root filesystem.
         self.readonly_root_filesystem = readonly_root_filesystem
+        #: The validated, reshaped container stanza.
+        self._input = self._validate(data)
+
+    def _validate(self, data: dict[str, Any]) -> ContainerDefinitionInput:
+        """
+        Validate ``data`` against the appropriate input model, translating
+        :py:exc:`pydantic.ValidationError` into :py:exc:`self.SchemaException`.
+
+        Args:
+            data: the raw container stanza.
+
+        Raises:
+            SchemaException: if ``data`` does not validate.
+
+        Returns:
+            The validated, reshaped container stanza.
+
+        """
+        if self.partial:
+            input_model = ContainerDefinitionOverlayInput
+        else:
+            input_model = ContainerDefinitionInput
+        model = cast("type[ContainerDefinitionInput]", input_model)
+        try:
+            return model.model_validate(data)
+        except ValidationError as e:
+            errors = "; ".join(
+                f'{".".join(str(p) for p in err["loc"])}: {err["msg"]}'
+                for err in e.errors()
+            )
+            msg = f"container definition is invalid: {errors}"
+            raise self.SchemaException(msg) from e
 
     @property
     def is_fargate(self) -> bool:
