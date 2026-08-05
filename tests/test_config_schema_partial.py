@@ -2,12 +2,20 @@
 
 import pytest
 from deployfish.config.schema._partial import partial_model
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, field_validator
 
 
 class _Widget(BaseModel):
     name: str
     count: int = 1
+
+    @field_validator("count")
+    @classmethod
+    def _count_must_be_positive(cls, value: int) -> int:
+        if value < 1:
+            msg = "count must be positive"
+            raise ValueError(msg)
+        return value
 
 
 class _Gadget(BaseModel):
@@ -36,14 +44,12 @@ class TestPartialModel:
         Partial = partial_model(_Widget, name="WidgetOverlay")  # noqa: N806
         assert Partial.__name__ == "WidgetOverlay"
 
-    def test_all_fields_optional_with_provided_values(self) -> None:
+    def test_inherited_validators_still_run_when_value_given(self) -> None:
         Partial = partial_model(_Widget)  # noqa: N806
-        test_count = 5
-        instance = Partial(name="thing", count=test_count)
-        assert instance.name == "thing"
-        assert instance.count == test_count
+        with pytest.raises(ValidationError, match="count must be positive"):
+            Partial(count=0)
 
-    def test_omitted_fields_default_to_none(self) -> None:
+    def test_inherited_validators_skipped_when_value_omitted(self) -> None:
         Partial = partial_model(_Widget)  # noqa: N806
         instance = Partial(name="thing")
         assert instance.name == "thing"
@@ -62,9 +68,9 @@ class TestPartialModelNested:
         Partial = partial_model(  # noqa: N806
             _WidgetContainer, nested={"widgets": PartialWidget}
         )
-        instance = Partial(widgets=[{"count": 0}])
+        instance = Partial(widgets=[{"count": 1}])
         assert instance.widgets[0].name is None
-        assert instance.widgets[0].count == 0
+        assert instance.widgets[0].count == 1
 
     def test_scalar_field_in_nested_uses_partial_inner_type(self) -> None:
         PartialGadget = partial_model(_Gadget)  # noqa: N806
