@@ -197,7 +197,7 @@ class TestContainerDefinitionAdapterComprehensive:
             "ports": ["not-a-port"],
         }
         with pytest.raises(SchemaException, match="not a valid port mapping"):
-            self._adapter(container).get_ports()
+            self._adapter(container)
 
     def test_get_environment_dict_form(self) -> None:
         container = {
@@ -281,7 +281,7 @@ class TestContainerDefinitionAdapterComprehensive:
             SchemaException,
             match='logging: block must contain "driver"',
         ):
-            self._adapter(container).get_logConfiguration()
+            self._adapter(container)
 
     def test_convert_linux_parameters_and_extra_hosts(self) -> None:
         container = {
