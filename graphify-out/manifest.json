@@ -50,7 +50,7 @@
     "semantic_hash": ""
   },
   "deployfish/config/processors/terraform.py": {
-    "mtime": 1785877300.8552575,
+    "mtime": 1785882695.6367,
     "ast_hash": "f3bba608d3f778534a001013c501be72",
     "semantic_hash": ""
   },
@@ -162,11 +162,6 @@
   "deployfish/core/adapters/deployfish/cloudwatch.py": {
     "mtime": 1785877300.8585823,
     "ast_hash": "ffb56d05d860a768052a948911e5d628",
-    "semantic_hash": ""
-  },
-  "deployfish/core/adapters/deployfish/ecs.py": {
-    "mtime": 1785877331.9122124,
-    "ast_hash": "e86fc10eb44fb5b4a7ff700f0db24988",
     "semantic_hash": ""
   },
   "deployfish/core/adapters/deployfish/events.py": {
@@ -735,9 +730,9 @@
     "semantic_hash": "2442f17e3ba60ff945d00d042db7db6b"
   },
   "tests/test_ecs_adapters_comprehensive.py": {
-    "mtime": 1780343183.9226098,
-    "ast_hash": "a19f479ce69a6cfcda0cc536342f24f1",
-    "semantic_hash": "a19f479ce69a6cfcda0cc536342f24f1"
+    "mtime": 1785883171.8123415,
+    "ast_hash": "0cc4baa874de12f85daacc9c775d6c7b",
+    "semantic_hash": ""
   },
   "tests/test_ecs_cluster_task_push.py": {
     "mtime": 1780350537.657261,
@@ -980,7 +975,7 @@
     "semantic_hash": "57d6ddbe65e0b03b9d833156ad45e97c"
   },
   "AGENTS.md": {
-    "mtime": 1785875947.0289912,
+    "mtime": 1785881545.0271425,
     "ast_hash": "06ff993965ab9a073eb5766bd62dfb3b",
     "semantic_hash": "06ff993965ab9a073eb5766bd62dfb3b"
   },
@@ -1440,7 +1435,7 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1785875947.0289912,
+    "mtime": 1785881545.0271425,
     "ast_hash": "06ff993965ab9a073eb5766bd62dfb3b",
     "semantic_hash": ""
   },
@@ -1455,8 +1450,88 @@
     "semantic_hash": ""
   },
   "docs/source/architecture/context.rst": {
-    "mtime": 1785876932.8858626,
-    "ast_hash": "cb15571906d4659e37b07323c6b9c6d5",
+    "mtime": 1785878159.4737923,
+    "ast_hash": "6d1ee8d85b244f728bb23fc2e96ea21b",
+    "semantic_hash": ""
+  },
+  "deployfish/core/adapters/deployfish/ecs/__init__.py": {
+    "mtime": 1785883156.4183931,
+    "ast_hash": "56bed4d6ef4654ea9ed0b083ae56b882",
+    "semantic_hash": ""
+  },
+  "deployfish/core/adapters/deployfish/ecs/common.py": {
+    "mtime": 1785883021.3824737,
+    "ast_hash": "02ef5d17f34a5dee318cce1762a84b01",
+    "semantic_hash": ""
+  },
+  "deployfish/core/adapters/deployfish/ecs/container.py": {
+    "mtime": 1785883063.9155037,
+    "ast_hash": "1b8a10fbc62a2e46e1379c38381d67be",
+    "semantic_hash": ""
+  },
+  "deployfish/core/adapters/deployfish/ecs/service.py": {
+    "mtime": 1785883184.1379867,
+    "ast_hash": "e148bb2f54aad1a1838f2dc898abab15",
+    "semantic_hash": ""
+  },
+  "deployfish/core/adapters/deployfish/ecs/service_helper_task.py": {
+    "mtime": 1785883128.0953176,
+    "ast_hash": "d097f9d61d704908954691f416fdd052",
+    "semantic_hash": ""
+  },
+  "deployfish/core/adapters/deployfish/ecs/standalone_task.py": {
+    "mtime": 1785883095.673347,
+    "ast_hash": "26a99ecb131150710df64aa7b3c246ea",
+    "semantic_hash": ""
+  },
+  "deployfish/core/adapters/deployfish/ecs/task_definition.py": {
+    "mtime": 1785883082.314248,
+    "ast_hash": "1011d4ecf00779e98cf4cda2266208c6",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/01-configuration-model.rst": {
+    "mtime": 1785877454.4205153,
+    "ast_hash": "8383302cc7567fedcca80e71cbfbd87e",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/02-ecs-cluster.rst": {
+    "mtime": 1785877685.0332832,
+    "ast_hash": "79cffcdac8b45240702fba9f7e2da891",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/03-ecs-service-lifecycle.rst": {
+    "mtime": 1785877685.033861,
+    "ast_hash": "0e202f940ba7e28ffb24b2d71a9bc8b1",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/04-standalone-tasks.rst": {
+    "mtime": 1785877462.7906678,
+    "ast_hash": "e0c2724fb502e0e7ae8f0559bff978a9",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/05-secrets-management.rst": {
+    "mtime": 1785877477.857167,
+    "ast_hash": "6b9b119b445062aa89d4d75e92326ff5",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/06-remote-access.rst": {
+    "mtime": 1785877513.1112258,
+    "ast_hash": "f1be9f45361b8a7157d13c216de732d1",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/07-observability.rst": {
+    "mtime": 1785877495.5985029,
+    "ast_hash": "b1d2ca93e1b2465d44f00fb14fc7b375",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/08-supporting-infra.rst": {
+    "mtime": 1785877727.523897,
+    "ast_hash": "df2764ca82c8f6690493fe4a9807ff83",
+    "semantic_hash": ""
+  },
+  "docs/source/architecture/09-extensibility.rst": {
+    "mtime": 1785877519.0897126,
+    "ast_hash": "7237fa2b138a4c6c35faaa08128dbaff",
     "semantic_hash": ""
   }
 }

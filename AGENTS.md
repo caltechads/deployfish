@@ -1,5 +1,14 @@
 # AGENTS.md
 
+- use .venv/bin/python as python
+- use .venv/bin/pytest as pytest
+- use .venv/bin/ruff as ruff
+- use .venv/bin/mypy as mypy
+- use `uv add <package>` to add a core package
+- use `uv add --group=test <package>` to add a test package
+- use `uv add --group=docs <package>` to add a docs package
+- use `uv add --group=dev <package>` to add a dev-only package
+
 ## Tooling Preflight (Required)
 
 Before planning or implementation, show concise evidence of:
@@ -39,8 +48,12 @@ Implement the correct product code directly. Do not add runtime patching, indire
 
 ## Project Structure (Mandatory)
 
-1. Data models (Pydantic, `@dataclass`) → semantically named files in `regis_inspector.models`; mostly bare models plus validation
-2. Business logic → service classes in `regis_inspector.services`; inject `click`/`rich`/`textual` from CLI when needed
+1. Data models (Pydantic, `@dataclass`) → semantically named files in:
+
+    - `deployfish.core.models` for working models (what we do the actual work in AWS via)
+    - `deployfish.config.models` for models related to deployfish.yml parsing and validation
+
+2. Business logic → service classes in `depl.services`; inject `click`/`rich`/`textual` from CLI when needed
 3. CLI/user interaction/display → `regis_inspector.cli` only; no business logic there
 
 ## AWS Interaction
@@ -59,8 +72,6 @@ Prefer cohesive, human-comprehensible classes over loose function collections, e
 - Keep the public service a thin facade with a small entry-point API
 - Put per-run orchestration and mutable run state in a dedicated execution/orchestrator class
 - Prefer stateless collaborators; isolate per-run mutable state in one accumulator/orchestrator
-
-Reference: `ExtractionOrchestrator` in `regis_inspector/services/orchestrator.py` (per-run orchestration + `RunStats` accumulator, driving stateless collaborators like `DdlExtractor`).
 
 ## Documentation Contract (Required)
 
@@ -89,6 +100,7 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
 
 Rules:
+
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
