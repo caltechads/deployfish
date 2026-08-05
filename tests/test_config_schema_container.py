@@ -3,6 +3,7 @@
 import pytest
 from deployfish.config.schema.container import (
     ContainerDefinitionInput,
+    ContainerDefinitionOverlayInput,
     ExtraHost,
     LoggingConfig,
     PortMapping,
@@ -204,3 +205,15 @@ class TestContainerDefinitionInput:
     def test_name_and_image_required(self) -> None:
         with pytest.raises(ValidationError):
             ContainerDefinitionInput.model_validate({"image": "nginx:1.25"})
+
+
+class TestContainerDefinitionOverlayInput:
+    def test_name_and_image_optional(self) -> None:
+        model = ContainerDefinitionOverlayInput.model_validate({"cpu": "64"})
+        assert model.name is None
+        assert model.image is None
+        assert model.cpu == 64
+
+    def test_validators_still_run_for_given_fields(self) -> None:
+        with pytest.raises(ValidationError, match="not a valid port mapping"):
+            ContainerDefinitionOverlayInput.model_validate({"ports": ["not-a-port"]})

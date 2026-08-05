@@ -11,6 +11,8 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
+from deployfish.config.schema._partial import partial_model
+
 #: Matches ``"hostPort[:containerPort[/protocol]]"`` port mapping strings.
 _PORTS_RE = re.compile(
     r"(?P<hostPort>\d+)(:(?P<containerPort>\d+)(/(?P<protocol>udp|tcp))?)?"
@@ -363,3 +365,10 @@ class ContainerDefinitionInput(BaseModel):
     tmpfs: list[TmpfsMount] = Field(default_factory=list)
     #: Volume mount specs, in "host:container[:ro]" or "volumeName:container" form.
     volumes: list[str] = Field(default_factory=list)
+
+
+#: All-optional variant of ContainerDefinitionInput, for partial/overlay
+#: construction (e.g. ServiceHelperTask command-specific container overrides).
+ContainerDefinitionOverlayInput = partial_model(
+    ContainerDefinitionInput, name="ContainerDefinitionOverlayInput"
+)

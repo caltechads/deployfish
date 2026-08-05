@@ -5,7 +5,7 @@ Helper for deriving "partial update" Pydantic models, used for the ``partial``
 
 from typing import Any
 
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel, Field, create_model
 
 
 def partial_model(model: type[BaseModel], name: str | None = None) -> type[BaseModel]:
@@ -29,13 +29,24 @@ def partial_model(model: type[BaseModel], name: str | None = None) -> type[BaseM
         A new model class, subclassing ``model``, with every field optional.
 
     """
+    # Use __annotations__ to preserve Annotated types with their metadata
     field_overrides: dict[str, Any] = {}
     for field_name, field_info in model.model_fields.items():
-        annotation = field_info.annotation
-        field_overrides[field_name] = (
-            annotation | None if annotation is not None else None,
-            None,
+        # Get the original annotation from the parent class annotations
+        if field_name in model.__annotations__:
+            original_annotation = model.__annotations__[field_name]
+        else:
+            original_annotation = field_info.annotation
+
+        # Make it optional by unioning with None
+        optional_annotation = (
+            original_annotation | None
+            if original_annotation is not None
+            else None
         )
+
+        field_overrides[field_name] = (optional_annotation, Field(default=None))
+
     model_name = model.__name__.lstrip("_")
     return create_model(
         name or f"Partial{model_name}",
