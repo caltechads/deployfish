@@ -346,6 +346,47 @@ class TestContainerDefinitionAdapterComprehensive:
         data, _kwargs = self._adapter(container).convert()
         assert data["dockerLabels"] == {"com.example.foo": "bar"}
 
+    def test_docker_labels_dict_form_round_trips(self) -> None:
+        # Regression: dockerLabels: is the real, documented container-labels
+        # key (docs/source/yaml.rst). ContainerDefinitionInput.labels once
+        # had no alias, so `extra="forbid"` rejected "dockerLabels" outright.
+        container = {
+            "name": "foobar",
+            "image": "img:1",
+            "cpu": 128,
+            "memory": 256,
+            "dockerLabels": {"a": "b"},
+        }
+        data, _kwargs = self._adapter(container).convert()
+        assert data["dockerLabels"] == {"a": "b"}
+
+    def test_partial_memory_reservation_alias_is_preserved(self) -> None:
+        # Regression: partial_model() used to rebuild each field with a
+        # bare Field(default=None), dropping the original FieldInfo's
+        # alias. memory_reservation's "memoryReservation" alias was lost on
+        # ContainerDefinitionOverlayInput, so partial=True containers using
+        # "memoryReservation" raised SchemaException("Extra inputs are not
+        # permitted").
+        container = {"name": "foobar", "cpu": 64, "memoryReservation": 256}
+        data, _kwargs = self._adapter(container, partial=True).convert()
+        assert data["memoryReservation"] == 256
+
+    def test_normalize_labels_bare_key_and_embedded_equals(self) -> None:
+        # Regression: _normalize_labels used str.split("=") (raises
+        # ValueError on a bare key with no "=", and mis-splits values that
+        # themselves contain "="). Fixed to use str.partition("="), matching
+        # _normalize_environment's existing behavior.
+        container = {
+            "name": "foobar",
+            "image": "img:1",
+            "cpu": 128,
+            "memory": 256,
+            "dockerLabels": ["edu.caltech.some-flag", "foo=a=b"],
+        }
+        labels = self._adapter(container).get_dockerLabels()
+        assert labels["edu.caltech.some-flag"] == ""
+        assert labels["foo"] == "a=b"
+
 
 class TestStandaloneTaskAdapterComprehensive:
     def test_capacity_provider_strategy_and_placement(self) -> None:

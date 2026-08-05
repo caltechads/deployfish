@@ -17,8 +17,6 @@ from deployfish.config.schema._partial import partial_model
 _PORTS_RE = re.compile(
     r"(?P<hostPort>\d+)(:(?P<containerPort>\d+)(/(?P<protocol>udp|tcp))?)?"
 )
-#: Matches characters not allowed in an auto-generated volume name.
-_MOUNT_RE = re.compile("[^A-Za-z0-9_-]")
 
 
 class PortMapping(BaseModel):
@@ -280,7 +278,7 @@ def _normalize_labels(value: Any) -> Any:
     if isinstance(value, list):
         result: dict[str, str] = {}
         for entry in value:
-            key, val = entry.split("=")
+            key, _, val = entry.partition("=")
             result[key] = val
         return result
     return value
@@ -345,9 +343,11 @@ class ContainerDefinitionInput(BaseModel):
     environment: Annotated[dict[str, str], BeforeValidator(_normalize_environment)] = (
         Field(default_factory=dict)
     )
-    #: Docker labels for this container.
+    #: Docker labels for this container. The documented yaml key is
+    #: ``dockerLabels`` (see docs/source/yaml.rst); ``populate_by_name=True``
+    #: also accepts the bare ``labels`` spelling.
     labels: Annotated[dict[str, str], BeforeValidator(_normalize_labels)] = Field(
-        default_factory=dict
+        default_factory=dict, alias="dockerLabels"
     )
     #: Ulimits for this container, keyed by ulimit name.
     ulimits: dict[str, Ulimit] = Field(default_factory=dict)
