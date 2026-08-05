@@ -211,6 +211,39 @@ class TestContainerDefinitionAdapterComprehensive:
         assert {"name": "FOO", "value": "bar"} in env
         assert {"name": "BAZ", "value": "qux"} in env
 
+    def test_convert_omits_environment_when_no_environment_stanza(self) -> None:
+        # Regression: extra_environment (e.g. DEPLOYFISH_* vars injected by
+        # Service/StandaloneTask) must not cause an "environment" key to
+        # appear in the converted container definition when the yaml
+        # stanza itself had no "environment:" block. The old dict-based
+        # code gated both the merge and the output on
+        # `"environment" in self.data`, so extra_environment was silently
+        # dropped in that case -- this must keep matching that behavior.
+        container = {
+            "name": "foobar",
+            "image": "img:1",
+            "cpu": 128,
+            "memory": 256,
+        }
+        data, _kwargs = self._adapter(
+            container, extra_environment={"DEPLOYFISH_SERVICE_NAME": "x"}
+        ).convert()
+        assert "environment" not in data
+
+    def test_convert_partial_with_extra_environment_does_not_raise(self) -> None:
+        # Regression: under partial=True, ContainerDefinitionOverlayInput
+        # defaults "environment" to None, so get_environment()'s old
+        # `dict(self._input.environment)` raised TypeError. Constructing
+        # with partial=True and extra_environment set (even though no
+        # "environment:" stanza is present) must not crash.
+        container = {"name": "foobar", "cpu": 64}
+        data, _kwargs = self._adapter(
+            container,
+            extra_environment={"DEPLOYFISH_SERVICE_NAME": "x"},
+            partial=True,
+        ).convert()
+        assert isinstance(data, dict)
+
     def test_get_docker_labels_list_form(self) -> None:
         container = {
             "name": "foobar",

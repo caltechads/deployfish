@@ -253,7 +253,7 @@ class ContainerDefinitionAdapter(Adapter):
             A list of dicts, each of which is an environment variable definition
 
         """
-        environment = dict(self._input.environment)
+        environment = dict(self._input.environment or {})
         environment.update(self.extra_environment)
         return [{"name": k, "value": v} for k, v in environment.items()]
 
@@ -490,7 +490,7 @@ class ContainerDefinitionAdapter(Adapter):
             data["entryPoint"] = self._input.entrypoint
         if self._input.ulimits:
             data["ulimits"] = self.get_ulimits()
-        if self._input.environment or self.extra_environment:
+        if self._input.environment:
             data["environment"] = self.get_environment()
         if self._input.volumes:
             data["mountPoints"] = self.get_mountPoints()
