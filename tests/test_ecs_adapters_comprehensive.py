@@ -305,11 +305,6 @@ class TestContainerDefinitionAdapterComprehensive:
         assert data["linuxParameters"]["tmpfs"][0]["containerPath"] == "/run"
         assert data["extraHosts"] == [{"hostname": "somehost", "ipAddress": "10.0.0.1"}]
 
-    def test_cpu_exceeding_task_cpu_raises(self) -> None:
-        container = {"name": "foobar", "image": "img:1", "cpu": 512, "memory": 256}
-        with pytest.raises(SchemaException, match="cpu is greater than the task cpu"):
-            self._adapter(container, task_data={"cpu": 256, "volumes": []}).get_cpu()
-
     def test_sidecar_container_essential_false(self) -> None:
         container = {
             "name": "sidecar",

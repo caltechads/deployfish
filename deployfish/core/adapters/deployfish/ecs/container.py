@@ -370,27 +370,12 @@ class ContainerDefinitionAdapter(Adapter):
         ``cpu`` values for all containers in the task be lower than the ``cpu``
         value specified in the task definition, if that is present.
 
-        Raises:
-            SchemaException: if the ``cpu`` value is greater than the task cpu
-                value.
-
         Returns:
             The ``cpu`` value for this container.
 
         """
         default = None if self.is_fargate or self.partial else 256
-        cpu = self._input.cpu if self._input.cpu is not None else default
-        if "cpu" in self.task_definition_data:
-            task_cpu = self.task_definition_data["cpu"]
-            if isinstance(task_cpu, str):
-                task_cpu = int(task_cpu)
-            if cpu is not None and cpu > task_cpu:
-                msg = (
-                    f'container "{self._input.name}": cpu is greater than the '
-                    "task cpu value"
-                )
-                raise self.SchemaException(msg)
-        return cpu
+        return self._input.cpu if self._input.cpu is not None else default
 
     def get_memory(self) -> int | None:
         """
@@ -406,7 +391,6 @@ class ContainerDefinitionAdapter(Adapter):
         value specified in the task definition, if that is present.
 
         Raises:
-            SchemaException: if the container memory is greater than the task memory
             SchemaException: if the task is an EC2 task and ``memory`` is not
                 specified in container definition the ``deployfish.yml`` file and is
                 also not present at the task level in the ``deployfish.yml`` file.
@@ -428,18 +412,7 @@ class ContainerDefinitionAdapter(Adapter):
                 )
                 raise self.SchemaException(msg)
             return None
-        memory = self._input.memory
-        if "memory" in self.task_definition_data:
-            task_memory = self.task_definition_data["memory"]
-            if isinstance(task_memory, str):
-                task_memory = int(task_memory)
-            if memory > task_memory:
-                msg = (
-                    f'container "{self._input.name}": memory is greater than '
-                    "task memory"
-                )
-                raise self.SchemaException(msg)
-        return memory
+        return self._input.memory
 
     def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:  # noqa: PLR0912, PLR0915
         """
