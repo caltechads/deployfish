@@ -3,7 +3,7 @@ Helper for deriving "partial update" Pydantic models, used for the ``partial``
 (overlay) construction mode our adapters support.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, create_model
 
@@ -29,10 +29,13 @@ def partial_model(model: type[BaseModel], name: str | None = None) -> type[BaseM
         A new model class, subclassing ``model``, with every field optional.
 
     """
-    field_overrides: dict[str, Any] = {
-        field_name: (Optional[field_info.annotation], None)
-        for field_name, field_info in model.model_fields.items()
-    }
+    field_overrides: dict[str, Any] = {}
+    for field_name, field_info in model.model_fields.items():
+        annotation = field_info.annotation
+        field_overrides[field_name] = (
+            annotation | None if annotation is not None else None,
+            None,
+        )
     model_name = model.__name__.lstrip("_")
     return create_model(
         name or f"Partial{model_name}",
