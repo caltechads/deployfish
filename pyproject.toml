@@ -50,6 +50,7 @@ dependencies = [
     "simplesqs >= 0.4.0",
     "toml >= 0.10.2",
     "debugpy>=1.8.21",
+    "pydantic>=2.13.4",
 ]
 
 [dependency-groups]
