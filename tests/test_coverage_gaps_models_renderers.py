@@ -443,8 +443,9 @@ class TestECSAdapterAdditionalMethods:
         assert adapter.get_logConfiguration()["logDriver"] == "awslogs"
 
     def test_container_adapter_log_configuration_requires_driver(self) -> None:
-        adapter = ContainerDefinitionAdapter(
-            {"name": "app", "logging": {"options": {}}}
-        )
-        with pytest.raises(adapter.SchemaException, match='must contain "driver"'):
-            adapter.get_logConfiguration()
+        with pytest.raises(
+            ContainerDefinitionAdapter.SchemaException, match='must contain "driver"'
+        ):
+            ContainerDefinitionAdapter(
+                {"name": "app", "image": "img:1", "logging": {"options": {}}}
+            )

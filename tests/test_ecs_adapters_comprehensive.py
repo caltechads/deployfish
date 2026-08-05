@@ -299,6 +299,20 @@ class TestContainerDefinitionAdapterComprehensive:
         with pytest.raises(SchemaException, match="memoryReservation"):
             self._adapter(container).convert()
 
+    def test_labels_produces_docker_labels_after_pilot_fix(self) -> None:
+        # Deliberate behavior fix (docs/adr/0001-pydantic-adapters.md): today
+        # labels: produces no dockerLabels output at all, because convert()
+        # never called get_dockerLabels(). This adapter now wires it through.
+        container = {
+            "name": "foobar",
+            "image": "img:1",
+            "cpu": 128,
+            "memory": 256,
+            "labels": ["com.example.foo=bar"],
+        }
+        data, _kwargs = self._adapter(container).convert()
+        assert data["dockerLabels"] == {"com.example.foo": "bar"}
+
 
 class TestStandaloneTaskAdapterComprehensive:
     def test_capacity_provider_strategy_and_placement(self) -> None:

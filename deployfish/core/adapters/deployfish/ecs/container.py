@@ -1,5 +1,4 @@
 import re
-import shlex
 from typing import Any, cast
 
 from pydantic import ValidationError
@@ -35,10 +34,6 @@ class ContainerDefinitionAdapter(Adapter):
 
     """
 
-    #: Ports re.
-    PORTS_RE = re.compile(
-        r"(?P<hostPort>\d+)(:(?P<containerPort>\d+)(/(?P<protocol>udp|tcp))?)?"
-    )
     #: Mount re.
     MOUNT_RE = re.compile("[^A-Za-z0-9_-]")
 
@@ -171,7 +166,7 @@ class ContainerDefinitionAdapter(Adapter):
             volume_names.add(v["name"])
 
         mountPoints: list[dict[str, str]] = []  # noqa: N806
-        for v in self.data.get("volumes", []):
+        for v in self._input.volumes:
             fields = v.split(":")
             host_path = fields[0]
             container_path = fields[1]
@@ -220,28 +215,16 @@ class ContainerDefinitionAdapter(Adapter):
             container.
 
         """
-        portMappings = []  # noqa: N806
-        for mapping in self.data.get("ports", []):
-            if isinstance(mapping, int):
-                mapping = str(mapping)  # noqa: PLW2901
-            m = self.PORTS_RE.search(mapping)
-            if m:
-                mapping = {}  # noqa: PLW2901
-                if not m.group("containerPort"):
-                    mapping["containerPort"] = int(m.group("hostPort"))
-                else:
-                    mapping["hostPort"] = int(m.group("hostPort"))
-                    mapping["containerPort"] = int(m.group("containerPort"))
-                protocol = m.group("protocol")
-                if not protocol:
-                    protocol = "tcp"
-                mapping["protocol"] = protocol
-                portMappings.append(mapping)
-
-            else:
-                msg = f"{mapping} is not a valid port mapping"
-                raise self.SchemaException(msg)
-        return portMappings
+        port_mappings = []
+        for p in self._input.ports:
+            mapping: dict[str, Any] = {
+                "containerPort": p.container_port,
+                "protocol": p.protocol,
+            }
+            if p.host_port is not None:
+                mapping["hostPort"] = p.host_port
+            port_mappings.append(mapping)
+        return port_mappings
 
     def get_environment(self) -> list[dict[str, str]]:
         """
@@ -270,21 +253,9 @@ class ContainerDefinitionAdapter(Adapter):
             A list of dicts, each of which is an environment variable definition
 
         """
-        environment: list[dict[str, str]] = []
-        if "environment" in self.data:
-            if isinstance(self.data["environment"], list):
-                source_environment = {}
-                for env in self.data["environment"]:
-                    parts = env.split("=")
-                    k, v = parts[0], "=".join(parts[1:])
-                    source_environment[k] = v
-            else:
-                source_environment = self.data["environment"]
-            source_environment.update(self.extra_environment)
-            environment = [
-                {"name": k, "value": v} for k, v in list(source_environment.items())
-            ]
-        return environment
+        environment = dict(self._input.environment)
+        environment.update(self.extra_environment)
+        return [{"name": k, "value": v} for k, v in environment.items()]
 
     def get_dockerLabels(self) -> dict[str, str]:  # noqa: N802
         """
@@ -313,15 +284,7 @@ class ContainerDefinitionAdapter(Adapter):
             A dict of docker labels
 
         """
-        dockerLabels: dict[str, str] = {}  # noqa: N806
-        if "labels" in self.data:
-            if isinstance(self.data["labels"], dict):
-                dockerLabels = self.data["labels"]  # noqa: N806
-            else:
-                for label in self.data["labels"]:
-                    key, value = label.split("=")
-                    dockerLabels[key] = value
-        return dockerLabels
+        return dict(self._input.labels)
 
     def get_ulimits(self) -> list[dict[str, Any]]:
         """
@@ -331,18 +294,10 @@ class ContainerDefinitionAdapter(Adapter):
             Operation result.
 
         """
-        ulimits = []
-        for key, value in list(self.data["ulimits"].items()):
-            if not isinstance(value, dict):
-                soft = value
-                hard = value
-            else:
-                soft = value["soft"]
-                hard = value["hard"]
-            ulimits.append(
-                {"name": key, "softLimit": int(soft), "hardLimit": int(hard)}
-            )
-        return ulimits
+        return [
+            {"name": name, "softLimit": u.soft, "hardLimit": u.hard}
+            for name, u in self._input.ulimits.items()
+        ]
 
     def get_logConfiguration(self) -> dict[str, Any]:  # noqa: N802
         """
@@ -352,15 +307,12 @@ class ContainerDefinitionAdapter(Adapter):
             Operation result.
 
         """
-        logConfiguration: dict[str, Any] = {}  # noqa: N806
-        if "logging" in self.data:
-            if "driver" not in self.data["logging"]:
-                msg = 'logging: block must contain "driver"'
-                raise self.SchemaException(msg)
-            logConfiguration["logDriver"] = self.data["logging"]["driver"]
-            if "options" in self.data["logging"]:
-                logConfiguration["options"] = self.data["logging"]["options"]
-        return logConfiguration
+        if self._input.logging is None:
+            return {}
+        lc: dict[str, Any] = {"logDriver": self._input.logging.driver}
+        if self._input.logging.options:
+            lc["options"] = self._input.logging.options
+        return lc
 
     def get_linuxParameters(self) -> dict[str, Any]:  # noqa: N802
         """
@@ -371,26 +323,23 @@ class ContainerDefinitionAdapter(Adapter):
 
         """
         linux_parameters: dict[str, Any] = {}
-
-        cap_add = self.data.get("cap_add")
-        cap_drop = self.data.get("cap_drop")
-        if cap_add or cap_drop:
+        if self._input.cap_add or self._input.cap_drop:
             capabilities: dict[str, Any] = {}
-            if cap_add:
-                capabilities["add"] = cap_add
-            if cap_drop:
-                capabilities["drop"] = cap_drop
+            if self._input.cap_add:
+                capabilities["add"] = self._input.cap_add
+            if self._input.cap_drop:
+                capabilities["drop"] = self._input.cap_drop
             linux_parameters["capabilities"] = capabilities
-
-        tmpfs = self.data.get("tmpfs")
-        if tmpfs:
+        if self._input.tmpfs:
             linux_parameters["tmpfs"] = []
-            for tc in tmpfs:
-                tc_append = {"containerPath": tc["container_path"], "size": tc["size"]}
-                if "mount_options" in tc and isinstance(tc["mount_options"], list):
-                    tc_append["mountOptions"] = tc["mount_options"]
-                linux_parameters["tmpfs"].append(tc_append)
-
+            for tc in self._input.tmpfs:
+                entry: dict[str, Any] = {
+                    "containerPath": tc.container_path,
+                    "size": tc.size,
+                }
+                if tc.mount_options:
+                    entry["mountOptions"] = tc.mount_options
+                linux_parameters["tmpfs"].append(entry)
         return linux_parameters
 
     def get_extraHosts(self) -> list[dict[str, str]]:  # noqa: N802
@@ -401,11 +350,10 @@ class ContainerDefinitionAdapter(Adapter):
             Operation result.
 
         """
-        extraHosts: list[dict[str, str]] = []  # noqa: N806
-        for host in self.data.get("extra_hosts", []):
-            hostname, ip_address = host.split(":")
-            extraHosts.append({"hostname": hostname, "ipAddress": ip_address})
-        return extraHosts
+        return [
+            {"hostname": h.hostname, "ipAddress": h.ip_address}
+            for h in self._input.extra_hosts
+        ]
 
     def get_cpu(self) -> int | None:
         """
@@ -431,16 +379,15 @@ class ContainerDefinitionAdapter(Adapter):
 
         """
         default = None if self.is_fargate or self.partial else 256
-        cpu = self.data.get("cpu", default)
-        if isinstance(cpu, str):
-            cpu = int(cpu)
+        cpu = self._input.cpu if self._input.cpu is not None else default
         if "cpu" in self.task_definition_data:
             task_cpu = self.task_definition_data["cpu"]
             if isinstance(task_cpu, str):
                 task_cpu = int(task_cpu)
-            if cpu > task_cpu:
-                msg = 'container "{}": cpu is greater than the task cpu value'.format(
-                    self.data["name"]
+            if cpu is not None and cpu > task_cpu:
+                msg = (
+                    f'container "{self._input.name}": cpu is greater than the '
+                    "task cpu value"
                 )
                 raise self.SchemaException(msg)
         return cpu
@@ -469,32 +416,32 @@ class ContainerDefinitionAdapter(Adapter):
 
         """
         if self.is_fargate:
-            if "memory" not in self.data:
+            if self._input.memory is None:
                 return None
-        if "memory" not in self.data:
+        if self._input.memory is None:
             if "memory" in self.task_definition_data:
                 return None
             if not self.partial:
-                msg = 'container "{}": memory is required for containers if not specified at the task level'.format(  # noqa: E501
-                    self.data["name"]
+                msg = (
+                    f'container "{self._input.name}": memory is required for '
+                    "containers if not specified at the task level"
                 )
                 raise self.SchemaException(msg)
             return None
-        memory = self.data["memory"]
-        if isinstance(memory, str):
-            memory = int(memory)
+        memory = self._input.memory
         if "memory" in self.task_definition_data:
             task_memory = self.task_definition_data["memory"]
             if isinstance(task_memory, str):
                 task_memory = int(task_memory)
             if memory > task_memory:
-                msg = 'container "{}": memory is greater than task memory'.format(
-                    self.data["name"]
+                msg = (
+                    f'container "{self._input.name}": memory is greater than '
+                    "task memory"
                 )
                 raise self.SchemaException(msg)
         return memory
 
-    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:  # noqa: PLR0912
+    def convert(self) -> tuple[dict[str, Any], dict[str, Any]]:  # noqa: PLR0912, PLR0915
         """
         Convert.
 
@@ -503,26 +450,26 @@ class ContainerDefinitionAdapter(Adapter):
 
         """
         data: dict[str, Any] = {}
-        self.set(data, "name")
-        self.set(data, "image")
-        self.set(data, "essential", default=True)
+        # name/image/essential are Optional on ContainerDefinitionOverlayInput
+        # (partial=True); when absent there, Adapter.set()'s old behavior was
+        # to omit the key entirely rather than apply a default, so we do the
+        # same here. On the strict ContainerDefinitionInput (partial=False)
+        # these are never None, so this is equivalent to unconditional
+        # assignment in that mode.
+        if self._input.name is not None:
+            data["name"] = self._input.name
+        if self._input.image is not None:
+            data["image"] = self._input.image
+        if self._input.essential is not None:
+            data["essential"] = self._input.essential
         cpu = self.get_cpu()
-        try:
-            self.set(data, "memoryReservation", optional=True, convert=int)
-        except ValueError:
-            msg = 'container "{}": "memoryReservation" must be an integer'.format(
-                self.data["name"]
-            )
-            raise self.SchemaException(msg) from None
+        if self._input.memory_reservation is not None:
+            data["memoryReservation"] = self._input.memory_reservation
         if cpu is not None:
             data["cpu"] = cpu
         memory = self.get_memory()
         if memory is not None:
             data["memory"] = memory
-        # If neither memory nor memoryReservation are specified, and this is not
-        # a partial update of a container definition (i.e. we are overriding our
-        # parent task definition in a ServiceHelperTask) AND this is not a
-        # FARGATE task, then set memory to 512
         memoryReservation = data.get("memoryReservation")  # noqa: N806
         if memoryReservation is None and memory is None:
             if not self.partial:
@@ -530,33 +477,32 @@ class ContainerDefinitionAdapter(Adapter):
                     data["memory"] = 512
         if memoryReservation is not None and memory is not None:
             if memoryReservation >= memory:
-                msg = 'container "{}": "memoryReservation" must be less than "memory"'.format(  # noqa: E501
-                    self.data["name"]
+                msg = (
+                    f'container "{self._input.name}": "memoryReservation" '
+                    'must be less than "memory"'
                 )
                 raise self.SchemaException(msg)
-        if "ports" in self.data:
+        if self._input.ports:
             data["portMappings"] = self.get_ports()
-        self.set(data, "command", optional=True, convert=shlex.split)
-        self.set(
-            data,
-            "entrypoint",
-            dest_key="entryPoint",
-            optional=True,
-            convert=shlex.split,
-        )
-        if "ulimits" in self.data:
+        if self._input.command:
+            data["command"] = self._input.command
+        if self._input.entrypoint:
+            data["entryPoint"] = self._input.entrypoint
+        if self._input.ulimits:
             data["ulimits"] = self.get_ulimits()
-        if "environment" in self.data:
+        if self._input.environment or self.extra_environment:
             data["environment"] = self.get_environment()
-        if "volumes" in self.data:
+        if self._input.volumes:
             data["mountPoints"] = self.get_mountPoints()
-        self.set(data, "links", optional=True)
-        self.set(data, "dockerLabels", optional=True)
-        if "logging" in self.data:
+        if self._input.links:
+            data["links"] = self._input.links
+        if self._input.labels:
+            data["dockerLabels"] = self.get_dockerLabels()
+        if self._input.logging:
             data["logConfiguration"] = self.get_logConfiguration()
-        if "extra_hosts" in self.data:
+        if self._input.extra_hosts:
             data["extraHosts"] = self.get_extraHosts()
-        if "cap_add" in self.data or "cap_drop" in self.data or "tmpfs" in self.data:
+        if self._input.cap_add or self._input.cap_drop or self._input.tmpfs:
             data["linuxParameters"] = self.get_linuxParameters()
         if self.secrets:
             data["secrets"] = self.get_secrets()
