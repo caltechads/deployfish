@@ -91,11 +91,11 @@ class Volume(BaseModel):
     @model_validator(mode="after")
     def _mutually_exclusive(self) -> "Volume":
         """
-        Enforce that ``path``, ``config``, and ``efs_config`` are mutually
-        exclusive.
+        Enforce that exactly one of ``path``, ``config``, and ``efs_config``
+        is set.
 
         Raises:
-            ValueError: if more than one of ``path``, ``config``, or
+            ValueError: if zero or more than one of ``path``, ``config``, or
                 ``efs_config`` is set.
 
         Returns:
@@ -105,10 +105,10 @@ class Volume(BaseModel):
         specified = sum(
             x is not None for x in (self.path, self.config, self.efs_config)
         )
-        if specified > 1:
+        if specified != 1:
             msg = (
-                'When defining volumes, specify only one of "path", "config" '
-                'or "efs_config"'
+                'When defining volumes, specify exactly one of "path", '
+                '"config" or "efs_config"'
             )
             raise ValueError(msg)
         return self
@@ -207,6 +207,10 @@ class TaskDefinitionInput(BaseModel):
             ``data`` unchanged.
 
         """
+        # Deliberately ``cls is TaskDefinitionInput``, not ``issubclass``/
+        # ``isinstance``: this must NOT fire for ``TaskDefinitionOverlayInput``,
+        # a real subclass used for partial/overlay data, where ``containers``
+        # is legitimately optional.
         if (
             cls is TaskDefinitionInput
             and isinstance(data, dict)
@@ -293,6 +297,10 @@ class TaskDefinitionInput(BaseModel):
             ``self``, unchanged.
 
         """
+        # Deliberately ``type(self) is TaskDefinitionInput``, not
+        # ``isinstance``: this must NOT fire for ``TaskDefinitionOverlayInput``,
+        # a real subclass used for partial/overlay data, which skips this
+        # requirement, matching today's ``if not self.partial`` guard.
         if type(self) is TaskDefinitionInput and self.launch_type == "FARGATE":
             if not self.execution_role:
                 msg = (

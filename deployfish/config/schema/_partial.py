@@ -4,8 +4,9 @@ Helper for deriving "partial update" Pydantic models, used for the ``partial``
 """
 
 import copy
+import types
 import typing
-from typing import Any
+from typing import Any, Union
 
 from pydantic import BaseModel, create_model
 
@@ -69,6 +70,19 @@ def partial_model(
         if field_name in nested:
             replacement = nested[field_name]
             origin = typing.get_origin(original_annotation)
+            # Supported: a bare model field (origin None, or None wrapped in
+            # a Union/Optional, e.g. ``_Gadget | None``) and a
+            # ``list[Model]`` field (origin list). Anything else -- e.g. a
+            # ``dict[str, Model]`` field -- isn't implemented; fail loudly
+            # instead of silently using the wrong annotation.
+            if origin not in (None, list, Union, types.UnionType):
+                msg = (
+                    f'partial_model(): "nested" names field "{field_name}", '
+                    f"whose annotation origin is {origin!r}. Only bare "
+                    "model fields and list[Model] fields are supported; "
+                    "e.g. dict[str, Model] is not supported yet."
+                )
+                raise TypeError(msg)
             effective_annotation: Any = (
                 list[replacement] if origin is list else replacement  # type: ignore[valid-type]
             )

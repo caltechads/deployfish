@@ -62,7 +62,7 @@ from configuration in ``deployfish.yml``.
 .. note::
 
     :py:class:`deployfish.core.adapters.deployfish.ecs.container.ContainerDefinitionAdapter`
-    and :py:class:`deployfish.core.adapters.deployfish.ecs.TaskDefinitionAdapter` validate
+    and :py:class:`deployfish.core.adapters.deployfish.ecs.task_definition.TaskDefinitionAdapter` validate
     their input through Pydantic models
     (:py:class:`deployfish.config.schema.container.ContainerDefinitionInput` and
     :py:class:`deployfish.config.schema.task_definition.TaskDefinitionInput`, respectively),

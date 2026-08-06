@@ -108,6 +108,18 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
             known_keys.add(field_name)
             if field_info.alias:
                 known_keys.add(field_info.alias)
+        # ``placement_constraints`` (snake_case) collides with a real,
+        # documented, different key of the same name used by sibling
+        # adapters (``ServiceAdapter``/``StandaloneTaskAdapter``) on this
+        # same shared service/task stanza -- a service/task-level placement
+        # constraint (e.g. ``type: distinctInstance``), not this model's
+        # task-definition-level ``placementConstraints``. Because
+        # ``populate_by_name=True`` is model-wide, leaving the bare
+        # snake_case spelling in ``known_keys`` would let it silently
+        # populate this field. Only the literal camelCase alias
+        # (``placementConstraints``) is honored here; drop the snake_case
+        # spelling so it is treated as foreign, like ``name``/``cluster``.
+        known_keys.discard("placement_constraints")
         filtered_data = {k: v for k, v in data.items() if k in known_keys}
         try:
             return model.model_validate(filtered_data)
@@ -119,7 +131,11 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
                     index = loc[1]
                     container_name = f"#{index}"
                     containers = data.get("containers", [])
-                    if isinstance(index, int) and index < len(containers):
+                    if (
+                        isinstance(index, int)
+                        and index < len(containers)
+                        and isinstance(containers[index], dict)
+                    ):
                         container_name = containers[index].get(
                             "name", f"#{index}"
                         )
@@ -129,7 +145,11 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
                         label = f"{label}: {remainder}"
                     errors.append(f"{label}: {err['msg']}")
                 else:
-                    errors.append(f'{".".join(str(p) for p in loc)}: {err["msg"]}')
+                    loc_str = ".".join(str(p) for p in loc)
+                    if loc_str:
+                        errors.append(f'{loc_str}: {err["msg"]}')
+                    else:
+                        errors.append(err["msg"])
             msg = f"task definition is invalid: {'; '.join(errors)}"
             raise self.SchemaException(msg) from e
 
@@ -173,7 +193,9 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
                 v_dict["host"] = {"sourcePath": v.path}
             elif v.config is not None:
                 v_dict["dockerVolumeConfiguration"] = copy(
-                    v.config.model_dump(by_alias=True, exclude_none=True)
+                    v.config.model_dump(
+                        by_alias=True, exclude_none=True, exclude_defaults=True
+                    )
                 )
             elif v.efs_config is not None:
                 efs: dict[str, Any] = {"fileSystemId": v.efs_config.file_system_id}
@@ -221,22 +243,17 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
         if task_input.execution_role is not None:
             data["executionRoleArn"] = task_input.execution_role
         data["volumes"] = self.get_volumes()
-        containers_data = []
-        for container_definition, _container_input in zip(
-            self.data.get("containers", []),
-            task_input.containers or [],
-            strict=True,
-        ):
-            containers_data.append(
-                ContainerDefinitionAdapter(
-                    container_definition,
-                    data,
-                    secrets=self.secrets,
-                    extra_environment=self.extra_environment,
-                    partial=self.partial,
-                    readonly_root_filesystem=readonly_root_filesystem,
-                ).convert()
-            )
+        containers_data = [
+            ContainerDefinitionAdapter(
+                container_definition,
+                data,
+                secrets=self.secrets,
+                extra_environment=self.extra_environment,
+                partial=self.partial,
+                readonly_root_filesystem=readonly_root_filesystem,
+            ).convert()
+            for container_definition in self.data.get("containers") or []
+        ]
         container_data = [c[0] for c in containers_data]
         self.set_task_cpu(data, container_data)
         self.set_task_memory(data, container_data)

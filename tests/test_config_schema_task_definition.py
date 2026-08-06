@@ -47,18 +47,18 @@ class TestVolume:
         assert v.efs_config.root_directory is None
 
     def test_path_and_config_both_set_raises(self) -> None:
-        with pytest.raises(ValidationError, match='only one of "path"'):
+        with pytest.raises(ValidationError, match='exactly one of "path"'):
             Volume.model_validate(
                 {"name": "bad", "path": "/a", "config": {"scope": "task"}}
             )
 
-    def test_none_set_is_valid(self) -> None:
-        # A bare volume with no path/config/efs_config is valid -- the
-        # container-level `volumes:` mount-point syntax populates it later.
-        v = Volume.model_validate({"name": "bare"})
-        assert v.path is None
-        assert v.config is None
-        assert v.efs_config is None
+    def test_none_set_raises(self) -> None:
+        # A bare volume with none of path/config/efs_config set must raise --
+        # exactly one of the three must be specified. `get_volumes()` only
+        # ever reads the task-level `volumes:` list, so nothing populates
+        # this field later.
+        with pytest.raises(ValidationError, match='exactly one of "path"'):
+            Volume.model_validate({"name": "bare"})
 
 
 class TestTaskDefinitionInputVolumes:

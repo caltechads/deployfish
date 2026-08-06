@@ -98,7 +98,11 @@ class TestTaskDefinitionAdapterGoldenMaster:
         payload, _kwargs = TaskDefinitionAdapter(deepcopy(data)).convert()
         volumes = {v["name"]: v for v in payload["volumes"]}
         assert volumes["host-vol"]["host"]["sourcePath"] == "/data"
-        assert volumes["docker-vol"]["dockerVolumeConfiguration"]["scope"] == "task"
+        assert volumes["docker-vol"]["dockerVolumeConfiguration"] == {
+            "scope": "task",
+            "autoprovision": True,
+            "driver": "local",
+        }
         assert (
             volumes["efs-vol"]["efsVolumeConfiguration"]["fileSystemId"] == "fs-123"
         )
