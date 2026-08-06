@@ -59,6 +59,17 @@ from configuration in ``deployfish.yml``.
     The main ``@property`` loads the data from AWS if necessary, while the
     ``@property.setter`` circumvents the AWS loading.
 
+.. note::
+
+    :py:class:`deployfish.core.adapters.deployfish.ecs.container.ContainerDefinitionAdapter`
+    and :py:class:`deployfish.core.adapters.deployfish.ecs.task_definition.TaskDefinitionAdapter` validate
+    their input through Pydantic models
+    (:py:class:`deployfish.config.schema.container.ContainerDefinitionInput` and
+    :py:class:`deployfish.config.schema.task_definition.TaskDefinitionInput`, respectively),
+    giving structured validation and clear error messages. See
+    :doc:`/adr/0001-pydantic-adapters` and :doc:`/adr/0002-pydantic-task-definition-adapter`
+    for the design rationale.
+
 #. Create a subclass of :py:class:`deployfish.core.adapters.abstract.Adapter`
    The ``.__init__()`` for your subclass will get passed the ``deployfish.yml``
    configuration for your object, and will store it as

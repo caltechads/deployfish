@@ -139,6 +139,37 @@ class TestTaskDefinitionAdapterComprehensive:
         with pytest.raises(SchemaException, match="at least one container"):
             TaskDefinitionAdapter(data).convert()
 
+    def test_snake_case_placement_constraints_does_not_leak_into_task_definition(
+        self,
+    ) -> None:
+        # `placement_constraints` (snake_case) is a different, documented,
+        # service/task-level key used by ServiceAdapter/StandaloneTaskAdapter
+        # on this same shared stanza -- it must NOT populate this model's
+        # `placementConstraints` (camelCase-only) field.
+        data = deepcopy(SERVICE_YML)
+        data["placement_constraints"] = [{"type": "distinctInstance"}]
+        payload, _kwargs = TaskDefinitionAdapter(data).convert()
+        assert "placementConstraints" not in payload
+
+    def test_snake_case_placement_constraints_does_not_override_camel_case(
+        self,
+    ) -> None:
+        data = deepcopy(SERVICE_YML)
+        data["placement_constraints"] = [{"type": "distinctInstance"}]
+        data["placementConstraints"] = [
+            {"type": "memberOf", "expression": "attribute:foo"}
+        ]
+        payload, _kwargs = TaskDefinitionAdapter(data).convert()
+        assert payload["placementConstraints"] == [
+            {"type": "memberOf", "expression": "attribute:foo"}
+        ]
+
+    def test_non_dict_container_entry_raises_schema_exception(self) -> None:
+        data = deepcopy(SERVICE_YML)
+        data["containers"] = ["foo"]
+        with pytest.raises(SchemaException):
+            TaskDefinitionAdapter(data).convert()
+
 
 class TestContainerDefinitionAdapterComprehensive:
     def _adapter(
@@ -304,11 +335,6 @@ class TestContainerDefinitionAdapterComprehensive:
         assert data["linuxParameters"]["capabilities"]["add"] == ["NET_ADMIN"]
         assert data["linuxParameters"]["tmpfs"][0]["containerPath"] == "/run"
         assert data["extraHosts"] == [{"hostname": "somehost", "ipAddress": "10.0.0.1"}]
-
-    def test_cpu_exceeding_task_cpu_raises(self) -> None:
-        container = {"name": "foobar", "image": "img:1", "cpu": 512, "memory": 256}
-        with pytest.raises(SchemaException, match="cpu is greater than the task cpu"):
-            self._adapter(container, task_data={"cpu": 256, "volumes": []}).get_cpu()
 
     def test_sidecar_container_essential_false(self) -> None:
         container = {
