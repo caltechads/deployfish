@@ -1,4 +1,5 @@
-"""Golden-master characterization tests for TaskDefinitionAdapter.convert().
+"""
+Golden-master characterization tests for TaskDefinitionAdapter.convert().
 
 These fixtures capture TaskDefinitionAdapter's current output shape for a
 range of representative task-definition stanzas. This file must not be
@@ -10,8 +11,9 @@ rewrite changed observable output shape.
 from copy import deepcopy
 
 import pytest
-
-from deployfish.core.adapters.deployfish.ecs.task_definition import TaskDefinitionAdapter
+from deployfish.core.adapters.deployfish.ecs.task_definition import (
+    TaskDefinitionAdapter,
+)
 from deployfish.exceptions import SchemaException
 
 

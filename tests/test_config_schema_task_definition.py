@@ -153,7 +153,7 @@ class TestTaskDefinitionInputContainers:
                 ],
             }
         )
-        assert td.cpu == 512
+        assert td.cpu == 512  # noqa: PLR2004
 
     def test_fargate_without_execution_role_raises(self) -> None:
         with pytest.raises(ValidationError, match='"execution_role"'):
