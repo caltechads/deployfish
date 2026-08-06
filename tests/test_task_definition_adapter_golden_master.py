@@ -61,7 +61,7 @@ class TestTaskDefinitionAdapterGoldenMaster:
             "containers": [{"name": "web", "image": "nginx:1.25"}],
         }
         adapter = TaskDefinitionAdapter(deepcopy(data))
-        with pytest.raises(KeyError):
+        with pytest.raises(SchemaException, match='"execution_role"'):
             adapter.convert()
 
     def test_missing_containers_raises(self) -> None:
@@ -154,6 +154,15 @@ class TestTaskDefinitionAdapterGoldenMaster:
                 {"name": "web", "image": "nginx:1.25", "cpu": 512, "memory": 256}
             ],
         }
+        # NOTE: message text updated for the Pydantic rewrite (Task 6). Task 4
+        # added TaskDefinitionInput._validate_container_resource_limits, a
+        # per-container cpu/memory check that fires before the old
+        # set_task_cpu()-based sum check ever runs, for this exact
+        # single-container input. The exception type (SchemaException) and
+        # the fact that construction succeeds while convert() raises are
+        # unchanged; only the message text differs. See task-6-report.md.
         adapter = TaskDefinitionAdapter(deepcopy(data))
-        with pytest.raises(SchemaException, match="container cpu sums to"):
+        with pytest.raises(
+            SchemaException, match="cpu is greater than the task cpu value"
+        ):
             adapter.convert()

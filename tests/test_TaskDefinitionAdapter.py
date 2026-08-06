@@ -4,6 +4,7 @@ import deployfish.core.adapters  # noqa: F401
 import pytest
 from deployfish.core.adapters.deployfish.ecs import TaskDefinitionAdapter
 from deployfish.core.models import Secret
+from deployfish.exceptions import SchemaException
 
 from tests.fixtures import SERVICE_YML
 
@@ -40,7 +41,7 @@ class TestTaskDefinitionAdapter:
         data["launch_type"] = "FARGATE"
         del data["execution_role"]
         adapter = TaskDefinitionAdapter(data)
-        with pytest.raises(KeyError):
+        with pytest.raises(SchemaException, match='"execution_role"'):
             adapter.convert()
 
     def test_fargate_sets_requires_compatibilities(self) -> None:
