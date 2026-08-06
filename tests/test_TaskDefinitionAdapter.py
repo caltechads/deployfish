@@ -40,9 +40,8 @@ class TestTaskDefinitionAdapter:
         data = deepcopy(SERVICE_YML)
         data["launch_type"] = "FARGATE"
         del data["execution_role"]
-        adapter = TaskDefinitionAdapter(data)
         with pytest.raises(SchemaException, match='"execution_role"'):
-            adapter.convert()
+            TaskDefinitionAdapter(data).convert()
 
     def test_fargate_sets_requires_compatibilities(self) -> None:
         data = deepcopy(SERVICE_YML)

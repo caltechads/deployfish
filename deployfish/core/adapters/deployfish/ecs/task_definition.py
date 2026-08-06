@@ -50,6 +50,10 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
             extra_environment: extra environment.
             partial: partial.
 
+        Raises:
+            SchemaException: if ``data`` does not validate against
+                :py:class:`deployfish.config.schema.task_definition.TaskDefinitionInput`.
+
         """
         super().__init__(data)
         #: Secrets.
@@ -58,37 +62,8 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
         self.extra_environment = extra_environment or {}
         #: Partial.
         self.partial = partial
-        #: The validated, reshaped task-definition stanza. Populated lazily,
-        #: on first use by :py:meth:`get_volumes` or :py:meth:`convert` -- see
-        #: :py:meth:`_validated` for why this isn't done eagerly here.
-        self.__input: TaskDefinitionInput | None = None
-
-    def _validated(self) -> TaskDefinitionInput:
-        """
-        Validate :py:attr:`data` against the appropriate input model on first
-        use, caching the result for subsequent calls.
-
-        .. note::
-
-            Validation is intentionally lazy (triggered by :py:meth:`get_volumes`
-            or :py:meth:`convert`) rather than eager in :py:meth:`__init__`, to
-            preserve this adapter's long-standing contract that construction
-            never raises -- only the method that needs the validated data does.
-            ``tests/test_task_definition_adapter_golden_master.py`` locks this
-            behavior in (e.g. ``test_missing_containers_raises`` constructs the
-            adapter successfully and expects ``convert()`` -- not construction
-            -- to raise).
-
-        Raises:
-            SchemaException: if ``data`` does not validate.
-
-        Returns:
-            The validated, reshaped task-definition stanza.
-
-        """
-        if self.__input is None:
-            self.__input = self._validate(self.data)
-        return self.__input
+        #: The validated, reshaped task-definition stanza.
+        self._input = self._validate(data)
 
     def _validate(
         self, data: dict[str, Any]
@@ -187,16 +162,12 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
                     },
             ]
 
-        Raises:
-            SchemaException: if ``data`` does not validate against
-                :py:class:`deployfish.config.schema.task_definition.TaskDefinitionInput`.
-
         Returns:
             A list of volume definitions for this task definition.
 
         """
         volumes: list[dict[str, Any]] = []
-        for v in self._validated().volumes or []:
+        for v in self._input.volumes or []:
             v_dict: dict[str, Any] = {"name": v.name}
             if v.path is not None:
                 v_dict["host"] = {"sourcePath": v.path}
@@ -219,16 +190,14 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
         keyword arguments needed to build the task definition's containers.
 
         Raises:
-            SchemaException: if ``data`` does not validate against
-                :py:class:`deployfish.config.schema.task_definition.TaskDefinitionInput`,
-                or if task-level cpu/memory conflict with the summed
-                container cpu/memory requirements.
+            SchemaException: if task-level cpu/memory conflict with the
+                summed container cpu/memory requirements.
 
         Returns:
             A 2-tuple of ``(task_definition_data, container_kwargs)``.
 
         """
-        task_input = self._validated()
+        task_input = self._input
         data: dict[str, Any] = {}
         if task_input.family is not None:
             data["family"] = task_input.family
