@@ -297,15 +297,18 @@ class LoadBalancerListenerRuleManager(Manager):
         tg = TargetGroup.objects.get(target_group_arn)
         load_balancer_pk = tg.data["LoadBalancerArns"][0]
         rule_objects = self.__get_rules_for_load_balancer(load_balancer_pk)
-        return [
-            obj
-            for obj in rule_objects
-            if any(
-                action["Type"] == "forward"
-                and action["TargetGroupArn"] == target_group_arn
-                for action in obj.data["Actions"]
-            )
-        ]
+        matched_rules = []
+        for obj in rule_objects:
+            for action in obj.data["Actions"]:
+                if action["Type"] == "forward":
+                    if action.get("TargetGroupArn") == target_group_arn:
+                        matched_rules.append(obj)
+                    elif "ForwardConfig" in action:
+                        for target_group in action["ForwardConfig"]["TargetGroups"]:
+                            if target_group["TargetGroupArn"] == target_group_arn:
+                                matched_rules.append(obj)
+                                break
+        return matched_rules
 
     def list(
         self,
