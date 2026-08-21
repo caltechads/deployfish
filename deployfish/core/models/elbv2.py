@@ -153,14 +153,14 @@ class LoadBalancerListenerRuleManager(Manager):
         matched_rules = []
         for obj in rule_objects:
             for action in obj.data["Actions"]:
-                if action["Type"] == "forward" and action["TargetGroupArn"] == target_group_arn:
-                    # I'm making an important assumption here that the relevant target group is the one attached
-                    # to the first 'forward' action on the rule, and that we only have one TargetGroup -- we're
-                    # not using a weighted ForwardConfig with a list of TargetGroupArns.
-                    #
-                    # If we ever start doing green/blue deployments with two services attached to the same
-                    # listener rule, we'll need to fix this.
-                    matched_rules.append(obj)
+                if action["Type"] == "forward":
+                    if action.get("TargetGroupArn") == target_group_arn:
+                        matched_rules.append(obj)
+                    elif "ForwardConfig" in action:
+                        for target_group in action["ForwardConfig"]["TargetGroups"]:
+                            if target_group["TargetGroupArn"] == target_group_arn:
+                                matched_rules.append(obj)
+                                break
         return matched_rules
 
     def list(
