@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from cement import App
@@ -18,7 +17,7 @@ def add_template_dir(app: App):
         app: app.
 
     """
-    path = os.path.join(str(Path(__file__), "templates").parent)  # noqa: PTH118
+    path = str(Path(__file__).parent / "templates")
     app.add_template_dir(path)
 
 
