@@ -285,13 +285,20 @@ class LoadBalancerListenerRuleManager(Manager):
         self, target_group_arn: str
     ) -> Sequence["LoadBalancerListenerRule"]:
         """
-        Handle get rules for target group.
+        Return listener rules on the target group's load balancer that forward
+        to ``target_group_arn``.
+
+        Matches both of the shapes AWS uses on ``forward`` actions:
+
+        * A single target group via top-level ``TargetGroupArn``
+        * One or more target groups via ``ForwardConfig.TargetGroups`` (weighted
+          / canary routing)
 
         Args:
-            target_group_arn: target group arn.
+            target_group_arn: ARN of the target group to find rules for
 
         Returns:
-            Operation result.
+            Listener rules that forward traffic to the given target group
 
         """
         tg = TargetGroup.objects.get(target_group_arn)
@@ -983,15 +990,13 @@ class TargetGroup(Model):
     @property
     def rules(self) -> Sequence[LoadBalancerListenerRule]:
         """
+        Listener rules that forward to this target group.
+
         .. note::
 
             The dumb thing here is that you can't ask the target group itself
             what listener rules it is attached to -- you have to start at the
             load balancer, list all the listener rules that
-
-        Returns:
-            Operation result.
-
         """
         if "listener_rules" not in self.cache:
             self.cache["listener_rules"] = LoadBalancerListenerRule.objects.list(
