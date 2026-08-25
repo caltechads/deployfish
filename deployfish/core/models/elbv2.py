@@ -147,6 +147,23 @@ class LoadBalancerListenerRuleManager(Manager):
         return self.cache["load_balancers"][load_balancer_pk]
 
     def __get_rules_for_target_group(self, target_group_arn: str) -> Sequence["LoadBalancerListenerRule"]:
+        """
+        Return listener rules on the target group's load balancer that forward
+        to ``target_group_arn``.
+
+        Matches both of the shapes AWS uses on ``forward`` actions:
+
+        * A single target group via top-level ``TargetGroupArn``
+        * One or more target groups via ``ForwardConfig.TargetGroups`` (weighted
+          / canary routing)
+
+        Args:
+            target_group_arn: ARN of the target group to find rules for
+
+        Returns:
+            Listener rules that forward traffic to the given target group
+
+        """
         tg = TargetGroup.objects.get(target_group_arn)
         load_balancer_pk = tg.data["LoadBalancerArns"][0]
         rule_objects = self.__get_rules_for_load_balancer(load_balancer_pk)
@@ -499,11 +516,16 @@ class TargetGroup(Model):
     @property
     def rules(self) -> Sequence[LoadBalancerListenerRule]:
         """
+        Listener rules that forward to this target group.
+
         .. note::
 
-            The dumb thing here is that you can't ask the target group itself
-            what listener rules it is attached to -- you have to start at the
-            load balancer, list all the listener rules that
+            You cannot ask the target group itself which listener rules
+            reference it.  Deployfish starts at the load balancer, lists its
+            listener rules, and keeps those whose ``forward`` actions mention
+            this target group — either via top-level ``TargetGroupArn`` or via
+            ``ForwardConfig.TargetGroups`` (weighted / canary routing).
+
         """
         if "listener_rules" not in self.cache:
             self.cache["listener_rules"] = LoadBalancerListenerRule.objects.list(target_group_arn=self.arn)
