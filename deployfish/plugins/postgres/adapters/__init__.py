@@ -1,1 +1,1 @@
-from . import deployfish  # noqa:F401
+from .deployfish import *  # noqa: F403

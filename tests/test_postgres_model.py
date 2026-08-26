@@ -195,3 +195,12 @@ class TestPostgresDatabaseManagerMethods:
             return_value=mock_cluster,
         ), pytest.raises(db.OperationFailed, match="Failed to create database"):
             db.create("root", "wrongpass")
+
+
+class TestPostgresDatabaseAdapterRegistration:
+    def test_adapter_is_registered(self) -> None:
+        import deployfish.plugins.postgres.adapters  # noqa: F401
+        from deployfish.registry import importer_registry
+
+        adapter_cls = importer_registry.get("PostgresDatabase", "deployfish")
+        assert adapter_cls.__name__ == "PostgresDatabaseAdapter"
