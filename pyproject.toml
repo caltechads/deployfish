@@ -51,6 +51,7 @@ dependencies = [
     "toml >= 0.10.2",
     "debugpy>=1.8.21",
     "pydantic>=2.13.4",
+    "botocraft>=0.31.0",
 ]
 
 [dependency-groups]
