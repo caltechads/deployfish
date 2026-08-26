@@ -7,5 +7,6 @@ Plugins
     :caption: Contents:
 
     mysql
+    postgres
     slack
     sqs
