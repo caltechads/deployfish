@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import deployfish.core.adapters  # noqa: F401
 import pytest
@@ -124,3 +124,74 @@ class TestRaiseIfBinaryMissing:
             "psql",
             'psql: error: FATAL:  password authentication failed for user "myuser"\n',
         )
+
+
+class TestPostgresDatabaseManagerMethods:
+    def test_create_with_binary_missing_error(self) -> None:
+        """Test create() raises when psql is missing."""
+        db = _db()
+        mock_cluster = SimpleNamespace(
+            ssh_noninteractive=lambda *_, **__: (
+                False,
+                "bash: psql: command not found\n",
+            )
+        )
+        with patch.object(
+            PostgresDatabase,
+            "cluster",
+            new_callable=PropertyMock,
+            return_value=mock_cluster,
+        ), pytest.raises(db.OperationFailed, match=r"psql.*was not found"):
+            db.create("root", "rootpass")
+
+    def test_validate_with_binary_missing_error(self) -> None:
+        """Test validate() raises when psql is missing."""
+        db = _db()
+        mock_cluster = SimpleNamespace(
+            ssh_noninteractive=lambda *_, **__: (
+                False,
+                "sh: 1: psql: not found\n",
+            )
+        )
+        with patch.object(
+            PostgresDatabase,
+            "cluster",
+            new_callable=PropertyMock,
+            return_value=mock_cluster,
+        ), pytest.raises(db.OperationFailed, match=r"psql.*was not found"):
+            db.validate()
+
+    def test_server_version_with_binary_missing_error(self) -> None:
+        """Test server_version() raises when psql is missing."""
+        db = _db()
+        mock_cluster = SimpleNamespace(
+            ssh_noninteractive=lambda *_, **__: (
+                False,
+                "bash: psql: command not found\n",
+            )
+        )
+        with patch.object(
+            PostgresDatabase,
+            "cluster",
+            new_callable=PropertyMock,
+            return_value=mock_cluster,
+        ), pytest.raises(db.OperationFailed, match=r"psql.*was not found"):
+            db.server_version()
+
+    def test_create_with_other_error_not_binary_missing(self) -> None:
+        """Test create() raises OperationFailed for non-binary-missing errors."""
+        db = _db()
+        error_msg = (
+            'psql: error: FATAL:  password authentication failed for '
+            'user "root"\n'
+        )
+        mock_cluster = SimpleNamespace(
+            ssh_noninteractive=lambda *_, **__: (False, error_msg)
+        )
+        with patch.object(
+            PostgresDatabase,
+            "cluster",
+            new_callable=PropertyMock,
+            return_value=mock_cluster,
+        ), pytest.raises(db.OperationFailed, match="Failed to create database"):
+            db.create("root", "wrongpass")
