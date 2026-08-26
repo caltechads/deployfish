@@ -117,8 +117,8 @@ class PostgresController(ReadOnlyCrudBase):
                 ["-c", "--choose"],
                 {
                     "help": (
-                        "Choose from all available ssh targets instead of choosing one "
-                        "automatically.",
+                        "Choose from all available ssh targets "
+                        "instead of choosing one automatically."
                     ),
                     "default": False,
                     "dest": "choose",
@@ -199,8 +199,8 @@ Create a role and database in a remote PostgreSQL server.
                 ["-c", "--choose"],
                 {
                     "help": (
-                        "Choose from all available ssh targets instead of choosing one "
-                        "automatically.",
+                        "Choose from all available ssh targets "
+                        "instead of choosing one automatically."
                     ),
                     "default": False,
                     "dest": "choose",
@@ -267,8 +267,8 @@ Update an existing role's password and grants in a remote PostgreSQL server.
                 ["-c", "--choose"],
                 {
                     "help": (
-                        "Choose from all available ssh targets instead of choosing one "
-                        "automatically.",
+                        "Choose from all available ssh targets "
+                        "instead of choosing one automatically."
                     ),
                     "default": False,
                     "dest": "choose",
@@ -327,8 +327,8 @@ we expect.
                 ["-c", "--choose"],
                 {
                     "help": (
-                        "Choose from all available ssh targets instead of choosing one "
-                        "automatically.",
+                        "Choose from all available ssh targets "
+                        "instead of choosing one automatically."
                     ),
                     "default": False,
                     "dest": "choose",
@@ -387,8 +387,8 @@ that exists, then we will use "{service-name}-1.sql", and if that exists
                 ["-c", "--choose"],
                 {
                     "help": (
-                        "Choose from all available ssh targets instead of choosing one "
-                        "automatically.",
+                        "Choose from all available ssh targets "
+                        "instead of choosing one automatically."
                     ),
                     "default": False,
                     "dest": "choose",
@@ -445,8 +445,8 @@ the remote PostgreSQL server.
                 ["-c", "--choose"],
                 {
                     "help": (
-                        "Choose from all available ssh targets instead of choosing one "
-                        "automatically.",
+                        "Choose from all available ssh targets "
+                        "instead of choosing one automatically."
                     ),
                     "default": False,
                     "dest": "choose",
@@ -489,8 +489,8 @@ Show the role attributes for our role in the remote PostgreSQL server.
                 ["-c", "--choose"],
                 {
                     "help": (
-                        "Choose from all available ssh targets instead of choosing one "
-                        "automatically.",
+                        "Choose from all available ssh targets "
+                        "instead of choosing one automatically."
                     ),
                     "default": False,
                     "dest": "choose",
