@@ -47,12 +47,20 @@ sufficient -- **provided the target RDS instance's `template1` still carries PG1
 `public`-schema ACL for `pg_database_owner`**, true for stock/unmodified RDS Postgres 15+ but
 an environmental assumption, not a language guarantee; a hand-modified `template1` would make
 `create` succeed while leaving `{user}` without usable schema access, surfacing later as a
-permission-denied on first query rather than as a `create`-time failure. `update` runs `ALTER ROLE
-{user} WITH PASSWORD '{pass}'; GRANT ALL PRIVILEGES ON DATABASE {db} TO {user}; GRANT ALL ON
-SCHEMA public TO {user};`, also against the `postgres` maintenance db (`ALTER ROLE`/`GRANT ON
-DATABASE` don't require connecting to the target db). `update` has no encoding-change
-capability, matching reality rather than mysql's behavior: postgres `ENCODING` is immutable
-after `CREATE DATABASE`, so there is no `ALTER DATABASE ... ENCODING` equivalent to attempt.
+permission-denied on first query rather than as a `create`-time failure. `update` also issues
+**two separate `psql -c` invocations**, for a different reason than `create`'s transaction-block
+restriction: the first runs `ALTER ROLE {user} WITH PASSWORD '{pass}'; GRANT ALL PRIVILEGES ON
+DATABASE {db} TO {user};` against the `postgres` maintenance db (`ALTER ROLE` is cluster-wide and
+`GRANT ... ON DATABASE {db}` names its target object explicitly, so both work fine against any
+connected database); the second runs `GRANT ALL ON SCHEMA public TO {user};` connected directly
+to `{db}` (`--dbname={db}`), because `GRANT ... ON SCHEMA public` has no database qualifier -- it
+always resolves against whichever database the connection is currently on. Sending it against the
+default `postgres` maintenance db, as a single combined command would, silently grants schema
+access on the *maintenance* database's `public` schema instead of the target database's, leaving
+`update` looking successful while never doing the one thing its schema-grant step exists for.
+`update` has no encoding-change capability, matching reality rather than mysql's behavior:
+postgres `ENCODING` is immutable after `CREATE DATABASE`, so there is no `ALTER DATABASE ...
+ENCODING` equivalent to attempt.
 
 `validate` and `server-version` run against the `postgres` maintenance db too, using `psql -t
 -A` (tuples-only, unaligned output) for a single clean output line. `server-version` actually

@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 from collections.abc import Sequence
 from pathlib import Path
@@ -10,6 +11,61 @@ from deployfish.core.models import Cluster, Instance, Manager, Model, Secret, Se
 # ----------------------------------------
 # Helpers
 # ----------------------------------------
+
+#: Pattern that a valid, unquoted PostgreSQL identifier (role name, database
+#: name, encoding name) must match before we interpolate it into a shell
+#: command or a SQL literal.
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
+
+def _validate_identifier(name: str, field: str) -> None:
+    """
+    Raise a clear error if ``name`` is not safe to interpolate unquoted into
+    a shell command or a SQL identifier position.
+
+    Args:
+        name: the identifier value to check (e.g. a ``user``, ``db``, or
+            ``character_set`` value from ``deployfish.yml``).
+        field: the name of the field ``name`` came from, used in the error
+            message.
+
+    Raises:
+        PostgresDatabase.OperationFailed: if ``name`` contains any character
+            other than letters, digits, or underscores.
+
+    """
+    if not _IDENTIFIER_RE.match(name):
+        msg = (
+            f'PostgresDatabase: invalid value for "{field}": {name!r}. Only '
+            "letters, digits, and underscores are allowed."
+        )
+        raise PostgresDatabase.OperationFailed(msg)
+
+
+def _validate_password(password: str, field: str = "pass") -> None:
+    """
+    Raise a clear error if ``password`` contains a character that would break
+    out of the ``PGPASSWORD='...'`` shell quoting or the SQL ``PASSWORD
+    '...'`` literal quoting we use when interpolating it.
+
+    Args:
+        password: the password value to check.
+
+    Keyword Args:
+        field: the name of the field ``password`` came from, used in the
+            error message.
+
+    Raises:
+        PostgresDatabase.OperationFailed: if ``password`` contains a single
+            or double quote character.
+
+    """
+    if "'" in password or '"' in password:
+        msg = (
+            f'PostgresDatabase: invalid value for "{field}": the password '
+            "must not contain a single or double quote character."
+        )
+        raise PostgresDatabase.OperationFailed(msg)
 
 
 def _raise_if_binary_missing(obj: "PostgresDatabase", binary: str, output: str) -> None:
@@ -844,6 +900,9 @@ class PostgresDatabase(Model):
         """
         user = user or self.user
         password = password or self.password
+        _validate_identifier(user, "user")
+        _validate_identifier(dbname, "dbname")
+        _validate_password(password)
         flags = "--tuples-only --no-align " if unaligned else ""
         return (
             f"PGPASSWORD='{password}' psql --host={self.host} --username={user} "
@@ -868,6 +927,10 @@ class PostgresDatabase(Model):
             Operation result.
 
         """
+        _validate_identifier(self.user, "user")
+        _validate_identifier(self.db, "db")
+        _validate_identifier(self.character_set, "character_set")
+        _validate_password(self.password)
         role_sql = f"CREATE ROLE {self.user} LOGIN PASSWORD '{self.password}';"
         db_sql = (
             f"CREATE DATABASE {self.db} OWNER {self.user} "
@@ -885,6 +948,16 @@ class PostgresDatabase(Model):
         """
         Render for update.
 
+        Two separate ``psql -c`` invocations chained with ``&&``: ``ALTER
+        ROLE`` (cluster-wide) and ``GRANT ... ON DATABASE {db}`` (a named
+        object) work against any connected database, but ``GRANT ... ON
+        SCHEMA public`` has no database qualifier -- it resolves against
+        whichever database the connection is currently on. Running it against
+        the default ``postgres`` maintenance database would grant schema
+        access on the *maintenance* database's ``public`` schema instead of
+        the target database's, so it must be sent in a second invocation that
+        explicitly connects to ``self.db``.
+
         Args:
             root_user: root user.
             root_password: root password.
@@ -893,12 +966,21 @@ class PostgresDatabase(Model):
             Operation result.
 
         """
-        sql = (
+        _validate_identifier(self.user, "user")
+        _validate_identifier(self.db, "db")
+        _validate_password(self.password)
+        role_sql = (
             f"ALTER ROLE {self.user} WITH PASSWORD '{self.password}';"
             f"GRANT ALL PRIVILEGES ON DATABASE {self.db} TO {self.user};"
-            f"GRANT ALL ON SCHEMA public TO {self.user};"
         )
-        return self.render_postgres_command(sql, user=root_user, password=root_password)
+        schema_sql = f"GRANT ALL ON SCHEMA public TO {self.user};"
+        role_cmd = self.render_postgres_command(
+            role_sql, user=root_user, password=root_password
+        )
+        schema_cmd = self.render_postgres_command(
+            schema_sql, dbname=self.db, user=root_user, password=root_password
+        )
+        return f"{role_cmd} && {schema_cmd}"
 
     def render_for_dump(self) -> str:
         """
@@ -908,6 +990,9 @@ class PostgresDatabase(Model):
             Operation result.
 
         """
+        _validate_identifier(self.user, "user")
+        _validate_identifier(self.db, "db")
+        _validate_password(self.password)
         return (
             f"PGPASSWORD='{self.password}' pg_dump --format=plain --no-owner "
             f"--host={self.host} --username={self.user} --port={self.port} "
@@ -922,6 +1007,9 @@ class PostgresDatabase(Model):
             Operation result.
 
         """
+        _validate_identifier(self.user, "user")
+        _validate_identifier(self.db, "db")
+        _validate_password(self.password)
         return (
             f"PGPASSWORD='{self.password}' psql --host={self.host} "
             f"--username={self.user} --port={self.port} --dbname={self.db} "

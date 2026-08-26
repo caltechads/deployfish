@@ -3,15 +3,31 @@ Postgres Plugin
 
 ``deployfish-postgres`` is a plugin that allows you to manage databases in remote PostgreSQL servers in AWS.
 
+* ``deploy postgres info {name}``: Show details about a PostgreSQL database connection.
+* ``deploy postgres list``: List available PostgreSQL database connections from ``deployfish.yml``.
+* ``deploy postgres exists {name}``: Show whether a PostgreSQL database connection exists in ``deployfish.yml``.
 * ``deploy postgres create {name}``: Create a role and database, with the role as owner.
 * ``deploy postgres update {name}``: Update the role's password and re-grant privileges
 * ``deploy postgres validate {name}``: Validate that the username/password combination is valid
 * ``deploy postgres dump {name}``: Dump PostgreSQL databases as SQL files to local file systems.
 * ``deploy postgres load {name} {filename}``: Load a local SQL file into remote PostgreSQL databases
 * ``deploy postgres show-grants {name}``: Show role attributes for your role
+* ``deploy postgres server-version {name}``: Show the PostgreSQL version of the remote server.
 
 ``{name}`` above refers to the ``name`` of a PostgreSQL connection from the ``postgres:`` section of
 your ``deployfish.yml`` file.  See below for how the ``postgres:`` connection works.
+
+Requirements on the remote host
+--------------------------------
+
+Unlike the ``mysql`` plugin, which invokes MySQL's client tools at hardcoded absolute paths
+(``/usr/bin/mysql``, ``/usr/bin/mysqldump``), ``deployfish-postgres`` invokes bare ``psql`` and
+``pg_dump``, resolved off the remote host's ``$PATH`` over SSH. This means **the PostgreSQL
+client tools (``psql`` and, for ``dump``, ``pg_dump``) must be installed and on ``$PATH`` on the
+remote SSH target** (the EC2 instance or Fargate task's SSH target used to reach the database) --
+they are not assumed to live at any particular filesystem location. If either binary is missing,
+``deployfish-postgres`` detects the resulting "command not found" failure and raises a clear
+error naming the specific missing binary, rather than surfacing a raw, confusing shell error.
 
 Configure deployfish-postgres
 ------------------------------

@@ -58,14 +58,17 @@ class TestPostgresDatabaseRenderMethods:
             "--command=\"CREATE DATABASE mydb OWNER myuser ENCODING 'UTF8';\""
         )
 
-    def test_render_for_update(self) -> None:
+    def test_render_for_update_is_two_chained_invocations(self) -> None:
         db = _db()
         cmd = db.render_for_update("root", "rootpass")
         assert cmd == (
-            'PGPASSWORD=\'rootpass\' psql --host=myhost.example.com --username=root '
-            '--port=5432 --dbname=postgres --command="ALTER ROLE myuser WITH '
-            'PASSWORD \'mypass\';GRANT ALL PRIVILEGES ON DATABASE mydb TO myuser;'
-            'GRANT ALL ON SCHEMA public TO myuser;"'
+            "PGPASSWORD='rootpass' psql --host=myhost.example.com --username=root "
+            "--port=5432 --dbname=postgres "
+            "--command=\"ALTER ROLE myuser WITH PASSWORD 'mypass';"
+            'GRANT ALL PRIVILEGES ON DATABASE mydb TO myuser;" && '
+            "PGPASSWORD='rootpass' psql --host=myhost.example.com --username=root "
+            "--port=5432 --dbname=mydb "
+            '--command="GRANT ALL ON SCHEMA public TO myuser;"'
         )
 
     def test_render_for_validate(self) -> None:
@@ -104,6 +107,39 @@ class TestPostgresDatabaseRenderMethods:
             "PGPASSWORD='mypass' psql --host=myhost.example.com --username=myuser "
             "--port=5432 --dbname=mydb --file={filename} && rm {filename}"
         )
+
+
+class TestPostgresDatabaseValidation:
+    def test_render_for_create_valid_values_still_renders(self) -> None:
+        db = _db()
+        cmd = db.render_for_create("root", "rootpass")
+        assert "CREATE ROLE myuser" in cmd
+        assert "CREATE DATABASE mydb" in cmd
+
+    def test_render_for_create_rejects_password_with_single_quote(self) -> None:
+        db = _db(**{"pass": "p'ass"})
+        with pytest.raises(PostgresDatabase.OperationFailed):
+            db.render_for_create("root", "rootpass")
+
+    def test_render_for_create_rejects_user_with_space(self) -> None:
+        db = _db(user="my user")
+        with pytest.raises(PostgresDatabase.OperationFailed):
+            db.render_for_create("root", "rootpass")
+
+    def test_render_for_create_rejects_db_with_semicolon(self) -> None:
+        db = _db(db="my;db")
+        with pytest.raises(PostgresDatabase.OperationFailed):
+            db.render_for_create("root", "rootpass")
+
+    def test_render_for_update_rejects_password_with_quote(self) -> None:
+        db = _db(**{"pass": 'p"ass'})
+        with pytest.raises(PostgresDatabase.OperationFailed):
+            db.render_for_update("root", "rootpass")
+
+    def test_render_for_update_rejects_root_password_with_quote(self) -> None:
+        db = _db()
+        with pytest.raises(PostgresDatabase.OperationFailed):
+            db.render_for_update("root", "root'pass")
 
 
 class TestRaiseIfBinaryMissing:
