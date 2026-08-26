@@ -1,0 +1,524 @@
+from typing import Any
+
+import click
+from cement import ex, shell
+from deployfish.controllers.crud import ReadOnlyCrudBase
+from deployfish.controllers.network import get_ssh_target
+from deployfish.controllers.utils import handle_model_exceptions
+from deployfish.core.models import Model, RDSInstance
+from deployfish.ext.ext_df_jinja2 import color, section_title
+from deployfish.plugins.postgres.models.postgres import PostgresDatabase
+from jinja2 import ChoiceLoader, Environment, PackageLoader
+
+
+class PostgresController(ReadOnlyCrudBase):
+    """
+    Model postgres controller behavior.
+
+    Args:
+        *args: args.
+
+    """
+
+    class Meta:
+        label = "postgres"
+        description = "Work with PostgreSQL Databases"
+        help = "Work with PostgreSQL Databases"
+        stacked_type = "nested"
+
+    #: Model.
+    model: type[Model] = PostgresDatabase
+
+    #: Help overrides.
+    help_overrides: dict[str, str] = {
+        "exists": "Show whether a PostgreSQL database connection exists in deployfish.yml",  # noqa: E501
+        "list": "List available PostgreSQL database connections from deployfish.yml",
+    }
+
+    #: Info template.
+    info_template: str = "detail--postgresdatabase.jinja2"
+
+    #: List ordering.
+    list_ordering: str = "Name"
+    #: List result columns.
+    list_result_columns: dict[str, Any] = {
+        "Name": "name",
+        "Host": "host",
+        "DB": "db",
+        "User": "user",
+        "Password": "password",
+    }
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize PostgresController.
+
+        Args:
+            *args: args.
+
+        Keyword Args:
+            kwargs: kwargs.
+
+        """
+        super().__init__(*args, **kwargs)
+        # Set up Jinja2 environment with a ChoiceLoader to load templates from
+        # the main application and the plugin
+        #: Jinja2 env.
+        self.jinja2_env = Environment(  # noqa: S701
+            loader=ChoiceLoader(
+                [
+                    PackageLoader("deployfish", "templates"),
+                    PackageLoader("deployfish.plugins.postgres", "templates"),
+                ]
+            )
+        )
+        # Import the color and section_title filters from
+        # deployfish.ext.ext_df_jinja2 in order to render the templates
+        self.jinja2_env.filters["color"] = color
+        self.jinja2_env.filters["section_title"] = section_title
+
+    @ex(
+        help="Show details about a PostgreSQL database connection.",
+        arguments=[
+            (
+                ["pk"],
+                {"help": "the name of the PostgreSQL connection in deployfish.yml"},
+            )
+        ],
+    )
+    @handle_model_exceptions
+    def info(self) -> None:
+        """
+        Show details about a PostgreSQL database in AWS.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_aws(self.app.pargs.pk)
+        # Use the Jinja2 environment to render the template rather than the
+        # default Cement renderer that only takes a local template name
+        template = self.jinja2_env.get_template(self.info_template)
+        self.app.print(template.render(obj=obj))
+
+    @ex(
+        help="Create a PostgreSQL role and database in the remote PostgreSQL server.",
+        arguments=[
+            (
+                ["pk"],
+                {"help": "the name of the PostgreSQL connection in deployfish.yml"},
+            ),
+            (
+                ["--root-password"],
+                {
+                    "help": "the password of the root user for the PostgreSQL server",
+                    "default": None,
+                    "dest": "root_password",
+                },
+            ),
+            (
+                ["-c", "--choose"],
+                {
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
+                    "default": False,
+                    "dest": "choose",
+                    "action": "store_true",
+                },
+            ),
+            (
+                ["-v", "--verbose"],
+                {
+                    "help": "Show all SSH output.",
+                    "default": False,
+                    "dest": "verbose",
+                    "action": "store_true",
+                },
+            ),
+        ],
+        description="""
+Create a role and database in a remote PostgreSQL server.
+""",
+    )
+    @handle_model_exceptions
+    def create(self):
+        """
+        Create.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        # The DbInstanceIdentifier should be the short hostname from the host key
+        db_instance_name = obj.host.split(".")[0]
+        rds_instance = RDSInstance.objects.get(db_instance_name)
+        if not self.app.pargs.root_password:
+            if rds_instance.secret_enabled:
+                self.app.pargs.root_password = rds_instance.root_password
+            else:
+                p = shell.Prompt("DB root password")
+                self.app.pargs.root_password = p.prompt()
+        target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
+        output = obj.create(
+            rds_instance.root_user,
+            self.app.pargs.root_password,
+            ssh_target=target,
+            verbose=self.app.pargs.verbose,
+        )
+        lines = [
+            click.style(
+                f'Created database "{obj.db}" in postgres server '
+                f"{obj.host}:{obj.port}.",
+                fg="green",
+            ),
+            click.style(
+                f'Created role "{obj.user}" in postgres server {obj.host}:{obj.port} '
+                f'and made it owner of database "{obj.db}".',
+                fg="green",
+            ),
+        ]
+        if output:
+            lines.append(click.style("\nPostgreSQL output:\n", fg="yellow"))
+            lines.append(output)
+        self.app.print("\n".join(lines))
+
+    @ex(
+        help="Update a PostgreSQL role's password and grants in the remote "
+        "PostgreSQL server.",
+        arguments=[
+            (
+                ["pk"],
+                {"help": "the name of the PostgreSQL connection in deployfish.yml"},
+            ),
+            (
+                ["--root-password"],
+                {
+                    "help": "the password of the root user for the PostgreSQL server",
+                    "default": None,
+                    "dest": "root_password",
+                },
+            ),
+            (
+                ["-c", "--choose"],
+                {
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
+                    "default": False,
+                    "dest": "choose",
+                    "action": "store_true",
+                },
+            ),
+            (
+                ["-v", "--verbose"],
+                {
+                    "help": "Show all SSH output.",
+                    "default": False,
+                    "dest": "verbose",
+                    "action": "store_true",
+                },
+            ),
+        ],
+        description="""
+Update an existing role's password and grants in a remote PostgreSQL server.
+""",
+    )
+    @handle_model_exceptions
+    def update(self):
+        """
+        Update.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        db_instance_name = obj.host.split(".")[0]
+        rds_instance = RDSInstance.objects.get(db_instance_name)
+        if not self.app.pargs.root_password:
+            if rds_instance.secret_enabled:
+                self.app.pargs.root_password = rds_instance.root_password
+            else:
+                p = shell.Prompt("DB root password")
+                self.app.pargs.root_password = p.prompt()
+        target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
+        output = obj.update(
+            rds_instance.root_user,
+            self.app.pargs.root_password,
+            ssh_target=target,
+            verbose=self.app.pargs.verbose,
+        )
+        lines = [
+            click.style(
+                f'Updated role "{obj.user}" in postgres server {obj.host}:{obj.port} '
+                f'and re-granted privileges on database "{obj.db}".',
+                fg="green",
+            ),
+        ]
+        if output:
+            lines.append(click.style("\nPostgreSQL output:\n", fg="yellow"))
+            lines.append(output)
+        self.app.print("\n".join(lines))
+
+    @ex(
+        help="Validate that a PostgreSQL database and role exist in the remote "
+        "PostgreSQL server and has the password we expect.",
+        arguments=[
+            (
+                ["pk"],
+                {"help": "the name of the PostgreSQL connection in deployfish.yml"},
+            ),
+            (
+                ["-c", "--choose"],
+                {
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
+                    "default": False,
+                    "dest": "choose",
+                    "action": "store_true",
+                },
+            ),
+            (
+                ["-v", "--verbose"],
+                {
+                    "help": "Show all SSH output.",
+                    "default": False,
+                    "dest": "verbose",
+                    "action": "store_true",
+                },
+            ),
+        ],
+        description="""
+Validate that a role in a remote PostgreSQL server exists and has the password
+we expect.
+""",
+    )
+    @handle_model_exceptions
+    def validate(self):
+        """
+        Validate.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
+        obj.validate(ssh_target=target, verbose=self.app.pargs.verbose)
+        lines = [
+            click.style(
+                f'PostgreSQL role "{obj.user}" in postgres server '
+                f"{obj.host}:{obj.port} exists and has the password we expect.",
+                fg="green",
+            )
+        ]
+        self.app.print("\n".join(lines))
+
+    @ex(
+        help="Dump the contents of a remote PostgreSQL database to local file.",
+        arguments=[
+            (
+                ["pk"],
+                {"help": "the name of the PostgreSQL connection in deployfish.yml"},
+            ),
+            (
+                ["--dumpfile"],
+                {
+                    "help": "Write the SQL dump to this file.",
+                    "default": None,
+                    "dest": "dumpfile",
+                },
+            ),
+            (
+                ["-c", "--choose"],
+                {
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
+                    "default": False,
+                    "dest": "choose",
+                    "action": "store_true",
+                },
+            ),
+            (
+                ["-v", "--verbose"],
+                {
+                    "help": "Show all SSH output.",
+                    "default": False,
+                    "dest": "verbose",
+                    "action": "store_true",
+                },
+            ),
+        ],
+        description="""
+Dump the contents of a PostgreSQL database to a local file.  If "--dumpfile" is
+not supplied, the filename of the output file will be "{service-name}.sql". If
+that exists, then we will use "{service-name}-1.sql", and if that exists
+"{service-name}-2.sql" and so on.
+""",
+    )
+    @handle_model_exceptions
+    def dump(self):
+        """
+        Dump.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
+        _, output_filename = obj.dump(
+            filename=self.app.pargs.dumpfile,
+            ssh_target=target,
+            verbose=self.app.pargs.verbose,
+        )
+        lines = [
+            click.style(
+                f'Dumped database "{obj.db}" in postgres server {obj.host}:{obj.port} '
+                f'to "{output_filename}".',
+                fg="green",
+            )
+        ]
+        self.app.print("\n".join(lines))
+
+    @ex(
+        help="Load the contents of a local SQL file into an existing PostgreSQL "
+        "database.",
+        arguments=[
+            (
+                ["pk"],
+                {"help": "the name of the PostgreSQL connection in deployfish.yml"},
+            ),
+            (["sqlfile"], {"help": "the filename of the SQL file to load"}),
+            (
+                ["-c", "--choose"],
+                {
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
+                    "default": False,
+                    "dest": "choose",
+                    "action": "store_true",
+                },
+            ),
+            (
+                ["-v", "--verbose"],
+                {
+                    "help": "Show all SSH output.",
+                    "default": False,
+                    "dest": "verbose",
+                    "action": "store_true",
+                },
+            ),
+        ],
+        description="""
+Load the contents of a local SQL file into an existing PostgreSQL database in
+the remote PostgreSQL server.
+""",
+    )
+    @handle_model_exceptions
+    def load(self):
+        """
+        Load.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
+        output = obj.load(
+            self.app.pargs.sqlfile, ssh_target=target, verbose=self.app.pargs.verbose
+        )
+        lines = [
+            click.style(
+                f'Loaded file "{self.app.pargs.sqlfile}" into database "{obj.db}" on '
+                f"postgres server {obj.host}:{obj.port}",
+                fg="green",
+            )
+        ]
+        if output.strip():
+            lines.append(
+                click.style(f"Output from `psql` command:\n{output}", fg="red")
+            )
+        self.app.print("\n".join(lines))
+
+    @ex(
+        help="Show the role attributes for our role in the remote PostgreSQL server.",
+        arguments=[
+            (
+                ["pk"],
+                {"help": "the name of the PostgreSQL connection in deployfish.yml"},
+            ),
+            (
+                ["-c", "--choose"],
+                {
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
+                    "default": False,
+                    "dest": "choose",
+                    "action": "store_true",
+                },
+            ),
+            (
+                ["-v", "--verbose"],
+                {
+                    "help": "Show all SSH output.",
+                    "default": False,
+                    "dest": "verbose",
+                    "action": "store_true",
+                },
+            ),
+        ],
+        description="""
+Show the role attributes for our role in the remote PostgreSQL server.
+""",
+    )
+    @handle_model_exceptions
+    def show_grants(self):
+        """
+        Show grants.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
+        output = obj.show_grants(ssh_target=target, verbose=self.app.pargs.verbose)
+        self.app.print(output)
+
+    @ex(
+        help="Show the PostgreSQL version for the remote PostgreSQL server.",
+        arguments=[
+            (
+                ["pk"],
+                {"help": "the name of the PostgreSQL connection in deployfish.yml"},
+            ),
+            (
+                ["-c", "--choose"],
+                {
+                    "help": (
+                        "Choose from all available ssh targets instead of choosing one "
+                        "automatically.",
+                    ),
+                    "default": False,
+                    "dest": "choose",
+                    "action": "store_true",
+                },
+            ),
+            (
+                ["-v", "--verbose"],
+                {
+                    "help": "Show all SSH output.",
+                    "default": False,
+                    "dest": "verbose",
+                    "action": "store_true",
+                },
+            ),
+        ],
+        description="""
+Print the PostgreSQL version of the remote PostgreSQL server.
+""",
+    )
+    @handle_model_exceptions
+    def server_version(self):
+        """
+        Server version.
+        """
+        loader = self.loader(self)
+        obj = loader.get_object_from_deployfish(self.app.pargs.pk)
+        target = get_ssh_target(self.app, obj, choose=self.app.pargs.choose)
+        self.app.print(
+            obj.server_version(ssh_target=target, verbose=self.app.pargs.verbose)
+        )
