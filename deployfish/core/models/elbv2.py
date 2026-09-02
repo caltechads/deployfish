@@ -302,7 +302,11 @@ class LoadBalancerListenerRuleManager(Manager):
 
         """
         tg = TargetGroup.objects.get(target_group_arn)
-        load_balancer_pk = tg.data["LoadBalancerArns"][0]
+        try:
+            load_balancer_pk = tg.data["LoadBalancerArns"][0]
+        except IndexError:
+            # This target group is not attached to any load balancers.
+            return []
         rule_objects = self.__get_rules_for_load_balancer(load_balancer_pk)
         matched_rules = []
         for obj in rule_objects:
