@@ -242,9 +242,12 @@ class GitMixin(AnnotationMixin):
         """
         if not self.url_patterns:
             p = parse(self.repo.remote().url)
-            origin_url = f"https://{p.host}/{p.owner}/{p.repo}"
+            # Bitbucket and GitHub offer ``ssh.``-prefixed SSH hosts that
+            # giturlparse doesn't recognize; their web UIs live on the bare domain.
+            host = p.host.removeprefix("ssh.")
+            origin_url = f"https://{host}/{p.owner}/{p.repo}"
             origin_url = origin_url.removesuffix(".git")
-            if p.bitbucket:
+            if p.bitbucket or host == "bitbucket.org":
                 self.url_patterns["commit"] = self.__format_url(
                     url=f"{origin_url}/commits/" + "{sha}", label="{sha}"
                 )
@@ -255,7 +258,7 @@ class GitMixin(AnnotationMixin):
                     url=f"{origin_url}/branches/compare/{{from_sha}}..{{to_sha}}#diff",
                     label="{from_sha}..{to_sha}",
                 )
-            elif p.github:
+            elif p.github or host == "github.com":
                 self.url_patterns["commit"] = self.__format_url(
                     url=f"{origin_url}/commit/" + "{sha}", label="{sha}"
                 )
@@ -373,7 +376,7 @@ class GitMixin(AnnotationMixin):
         values["branch"] = self.repo.head.reference.name
         self.__get_last_version(values)
         # Add the diff URL
-        if "diff" in self.url_patterns:
+        if self.url_patterns.get("diff"):
             values["diff_url"] = self.url_patterns["diff"].format(
                 from_sha=values["sha"][0:7],
                 to_sha=values["last_version_sha"][0:7],

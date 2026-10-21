@@ -103,3 +103,50 @@ class TestGitMixin:
             mixin._GitMixin__format_url("https://example.com", "link")  # type: ignore[attr-defined]
             == "[link](https://example.com)"
         )
+
+    @pytest.mark.parametrize(
+        ("remote_url", "commit_url"),
+        [
+            (
+                "git@bitbucket.org:owner/repo.git",
+                "https://bitbucket.org/owner/repo/commits/{sha}",
+            ),
+            (
+                "git@ssh.bitbucket.org:owner/repo.git",
+                "https://bitbucket.org/owner/repo/commits/{sha}",
+            ),
+            (
+                "git@github.com:owner/repo.git",
+                "https://github.com/owner/repo/commit/{sha}",
+            ),
+            (
+                "ssh://git@ssh.github.com:443/owner/repo.git",
+                "https://github.com/owner/repo/commit/{sha}",
+            ),
+        ],
+    )
+    def test_url_patterns_recognize_ssh_hosts(
+        self, remote_url: str, commit_url: str
+    ) -> None:
+        repo = MagicMock()
+        repo.remote.return_value.url = remote_url
+        with patch("deployfish.core.utils.mixins.Repo", return_value=repo):
+            mixin = GitMixin(url_type="markdown")
+        assert mixin.url_patterns["commit"] == f"[{{sha}}]({commit_url})"
+        assert mixin.url_patterns["diff"] is not None
+
+    def test_annotate_skips_diff_url_for_unknown_host(self) -> None:
+        repo = MagicMock()
+        repo.remote.return_value.url = "git@git.example.com:owner/repo.git"
+        repo.head.commit.hexsha = "a" * 40
+        with patch("deployfish.core.utils.mixins.Repo", return_value=repo):
+            mixin = GitMixin()
+        values: dict[str, str] = {}
+        with patch.object(
+            mixin,
+            "_GitMixin__get_last_version",
+            side_effect=lambda v: v.update(last_version_sha="b" * 40),
+        ):
+            mixin.annotate(values)
+        assert mixin.url_patterns["diff"] is None
+        assert "diff_url" not in values
