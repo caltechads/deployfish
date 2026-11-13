@@ -185,7 +185,7 @@ class ServiceUpdateMessage(
         Add changelog.
         """
         changelog = self.values.get("changelog", [])
-        url = "https://ads-utils-icons.s3.us-west-2.amazonaws.com/ads_dev_ops/database-check.png"
+        url = "https://ads-utils-icons.resources.caltech.edu/ads_dev_ops/database-check.png"
         text = "*Changelog:*\n"
         text += str.join("\n", changelog)
         if text:
