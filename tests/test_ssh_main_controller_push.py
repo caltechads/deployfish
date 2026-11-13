@@ -158,15 +158,19 @@ class TestDeployfishAppConfig:
             assert app.exit_code == 1
 
     def test_maybe_do_cli_debugging_connection_refused(self) -> None:
-        with patch.dict(sys.modules, {"debugpy": DEBUGPY}):
-            from deployfish.main import maybe_do_cli_debugging
+        from deployfish.main import maybe_do_cli_debugging
 
-            DEBUGPY.connect.side_effect = ConnectionRefusedError
-            argv = ["deploy", "--debugpy"]
-            with patch("builtins.print") as print_mock:
-                maybe_do_cli_debugging(argv)
-            assert "--debugpy" not in argv
-            print_mock.assert_called()
+        argv = ["deploy", "--debugpy"]
+        with (
+            patch(
+                "deployfish.main.debugpy.connect",
+                side_effect=ConnectionRefusedError,
+            ),
+            patch("builtins.print") as print_mock,
+        ):
+            maybe_do_cli_debugging(argv)
+        assert "--debugpy" not in argv
+        print_mock.assert_called()
 
 
 class TestECSServiceControllerWaiters:

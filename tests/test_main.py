@@ -85,11 +85,12 @@ class TestMainEntrypoint:
 
 class TestMaybeDoCliDebugging:
     def test_debugpy_flag_removed_from_argv(self) -> None:
-        with patch.dict(sys.modules, {"debugpy": DEBUGPY}):
-            from deployfish.main import maybe_do_cli_debugging
+        from deployfish.main import maybe_do_cli_debugging
 
-            argv = ["deploy", "--debugpy", "service", "list"]
-            DEBUGPY.connect.return_value = None
-            with patch("builtins.print"):
-                maybe_do_cli_debugging(argv)
-            assert "--debugpy" not in argv
+        argv = ["deploy", "--debugpy", "service", "list"]
+        with (
+            patch("deployfish.main.debugpy.connect", return_value=None),
+            patch("builtins.print"),
+        ):
+            maybe_do_cli_debugging(argv)
+        assert "--debugpy" not in argv
