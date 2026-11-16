@@ -2216,19 +2216,95 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         containers = [c.copy() for c in self.containers]
         return self.__class__(data, containers=containers)
 
-    def __add__(self, other: "TaskDefinition") -> "TaskDefinition":
+    def merge_volumes(self, override_data: dict[str, Any]) -> None:
         """
-        Handle add.
+        Merge named volumes from ``override_data`` into ``self.data``.
+
+        A volume with a matching name replaces the existing definition; other
+        volumes are retained. An empty ``volumes`` list is a no-op. If
+        ``volumes`` is absent from ``override_data``, nothing changes.
 
         Args:
-            other: other.
+            override_data: Data from the overriding task definition.
+
+        Side Effects:
+            Updates ``self.data["volumes"]`` when ``override_data`` includes
+            ``volumes``.
+
+        """
+        if "volumes" not in override_data:
+            return
+        volumes = {volume["name"]: volume for volume in self.data.get("volumes", [])}
+        for volume in override_data["volumes"]:
+            volumes[volume["name"]] = volume
+        self.data["volumes"] = list(volumes.values())
+
+    def validate_volume_configuration(self) -> None:
+        """
+        Validate volume compatibility after task-definition overlays merge.
+
+        Raises:
+            SchemaException: if the merged volumes or mount points are not
+                compatible with the final launch type.
+
+        """
+        volumes = self.data.get("volumes", [])
+        volume_names = {volume["name"] for volume in volumes}
+        for volume in volumes:
+            if self.launch_type == "FARGATE":
+                if "dockerVolumeConfiguration" in volume:
+                    msg = (
+                        f'volume "{volume["name"]}" uses Docker-managed storage, '
+                        "which is only supported for EC2 task definitions"
+                    )
+                    raise SchemaException(msg)
+                if "host" in volume:
+                    msg = (
+                        f'volume "{volume["name"]}" uses host-path storage, '
+                        "which is only supported for EC2 task definitions"
+                    )
+                    raise SchemaException(msg)
+            elif set(volume) == {"name"}:
+                msg = (
+                    f'volume "{volume["name"]}" has no backing configuration; '
+                    "bare volumes are only supported for Fargate task definitions"
+                )
+                raise SchemaException(msg)
+        for container in self.containers:
+            for mount in container.data.get("mountPoints", []):
+                source = mount["sourceVolume"]
+                if source not in volume_names:
+                    msg = (
+                        f'container "{container.name}" references undeclared '
+                        f'volume "{source}"'
+                    )
+                    raise SchemaException(msg)
+
+    def __add__(self, other: "TaskDefinition") -> "TaskDefinition":
+        """
+        Create a task definition by merging overrides into this definition.
+
+        Ordinary task-definition fields are replaced by override values. Named
+        volumes and containers are merged by name, with same-named override
+        entries replacing inherited entries. Task CPU and memory are then
+        recalculated from the merged containers.
+
+        Args:
+            other: The task definition supplying override values.
 
         Returns:
-            Operation result.
+            The merged task definition.
 
         """
         new_td = self.copy()
-        new_td.data.update(other.data)
+        # Apply ordinary override fields first. Volumes are merged afterward
+        # because overrides add named volumes instead of replacing inherited
+        # ones. A name-only volume is Fargate task-local ephemeral storage;
+        # EC2 volumes require backing configuration and are validated on input.
+        new_td.data.update(
+            {key: value for key, value in other.data.items() if key != "volumes"}
+        )
+        new_td.merge_volumes(other.data)
         new_td.tags.update(other.tags)  # type: ignore[misc]
         old_containers = new_td.containers
         other_containers = {c.name: c for c in other.containers}
@@ -2244,6 +2320,7 @@ class TaskDefinition(TagsMixin, TaskDefinitionFARGATEMixin, SecretsMixin, Model)
         container_data = [c.data for c in new_td.containers]
         new_td.set_task_cpu(new_td.data, container_data)  # type: ignore[misc]
         new_td.set_task_memory(new_td.data, container_data)  # type: ignore[misc]
+        new_td.validate_volume_configuration()
         return new_td
 
 
