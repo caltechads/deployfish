@@ -66,12 +66,13 @@ class EFSConfig(BaseModel):
 class Volume(BaseModel):
     """
     A single task-definition-level volume declaration. ``path``, ``config``,
-    and ``efs_config`` are mutually exclusive.
+    and ``efs_config`` are mutually exclusive. A volume with none of those
+    fields is a Fargate task-local ephemeral volume.
 
     Args:
         name: the volume name, referenced by container mount points.
-        path: a host bind-mount path.
-        config: a Docker-managed volume configuration.
+        path: a host bind-mount path (EC2 only).
+        config: a Docker-managed volume configuration (EC2 only).
         efs_config: an EFS-backed volume configuration.
 
     """
@@ -81,9 +82,9 @@ class Volume(BaseModel):
 
     #: The volume name, referenced by container mount points.
     name: str
-    #: A host bind-mount path.
+    #: A host bind-mount path (EC2 only).
     path: str | None = None
-    #: A Docker-managed volume configuration.
+    #: A Docker-managed volume configuration (EC2 only).
     config: DockerVolumeConfig | None = None
     #: An EFS-backed volume configuration.
     efs_config: EFSConfig | None = None
@@ -91,11 +92,12 @@ class Volume(BaseModel):
     @model_validator(mode="after")
     def _mutually_exclusive(self) -> "Volume":
         """
-        Enforce that exactly one of ``path``, ``config``, and ``efs_config``
-        is set.
+        Enforce that at most one of ``path``, ``config``, and ``efs_config``
+        is set. A task-definition validator verifies that a bare volume is
+        only used with Fargate.
 
         Raises:
-            ValueError: if zero or more than one of ``path``, ``config``, or
+            ValueError: if more than one of ``path``, ``config``, or
                 ``efs_config`` is set.
 
         Returns:
@@ -105,9 +107,9 @@ class Volume(BaseModel):
         specified = sum(
             x is not None for x in (self.path, self.config, self.efs_config)
         )
-        if specified != 1:
+        if specified > 1:
             msg = (
-                'When defining volumes, specify exactly one of "path", '
+                'When defining volumes, specify no more than one of "path", '
                 '"config" or "efs_config"'
             )
             raise ValueError(msg)
@@ -240,6 +242,130 @@ class TaskDefinitionInput(BaseModel):
                 msg = f'duplicate volume name "{v.name}"'
                 raise ValueError(msg)
             seen.add(v.name)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_ephemeral_volumes_are_fargate(self) -> "TaskDefinitionInput":
+        """
+        Restrict task-local ephemeral volumes to Fargate task definitions.
+
+        Raises:
+            ValueError: if an EC2 task definition contains a bare volume.
+
+        Returns:
+            ``self``, unchanged.
+
+        """
+        # Skip overlays: they are validated before merge with the parent task
+        # definition, so ``launch_type`` may be absent even when the resulting
+        # helper task is Fargate. Checking launch type here would false-reject
+        # bare volumes that become valid after inheritance.
+        if type(self) is not TaskDefinitionInput:
+            return self
+        for volume in self.volumes:
+            if (
+                volume.path is None
+                and volume.config is None
+                and volume.efs_config is None
+                and self.launch_type != "FARGATE"
+            ):
+                msg = (
+                    f'volume "{volume.name}" has no backing configuration; '
+                    'bare volumes are only supported when launch_type is "FARGATE"'
+                )
+                raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_docker_volumes_are_ec2_only(self) -> "TaskDefinitionInput":
+        """
+        Reject Docker-managed volumes for Fargate task definitions.
+
+        Raises:
+            ValueError: if a Fargate task definition declares a Docker volume.
+
+        Returns:
+            ``self``, unchanged.
+
+        """
+        # Skip overlays: they are validated before merge, so ``launch_type``
+        # may not indicate Fargate until after inheritance. Checking it here
+        # would false-accept Docker volumes that become invalid on the merged
+        # Fargate task.
+        if type(self) is not TaskDefinitionInput:
+            return self
+        for volume in self.volumes:
+            if volume.config is not None and self.launch_type == "FARGATE":
+                msg = (
+                    f'volume "{volume.name}" uses "config", but Docker-managed '
+                    'volumes are only supported when launch_type is "EC2"'
+                )
+                raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_host_path_volumes_are_ec2_only(self) -> "TaskDefinitionInput":
+        """
+        Reject host ``path`` volumes for Fargate task definitions.
+
+        Raises:
+            ValueError: if a Fargate task definition declares a host path volume.
+
+        Returns:
+            ``self``, unchanged.
+
+        """
+        # Skip overlays: they are validated before merge, so ``launch_type``
+        # may not indicate Fargate until after inheritance. Checking it here
+        # would false-accept host path volumes that become invalid on the
+        # merged Fargate task.
+        if type(self) is not TaskDefinitionInput:
+            return self
+        for volume in self.volumes:
+            if volume.path is not None and self.launch_type == "FARGATE":
+                msg = (
+                    f'volume "{volume.name}" uses "path", but host path '
+                    'volumes are only supported when launch_type is "EC2"'
+                )
+                raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_container_volume_references(self) -> "TaskDefinitionInput":
+        """
+        Validate task-level volume references made by container mount entries.
+
+        Relative mount sources name task-level volumes. Absolute sources retain
+        the legacy EC2 host-path syntax and are not valid for Fargate.
+
+        Raises:
+            ValueError: if a container references an undeclared volume or a
+                Fargate container uses a host-path mount.
+
+        Returns:
+            ``self``, unchanged.
+
+        """
+        if type(self) is not TaskDefinitionInput:
+            return self
+        volume_names = {volume.name for volume in self.volumes}
+        for container in self.containers:
+            for mount in container.volumes:
+                source = mount.split(":", maxsplit=1)[0]
+                if source.startswith("/"):
+                    if self.launch_type == "FARGATE":
+                        msg = (
+                            f'container "{container.name}" uses host-path mount '
+                            f'"{source}", which is not supported for Fargate'
+                        )
+                        raise ValueError(msg)
+                    continue
+                if source not in volume_names:
+                    msg = (
+                        f'container "{container.name}" references undeclared '
+                        f'volume "{source}"'
+                    )
+                    raise ValueError(msg)
         return self
 
     @model_validator(mode="after")

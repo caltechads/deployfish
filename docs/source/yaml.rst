@@ -396,8 +396,9 @@ Here is a fully specified example:
               root_directory: my-root-directory
           - name: local_storage
             path: /host/path
+          - name: scratch
 
-The above defines four volumes:
+The above defines five volumes:
 
 * (EC2 launch type only) a task specific (not usable by other tasks) volume named ``storage_task`` that will be
   autocreated and which will use the ``my_vol_driver:latest`` volume driver
@@ -407,9 +408,11 @@ The above defines four volumes:
 * (Both EC2 or FARGATE launch types) a volume named ``efs_storage`` that allows you is the EFS file system
   ``my-filesystem-id``, rooted in the folder ``my-root-directory``.  Note: `root_directory` is optional, and if ommitted
   will be set to ``/``.
-* (Both EC2 or FARGATE launch types) a volume named ``local_storage`` that just allows you to mount ``/host/path`` from
-  the host machine using the builtin ``local`` volume driver.  For this type of mount, you can also mount ``/host/path``
-  directly via the ``volumes`` section of your container definition and not define it here.
+* (EC2 launch type only) a volume named ``local_storage`` that mounts ``/host/path`` from the host machine using the
+  builtin ``local`` volume driver.  For this type of mount on EC2, you can also mount ``/host/path`` directly via the
+  ``volumes`` section of your container definition and not define it here.
+* (FARGATE launch type only) a volume named ``scratch`` with no backing configuration.  ECS treats this as task-local
+  ephemeral storage.  Mount it from a container as ``scratch:/container/path``.
 
 See `Using Data Volumes in Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_data_volumes.html>`_.
 
@@ -1089,17 +1092,44 @@ Here is a fully qualfied example:
                 key: value
           - name: local_storage
             path: /host/path
+          - name: scratch
 
-The above defines three volumes:
+The above defines four volumes:
 
 * (EC2 launch type only) a task specific (not usable by other tasks) volume named ``storage_task`` that will be
   autocreated and which will use the ``my_vol_driver:latest`` volume driver
 * (EC2 launch type only) a shared (usable by other tasks) volume named ``storage`` that uses the docker volume driver
   ``my_vol_driver:latest`` with the driver options given in the ``driverOpts:`` section (driver options are volume
   driver specific) and labels given by ``labels``.
-* (Both EC2 or FARGATE launch types) a volume named ``local_storage`` that just allows you to mount ``/host/path`` from
-  the host machine using the builtin ``local`` volume driver.  For this type of mount, you can also mount ``/host/path``
-  directly via the ``volumes`` section of your container definition and not define it here.
+* (EC2 launch type only) a volume named ``local_storage`` that mounts ``/host/path`` from the host machine using the
+  builtin ``local`` volume driver.  For this type of mount on EC2, you can also mount ``/host/path`` directly via the
+  ``volumes`` section of your container definition and not define it here.
+* (FARGATE launch type only) a volume named ``scratch`` with no backing configuration.  ECS treats this as task-local
+  ephemeral storage.  Mount it from a container as ``scratch:/container/path``.
+
+Here is a complete Fargate example that declares an ephemeral volume and mounts it on a container:
+
+.. code-block:: yaml
+
+    tasks:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        launch_type: FARGATE
+        network_mode: awsvpc
+        vpc_configuration:
+          subnets:
+            - subnet-12345678
+          security_groups:
+            - sg-12345678
+        execution_role: MY_ROLE
+        family: foobar-prod-task-def
+        volumes:
+          - name: scratch
+        containers:
+          - name: app
+            image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+            volumes:
+              - scratch:/var/cache
 
 See `Using Data Volumes in Tasks <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_data_volumes.html>`_.
 
@@ -1727,7 +1757,30 @@ section.
               driver: rexray/s3fs:0.11.1
 
 The above will cause the volume named ``storage`` from the docker volume driver ``rexray/s3fs:0.11.1`` to be mounted
-inside your container on ``/container/path``
+inside your container on ``/container/path``.
+
+On Fargate, declare a name-only task volume and mount it by name.  Absolute host-path mounts are not supported:
+
+.. code-block:: yaml
+
+    services:
+      - name: foobar-prod
+        cluster: foobar-cluster
+        launch_type: FARGATE
+        network_mode: awsvpc
+        vpc_configuration:
+          subnets:
+            - subnet-12345678
+          security_groups:
+            - sg-12345678
+        execution_role: MY_ROLE
+        volumes:
+          - name: scratch
+        containers:
+          - name: app
+            image: 123142123547.dkr.ecr.us-west-2.amazonaws.com/foo:0.0.1
+            volumes:
+              - scratch:/var/cache
 
 logging
 -------

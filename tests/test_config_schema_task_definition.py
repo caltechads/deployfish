@@ -47,18 +47,16 @@ class TestVolume:
         assert v.efs_config.root_directory is None
 
     def test_path_and_config_both_set_raises(self) -> None:
-        with pytest.raises(ValidationError, match='exactly one of "path"'):
+        with pytest.raises(ValidationError, match='no more than one of "path"'):
             Volume.model_validate(
                 {"name": "bad", "path": "/a", "config": {"scope": "task"}}
             )
 
-    def test_none_set_raises(self) -> None:
-        # A bare volume with none of path/config/efs_config set must raise --
-        # exactly one of the three must be specified. `get_volumes()` only
-        # ever reads the task-level `volumes:` list, so nothing populates
-        # this field later.
-        with pytest.raises(ValidationError, match='exactly one of "path"'):
-            Volume.model_validate({"name": "bare"})
+    def test_none_set_is_a_fargate_ephemeral_volume(self) -> None:
+        volume = Volume.model_validate({"name": "scratch"})
+        assert volume.path is None
+        assert volume.config is None
+        assert volume.efs_config is None
 
 
 class TestTaskDefinitionInputVolumes:
@@ -87,6 +85,90 @@ class TestTaskDefinitionInputVolumes:
             }
         )
         assert [v.name for v in td.volumes] == ["a", "b"]
+
+    def test_fargate_accepts_ephemeral_volume(self) -> None:
+        td = TaskDefinitionInput.model_validate(
+            {
+                "family": "web",
+                "launch_type": "FARGATE",
+                "execution_role": "MY_ROLE",
+                "containers": [
+                    {
+                        "name": "web",
+                        "image": "nginx:1.25",
+                        "volumes": ["scratch:/var/cache"],
+                    }
+                ],
+                "volumes": [{"name": "scratch"}],
+            }
+        )
+        assert td.volumes[0].name == "scratch"
+
+    def test_ec2_rejects_ephemeral_volume(self) -> None:
+        with pytest.raises(ValidationError, match="only supported"):
+            TaskDefinitionInput.model_validate(
+                {
+                    "family": "web",
+                    "containers": [{"name": "web", "image": "nginx:1.25"}],
+                    "volumes": [{"name": "scratch"}],
+                }
+            )
+
+    def test_fargate_rejects_docker_volume(self) -> None:
+        with pytest.raises(ValidationError, match="Docker-managed"):
+            TaskDefinitionInput.model_validate(
+                {
+                    "family": "web",
+                    "launch_type": "FARGATE",
+                    "execution_role": "MY_ROLE",
+                    "containers": [{"name": "web", "image": "nginx:1.25"}],
+                    "volumes": [{"name": "docker", "config": {"scope": "task"}}],
+                }
+            )
+
+    def test_fargate_rejects_host_path_volume(self) -> None:
+        with pytest.raises(ValidationError, match='uses "path"'):
+            TaskDefinitionInput.model_validate(
+                {
+                    "family": "web",
+                    "launch_type": "FARGATE",
+                    "execution_role": "MY_ROLE",
+                    "containers": [{"name": "web", "image": "nginx:1.25"}],
+                    "volumes": [{"name": "host", "path": "/data"}],
+                }
+            )
+
+    def test_rejects_container_mount_of_undeclared_named_volume(self) -> None:
+        with pytest.raises(ValidationError, match='undeclared volume "scratch"'):
+            TaskDefinitionInput.model_validate(
+                {
+                    "family": "web",
+                    "containers": [
+                        {
+                            "name": "web",
+                            "image": "nginx:1.25",
+                            "volumes": ["scratch:/var/cache"],
+                        }
+                    ],
+                }
+            )
+
+    def test_fargate_rejects_legacy_host_path_mount(self) -> None:
+        with pytest.raises(ValidationError, match="host-path mount"):
+            TaskDefinitionInput.model_validate(
+                {
+                    "family": "web",
+                    "launch_type": "FARGATE",
+                    "execution_role": "MY_ROLE",
+                    "containers": [
+                        {
+                            "name": "web",
+                            "image": "nginx:1.25",
+                            "volumes": ["/host/cache:/var/cache"],
+                        }
+                    ],
+                }
+            )
 
 
 class TestTaskDefinitionInputContainers:

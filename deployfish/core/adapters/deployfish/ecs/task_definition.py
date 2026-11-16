@@ -242,6 +242,10 @@ class TaskDefinitionAdapter(TaskDefinitionFARGATEMixin, Adapter):
             data["taskRoleArn"] = task_input.task_role_arn
         if task_input.execution_role is not None:
             data["executionRoleArn"] = task_input.execution_role
+        # Always set ``volumes`` so container mount handling can append hidden
+        # host volumes. Overlays that omit ``volumes`` yield ``[]`` here;
+        # ``TaskDefinition.merge_volumes`` treats an empty override as a no-op
+        # so parent volumes are preserved on merge.
         data["volumes"] = self.get_volumes()
         containers_data = [
             ContainerDefinitionAdapter(

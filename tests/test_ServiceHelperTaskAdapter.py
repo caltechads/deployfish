@@ -3,6 +3,7 @@ from copy import deepcopy
 from unittest.mock import Mock, patch
 
 import deployfish.core.adapters  # noqa:F401
+import pytest
 from deployfish.core.adapters import ServiceHelperTaskAdapter
 from deployfish.core.models import Cluster, Service
 from deployfish.exceptions import SchemaException  # noqa:F401
@@ -372,6 +373,48 @@ class TestServiceHelperTaskAdapter_FARGATE(BaseTestServiceHelperTaskAdapter_basi
         ).convert()
         assert kwargs_list[0]["task_definition"].data["memory"] == "2048"
         assert kwargs_list[1]["task_definition"].data["memory"] == "2048"
+
+    def test_command_merges_ephemeral_volumes_by_name_from_fargate_service(self):
+        service_yml = deepcopy(SERVICE_YML)
+        service_yml["launch_type"] = "FARGATE"
+        service_yml["volumes"] = [{"name": "app_tmp"}]
+        service_yml["containers"][0]["volumes"] = ["app_tmp:/tmp"]
+        tasks_yml = deepcopy(self.TASKS)
+        del tasks_yml["tasks"][0]["launch_type"]
+        command = tasks_yml["tasks"][0]["commands"][0]
+        command["volumes"] = [{"name": "backup_tmp"}]
+        command["containers"][0]["volumes"] = ["backup_tmp:/tmp"]
+
+        _data_list, kwargs_list = ServiceHelperTaskAdapter(
+            tasks_yml, Service.new(service_yml, "deployfish")
+        ).convert()
+
+        task_definition = kwargs_list[0]["task_definition"]
+        assert task_definition.data["volumes"] == [
+            {"name": "app_tmp"},
+            {"name": "backup_tmp"},
+        ]
+        assert task_definition.containers[0].data["mountPoints"] == [
+            {
+                "sourceVolume": "backup_tmp",
+                "containerPath": "/tmp",  # noqa: S108
+                "readOnly": False,
+            }
+        ]
+
+    def test_command_rejects_docker_volume_on_fargate_service(self):
+        service_yml = deepcopy(SERVICE_YML)
+        service_yml["launch_type"] = "FARGATE"
+        tasks_yml = deepcopy(self.TASKS)
+        del tasks_yml["tasks"][0]["launch_type"]
+        tasks_yml["tasks"][0]["commands"][0]["volumes"] = [
+            {"name": "invalid", "config": {"scope": "task"}}
+        ]
+
+        with pytest.raises(SchemaException, match="Docker-managed"):
+            ServiceHelperTaskAdapter(
+                tasks_yml, Service.new(service_yml, "deployfish")
+            ).convert()
 
     def test_launchType_is_set_to_FARGATE(self):
         data_list, _kwargs_list = self.adapter.convert()

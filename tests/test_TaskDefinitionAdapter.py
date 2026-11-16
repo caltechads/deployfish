@@ -49,3 +49,25 @@ class TestTaskDefinitionAdapter:
         adapter = TaskDefinitionAdapter(data)
         payload, _kwargs = adapter.convert()
         assert payload["requiresCompatibilities"] == ["FARGATE"]
+
+    def test_fargate_ephemeral_volume_mounts_on_readonly_root_filesystem(
+        self,
+    ) -> None:
+        data = deepcopy(SERVICE_YML)
+        data["launch_type"] = "FARGATE"
+        data["readonly_root_filesystem"] = True
+        data["volumes"] = [{"name": "scratch"}]
+        data["containers"][0]["volumes"] = ["scratch:/var/cache"]
+
+        payload, kwargs = TaskDefinitionAdapter(data).convert()
+
+        assert payload["volumes"] == [{"name": "scratch"}]
+        container = kwargs["containers"][0][0]
+        assert container["readonlyRootFilesystem"] is True
+        assert container["mountPoints"] == [
+            {
+                "sourceVolume": "scratch",
+                "containerPath": "/var/cache",
+                "readOnly": False,
+            }
+        ]
