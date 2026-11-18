@@ -73,7 +73,7 @@ def _run_shell_command(command: str) -> int:
         Process exit code.
 
     """
-    return subprocess.call(["/bin/bash", "-lc", command])
+    return subprocess.call(["bash", "-lc", command])
 
 
 def _spawn_shell_command(command: str) -> subprocess.Popen[str]:
@@ -88,7 +88,7 @@ def _spawn_shell_command(command: str) -> subprocess.Popen[str]:
 
     """
     return subprocess.Popen(
-        ["/bin/bash", "-lc", command],
+        ["bash", "-lc", command],
         stdout=subprocess.PIPE,
         stdin=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -107,7 +107,7 @@ def _spawn_interactive_shell_command(command: str) -> subprocess.Popen[Any]:
         Running subprocess handle connected to current terminal.
 
     """
-    return subprocess.Popen(["/bin/bash", "-lc", command])
+    return subprocess.Popen(["bash", "-lc", command])
 
 
 class AbstractSSHProvider:
@@ -609,7 +609,7 @@ class SSHMixin(SupportsCache, SupportsModel):
                 p = _spawn_shell_command(command)
             else:
                 p = subprocess.Popen(
-                    ["/bin/bash", "-lc", command],
+                    ["bash", "-lc", command],
                     stdout=stdout,
                     stdin=stdin,
                     stderr=stdout,
