@@ -1,7 +1,7 @@
 [project]
 name = "deployfish"
-version = "1.19.0"
-authors = [
+version = "1.19.1"
+uthors = [
     {name = "Caltech IMSS ADS", email = "imss-ads-staff@caltech.edu"},
 ]
 maintainers = [
